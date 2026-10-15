@@ -1,0 +1,1132 @@
+*Includes all Cash Account balances & underlying cash components in iFAST Auto-Sweep, DPMS, Company Portfolios (if any).
+
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+ACCOUNT SUMMARY
+
+Account Type/Name
+ 
+Account Number
+ 
+Market Value
+ 
+Cash Solutions
+ 
+Total Assets
+Wrap Personal
+
+Alex TOP Account
+ 
+P0000194
+ 
+SGD 2,023.90
+ 
+SGD 0.00
+ 
+SGD 2,023.90
+
+INCOME SUMMARY
+
+Dividend Payout
+ 
+Coupon Payout
+ 
+Total Income
+
+SGD 0.00
+ 
+SGD 0.00
+ 
+SGD 0.00
+
+INVESTMENT HOLDINGS ALLOCATION
+
+Allocation
+DPMS
+ 
+100.00%
+
+ASSET CLASS ALLOCATION
+
+Allocation
+ 
+Allocation
+Fixed Income
+ 
+32.58%
+ 
+Alternative Investments
+ 
+11.06%
+
+Equity
+ 
+56.36%
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 1.
+DPMS
+Underlying Products
+
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+INVESTMENT HOLDINGS
+
+Product Name
+ 
+Payment
+Method
+ 
+Investment
+Amount
+ 
+Market
+Value
+ 
+P/L (%)
+Product Currency: SGD
+LGI-iFAST Tactical Opportunities Plan
+ 
+Cash
+ 
+SGD 2,055.00
+
+SGD 2,055.00
+
+SGD 2,023.90
+
+SGD 2,023.90
+
+SGD -31.10 (-1.51%)
+
+SGD -31.10 (-1.51%)
+
+Total DPMS (100.00% of account holdings)
+ 
+SGD 2,055.00
+ 
+SGD 2,023.90
+ 
+SGD -31.10 (-1.51%)
+
+LGI-iFAST Tactical Opportunities Plan
+
+Product Name
+
+Asset Allocation
+ 
+Product
+Type
+ 
+Payment
+Method
+ 
+Quantity
+ 
+WAC
+ 
+Price
+ 
+Investment
+Amount
+ 
+Market
+Value
+ 
+P/L (%)
+Amova Short Term Bond
+SGD (formerly Nikko AM)
+
+Fixed Income
+Unit Trust
+ 
+Cash
+ 
+62.2000
+ 
+SGD 1.8136
+ 
+SGD 1.7925
+ 
+SGD 154.55
+ 
+SGD 152.76
+ 
+SGD -1.79 (-1.16%)
+
+BSF - Blackrock Systematic
+Asia Pacific Equity
+Absolute Return A2 SGD-H
+
+Alternative Investments
+Unit Trust
+ 
+Cash
+ 
+1.1700
+ 
+SGD
+141.0256
+SGD
+139.6900
+SGD 226.05
+ 
+SGD 223.91
+ 
+SGD -2.14 (-0.95%)
+
+Fidelity Global Dividend A-
+MINCOME(G)-SGD
+
+Equity
+Unit Trust
+ 
+Cash
+ 
+98.8000
+ 
+SGD 2.5051
+ 
+SGD 2.4010
+ 
+SGD 339.08
+ 
+SGD 324.99
+ 
+SGD -14.08 (-4.15%)
+
+Infinity Global Stock Index
+SGD
+
+Equity
+Unit Trust
+ 
+Cash
+ 
+70.6000
+ 
+SGD 3.5056
+ 
+SGD 3.4790
+ 
+SGD 339.08
+ 
+SGD 336.50
+ 
+SGD -2.58 (-0.76%)
+
+Janus Henderson Horizon
+Pan European Property
+Equities A2 Acc SGD
+
+Equity
+Unit Trust
+ 
+Cash
+ 
+1.4180
+ 
+SGD
+52.8913
+SGD
+47.7400
+SGD 102.75
+ 
+SGD 92.75
+ 
+SGD -10.00 (-9.73%)
+
+LionGlobal Asia Pacific
+SGD
+
+Equity
+Unit Trust
+ 
+Cash
+ 
+36.8100
+ 
+SGD 4.4824
+ 
+SGD 4.5060
+ 
+SGD 226.05
+ 
+SGD 227.24
+ 
+SGD 1.19 (0.53%)
+
+LionGlobal Short Duration
+Bond A Acc SGD
+
+Fixed Income
+Unit Trust
+ 
+Cash
+ 
+203.0200
+ 
+SGD 1.2871
+ 
+SGD 1.2686
+ 
+SGD 358.01
+ 
+SGD 352.84
+ 
+SGD -5.16 (-1.44%)
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 2.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+INVESTMENT HOLDINGS (CONTINUED)
+
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+
+Product Name
+
+Asset Allocation
+ 
+Product
+Type
+ 
+Payment
+Method
+ 
+Quantity
+ 
+WAC
+ 
+Price
+ 
+Investment
+Amount
+ 
+Market
+Value
+ 
+P/L (%)
+abrdn Indonesia Equity
+SGD
+
+Equity
+Unit Trust
+ 
+Cash
+ 
+35.3500
+ 
+SGD 3.1824
+ 
+SGD 3.2873
+ 
+SGD 154.13
+ 
+SGD 159.21
+ 
+SGD 5.08 (3.3%)
+
+iFAST SGD Enhanced
+Liquidity A SGD
+
+Fixed Income
+Unit Trust
+ 
+Cash
+ 
+105.9900
+ 
+SGD 1.0639
+ 
+SGD 1.0585
+ 
+SGD 154.49
+ 
+SGD 153.70
+ 
+SGD -0.79 (-0.51%)
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 3.
+Underlying Products
+
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+INVESTMENT TRANSACTION
+
+LGI-iFAST Tactical Opportunities Plan
+
+Transaction
+Date
+ 
+Product Name
+ 
+Product Type
+ 
+Transaction
+Type
+ 
+Nominal Value /
+Quantity
+ 
+Transacted
+Price
+ 
+Investment Amt/
+Est Amt Received
+
+10 Sep 2026
+ 
+Fidelity Global Dividend A-
+MINCOME(G)-SGD
+ 
+Unit Trust
+ 
+Dividend
+ 
+0.19
+ 
+SGD 2.452000
+ 
+SGD 0.64
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 4.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+FOREIGN EXCHANGE RATE AS AT 30 SEPTEMBER 2026
+
+Currency Pair
+ 
+Exchange Rate
+AUD / SGD
+ 
+AUD 1 = SGD 0.892300
+CAD / SGD
+ 
+CAD 1 = SGD 0.899500
+CHF / SGD
+ 
+CHF 1 = SGD 1.533742
+CNH / SGD
+ 
+CNH 1 = SGD 0.189658
+EUR / SGD
+ 
+EUR 1 = SGD 1.449233
+GBP / SGD
+ 
+GBP 1 = SGD 1.689900
+HKD / SGD
+ 
+HKD 1 = SGD 0.162879
+JPY / SGD
+ 
+JPY 1 = SGD 0.008121
+MYR / SGD
+ 
+MYR 1 = SGD 0.313544
+NZD / SGD
+ 
+NZD 1 = SGD 0.720200
+THB / SGD
+ 
+THB 1 = SGD 0.038079
+USD / SGD
+ 
+USD 1 = SGD 1.277300
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 5.
+1. Please examine your Statement of Account and advise us in writing of any errors/omissions within fourteen (14) days from the Statement Date. In the
+absence of such notification from you, the Statement of Account shall be deemed conclusive evidence of your confirmation and acceptance of the
+transaction therein.
+2. Please be reminded to keep your statements for future reference. Retrieval of past statements that are more than 12 months from statement date are
+subject to charges.
+3. iFAST Financial Pte Ltd is a licensed dealer, custodian, financial adviser, CPFIS registered investment administrator, and provides portfolio
+management services in Singapore.
+4. iFAST Financial Pte Ltd is a member of SGX-ST Securities Trading and CDP Securities Clearing, and a registered CDP Depository Agent.
+5. For any enquiries, please contact our hotline at +65 6557 2000 or email us at ifastadmin@ifastfinancial.com.
+1. The valuations provided in this statement are for information purposes only; they are indicative and shown in your chosen statement currency. Foreign
+exchange conversion rates used in the calculation are for reference only based on the statement's exchange rate and subject to market movements.
+Market values are based on the available product quantity on statement date and the prices used for the valuation in this statement may be based on
+the last available market price or prices provided to us by the relevant counter-parties. For securities where a market price is not available, the last
+known market price or offer price (for Initial Public Offering) may be used.
+2. The holdings do not reflect purchases made from other distributors or directly with fund managers.
+Weighted Average Cost (WAC)
+• WAC for Unit Trust, Stock, ETF investments = Total investment amount divided by quantity.
+• WAC for Bond investments = Nominal Value x Transacted Price + (Processing Fee + GST) (excluding accrued interest paid).
+Bond Holdings Information
+• Unrealised P/L = Market Value + Interest Accrued - Investment Amount - Accrued Interest Paid.
+Unit Trust Holdings Information
+• IA refers to quantity purchased through iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator.
+• Non-IA refers to quantity that are not held by iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator. The Non-IA details are for
+information only. For further clarification, please check with your respective CPF Investment Bank, SRS operator or the CPF Board.
+3. Securities are held on your behalf by iFAST and/or its appointed Custodian, hence the Securities are not registered in your name.
+4. Orders that are not transacted as at Statement Date will not be included in this Statement. (Where order status is not 'Complete', the quantity or bonds
+will not be reflected in the holdings)
+5. TBD - To Be Determined.
+6. The Cash Account and iFAST Auto-Sweep Account are not saving accounts and hence not protected by the deposit insurance scheme.
+7. Cash Account interest is accrued daily and paid every quarter. Interest rates are subject to change without prior notice.
+1. The fees stated are inclusive of GST (where applicable).
+2. Wrap, platform, management, clean class and Auto-Sweep fee deductions take place in the month of January, April, July and October. When there is a
+failed fee deduction, we will attempt to make a second fee deduction in the following month.
+# For more information on wrap, platform, management, clean class and Auto-Sweep fees, please refer to the Fee Schedule or equivalent. Amount
+deducted for these fees is the product of number of units and price.
+
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+
+SAMPLE HOLDER, ALEX
+1 SAMPLE AVENUE
+#00-00
+SINGAPORE 000000
+SINGAPORE
+
+Adviser Name
+ 
+SAMPLE ADVISER NAME
+
+Adviser Contact
+ 
++6500000000
+
+Generation Date
+ 
+15 October 2026
+
+Statement Currency
+ 
+SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+
+GENERAL
+HOLDINGS & TRANSACTIONS
+FEES
+
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com
+ 
+Page 6.
+__PDF_LAYOUT_TEXT__
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+ACCOUNT SUMMARY
+Account Type/NameAccount NumberMarket ValueCash SolutionsTotal Assets
+Wrap Personal
+Alex TOP AccountSGD 2,023.90
+P0000194SGD 2,023.90SGD 0.00
+INCOME SUMMARY
+Dividend PayoutCoupon PayoutTotal Income
+SGD 0.00SGD 0.00SGD 0.00
+INVESTMENT HOLDINGS ALLOCATION
+Allocation
+DPMS100.00%
+ASSET CLASS ALLOCATION
+AllocationAllocation
+Fixed Income32.58%Alternative Investments11.06%
+Equity56.36%
+*Includes all Cash Account balances & underlying cash components in iFAST Auto-Sweep, DPMS, Company Portfolios (if any).
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 1.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT HOLDINGS
+DPMS
+PaymentInvestmentMarket
+Product NameP/L (%)
+MethodAmountValue
+Product Currency: SGD
+LGI-iFAST Tactical Opportunities PlanCash
+SGD 2,055.00SGD 2,023.90SGD -31.10 (-1.51%)
+SGD 2,055.00SGD 2,023.90SGD -31.10 (-1.51%)
+Total DPMS (100.00% of account holdings)SGD 2,055.00SGD 2,023.90SGD -31.10 (-1.51%)
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+Product NameProductPaymentInvestmentMarket
+QuantityWACPriceP/L (%)
+Asset AllocationTypeMethodAmountValue
+Amova Short Term BondUnit TrustCash62.2000SGD 1.8136SGD 1.7925SGD 154.55SGD 152.76SGD -1.79 (-1.16%)
+SGD (formerly Nikko AM)
+Fixed Income
+BSF - Blackrock SystematicUnit TrustCash1.1700SGDSGDSGD 226.05SGD 223.91SGD -2.14 (-0.95%)
+Asia Pacific Equity141.0256139.6900
+Absolute Return A2 SGD-H
+Alternative Investments
+Fidelity Global Dividend A-Unit TrustCash98.8000SGD 2.5051SGD 2.4010SGD 339.08SGD 324.99SGD -14.08 (-4.15%)
+MINCOME(G)-SGD
+Equity
+Infinity Global Stock IndexUnit TrustCash70.6000SGD 3.5056SGD 3.4790SGD 339.08SGD 336.50SGD -2.58 (-0.76%)
+SGD
+Equity
+Janus Henderson HorizonUnit TrustCash1.4180SGDSGDSGD 102.75SGD 92.75SGD -10.00 (-9.73%)
+Pan European Property52.891347.7400
+Equities A2 Acc SGD
+Equity
+LionGlobal Asia PacificUnit TrustCash36.8100SGD 4.4824SGD 4.5060SGD 226.05SGD 227.24SGD 1.19 (0.53%)
+SGD
+Equity
+LionGlobal Short DurationUnit TrustCash203.0200SGD 1.2871SGD 1.2686SGD 358.01SGD 352.84SGD -5.16 (-1.44%)
+Bond A Acc SGD
+Fixed Income
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 2.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT HOLDINGS (CONTINUED)
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+Product NameProductPaymentInvestmentMarket
+QuantityWACPriceP/L (%)
+Asset AllocationTypeMethodAmountValue
+abrdn Indonesia EquityUnit TrustCash35.3500SGD 3.1824SGD 3.2873SGD 154.13SGD 159.21SGD 5.08 (3.3%)
+SGD
+Equity
+iFAST SGD EnhancedUnit TrustCash105.9900SGD 1.0639SGD 1.0585SGD 154.49SGD 153.70SGD -0.79 (-0.51%)
+Liquidity A SGD
+Fixed Income
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 3.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT TRANSACTION
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+TransactionTransactionNominal Value /TransactedInvestment Amt/
+Product NameProduct Type
+DateTypeQuantityPriceEst Amt Received
+Fidelity Global Dividend A-
+10 Sep 2026Unit TrustDividend0.19SGD 2.452000SGD 0.64
+MINCOME(G)-SGD
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 4.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+FOREIGN EXCHANGE RATE AS AT 30 SEPTEMBER 2026
+Currency PairExchange Rate
+AUD / SGDAUD 1 = SGD 0.892300
+CAD / SGDCAD 1 = SGD 0.899500
+CHF / SGDCHF 1 = SGD 1.533742
+CNH / SGDCNH 1 = SGD 0.189658
+EUR / SGDEUR 1 = SGD 1.449233
+GBP / SGDGBP 1 = SGD 1.689900
+HKD / SGDHKD 1 = SGD 0.162879
+JPY / SGDJPY 1 = SGD 0.008121
+MYR / SGDMYR 1 = SGD 0.313544
+NZD / SGDNZD 1 = SGD 0.720200
+THB / SGDTHB 1 = SGD 0.038079
+USD / SGDUSD 1 = SGD 1.277300
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 5.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEXAdviser NameSAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00Adviser Contact+6500000000
+SINGAPORE 000000
+Generation Date15 October 2026
+SINGAPORE
+Statement CurrencySGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+GENERAL
+1. Please examine your Statement of Account and advise us in writing of any errors/omissions within fourteen (14) days from the Statement Date. In the
+absence of such notification from you, the Statement of Account shall be deemed conclusive evidence of your confirmation and acceptance of the
+transaction therein.
+2. Please be reminded to keep your statements for future reference. Retrieval of past statements that are more than 12 months from statement date are
+subject to charges.
+3. iFAST Financial Pte Ltd is a licensed dealer, custodian, financial adviser, CPFIS registered investment administrator, and provides portfolio
+management services in Singapore.
+4. iFAST Financial Pte Ltd is a member of SGX-ST Securities Trading and CDP Securities Clearing, and a registered CDP Depository Agent.
+5. For any enquiries, please contact our hotline at +65 6557 2000 or email us at ifastadmin@ifastfinancial.com.
+HOLDINGS & TRANSACTIONS
+1. The valuations provided in this statement are for information purposes only; they are indicative and shown in your chosen statement currency. Foreign
+exchange conversion rates used in the calculation are for reference only based on the statement's exchange rate and subject to market movements.
+Market values are based on the available product quantity on statement date and the prices used for the valuation in this statement may be based on
+the last available market price or prices provided to us by the relevant counter-parties. For securities where a market price is not available, the last
+known market price or offer price (for Initial Public Offering) may be used.
+2. The holdings do not reflect purchases made from other distributors or directly with fund managers.
+Weighted Average Cost (WAC)
+• WAC for Unit Trust, Stock, ETF investments = Total investment amount divided by quantity.
+• WAC for Bond investments = Nominal Value x Transacted Price + (Processing Fee + GST) (excluding accrued interest paid).
+Bond Holdings Information
+• Unrealised P/L = Market Value + Interest Accrued - Investment Amount - Accrued Interest Paid.
+Unit Trust Holdings Information
+• IA refers to quantity purchased through iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator.
+• Non-IA refers to quantity that are not held by iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator. The Non-IA details are for
+information only. For further clarification, please check with your respective CPF Investment Bank, SRS operator or the CPF Board.
+3. Securities are held on your behalf by iFAST and/or its appointed Custodian, hence the Securities are not registered in your name.
+4. Orders that are not transacted as at Statement Date will not be included in this Statement. (Where order status is not 'Complete', the quantity or bonds
+will not be reflected in the holdings)
+5. TBD - To Be Determined.
+6. The Cash Account and iFAST Auto-Sweep Account are not saving accounts and hence not protected by the deposit insurance scheme.
+7. Cash Account interest is accrued daily and paid every quarter. Interest rates are subject to change without prior notice.
+FEES
+1. The fees stated are inclusive of GST (where applicable).
+2. Wrap, platform, management, clean class and Auto-Sweep fee deductions take place in the month of January, April, July and October. When there is a
+failed fee deduction, we will attempt to make a second fee deduction in the following month.
+# For more information on wrap, platform, management, clean class and Auto-Sweep fees, please refer to the Fee Schedule or equivalent. Amount
+deducted for these fees is the product of number of units and price.
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.comPage 6.
+__PDF_SPACED_LAYOUT_TEXT__
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+ACCOUNT SUMMARY
+Account Type/Name Account Number Market Value Cash Solutions Total Assets
+Wrap Personal
+Alex TOP Account SGD 2,023.90
+P0000194 SGD 2,023.90 SGD 0.00
+INCOME SUMMARY
+Dividend Payout Coupon Payout Total Income
+SGD 0.00 SGD 0.00 SGD 0.00
+INVESTMENT HOLDINGS ALLOCATION
+Allocation
+DPMS 100.00%
+ASSET CLASS ALLOCATION
+Allocation Allocation
+Fixed Income 32.58% Alternative Investments 11.06%
+Equity 56.36%
+*Includes all Cash Account balances & underlying cash components in iFAST Auto-Sweep, DPMS, Company Portfolios (if any).
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 1.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT HOLDINGS
+DPMS
+Payment Investment Market
+Product Name P/L (%)
+Method Amount Value
+Product Currency: SGD
+LGI-iFAST Tactical Opportunities Plan Cash
+SGD 2,055.00 SGD 2,023.90 SGD -31.10 (-1.51%)
+SGD 2,055.00 SGD 2,023.90 SGD -31.10 (-1.51%)
+Total DPMS (100.00% of account holdings) SGD 2,055.00 SGD 2,023.90 SGD -31.10 (-1.51%)
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+Product Name Product Payment Investment Market
+Quantity WAC Price P/L (%)
+Asset Allocation Type Method Amount Value
+Amova Short Term Bond Unit Trust Cash 62.2000 SGD 1.8136 SGD 1.7925 SGD 154.55 SGD 152.76 SGD -1.79 (-1.16%)
+SGD (formerly Nikko AM)
+Fixed Income
+BSF - Blackrock Systematic Unit Trust Cash 1.1700 SGD SGD SGD 226.05 SGD 223.91 SGD -2.14 (-0.95%)
+Asia Pacific Equity 141.0256 139.6900
+Absolute Return A2 SGD-H
+Alternative Investments
+Fidelity Global Dividend A- Unit Trust Cash 98.8000 SGD 2.5051 SGD 2.4010 SGD 339.08 SGD 324.99 SGD -14.08 (-4.15%)
+MINCOME(G)-SGD
+Equity
+Infinity Global Stock Index Unit Trust Cash 70.6000 SGD 3.5056 SGD 3.4790 SGD 339.08 SGD 336.50 SGD -2.58 (-0.76%)
+SGD
+Equity
+Janus Henderson Horizon Unit Trust Cash 1.4180 SGD SGD SGD 102.75 SGD 92.75 SGD -10.00 (-9.73%)
+Pan European Property 52.8913 47.7400
+Equities A2 Acc SGD
+Equity
+LionGlobal Asia Pacific Unit Trust Cash 36.8100 SGD 4.4824 SGD 4.5060 SGD 226.05 SGD 227.24 SGD 1.19 (0.53%)
+SGD
+Equity
+LionGlobal Short Duration Unit Trust Cash 203.0200 SGD 1.2871 SGD 1.2686 SGD 358.01 SGD 352.84 SGD -5.16 (-1.44%)
+Bond A Acc SGD
+Fixed Income
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 2.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT HOLDINGS (CONTINUED)
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+Product Name Product Payment Investment Market
+Quantity WAC Price P/L (%)
+Asset Allocation Type Method Amount Value
+abrdn Indonesia Equity Unit Trust Cash 35.3500 SGD 3.1824 SGD 3.2873 SGD 154.13 SGD 159.21 SGD 5.08 (3.3%)
+SGD
+Equity
+iFAST SGD Enhanced Unit Trust Cash 105.9900 SGD 1.0639 SGD 1.0585 SGD 154.49 SGD 153.70 SGD -0.79 (-0.51%)
+Liquidity A SGD
+Fixed Income
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 3.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+INVESTMENT TRANSACTION
+Underlying Products
+LGI-iFAST Tactical Opportunities Plan
+Transaction Transaction Nominal Value / Transacted Investment Amt/
+Product Name Product Type
+Date Type Quantity Price Est Amt Received
+Fidelity Global Dividend A-
+10 Sep 2026 Unit Trust Dividend 0.19 SGD 2.452000 SGD 0.64
+MINCOME(G)-SGD
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 4.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+FOREIGN EXCHANGE RATE AS AT 30 SEPTEMBER 2026
+Currency Pair Exchange Rate
+AUD / SGD AUD 1 = SGD 0.892300
+CAD / SGD CAD 1 = SGD 0.899500
+CHF / SGD CHF 1 = SGD 1.533742
+CNH / SGD CNH 1 = SGD 0.189658
+EUR / SGD EUR 1 = SGD 1.449233
+GBP / SGD GBP 1 = SGD 1.689900
+HKD / SGD HKD 1 = SGD 0.162879
+JPY / SGD JPY 1 = SGD 0.008121
+MYR / SGD MYR 1 = SGD 0.313544
+NZD / SGD NZD 1 = SGD 0.720200
+THB / SGD THB 1 = SGD 0.038079
+USD / SGD USD 1 = SGD 1.277300
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 5.
+Financial Alliance Pte Ltd
+150 Beach Road
+#12-01/08, Gateway West
+Singapore 189720
+Singapore
+Tel: 00000000
+SAMPLE HOLDER, ALEX Adviser Name SAMPLE ADVISER NAME
+1 SAMPLE AVENUE
+#00-00 Adviser Contact +6500000000
+SINGAPORE 000000
+Generation Date 15 October 2026
+SINGAPORE
+Statement Currency SGD
+STATEMENT FOR SEPTEMBER 2026 (P0000194)
+GENERAL
+1. Please examine your Statement of Account and advise us in writing of any errors/omissions within fourteen (14) days from the Statement Date. In the
+absence of such notification from you, the Statement of Account shall be deemed conclusive evidence of your confirmation and acceptance of the
+transaction therein.
+2. Please be reminded to keep your statements for future reference. Retrieval of past statements that are more than 12 months from statement date are
+subject to charges.
+3. iFAST Financial Pte Ltd is a licensed dealer, custodian, financial adviser, CPFIS registered investment administrator, and provides portfolio
+management services in Singapore.
+4. iFAST Financial Pte Ltd is a member of SGX-ST Securities Trading and CDP Securities Clearing, and a registered CDP Depository Agent.
+5. For any enquiries, please contact our hotline at +65 6557 2000 or email us at ifastadmin@ifastfinancial.com.
+HOLDINGS & TRANSACTIONS
+1. The valuations provided in this statement are for information purposes only; they are indicative and shown in your chosen statement currency. Foreign
+exchange conversion rates used in the calculation are for reference only based on the statement's exchange rate and subject to market movements.
+Market values are based on the available product quantity on statement date and the prices used for the valuation in this statement may be based on
+the last available market price or prices provided to us by the relevant counter-parties. For securities where a market price is not available, the last
+known market price or offer price (for Initial Public Offering) may be used.
+2. The holdings do not reflect purchases made from other distributors or directly with fund managers.
+Weighted Average Cost (WAC)
+• WAC for Unit Trust, Stock, ETF investments = Total investment amount divided by quantity.
+• WAC for Bond investments = Nominal Value x Transacted Price + (Processing Fee + GST) (excluding accrued interest paid).
+Bond Holdings Information
+• Unrealised P/L = Market Value + Interest Accrued - Investment Amount - Accrued Interest Paid.
+Unit Trust Holdings Information
+• IA refers to quantity purchased through iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator.
+• Non-IA refers to quantity that are not held by iFAST Financial Pte Ltd as a CPFIS Registered Investment Administrator. The Non-IA details are for
+information only. For further clarification, please check with your respective CPF Investment Bank, SRS operator or the CPF Board.
+3. Securities are held on your behalf by iFAST and/or its appointed Custodian, hence the Securities are not registered in your name.
+4. Orders that are not transacted as at Statement Date will not be included in this Statement. (Where order status is not 'Complete', the quantity or bonds
+will not be reflected in the holdings)
+5. TBD - To Be Determined.
+6. The Cash Account and iFAST Auto-Sweep Account are not saving accounts and hence not protected by the deposit insurance scheme.
+7. Cash Account interest is accrued daily and paid every quarter. Interest rates are subject to change without prior notice.
+FEES
+1. The fees stated are inclusive of GST (where applicable).
+2. Wrap, platform, management, clean class and Auto-Sweep fee deductions take place in the month of January, April, July and October. When there is a
+failed fee deduction, we will attempt to make a second fee deduction in the following month.
+# For more information on wrap, platform, management, clean class and Auto-Sweep fees, please refer to the Fee Schedule or equivalent. Amount
+deducted for these fees is the product of number of units and price.
+iFAST Financial Pte Ltd. Company Registration No. 200000231R. GST Registration No. M9-0356174-N.
+10 Collyer Quay #26-01 Ocean Financial Centre Singapore 049315 Tel: +65 6557 2000.
+www.ifastfinancial.com Page 6.

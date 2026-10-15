@@ -97,3 +97,62 @@ function shiftDate(value: string, days: number) {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+// ---- Investment statements ------------------------------------------------
+// An investment provider's statement prints its own account number, and the
+// bank row that paid it ("IBG GIRO COLL P0000194 IFAST FINANCIAL PL-") carries
+// the same number. That is the strong signal; the ranking above (amount,
+// opposite direction, closest date) is still the one matcher.
+
+export interface ReferencedTransferCandidateRow extends TransferCandidateRow {
+  description: string;
+}
+
+const REFERENCE_WINDOW_DAYS = 31;
+const UNREFERENCED_WINDOW_DAYS = 10;
+
+function squashReference(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function describesAccountReference(description: string, reference: string) {
+  const wanted = squashReference(reference);
+  return wanted.length > 0 && squashReference(description).includes(wanted);
+}
+
+// Another provider account number (P plus six or more digits) in the text:
+// the row pays a different account of the same provider.
+function namesOtherReference(description: string, reference: string) {
+  const wanted = squashReference(reference);
+  return (squashReference(description).match(/p\d{6,}/g) ?? []).some((found) => found !== wanted);
+}
+
+/**
+ * The bank entry that is the other side of one statement movement, or
+ * undefined. A row naming the statement's account number wins (the closest
+ * date among them); without one, a lone same-amount row within ten days is
+ * offered and two plausible rows are not guessed between. `claimedIds` are
+ * entries another movement of the same import already took.
+ */
+export function pickReferencedTransferCandidate<T extends ReferencedTransferCandidateRow>(
+  subject: TransferCandidateSubject,
+  entries: T[],
+  reference: string,
+  claimedIds: ReadonlySet<string> = new Set()
+): { candidate: T; basis: "reference" | "amount_and_date" } | undefined {
+  const opposite = entries.filter((entry) => (
+    !claimedIds.has(entry.id)
+    && entry.transferDirection
+    && subject.transferDirection
+    && entry.transferDirection !== subject.transferDirection
+    && !namesOtherReference(entry.description, reference)
+    && Math.abs(daysBetween(subject.date, entry.date)) <= REFERENCE_WINDOW_DAYS
+  ));
+  const ranked = selectTransferCandidates(subject, opposite, opposite.length || 1);
+  const named = ranked.find((entry) => describesAccountReference(entry.description, reference));
+  if (named) {
+    return { candidate: named, basis: "reference" };
+  }
+  const near = ranked.filter((entry) => Math.abs(daysBetween(subject.date, entry.date)) <= UNREFERENCED_WINDOW_DAYS);
+  return near.length === 1 ? { candidate: near[0], basis: "amount_and_date" } : undefined;
+}

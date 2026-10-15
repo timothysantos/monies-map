@@ -34,7 +34,23 @@ export interface StatementCheckpointDraft {
   // The bank's own notices about the card ("past due", a penalty interest
   // rate), shown with the statement's review.
   notices?: StatementNotice[];
+  // An investment statement: its value at period end. The checkpoint's
+  // statementBalanceMinor is the statement's total assets, kept as a market
+  // value (never reconciled against ledger activity, DOMAIN.md "Investment
+  // Statement Value").
+  investmentValue?: StatementInvestmentValue;
   note?: string;
+}
+
+export interface StatementInvestmentValue {
+  // The account number printed on the statement (iFAST: "P0000194"), which
+  // the bank rows paying it carry in their text.
+  accountReference: string;
+  currency: string;
+  totalAssetsMinor: number;
+  marketValueMinor: number;
+  cashMinor: number;
+  incomeMinor: number;
 }
 
 export type StatementNotice =
