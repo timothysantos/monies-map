@@ -13,7 +13,7 @@ import {
 } from "./app-repository";
 import { ensureSeedData, seedEmptyStateReferenceData } from "./app-repository-seed";
 import { ensureDemoSchema } from "./app-repository-schema";
-import { loadLeadViewPreference } from "./app-repository-viewer-preferences";
+import { loadViewerPreferences } from "./app-repository-viewer-preferences";
 
 import type {
   AppShellDto,
@@ -64,11 +64,12 @@ export async function loadAppShellContext(
     loadHousehold(db),
     loadTrackedMonths(db)
   ]);
-  const [viewerPersonId, leadView] = await Promise.all([
+  const [viewerPersonId, { leadView, planMode }] = await Promise.all([
     resolveLoginIdentityPersonId(db, viewerEmail),
-    // The login's Plan | Simple choice (DOMAIN.md "Lead View"), so the page
-    // knows it without a request of its own; nothing without a login.
-    loadLeadViewPreference(db, viewerEmail)
+    // The login's Plan | Simple and Studio | Tables choices (DOMAIN.md "Lead
+    // View", "Plan view"), so the page knows them without a request of its
+    // own; nothing without a login.
+    loadViewerPreferences(db, viewerEmail)
   ]);
   const suggestedPersonId = viewerEmail && !viewerPersonId
     ? await findSuggestedLoginPersonId(db)
@@ -76,6 +77,7 @@ export async function loadAppShellContext(
 
   return {
     ...(leadView ? { leadView } : {}),
+    ...(planMode ? { planMode } : {}),
     appEnvironment,
     household,
     availableViewIds: ["household", ...household.people.map((person) => person.id)],

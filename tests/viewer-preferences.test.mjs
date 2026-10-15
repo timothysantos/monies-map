@@ -15,7 +15,7 @@ import {
   openSeededDatabase,
   rows
 } from "./support/d1-workspace.mjs";
-import { saveLeadViewPreference, viewerPreferencesKey } from "../src/domain/app-repository-viewer-preferences.ts";
+import { saveLeadViewPreference, savePlanModePreference, viewerPreferencesKey } from "../src/domain/app-repository-viewer-preferences.ts";
 
 let template;
 test.before(async () => {
@@ -133,4 +133,59 @@ test("a save that fails leaves the stored choice as it was; a save is one statem
   const [row] = await rows(db, "SELECT value_json FROM app_settings WHERE key = ?", await viewerPreferencesKey(TIM));
   assert.deepEqual(JSON.parse(row.value_json), { leadView: "plan" });
   await assert.rejects(saveLeadViewPreference(db, TIM, "fancy"), /Choose Plan or Simple/);
+});
+
+// Studio | Tables (DOMAIN.md "Plan view"): the Month plan's mode is kept the
+// same way, beside the lead view in the same stored object.
+function chooseMode(workspace, email, planMode, headers = {}) {
+  return workspace.fetch("/api/viewer-preferences/plan-mode", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...as(email), ...headers },
+    body: JSON.stringify({ planMode })
+  });
+}
+
+test("the plan mode is kept per login beside the lead view, and each save keeps the other choice", async (t) => {
+  const workspace = await openSeededDatabase(t, template);
+  assert.equal((await shellFor(workspace, TIM)).planMode, undefined, "no choice yet: nothing on the shell");
+
+  const saved = await chooseMode(workspace, TIM, "tables");
+  assert.equal(saved.status, 200);
+  assert.deepEqual(await saved.json(), { ok: true, planMode: "tables" });
+  assert.equal((await choose(workspace, TIM, "plan")).status, 200);
+  assert.equal((await chooseMode(workspace, JOYCE, "studio")).status, 200);
+
+  const tim = await shellFor(workspace, TIM);
+  assert.equal(tim.planMode, "tables");
+  assert.equal(tim.leadView, "plan", "saving the lead view did not drop the plan mode, nor the other way round");
+  const joyce = await shellFor(workspace, JOYCE);
+  assert.equal(joyce.planMode, "studio");
+  assert.equal(joyce.leadView, undefined);
+  assert.equal((await shellFor(workspace, null)).planMode, undefined, "no login, nothing to remember it by");
+
+  const [row] = await rows(workspace.db, "SELECT value_json FROM app_settings WHERE key = ?", await viewerPreferencesKey(TIM));
+  assert.deepEqual(JSON.parse(row.value_json), { leadView: "plan", planMode: "tables" });
+});
+
+test("a plan mode write is refused without a login, with an unknown mode, or from another site, and writes nothing", async (t) => {
+  const workspace = await openSeededDatabase(t, template);
+  const before = await dumpDatabase(workspace.db);
+  assert.equal((await chooseMode(workspace, null, "tables")).status, 401);
+  const unknown = await chooseMode(workspace, TIM, "grid");
+  assert.equal(unknown.status, 400);
+  assert.deepEqual(await unknown.json(), { ok: false, error: "Choose Studio or Tables." });
+  assert.equal((await chooseMode(workspace, TIM, "plan")).status, 400, "a lead view word is not a plan mode");
+  assert.equal((await chooseMode(workspace, TIM, "tables", { "Sec-Fetch-Site": "cross-site" })).status, 403);
+  assertSameDatabase(await dumpDatabase(workspace.db), before);
+});
+
+test("a plan mode save that fails leaves the stored choices as they were", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await saveLeadViewPreference(db, TIM, "simple");
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO app_settings/);
+  await assert.rejects(savePlanModePreference(faulty.db, TIM, "tables"), /injected_failure_missing_table/);
+  assert.equal(faulty.state.fired, true);
+  assertSameDatabase(await dumpDatabase(db), before);
+  await assert.rejects(savePlanModePreference(db, TIM, "grid"), /Choose Studio or Tables/);
 });

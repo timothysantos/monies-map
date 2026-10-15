@@ -140,7 +140,7 @@ import { handleAskHabitsRoute } from "./server/ask-habits-routes";
 import { applyHabitsToNewEntry } from "./server/ask-auto-apply";
 import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntry } from "./domain/app-repository-ask-habits";
 import { aiVisitorKey } from "./domain/ai-assistance";
-import { handleViewerPreferencesRoute, LEAD_VIEW_PATH } from "./server/viewer-preferences-route";
+import { handleViewerPreferencesRoute, isViewerPreferencesPath } from "./server/viewer-preferences-route";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
@@ -499,7 +499,7 @@ export default {
       return handleAskTurn(request, env);
     }
 
-    if (url.pathname === LEAD_VIEW_PATH) {
+    if (isViewerPreferencesPath(url.pathname)) {
       return (await handleViewerPreferencesRoute(request, url, env))
         ?? json({ ok: false, error: "This route only answers POST." }, 405, { Allow: "POST" });
     }
