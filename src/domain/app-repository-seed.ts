@@ -173,8 +173,17 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
     }
   }
 
-  for (const category of defaultCategories) {
-    await db
+  // This runs on every cold isolate: one read, then one batch for only the
+  // categories that are missing, instead of one round trip per category.
+  const existingCategoryIds = new Set(
+    (await db
+      .prepare("SELECT id FROM categories WHERE household_id = ?")
+      .bind(defaultHousehold.id)
+      .all<{ id: string }>()).results.map((row) => row.id)
+  );
+  const missingCategoryStatements = defaultCategories
+    .filter((category) => !existingCategoryIds.has(category.id))
+    .map((category) => db
       .prepare(`
         INSERT INTO categories (
           id, household_id, name, slug, reporting_group,
@@ -192,8 +201,9 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
         category.colorHex,
         category.sortOrder,
         category.isSystem ? 1 : 0
-      )
-      .run();
+      ));
+  if (missingCategoryStatements.length) {
+    await db.batch(missingCategoryStatements);
   }
 
   await ensureDefaultCategoryMatchRules(db);

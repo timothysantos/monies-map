@@ -37,7 +37,11 @@ export async function ensureDemoSchemaTimed(db: D1Database) {
   return { cold };
 }
 
-async function ensureDemoSchemaOnce(db: D1Database) {
+async function ensureDemoSchemaOnce(rawDb: D1Database) {
+  // One read replaces ~35 "CREATE ... IF NOT EXISTS" round trips on a
+  // database that already has them: each is a sequential D1 call, and this
+  // runs on every cold isolate.
+  const db = await skipExistingSchemaObjects(rawDb);
   let shouldBackfillImportedPostDates = false;
   let shouldResetRolledBackStatementCertifications = false;
 
@@ -994,6 +998,50 @@ const ACTIVE_SPLIT_LINK_INDEXES = [
   { table: "split_expenses", index: "idx_split_expenses_active_linked_transaction" },
   { table: "split_settlements", index: "idx_split_settlements_active_linked_transaction" }
 ] as const;
+
+const CREATE_IF_MISSING_PATTERN = /^\s*CREATE\s+(?:UNIQUE\s+)?(TABLE|INDEX)\s+IF\s+NOT\s+EXISTS\s+("?)([A-Za-z0-9_]+)\2/i;
+
+// Wraps db so a "CREATE TABLE/INDEX IF NOT EXISTS x" for an object that was
+// already in the database when this ran resolves without a D1 round trip. An
+// object missing at that point is still created for real; everything else
+// passes straight through.
+async function skipExistingSchemaObjects(db: D1Database): Promise<D1Database> {
+  // A failure here propagates: initialization is retried on the next request.
+  const result = await db
+    .prepare("SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index')")
+    .all<{ type: string; name: string }>();
+  const existing = new Set(
+    (result?.results ?? []).map((row) => `${row.type}:${String(row.name).toLowerCase()}`)
+  );
+
+  const alreadyApplied = (sql: string) => {
+    const match = CREATE_IF_MISSING_PATTERN.exec(sql);
+    return Boolean(match) && existing.has(`${match![1].toLowerCase()}:${match![3].toLowerCase()}`);
+  };
+  const noop = {
+    bind: () => noop,
+    run: async () => ({ success: true, results: [], meta: {} }),
+    all: async () => ({ success: true, results: [], meta: {} }),
+    first: async () => null
+  } as unknown as D1PreparedStatement;
+
+  return new Proxy(db, {
+    get(target, property) {
+      if (property === "prepare") {
+        return (sql: string) => (alreadyApplied(sql) ? noop : target.prepare(sql));
+      }
+      if (property === "batch") {
+        // Skipped statements are not real D1 statements; leave them out.
+        return async (statements: D1PreparedStatement[]) => {
+          const real = statements.filter((statement) => statement !== noop);
+          return real.length ? target.batch(real) : [];
+        };
+      }
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+}
 
 async function ensureActiveSplitLinkIndexes(db: D1Database) {
   for (const { table, index } of ACTIVE_SPLIT_LINK_INDEXES) {

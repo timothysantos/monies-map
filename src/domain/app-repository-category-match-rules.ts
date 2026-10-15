@@ -4,40 +4,74 @@ import { slugify } from "./app-repository-helpers";
 import { buildAuditEventStatement, recordAuditEvent } from "./app-repository-audit";
 import type { CategoryMatchRuleDto, CategoryMatchRuleSuggestionDto } from "../types/dto";
 
+// Runs on every cold Worker isolate, so it reads once and writes only what is
+// missing: a check per default rule would be one sequential D1 round trip each
+// (131 rules took the first request after an idle spell several seconds).
 export async function ensureDefaultCategoryMatchRules(db: D1Database) {
+  const [categories, existingRules] = await Promise.all([
+    db
+      .prepare("SELECT id, name FROM categories WHERE household_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; name: string }>(),
+    db
+      .prepare("SELECT id, pattern FROM category_match_rules WHERE household_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; pattern: string }>()
+  ]);
+  const categoryIdByName = new Map<string, string>();
+  for (const category of categories.results) {
+    // The first category of a name wins, as the former per-rule lookup did.
+    if (!categoryIdByName.has(category.name)) {
+      categoryIdByName.set(category.name, category.id);
+    }
+  }
+  const patternByRuleId = new Map(existingRules.results.map((rule) => [rule.id, rule.pattern]));
+  const ruleIds = new Set(patternByRuleId.keys());
+  const patterns = new Set(patternByRuleId.values());
+
+  const statements: D1PreparedStatement[] = [];
   for (const ruleId of deprecatedDefaultCategoryMatchRuleIds) {
-    await db
-      .prepare("DELETE FROM category_match_rules WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, ruleId)
-      .run();
+    if (ruleIds.has(ruleId)) {
+      statements.push(
+        db
+          .prepare("DELETE FROM category_match_rules WHERE household_id = ? AND id = ?")
+          .bind(DEFAULT_HOUSEHOLD_ID, ruleId)
+      );
+      ruleIds.delete(ruleId);
+      // A retired rule frees its pattern for the default that replaces it.
+      patterns.delete(patternByRuleId.get(ruleId) as string);
+    }
   }
 
   for (const rule of defaultCategoryMatchRules) {
-    const category = await db
-      .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, rule.categoryName)
-      .first<{ id: string }>();
-
-    if (!category) {
+    const categoryId = categoryIdByName.get(rule.categoryName);
+    if (!categoryId || patterns.has(rule.pattern) || ruleIds.has(rule.id)) {
       continue;
     }
 
-    await db
-      .prepare(`
-        INSERT INTO category_match_rules (
-          id, household_id, pattern, category_id, priority, is_active, note
-        ) VALUES (?, ?, ?, ?, ?, 1, ?)
-        ON CONFLICT(household_id, pattern) DO NOTHING
-      `)
-      .bind(
-        rule.id,
-        DEFAULT_HOUSEHOLD_ID,
-        rule.pattern,
-        category.id,
-        rule.priority,
-        rule.note ?? null
-      )
-      .run();
+    statements.push(
+      db
+        .prepare(`
+          INSERT INTO category_match_rules (
+            id, household_id, pattern, category_id, priority, is_active, note
+          ) VALUES (?, ?, ?, ?, ?, 1, ?)
+          ON CONFLICT(household_id, pattern) DO NOTHING
+        `)
+        .bind(
+          rule.id,
+          DEFAULT_HOUSEHOLD_ID,
+          rule.pattern,
+          categoryId,
+          rule.priority,
+          rule.note ?? null
+        )
+    );
+    patterns.add(rule.pattern);
+    ruleIds.add(rule.id);
+  }
+
+  if (statements.length) {
+    await db.batch(statements);
   }
 }
 
