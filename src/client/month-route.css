@@ -548,6 +548,26 @@
   padding-block: 9px;
 }
 
+/* The same switch inside the studio's toolbar row (or its placeholder): held
+   to the right, beside Save plan, so it takes no row of its own. */
+.plan-mode-inline {
+  margin-block: 0;
+  margin-left: auto;
+}
+
+/* Wide: after Save plan, at the far right. On a phone it follows Undo and
+   Discard changes, so the first row holds it and Save plan keeps its own. */
+@media (min-width: 861px) {
+  .plan-mode-inline {
+    order: 10;
+  }
+}
+
+.plan-studio-reserve > .ps-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .plan-mode-dot {
   display: inline-block;
   width: 7px;

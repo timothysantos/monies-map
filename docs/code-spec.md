@@ -829,7 +829,7 @@ demo seed. Convert a module the next time its writes change.
   number tuple per row that has a past (about 330 bytes on the demo's
   September 2025); `tests/month-plan-history.test.mjs` proves it equals last
   month's page.
-- Studio | Tables: `plan-mode.js` (a `viewer-preference-store.js` store, the
+- Sliders | List (stored `studio` | `tables`): `plan-mode.js` (a `viewer-preference-store.js` store, the
   `lead-view.js` pattern) is loaded with the Month route and reaches the app
   shell through `app-shell-watch.js` (`publishAppShell` is all the first screen
   carries). Studio stays mounted, hidden, once shown, so held changes survive

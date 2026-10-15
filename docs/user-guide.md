@@ -1426,8 +1426,9 @@ going and **What if I save more?** sit side by side (stacked on a phone).
   salary, bonus or other line).
 - **Money that came in but is not in the plan.** If more arrived than you
   planned, a quiet line says so, for example *You got $500 that isn't in the
-  plan*. **Add to Savings** asks first (it says how much and what your Savings
-  plan becomes); **Cancel** changes nothing. It does not guess what is still to
+  plan*. **Add to Savings** asks first (it says how much); then your Savings and the
+  money you planned to come in both go up by that amount, so the plan still
+  adds up. **Cancel** changes nothing. It does not guess what is still to
   come.
 - Nothing is kept until you tap **Save plan**. **Undo** steps back,
   **Reset to saved** drops every change. If saving fails your changes stay.
@@ -1436,10 +1437,11 @@ going and **What if I save more?** sit side by side (stacked on a phone).
   remove it (it asks first). **Add a line** (in Spend) and **Add income** add
   new ones; a new line is Spend unless its category is Investments, and it can
   have an optional due date.
-- **Studio | Tables.** The switch above the plan changes how the plan reads.
-  **Tables** is the plan tables, where you can see and sort everything. Changes
-  you have not saved in Studio are kept while you look at Tables (a dot on
-  Studio says so). The page remembers your choice.
+- **Sliders | List.** The switch beside Undo and Discard changes (or Save plan
+  on a wide screen) changes how the plan shows. **List** is the plan as a
+  list, where you can see and sort everything. Changes you have not saved
+  with the sliders are kept while you look at the list (a dot on Sliders says
+  so). The page remembers your choice.
 
 ![Plan Studio: the bar of planned money in, how the month is going and a slider for every row](/faq/guide/desktop/thumbs/month-plan-studio.webp)
 

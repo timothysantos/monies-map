@@ -47,7 +47,7 @@ export async function handleViewerPreferencesRoute(request: Request, url: URL, e
   }
   if (url.pathname === PLAN_MODE_PATH) {
     if (!isPlanModePreference(body.planMode)) {
-      return json({ ok: false, error: "Choose Studio or Tables." }, 400);
+      return json({ ok: false, error: "Choose Sliders or List." }, 400);
     }
     return json({ ok: true, ...(await savePlanModePreference(env.DB, email, body.planMode)) });
   }

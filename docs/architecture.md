@@ -512,7 +512,7 @@ v2 (2026-10-15): one list grouped by money job (dated spending items sit in
 Spend), a slider popover with a row's past (the Month page DTO's small
 `history` tuple per plan row, `src/domain/month-plan-history.ts`), Planned in
 by source, money that arrived beyond the plan (Add to Savings through the same
-save), and a Studio | Tables switch remembered per login
+save), and a Sliders | List switch remembered per login
 (`POST /api/viewer-preferences/plan-mode`). The only new reads are at most
 three tracked months before the page's month; the only new write is the
 preference. See `docs/audits/plan-studio.md`.

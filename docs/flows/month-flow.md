@@ -62,13 +62,17 @@ opens in Simple, with a plan or without, until a choice is made
 (`tests/e2e/lead-simple-view.spec.js`).
 
 Plan view opens with Plan Studio (`plan-studio.jsx`, design.md "Plan
-Studio", DOMAIN.md "Plan Studio") in place of the plan tables: a Studio | Tables
-switch above it (`plan-mode-switch.jsx`, remembered per login, Studio by
-default) shows one or the other. Studio stays mounted while Tables shows, so
+Studio", DOMAIN.md "Plan Studio") in place of the plan tables: a Sliders | List
+switch in the toolbar's row (`plan-mode-switch.jsx`, "How to show the plan",
+remembered per login, Sliders by default; stored values `studio` and
+`tables`) shows one or the other. The sliders stay mounted while List shows, so
 held changes survive the switch; a month with nothing planned shows only the
 tables. A row's menu reaches the note, the details sheet, matching entries and
 removing; "Add a line" and "Add income" open the plan-row sheet (a line with a
-due date is stored as a planned item, any other as a budget bucket). The Month
+due date is stored as a planned item, any other as a budget bucket).
+Add to Savings on extra income is one Save plan request (`/api/month-plan/apply-changes`):
+it raises the Savings line and raises or creates the person's Extra income
+line by the same amount, so Planned in and Savings both rise and Left over does not move. The Month
 page DTO carries a small `history` tuple per plan and income row (last month's
 plan and actual, the three-month average actual; DOMAIN.md "Plan history") for
 the slider popover. It reads the page's income

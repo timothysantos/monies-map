@@ -12,6 +12,7 @@ import {
   buildRowUpdates,
   buildSegments,
   changedKeys,
+  createChangeForRow,
   createEditState,
   currentPlan,
   previewSaveTarget,
@@ -26,7 +27,6 @@ import {
   expectedSpendByToday,
   paceVerdict,
   planTotals,
-  primarySaveRow,
   rowStatus,
   sharedHalves,
   suggestFix
@@ -34,7 +34,7 @@ import {
 import { PaceCard } from "./plan-studio-pace";
 import { StudioRow } from "./plan-studio-row";
 import { sliderMaxMinor, stepMinorFor } from "./plan-studio-slider";
-import { incomeSegments, rowInfo, studioGroups, unplannedIncome } from "./plan-studio-v2-model";
+import { incomeSegments, planExtraIncomeToSavings, rowInfo, studioGroups, unplannedIncome } from "./plan-studio-v2-model";
 import { WhatIfCard } from "./plan-studio-whatif";
 import { ResponsiveSelect } from "./responsive-select";
 import { ConfirmLead, SheetDialog } from "./sheet-dialog";
@@ -102,19 +102,24 @@ function noticeText(notice, fmt) {
  * lives in. The Month page hands in what its dialogs and commands do for a
  * line (`menuActionsFor`) and for adding one (`onAddLine`); `onDirtyChange`
  * tells it whether changes are held, and `visible` false keeps the held
- * changes while the Tables view is showing.
+ * changes while the List view is showing. `modeSwitch` is the Sliders | List
+ * switch, drawn in the toolbar's row; `makeLine(kind, plannedMinor)` builds the
+ * Extra income ("income") or Savings ("save") line Add to Savings creates, with
+ * the same defaults as adding it by hand; `ownerName` is the person viewed.
  *
  * @param {{
  *   month: string, monthLabel: string, categories: any[], incomeRows: any[], planSections: any[],
  *   readOnly?: boolean, readOnlyHint?: string, figures: null | { income: number, spending: number, invested: number, kept: number },
- *   today: string, onSave: (request: { changes: any[], updates: any[] }) => Promise<void>,
+ *   today: string, onSave: (request: { changes: any[], updates: any[], created: Array<{ sectionKey: string, row: any }> }) => Promise<void>,
  *   menuActionsFor?: (row: any) => any, onAddLine?: (kind: "income" | "line") => void,
- *   onDirtyChange?: (dirty: boolean) => void, visible?: boolean
+ *   onDirtyChange?: (dirty: boolean) => void, visible?: boolean, modeSwitch?: any,
+ *   makeLine?: (kind: "income" | "save", plannedMinor: number) => any, ownerName?: string
  * }} props
  */
 export default function PlanStudio({
   month, monthLabel, categories, incomeRows, planSections, figures, today, onSave, readOnly = false, readOnlyHint = "",
-  menuActionsFor = () => ({}), onAddLine = undefined, onDirtyChange = undefined, visible = true
+  menuActionsFor = () => ({}), onAddLine = undefined, onDirtyChange = undefined, visible = true,
+  modeSwitch = null, makeLine = undefined, ownerName = ""
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const fmt = useMemo(() => makeStudioFormat(!areTotalsVisible), [areTotalsVisible]);
@@ -222,14 +227,18 @@ export default function PlanStudio({
   }, [send]);
 
   // Save plan: every held change in one request. Adding extra income to
-  // Savings goes through the same path with that one change put on top.
-  async function handleSave(planToSave = plan) {
-    const changes = buildChanges(rows, planToSave);
+  // Savings goes through the same path with the Savings and Extra income
+  // changes put on top (`created` lines are part of the same request).
+  async function handleSave(planToSave = plan, created = []) {
+    const changes = [
+      ...buildChanges(rows, planToSave),
+      ...created.map(({ sectionKey, row }) => createChangeForRow(row, sectionKey))
+    ];
     if (!changes.length || savingRef.current) return false;
     savingRef.current = true;
     setSave({ phase: "saving", error: "" });
     try {
-      await onSave({ changes, updates: buildRowUpdates(rows, planToSave) });
+      await onSave({ changes, updates: buildRowUpdates(rows, planToSave), created });
       send({ type: "saved" });
       setSave({ phase: "idle", error: "" });
       return true;
@@ -244,13 +253,21 @@ export default function PlanStudio({
   // Money that arrived beyond the plan. Never shown with money hidden (it
   // would say which side of the plan the month is on).
   const extraMinor = unplannedIncome({ receivedMinor: incomeMinor, plannedInMinor: totals.income });
-  const extraSaveRow = primarySaveRow(rows, state.locks, plan);
-  const extraTarget = extraSaveRow ? plan[extraSaveRow.key] + extraMinor : 0;
+  const extraAction = makeLine ? planExtraIncomeToSavings({ rows, plan, locks: state.locks, extraMinor, ownerName }) : null;
   const incomeParts = incomeSegments(rows, plan);
 
+  // Savings and Planned in rise together: an existing line is raised, a
+  // missing Savings or Extra income line is created, all in one request.
   async function confirmExtra() {
-    if (!extraSaveRow || !extraMinor) return;
-    const saved = await handleSave({ ...plan, [extraSaveRow.key]: plan[extraSaveRow.key] + extraMinor });
+    if (!extraAction) return;
+    const created = [];
+    if (extraAction.createIncome) {
+      created.push({ sectionKey: "income", row: makeLine("income", extraAction.amountMinor) });
+    }
+    if (extraAction.createSavings) {
+      created.push({ sectionKey: "budget_buckets", row: makeLine("save", extraAction.amountMinor) });
+    }
+    const saved = await handleSave(extraAction.plan, created);
     setExtraAsk(false);
     if (saved) send({ type: "notify", notice: { kind: "extra_saved" } });
   }
@@ -263,7 +280,7 @@ export default function PlanStudio({
   const extra = !fmt.hidden && extraMinor > 0 ? (
     <p className="ps-extra" data-ps-extra>
       <span>{copy.extraIncome.line(fmt.money(extraMinor))}</span>
-      {!readOnly && extraSaveRow ? (
+      {!readOnly && extraAction ? (
         <button type="button" className="ps-quiet ps-extra-add" onClick={() => setExtraAsk(true)} data-ps-extra-add>{copy.extraIncome.add}</button>
       ) : null}
     </p>
@@ -281,11 +298,17 @@ export default function PlanStudio({
       hidden={!visible || undefined}
       inert={saving || !visible || undefined}
     >
-      {readOnly ? <p className="ps-notice is-readonly" data-ps-readonly>{readOnlyHint}</p> : (
+      {readOnly ? (
+        <div className="ps-toolbar is-readonly-bar">
+          <p className="ps-notice is-readonly" data-ps-readonly>{readOnlyHint}</p>
+          {modeSwitch}
+        </div>
+      ) : (
       <>
       <div className="ps-toolbar" role="toolbar" aria-label={copy.region}>
         <button type="button" className="ps-quiet" disabled={!state.history.length} onClick={() => send({ type: "undo" })} data-ps-undo>{copy.toolbar.undo}</button>
         <button type="button" className="ps-quiet" disabled={!dirty} onClick={() => send({ type: "reset" })} data-ps-reset>{copy.toolbar.reset}</button>
+        {modeSwitch}
         <label className="ps-take">
           <span>{copy.toolbar.takeFrom}</span>
           <ResponsiveSelect
@@ -412,16 +435,15 @@ export default function PlanStudio({
           </div>
         ))}
       </div>
-      {extraAsk && extraSaveRow ? (
+      {extraAsk && extraAction ? (
         <SheetDialog
           className="ps-extra-dialog"
-          title={copy.extraIncome.confirmTitle}
-          description={copy.extraIncome.confirmText(fmt.money(extraMinor), fmt.money(plan[extraSaveRow.key]), fmt.money(extraTarget))}
+          title={copy.extraIncome.confirmTitle(fmt.money(extraMinor))}
+          description={copy.extraIncome.confirmText(fmt.money(extraMinor))}
           descriptionHidden
           lead={(
-            <ConfirmLead neutral icon={PiggyBank} title={copy.extraIncome.confirmTitle}>
-              <p className="lsd-note">{copy.extraIncome.confirmText(fmt.money(extraMinor), fmt.money(plan[extraSaveRow.key]), fmt.money(extraTarget))}</p>
-              <p className="lsd-note">{copy.extraIncome.confirmLeft(fmt.money(totals.left - extraMinor))}</p>
+            <ConfirmLead neutral icon={PiggyBank} title={copy.extraIncome.confirmTitle(fmt.money(extraMinor))}>
+              <p className="lsd-note">{copy.extraIncome.confirmText(fmt.money(extraMinor))}</p>
               {changed.length ? <p className="lsd-note">{copy.extraIncome.alsoSaves(changed.length)}</p> : null}
             </ConfirmLead>
           )}

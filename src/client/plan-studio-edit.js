@@ -213,6 +213,26 @@ export function buildChanges(rows, plan) {
   return buildRowUpdates(rows, plan).map(({ rowId, expectedMinor, plannedMinor }) => ({ action: "update", rowId, expectedMinor, plannedMinor }));
 }
 
+/**
+ * The create change for a line the studio adds itself (the extra income
+ * line, a Savings line): the same fields the Month plan row sheet saves.
+ */
+export function createChangeForRow(row, sectionKey) {
+  return {
+    action: "create",
+    rowId: row.id,
+    sectionKey,
+    categoryName: row.categoryName,
+    label: row.label,
+    plannedMinor: row.plannedMinor,
+    planDate: null,
+    accountName: null,
+    note: row.note ?? null,
+    ownershipType: row.ownershipType,
+    ...(row.ownershipType === "direct" ? { ownerName: row.ownerName } : { splitBasisPoints: row.splits?.[0]?.ratioBasisPoints ?? 5000 })
+  };
+}
+
 export function createEditState() {
   return { overrides: {}, history: [], locks: {}, takeFrom: "left", whatIf: null, gesture: false, notice: null, noticeSeq: 0 };
 }

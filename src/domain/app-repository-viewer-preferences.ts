@@ -87,7 +87,7 @@ export async function saveLeadViewPreference(db: D1Database, email: string, lead
 
 export async function savePlanModePreference(db: D1Database, email: string, planMode: PlanModePreference) {
   if (!isPlanModePreference(planMode)) {
-    throw new Error("Choose Studio or Tables.");
+    throw new Error("Choose Sliders or List.");
   }
   await saveViewerPreference(db, email, { planMode });
   return { planMode };

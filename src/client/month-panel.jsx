@@ -53,8 +53,12 @@ import "./month-plan-rows.css";
 // page is in Plan view; Simple view never loads it. Until it arrives an empty
 // block of the studio's size holds its place, so the page below does not jump.
 const PlanStudio = lazy(() => import("./plan-studio.jsx"));
-function PlanStudioReserve() {
-  return <div className="plan-studio-reserve" aria-hidden="true" data-plan-studio-reserve />;
+function PlanStudioReserve({ children = null }) {
+  return (
+    <div className="plan-studio-reserve" aria-hidden={children ? undefined : "true"} data-plan-studio-reserve>
+      {children ? <div className="ps-toolbar">{children}</div> : null}
+    </div>
+  );
 }
 
 const MONTH_SECTION_STATE_CACHE = new Map();
@@ -268,6 +272,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   // added; otherwise the person's mode (Studio by default).
   const effectivePlanMode = hasPlanStudioRows ? planMode : "tables";
   if (effectivePlanMode === "studio") studioShownRef.current = true;
+  // The Sliders | List switch: in the toolbar's row while sliders show, on a
+  // row of its own over the list (which has no toolbar).
+  const planModeSwitch = hasPlanStudioRows ? (
+    <PlanModeSwitch mode={planMode} onChange={setPlanMode} studioDirty={studioDirty} inline />
+  ) : null;
   // A Spending Mix slice's plan and merchants, from what the page holds.
   const monthSliceFacts = useMemo(
     () => buildMonthSliceFacts({ planRows: planSections.flatMap((section) => section.rows ?? []), entries: insightEntries }),
@@ -480,10 +489,20 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     void applyBudgetBucketDefaultsToMobileDialog(nextRow.categoryId ?? nextRow.categoryName);
   }
 
+  // The lines "Add to Savings" creates when the person has none yet: an
+  // "Extra income" line under Money in and a "Savings" line, with the same
+  // category, owner and note defaults as adding each one by hand.
+  function makeStudioExtraLine(kind, plannedMinor) {
+    if (kind === "income") {
+      return { ...buildIncomeRow({ label: planStudioAddCopy.extraIncomeLabel }), plannedMinor, isDraft: false };
+    }
+    return { ...buildPlanRow("budget_buckets", { categoryName: "Savings", categoryId: categories.find((category) => category.name === "Savings")?.id, label: "Savings" }), plannedMinor, isDraft: false, autoLabelFromCategory: false, autoPlannedFromCategory: false };
+  }
+
   // Plan Studio's "Save plan": every changed row in one all-or-nothing
   // request (409 when the plan changed underneath, nothing written). The
   // rows then show what was saved while the month reloads in the background.
-  async function savePlanStudio({ changes, updates }) {
+  async function savePlanStudio({ changes, updates, created = [] }) {
     const response = await fetch("/api/month-plan/apply-changes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -506,6 +525,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         return { ...row, ...saved, isPendingDerived: true };
       })
     })));
+    // Lines the save created show at once, so the totals do not wait for the reload.
+    for (const { sectionKey, row } of created) {
+      if (sectionKey === "income") upsertIncomeRow({ ...row, isPendingDerived: true });
+      else upsertPlanRow(sectionKey, { ...row, isPendingDerived: true });
+    }
     refreshMonthDataInBackground(buildMonthMutationRefreshPlan({ kind: "plan-row-edit" }));
   }
 
@@ -1656,13 +1680,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           onPlanThisMonth={() => monthLead.setLeadView("plan")}
         />
       ) : <>
-      {hasPlanStudioRows ? (
+      {hasPlanStudioRows && effectivePlanMode === "tables" ? (
         <PlanModeSwitch mode={planMode} onChange={setPlanMode} studioDirty={studioDirty} />
       ) : null}
       {hasPlanStudioRows && studioShownRef.current ? (
-      <Suspense fallback={<PlanStudioReserve />}>
+      <Suspense fallback={<PlanStudioReserve>{effectivePlanMode === "studio" ? planModeSwitch : null}</PlanStudioReserve>}>
         <PlanStudio
           visible={effectivePlanMode === "studio"}
+          modeSwitch={effectivePlanMode === "studio" ? planModeSwitch : null}
+          makeLine={makeStudioExtraLine}
+          ownerName={view.id === "household" ? "" : view.label}
           menuActionsFor={studioMenuActionsFor}
           onAddLine={handleStudioAddLine}
           onDirtyChange={setStudioDirty}

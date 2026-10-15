@@ -9,8 +9,9 @@
 // a second way. The stored section (planned items or budget buckets) is only
 // where a line lives: a dated spending line and an undated budget are both
 // Spend.
+import { planStudioAddCopy } from "./copy/plan-studio-add-copy.js";
 import { sectionForNewLine } from "./plan-line-section.js";
-import { expectedByToday, JOB_ORDER, planJob } from "./plan-studio-model.js";
+import { expectedByToday, JOB_ORDER, planJob, primarySaveRow } from "./plan-studio-model.js";
 
 // The pace margin of a row: the larger of $40 and 8% of its plan, the same
 // margin the row's status line uses.
@@ -88,6 +89,42 @@ export function incomeSegments(rows, plan) {
 /** Money that arrived beyond the plan: received less planned money in, never below nothing. */
 export function unplannedIncome({ receivedMinor, plannedInMinor }) {
   return Math.max(0, receivedMinor - plannedInMinor);
+}
+
+/** The planned line extra income is counted on. */
+export const EXTRA_INCOME_LABEL = planStudioAddCopy.extraIncomeLabel;
+const sameLabel = (label) => String(label ?? "").trim().toLowerCase() === EXTRA_INCOME_LABEL.toLowerCase();
+
+/**
+ * "Add to Savings" on money that arrived beyond the plan: Savings and Planned
+ * in both rise by the amount, so Left over does not move and the plan still
+ * adds up. Savings rises on the largest unlocked Savings line (one is created
+ * when the person has none); Planned in rises on that person's "Extra income"
+ * line (created when they have none, never a second one beside it).
+ *
+ * Returns the held plan with those two lines raised (a line to create has no
+ * key yet, the caller adds it) and what to create, or null when it cannot run:
+ * nothing extra, every Savings line locked or read only (a second one is not
+ * created beside it), or an Extra income line that cannot be edited.
+ */
+export function planExtraIncomeToSavings({ rows, plan, locks = {}, extraMinor, ownerName = "" }) {
+  if (!(extraMinor > 0)) return null;
+  const saveRow = primarySaveRow(rows, locks, plan);
+  if (!saveRow && rows.some((row) => row.job === "save")) return null;
+  const extraRows = rows.filter((row) => row.job === "income" && sameLabel(row.label) && (!ownerName || row.ownerName === ownerName));
+  const incomeRow = extraRows.find((row) => row.editable) ?? null;
+  if (extraRows.length && !incomeRow) return null;
+  const next = { ...plan };
+  if (saveRow) next[saveRow.key] = plan[saveRow.key] + extraMinor;
+  if (incomeRow) next[incomeRow.key] = plan[incomeRow.key] + extraMinor;
+  return {
+    amountMinor: extraMinor,
+    plan: next,
+    saveKey: saveRow?.key ?? null,
+    createSavings: !saveRow,
+    incomeKey: incomeRow?.key ?? null,
+    createIncome: !incomeRow
+  };
 }
 
 /**
