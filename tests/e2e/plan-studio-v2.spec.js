@@ -42,7 +42,6 @@ const studio = (page) => page.locator("[data-plan-studio]");
 const row = (page, name) => page.locator("[data-ps-row]").filter({ has: page.locator(".ps-row-label", { hasText: new RegExp(`^${name}$`) }) });
 const planned = (page, name) => row(page, name).locator("[data-ps-amount]");
 const saveButton = (page) => page.locator("[data-ps-save]");
-const balance = (page) => page.locator("[data-ps-balance]");
 const popover = (page) => page.locator("[data-ps-info]");
 const modeSwitch = (page) => page.locator("[data-plan-mode-switch]");
 const tables = (page) => page.locator(".month-plan-stack");
