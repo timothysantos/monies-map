@@ -1,10 +1,11 @@
 import "./picker-sheet.css";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { paletteColour } from "./palette-colour";
 import { SheetSwipeDismiss } from "./sheet-swipe";
+import { useKeyboardInset } from "./use-keyboard-inset";
 import { BottomActions } from "./ui-components";
 
 // The phone's picker sheet (design.md, "Lead · Support · Detail"): the title
@@ -34,11 +35,17 @@ export default function PickerSheet({
   onClear = undefined,
   onClose
 }) {
+  // The category list has a search field: with the keyboard up the sheet is
+  // sized to the visible area above it (picker-sheet.css), whatever the
+  // result count. Other pickers have no field and need nothing.
+  const [sheet, setSheet] = useState(/** @type {HTMLElement | null} */ (null));
+  useKeyboardInset(categoryPick ? sheet : null, { scrollFocused: false });
   return (
     <Dialog.Portal>
       <Dialog.Overlay className="note-dialog-overlay" />
       <Dialog.Content
-        className="note-dialog-content split-dialog-content mobile-select-dialog is-picker-sheet"
+        ref={setSheet}
+        className={`note-dialog-content split-dialog-content mobile-select-dialog is-picker-sheet${categoryPick ? " is-category-sheet" : ""}`}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <SheetSwipeDismiss onClose={onClose} />

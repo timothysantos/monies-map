@@ -169,3 +169,44 @@ test("every bottom sheet with a bottom bar lifts itself above the keyboard", () 
     assert.match(rule, /max-height: calc\([^;]*- var\(--keyboard-inset, 0px\)\)/, selector);
   }
 });
+
+// The searchable category sheet must not follow its result count: with the
+// keyboard up it is as tall as the visible area (above the keyboard), so the
+// search field and the list stay on screen however few rows match.
+test("the visible height is what the keyboard leaves, and only while it is up", async () => {
+  const { keyboardFrameFor } = await import("../src/client/use-keyboard-inset.js");
+  assert.deepEqual(keyboardFrameFor({ layoutHeight: 664, viewportHeight: 328, viewportOffsetTop: 0, scale: 1 }), { inset: 336, visibleHeight: 328 });
+  assert.deepEqual(keyboardFrameFor({ layoutHeight: 664, viewportHeight: 327.6, viewportOffsetTop: 40, scale: 1 }), { inset: 296, visibleHeight: 328 });
+  assert.deepEqual(keyboardFrameFor({ layoutHeight: 664, viewportHeight: 664, viewportOffsetTop: 0, scale: 1 }), { inset: 0, visibleHeight: 0 });
+  assert.deepEqual(keyboardFrameFor({ layoutHeight: 664, viewportHeight: 300, viewportOffsetTop: 120, scale: 2 }), { inset: 0, visibleHeight: 0 });
+});
+
+test("an attached sheet publishes the visible height and a keyboard flag; the category sheet attaches without scrolling the focused field", () => {
+  const { win, viewport, fire, runFrames } = fakeWindow();
+  const attributes = new Map();
+  const sheet = { ...fakeElement(win), toggleAttribute: (name, on) => (on ? attributes.set(name, "") : attributes.delete(name)) };
+  const field = sheet.focusable();
+  win.document.activeElement = field;
+  const detach = attachKeyboardInset(sheet, win, { scrollFocused: false });
+  viewport.height = 328;
+  fire("resize");
+  runFrames();
+  assert.equal(sheet.style.get("--keyboard-visible-height"), "328px");
+  assert.ok(attributes.has("data-keyboard"));
+  assert.deepEqual(field.scrolls, [], "the sheet is already sized to the visible area");
+  viewport.height = 400;
+  fire("resize");
+  runFrames();
+  assert.equal(sheet.style.get("--keyboard-visible-height"), "400px");
+  viewport.height = 664;
+  fire("resize");
+  runFrames();
+  assert.equal(sheet.style.get("--keyboard-visible-height"), undefined);
+  assert.ok(!attributes.has("data-keyboard"));
+  detach();
+
+  assert.match(read("src/client/picker-sheet.jsx"), /useKeyboardInset\(categoryPick \? sheet : null, \{ scrollFocused: false \}\)/);
+  const css = read("src/client/picker-sheet.css");
+  assert.match(css.slice(css.indexOf(".is-category-sheet[data-keyboard]")), /var\(--keyboard-visible-height/);
+  assert.match(css, /\.is-category-sheet \{[^}]*height: min\(70dvh/);
+});

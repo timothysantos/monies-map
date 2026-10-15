@@ -99,6 +99,29 @@ The other families (Ask, Month plan, Settings, Imports, Splits) draw the same
 list from the same component; `tests/category-pick-list-dom.test.mjs` and the
 browser specs for each cover them.
 
+## Phone keyboard fix (2026-10-15)
+
+Bug (owner, iPhone Safari): typing in the sheet's search raised the keyboard
+and the sheet got shorter, leaving the list behind the keyboard. Cause: the
+picker sheet never attached `use-keyboard-inset.js` (every other sheet with a
+field does), so it stayed fixed to the bottom of the layout viewport under the
+keyboard, and its height was its content, so it also followed the match count.
+Fix: the category sheet (`is-category-sheet`) is one stable box. Keyboard down:
+`min(70dvh, 640px)`. Keyboard up: the visible height above the keyboard minus
+12px, anchored to the top of that area, the bottom bar hidden (the head's close
+button closes it) and rows 44px, so at least four whole rows show on a 568px
+phone. The list scrolls inside; the empty state sits in the same box.
+`attachKeyboardInset` now also publishes `--keyboard-visible-height` and
+`data-keyboard`, and the category sheet skips its scroll-into-view (the sheet
+already fits). Plan Studio's amount sheet and the entry More details sheet
+already follow the keyboard through EntryMobileSheet (content height, lifted
+above it, field scrolled into view), so they were not affected; Ask's composer
+is inline. Tests: `tests/keyboard-inset.test.mjs` and
+`tests/e2e/category-sheet-keyboard.spec.js` (heights 568, 667, 844; the
+keyboard is emulated through `visualViewport`). Screenshots (WebKit, iPhone 13
+size, grey block for the keyboard) in `docs/audits/category-sheet-keyboard/`;
+the iOS Simulator was not available (access not granted).
+
 ## Not covered
 
 - Rule words in the search ("any category rule words if cheap"): the page does
