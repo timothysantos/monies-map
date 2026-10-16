@@ -20,6 +20,7 @@ import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { flowTone } from "../domain/money-tone";
 import { trackStuckDateRow } from "./stuck-date-row";
+import { buildEntryDeepLink } from "./entry-deep-link";
 
 const {
   categories: categoryService,
@@ -67,6 +68,7 @@ export function EntriesDateGroups({
   categoryOptions,
   accountOptions,
   ownerOptions,
+  people = [],
   splitGroups = [],
   viewId,
   editingEntryId,
@@ -122,23 +124,17 @@ export function EntriesDateGroups({
   const [refreshingDate, setRefreshingDate] = useState("");
   useRouteWorkBusy(Boolean(splitPickerEntry) || refreshingDate !== "");
 
-  async function handleAddEntryToSplits(entry, splitGroupId) {
-    await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);
+  async function handleAddEntryToSplits(entry, splitGroupId, splitBasisPoints = 5000) {
+    await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId, splitBasisPoints);
     setSplitPickerEntry(null);
     setSplitPickerOptions(splitGroupOptions);
   }
 
   async function openSplitPicker(entry) {
-    const currentSingleSplitGroupValue = splitGroupOptions.length === 1
-      ? splitGroupOptions[0].value
-      : null;
     const refreshId = splitPickerRefreshIdRef.current + 1;
     splitPickerRefreshIdRef.current = refreshId;
-
-    if (!currentSingleSplitGroupValue) {
-      setSplitPickerOptions(splitGroupOptions);
-      setSplitPickerEntry(entry);
-    }
+    setSplitPickerOptions(splitGroupOptions);
+    setSplitPickerEntry(entry);
 
     const latestGroups = await onRefreshSplitGroups?.() ?? splitGroups;
     if (splitPickerRefreshIdRef.current !== refreshId) {
@@ -149,15 +145,6 @@ export function EntriesDateGroups({
       value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
       label: group.name
     }));
-    const latestSingleSplitGroupValue = latestOptions.length === 1
-      ? latestOptions[0].value
-      : null;
-
-    if (currentSingleSplitGroupValue && latestSingleSplitGroupValue) {
-      await handleAddEntryToSplits(entry, latestSingleSplitGroupValue);
-      return;
-    }
-
     setSplitPickerOptions(latestOptions);
     setSplitPickerEntry(entry);
   }
@@ -312,21 +299,23 @@ export function EntriesDateGroups({
       <EntrySplitGroupPickerDialog
         entry={splitPickerEntry}
         splitGroupOptions={splitPickerOptions}
+        sharePersonName={people[0]?.name ?? "First person"}
         isSubmitting={Boolean(splitPickerEntry && addingToSplitsEntryId === splitPickerEntry.id)}
         onClose={() => setSplitPickerEntry(null)}
-        onSelectGroup={(splitGroupId) => splitPickerEntry ? handleAddEntryToSplits(splitPickerEntry, splitGroupId) : undefined}
+        onAdd={(splitGroupId, splitBasisPoints) => splitPickerEntry ? handleAddEntryToSplits(splitPickerEntry, splitGroupId, splitBasisPoints) : undefined}
       />
     </div>
   );
 }
 
-function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, onClose, onSelectGroup }) {
-  const selectRef = useRef(null);
+function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName, isSubmitting, onClose, onAdd }) {
   const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [splitBasisPoints, setSplitBasisPoints] = useState(5000);
 
   useEffect(() => {
     if (!entry) {
       setSelectedGroupId("");
+      setSplitBasisPoints(5000);
     }
   }, [entry]);
 
@@ -336,10 +325,6 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, o
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content
           className="note-dialog-content entry-split-picker-dialog"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            window.requestAnimationFrame(() => selectRef.current?.focus());
-          }}
         >
           <div className="note-dialog-head">
             <div>
@@ -352,30 +337,53 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, o
               <X size={18} />
             </button>
           </div>
-          <label className="entry-split-picker-field">
-            <span>Split group</span>
-            <select
-              ref={selectRef}
-              value={selectedGroupId}
-              disabled={isSubmitting}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                setSelectedGroupId(nextValue);
-                void onSelectGroup(nextValue);
-              }}
-            >
-              <option value="" disabled>Choose split group</option>
+          <fieldset className="entry-split-picker-field" disabled={isSubmitting}>
+            <legend>Split group</legend>
+            <div className="entry-split-group-list" role="radiogroup" aria-label="Split group">
               {splitGroupOptions.map((group) => (
-                <option key={group.value || "split-group-none"} value={group.value}>
+                <button
+                  key={group.value || "split-group-none"}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedGroupId === group.value}
+                  className={`entry-split-group-choice${selectedGroupId === group.value ? " is-selected" : ""}`}
+                  onClick={() => setSelectedGroupId(group.value)}
+                >
                   {group.label}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
+          <fieldset className="entry-split-picker-field" disabled={isSubmitting}>
+            <legend>{sharePersonName}'s share</legend>
+            <p className="entry-split-picker-hint">0% means {sharePersonName} owes none; if they paid, they are owed the full amount. 100% means this expense is all theirs.</p>
+            <div className="entry-split-share-choices" role="radiogroup" aria-label={`${sharePersonName}'s share`}>
+              {[0, 5000, 10000].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={splitBasisPoints === value}
+                  className={`entry-split-share-choice${splitBasisPoints === value ? " is-selected" : ""}`}
+                  onClick={() => setSplitBasisPoints(value)}
+                >
+                  {value / 100}%
+                </button>
+              ))}
+            </div>
+          </fieldset>
           {isSubmitting ? <p className="entry-split-picker-status">Adding entry to splits...</p> : null}
           <div className="note-dialog-actions">
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
+            </button>
+            <button
+              type="button"
+              className="lsd-primary"
+              disabled={!selectedGroupId || isSubmitting}
+              onClick={() => void onAdd(selectedGroupId, splitBasisPoints)}
+            >
+              {isSubmitting ? "Adding..." : "Add to splits"}
             </button>
           </div>
         </Dialog.Content>
@@ -563,6 +571,7 @@ function EntryRow({
         <div ref={pageFlagRef(PAGE_FLAG.entryInlineEditor, inlineEditorRef)} className="entry-inline-editor">
           <EntryInlineEditorFields
             entry={entry}
+            viewId={viewId}
             categories={categories}
             bankState={bankState}
             linkedSplitExpenseId={linkedSplitExpenseId}
@@ -608,7 +617,7 @@ function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor, 
 
 const MemoizedEntryRowAmount = memo(EntryRowAmount);
 
-function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpenseId, onCategoryAppearanceChange, editor }) {
+function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedSplitExpenseId, onCategoryAppearanceChange, editor }) {
   const {
     categoryOptions,
     accountOptions,
@@ -655,6 +664,25 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
       {isDeletingEntry ? messages.common.working : messages.entries.editCard.deleteEntry}
     </button>
   );
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function copyEntryLink() {
+    const link = buildEntryDeepLink(window.location, {
+      entryId: entry.id,
+      month: entry.date.slice(0, 7),
+      viewId
+    });
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is unavailable");
+      }
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 1800);
+    } catch {
+      setLinkCopied(false);
+    }
+  }
 
   return (
     <>
@@ -733,15 +761,18 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
           </>
         )}
         secondary={(
-          <button
-            type="button"
-            className="lsd-quiet inline-cancel-action"
-            aria-label="Cancel editing entry"
-            disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
-            onClick={onCancelEntryEdit}
-          >
-            {messages.entries.cancelEdit}
-          </button>
+          <>
+            <button type="button" className="lsd-quiet" onClick={() => void copyEntryLink()}>{linkCopied ? "Link copied" : "Copy link"}</button>
+            <button
+              type="button"
+              className="lsd-quiet inline-cancel-action"
+              aria-label="Cancel editing entry"
+              disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
+              onClick={onCancelEntryEdit}
+            >
+              {messages.entries.cancelEdit}
+            </button>
+          </>
         )}
         primary={(
           <button

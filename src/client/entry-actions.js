@@ -603,7 +603,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
-  async function addEntryToSplits(entry, splitGroupId = null) {
+  async function addEntryToSplits(entry, splitGroupId = null, splitBasisPoints = 5000) {
     setEntrySubmitError("");
     setAddingToSplitsEntryId(entry.id);
 
@@ -627,7 +627,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         },
         body: JSON.stringify({
           entryId: entry.id,
-          splitGroupId
+          splitGroupId,
+          splitBasisPoints
         })
       });
       const data = await response.json();

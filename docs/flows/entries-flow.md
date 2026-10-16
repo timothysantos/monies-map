@@ -47,6 +47,8 @@ padding or scroll position. No request or server-state owner is added.
 import review, a reload, or Add to splits keeping the open entry in the
 URL). The param is the only source of the linked entry; the panel keeps no
 copy of it. It acts on each param value once (`linked-entry-request.js`):
+The editor's **Copy link** button creates this exact URL, including the
+entry's month and current view.
 it opens that entry when this month's rows have it, or treats the link as
 handled when that editor is already open. A handled link never reopens the
 editor while the param is still in the URL, so saving (which closes the
@@ -92,8 +94,8 @@ Category, owner, note and splits stay editable."; the full rule
 (`getBankFactsLockMessage`) is the Statement certified chip's `title` and
 accessible description. The phone
 sheet's bottom bar holds Delete entry (and Delete split once linked),
-Cancel or Close, and Save; while Add to splits asks for a group, the bar
-becomes the group question (`EntrySplitGroupPickerFooter`). The add sheet
+Cancel or Close, and Save. Add to splits presents its groups as a list, then
+0%, 50% and 100% share choices and an explicit confirmation. The add sheet
 (composer) still uses the grid form (`EntryEditorFields`).
 
 On a phone the card's date, wallet and owner chips open the same picker as

@@ -592,7 +592,9 @@ bar on the left is the owner's colour.
   rules, what you usually pick for that shop and everyday words. On a
   computer you can start typing straight away and press Enter to pick; on a
   phone, tap the search box to type.
-- **Splits** row: **Add to splits** shares this entry ([Split an expense](#split-an-expense));
+- **Splits** row: **Add to splits** lets you choose the group and the person's
+  0%, 50% or 100% share, then confirm. At 0%, that person owes none; if they
+  paid, they are owed the whole amount. It shares this entry ([Split an expense](#split-an-expense));
   once it is shared, **View split** opens it on Splits.
 - **Delete entry**: asks you to confirm first. An entry a bank statement
   confirmed can't be deleted on its own; roll back that statement import

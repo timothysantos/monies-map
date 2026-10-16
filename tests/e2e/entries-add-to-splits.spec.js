@@ -187,13 +187,15 @@ test("newly added split can be viewed immediately and preserves the entries scop
   const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
   await editor.getByRole("button", { name: "Add to splits" }).click();
   const groupPicker = page.getByRole("dialog", { name: "Add to splits" });
-  try {
-    await expect(groupPicker).toBeVisible({ timeout: 1000 });
-    await groupPicker.locator("select").selectOption({ label: "Non-group expenses" });
-  } catch {
-    // Single-group split workspaces post immediately without opening the picker.
-  }
-  await splitResponse;
+  await expect(groupPicker).toBeVisible();
+  await expect(groupPicker.getByRole("button", { name: "Add to splits" })).toBeDisabled();
+  await expect(groupPicker.getByText("0% means Tim owes none; if they paid, they are owed the full amount.")).toBeVisible();
+  await expect(groupPicker.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
+  await groupPicker.getByRole("radio", { name: "Non-group expenses" }).click();
+  await groupPicker.getByRole("radio", { name: "0%", exact: true }).click();
+  await groupPicker.getByRole("button", { name: "Add to splits" }).click();
+  const createdSplit = await splitResponse;
+  expect(JSON.parse(createdSplit.request().postData() ?? "{}")).toMatchObject({ splitBasisPoints: 0 });
 
   const viewSplitButton = editor.getByRole("button", { name: "View split" });
   await expect(viewSplitButton).toBeVisible({ timeout: 30_000 });
@@ -360,8 +362,12 @@ test("add to splits opens the group picker without waiting for the freshness ref
   });
 
   await editor.getByRole("button", { name: "Add to splits" }).click();
-  await expect(page.getByRole("dialog", { name: "Add to splits" })).toBeVisible({ timeout: 1000 });
-  await expect(page.getByRole("dialog", { name: "Add to splits" }).locator("select")).toContainText("Holiday");
+  const picker = page.getByRole("dialog", { name: "Add to splits" });
+  await expect(picker).toBeVisible({ timeout: 1000 });
+  await expect(picker.getByRole("radio", { name: "Holiday" })).toBeVisible();
+  await expect(picker.getByRole("radio", { name: "0%", exact: true })).toBeVisible();
+  await expect(picker.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
+  await expect(picker.getByRole("button", { name: "Add to splits" })).toBeDisabled();
 });
 
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
@@ -395,7 +401,8 @@ test("editing an entry then adding it to splits keeps the saved row stable acros
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
   const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
   await editor.getByRole("button", { name: "Add to splits" }).click();
-  await page.getByRole("dialog", { name: "Add to splits" }).locator("select").selectOption({ label: "Non-group expenses" });
+  await page.getByRole("dialog", { name: "Add to splits" }).getByRole("radio", { name: "Non-group expenses" }).click();
+  await page.getByRole("dialog", { name: "Add to splits" }).getByRole("button", { name: "Add to splits" }).click();
   await updateResponse;
   await splitResponse;
 

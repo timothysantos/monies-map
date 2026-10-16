@@ -856,10 +856,10 @@ export function EntriesPanel({
     }, { replace: true });
   }
 
-  async function handleAddEntryToSplits(entry, splitGroupId = null) {
+  async function handleAddEntryToSplits(entry, splitGroupId = null, splitBasisPoints = 5000) {
     setCreatedSplitActionError("");
     preserveEntryEditorInUrl(entry.id);
-    const result = await addEntryToSplits(entry, splitGroupId);
+    const result = await addEntryToSplits(entry, splitGroupId, splitBasisPoints);
     if (result?.alreadyLinked) {
       await refreshEntriesPage({ bypassCache: true });
       return;
@@ -1505,6 +1505,7 @@ export function EntriesPanel({
           categoryOptions={categoryOptions}
           accountOptions={accountOptions}
           ownerOptions={ownerOptions}
+          people={people}
           splitGroups={entriesPage.splitGroups}
           viewId={entryView.id}
           editingEntryId={editingEntryId}

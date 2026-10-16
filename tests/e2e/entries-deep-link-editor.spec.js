@@ -107,12 +107,9 @@ test("saving after Add to splits wrote the entry into the link closes the editor
   const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
   await editor.getByRole("button", { name: "Add to splits" }).click();
   const groupPicker = page.getByRole("dialog", { name: "Add to splits" });
-  try {
-    await expect(groupPicker).toBeVisible({ timeout: 1000 });
-    await groupPicker.locator("select").selectOption({ label: "Non-group expenses" });
-  } catch {
-    // Single-group split workspaces post immediately without opening the picker.
-  }
+  await expect(groupPicker).toBeVisible();
+  await groupPicker.getByRole("radio", { name: "Non-group expenses" }).click();
+  await groupPicker.getByRole("button", { name: "Add to splits" }).click();
   await splitResponse;
   await expect(editor.getByRole("button", { name: "View split" })).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveURL(/editing_entry=/);
