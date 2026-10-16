@@ -146,6 +146,7 @@ export function EntriesPanel({
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
+  const [mobileSplitBasisPoints, setMobileSplitBasisPoints] = useState(5000);
   const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
@@ -887,17 +888,21 @@ export function EntriesPanel({
     setIsMobileSplitPickerOpen(false);
     setIsMobileSplitSelectorOpen(false);
     setMobileSplitGroupId("");
+    setMobileSplitBasisPoints(5000);
   }
 
-  async function handleMobileSplitGroupSelection(nextGroupId) {
+  function handleMobileSplitGroupSelection(nextGroupId) {
     setMobileSplitGroupId(nextGroupId);
-    if (!activeEditingEntry || !nextGroupId) {
-      return;
-    }
+  }
 
+  async function confirmMobileSplit() {
+    if (!activeEditingEntry || !mobileSplitGroupId) return;
     await handleAddEntryToSplits(
       activeEditingEntry,
-      nextGroupId === NON_GROUP_SPLIT_VALUE ? null : nextGroupId
+      mobileSplitGroupId === NON_GROUP_SPLIT_VALUE || mobileSplitGroupId === "split-group-none"
+        ? null
+        : mobileSplitGroupId,
+      mobileSplitBasisPoints
     );
   }
 
@@ -1361,17 +1366,14 @@ export function EntriesPanel({
                 <EntrySplitGroupPickerFooter
                   splitGroupId={mobileSplitGroupId}
                   splitGroupOptions={splitGroupOptions}
+                  splitBasisPoints={mobileSplitBasisPoints}
+                  sharePersonName={people[0]?.name ?? "First person"}
                   isWorking={addingToSplitsEntryId === activeEditingEntry.id}
                   isSplitSelectorOpen={isMobileSplitSelectorOpen}
-                  onSplitSelectorOpenChange={(open) => {
-                    setIsMobileSplitSelectorOpen(open);
-                    if (!open && !addingToSplitsEntryId) {
-                      resetMobileSplitPickerState();
-                    }
-                  }}
-                  onSelectSplitGroup={(nextValue) => {
-                    void handleMobileSplitGroupSelection(nextValue);
-                  }}
+                  onSplitSelectorOpenChange={setIsMobileSplitSelectorOpen}
+                  onSelectSplitGroup={handleMobileSplitGroupSelection}
+                  onSplitBasisPointsChange={setMobileSplitBasisPoints}
+                  onConfirmSplit={() => void confirmMobileSplit()}
                   onCancelSplitPicker={resetMobileSplitPickerState}
                 />
               )
@@ -1448,27 +1450,8 @@ export function EntriesPanel({
                 isWorking={addingToSplitsEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
                 onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
                 onAddToSplits={() => {
-                  void (async () => {
-                    const latestSplitGroups = await refreshLatestSplitGroups();
-                    const latestOptions = latestSplitGroups.map((group) => ({
-                      value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
-                      label: group.name
-                    }));
-                    const latestSingleSplitGroupValue = latestOptions.length === 1
-                      ? latestOptions[0].value
-                      : null;
-
-                    if (latestSingleSplitGroupValue) {
-                      await handleAddEntryToSplits(
-                        activeEditingEntry,
-                        latestSingleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : latestSingleSplitGroupValue
-                      );
-                      return;
-                    }
-
-                    setIsMobileSplitPickerOpen(true);
-                    setIsMobileSplitSelectorOpen(true);
-                  })();
+                  setIsMobileSplitPickerOpen(true);
+                  setIsMobileSplitSelectorOpen(true);
                 }}
               />
             ) : null}

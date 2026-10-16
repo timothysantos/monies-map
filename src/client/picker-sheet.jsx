@@ -70,6 +70,8 @@ export default function PickerSheet({
               multiple={multiple}
               pinned={categoryPick.pinned}
               description={categoryPick.description}
+              searchLabel={categoryPick.searchLabel}
+              searchPlaceholder={categoryPick.searchPlaceholder}
               onChoose={onChoose}
               onClose={onClose}
             />

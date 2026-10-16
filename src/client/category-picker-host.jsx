@@ -24,7 +24,8 @@ const CategoryPopoverContent = lazy(() => import("./category-popover-content"));
  *   open: boolean, onOpenChange: (open: boolean) => void, anchor?: any, anchorRef?: { current: any },
  *   title: string, options: Array<{ value: string, label: string, icon?: any, iconKey?: string, colorHex?: string }>,
  *   value?: string | string[], multiple?: boolean, pinned?: Array<{ value: string, label: string }>,
- *   description?: string, onChoose: (value: string) => any, onClear?: () => void,
+ *   description?: string, searchLabel?: string, searchPlaceholder?: string,
+ *   onChoose: (value: string) => any, onClear?: () => void,
  *   returnFocusRef?: { current: any }
  * }} props
  */
@@ -39,6 +40,8 @@ export function CategoryPickerHost({
   multiple = false,
   pinned = undefined,
   description = "",
+  searchLabel = undefined,
+  searchPlaceholder = undefined,
   onChoose,
   onClear = undefined,
   returnFocusRef = undefined
@@ -92,7 +95,7 @@ export function CategoryPickerHost({
                 options={options}
                 selectedValues={multiple ? value : [value]}
                 multiple={multiple}
-                categoryPick={{ description, pinned }}
+                categoryPick={{ description, pinned, searchLabel, searchPlaceholder }}
                 onChoose={onChoose}
                 onClear={onClear}
                 onClose={close}
@@ -116,6 +119,8 @@ export function CategoryPickerHost({
             multiple={multiple}
             pinned={pinned}
             description={description}
+            searchLabel={searchLabel}
+            searchPlaceholder={searchPlaceholder}
             onChoose={onChoose}
             onClear={onClear}
             onClose={close}

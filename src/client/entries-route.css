@@ -68,6 +68,34 @@
   line-height: 1.35;
 }
 
+.entry-mobile-sheet-confirm-actions.is-split-share {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.entry-mobile-split-group {
+  min-width: 0;
+  justify-self: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-mobile-sheet-confirm-actions.is-split-share .entry-split-picker-hint,
+.entry-mobile-sheet-confirm-actions.is-split-share .entry-split-share-choices,
+.entry-mobile-sheet-confirm-actions.is-split-share .entry-mobile-sheet-confirm-buttons {
+  grid-column: 1 / -1;
+}
+
+.entry-mobile-sheet-confirm-actions.is-split-share .entry-split-share-choices {
+  margin-top: 2px;
+}
+
+.entry-mobile-sheet-confirm-actions.is-split-share .entry-mobile-sheet-confirm-buttons {
+  margin-top: 2px;
+}
+
 .category-toggle-actions {
   display: inline-flex;
   align-items: center;

@@ -95,7 +95,9 @@ Category, owner, note and splits stay editable."; the full rule
 accessible description. The phone
 sheet's bottom bar holds Delete entry (and Delete split once linked),
 Cancel or Close, and Save. Add to splits presents its groups as a list, then
-0%, 50% and 100% share choices and an explicit confirmation. The add sheet
+0%, 50% and 100% share choices and an explicit confirmation. On a phone,
+choosing the group closes that list and shows the share choices in the edit
+sheet before anything is added. The add sheet
 (composer) still uses the grid form (`EntryEditorFields`).
 
 On a phone the card's date, wallet and owner chips open the same picker as

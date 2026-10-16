@@ -239,12 +239,68 @@ function usePageKeyboardScrollLock() {
 export function EntrySplitGroupPickerFooter({
   splitGroupId = "",
   splitGroupOptions = [],
+  splitBasisPoints = 5000,
+  sharePersonName = "First person",
   isWorking = false,
   isSplitSelectorOpen = false,
   onSplitSelectorOpenChange,
   onSelectSplitGroup,
+  onSplitBasisPointsChange,
+  onConfirmSplit,
   onCancelSplitPicker
 }) {
+  const selectedGroup = splitGroupId
+    ? splitGroupOptions.find((option) => option.value === splitGroupId)
+    : null;
+  if (selectedGroup) {
+    return (
+      <div className="entry-mobile-sheet-confirm-actions is-split-share">
+        <button
+          type="button"
+          className="lsd-quiet entry-mobile-split-group"
+          disabled={isWorking}
+          onClick={() => onSplitSelectorOpenChange(true)}
+        >
+          {selectedGroup.label}
+        </button>
+        <span className="entry-mobile-sheet-confirm-copy">{sharePersonName}'s share</span>
+        <p className="entry-split-picker-hint">0% means {sharePersonName} owes none; if they paid, they are owed the full amount. 100% means this expense is all theirs.</p>
+        <div className="entry-split-share-choices" role="radiogroup" aria-label={`${sharePersonName}'s share`}>
+          {[0, 5000, 10000].map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={splitBasisPoints === value}
+              className={`entry-split-share-choice${splitBasisPoints === value ? " is-selected" : ""}`}
+              disabled={isWorking}
+              onClick={() => onSplitBasisPointsChange(value)}
+            >
+              {value / 100}%
+            </button>
+          ))}
+        </div>
+        <div className="entry-mobile-sheet-confirm-buttons">
+          <button
+            type="button"
+            className="subtle-cancel"
+            disabled={isWorking}
+            onClick={onCancelSplitPicker}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="lsd-primary"
+            disabled={isWorking}
+            onClick={onConfirmSplit}
+          >
+            {isWorking ? "Adding..." : "Add to splits"}
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="entry-mobile-sheet-confirm-actions">
       <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>

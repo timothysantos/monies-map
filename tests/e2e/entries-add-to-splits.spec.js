@@ -370,6 +370,44 @@ test("add to splits opens the group picker without waiting for the freshness ref
   await expect(picker.getByRole("button", { name: "Add to splits" })).toBeDisabled();
 });
 
+test("phone Add to splits asks for a preset share after the group", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright phone split share ${Date.now()}`;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${entry.entryId}`);
+  const sheet = page.getByRole("dialog", { name: "Edit entry" });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: "Splits Add to splits" }).click();
+  await expect(sheet).toBeVisible();
+
+  const groupPicker = page.locator(".mobile-select-dialog").filter({ hasText: "Split group" });
+  await expect(groupPicker).toBeVisible();
+  await groupPicker.getByRole("button", { name: "Non-group expenses" }).click();
+  await expect(groupPicker).toHaveCount(0);
+
+  await expect(sheet.getByText("0% means Tim owes none; if they paid, they are owed the full amount.")).toBeVisible();
+  await expect(sheet.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
+  await sheet.getByRole("radio", { name: "100%", exact: true }).click();
+  const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
+  await sheet.getByRole("button", { name: "Add to splits", exact: true }).click();
+  const createdSplit = await splitResponse;
+  expect(JSON.parse(createdSplit.request().postData() ?? "{}")).toMatchObject({ splitBasisPoints: 10000 });
+});
+
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
   const month = "2026-05";
   const originalDescription = `Playwright split workflow original ${Date.now()}`;

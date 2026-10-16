@@ -370,6 +370,11 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.locator(".ask-card-merchant")).toHaveText(description);
     await expect(page.locator(".ask-card-amount")).toContainText("−$6.90");
     await expect(page.locator(".ask-question")).toHaveText("It landed in Other. Which category fits?");
+    const walletChip = page.locator('[data-ask-card="saved"]').getByRole("button", { name: "Change wallet, Citi Rewards" });
+    await walletChip.click();
+    const walletPicker = page.locator(".mobile-select-dialog").filter({ has: page.getByRole("heading", { name: "Wallet", exact: true }) });
+    await expect(walletPicker.getByPlaceholder("Search wallets")).toBeVisible();
+    await walletPicker.getByRole("button", { name: "Close wallet" }).click();
     const chips = page.getByRole("group", { name: "Suggestions" }).getByRole("button");
     await expect(chips.first()).toHaveText("Open this entry");
     await expect(chips.first()).toHaveClass(/is-primary/);

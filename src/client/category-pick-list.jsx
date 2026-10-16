@@ -64,6 +64,7 @@ function useBestGuess(description) {
  *   multiple?: boolean,
  *   pinned?: Array<{ value: string, label: string }>,
  *   description?: string,
+ *   searchLabel?: string, searchPlaceholder?: string,
  *   variant?: "popover" | "sheet",
  *   onChoose: (value: string) => any,
  *   onClose?: () => void,
@@ -76,6 +77,8 @@ export default function CategoryPickList({
   multiple = false,
   pinned = [],
   description = "",
+  searchLabel = copy.searchLabel,
+  searchPlaceholder = copy.searchPlaceholder,
   variant = "popover",
   onChoose,
   onClose = () => {},
@@ -203,8 +206,8 @@ export default function CategoryPickList({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={activeIndex >= 0 && rows[activeIndex] ? `${listId}-${activeIndex}` : undefined}
-          aria-label={copy.searchLabel}
-          placeholder={copy.searchPlaceholder}
+          aria-label={searchLabel}
+          placeholder={searchPlaceholder}
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"

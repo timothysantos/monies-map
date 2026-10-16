@@ -2365,6 +2365,8 @@ function SavedWalletPicker({ open, onOpenChange, value, accounts, anchorRef, onV
       title={askCopy.card.rows.wallet}
       options={options}
       value={value}
+      searchLabel="Search wallets"
+      searchPlaceholder="Search wallets"
       onChoose={onValueChange}
     />
   );
