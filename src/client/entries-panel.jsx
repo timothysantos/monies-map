@@ -1043,7 +1043,7 @@ export function EntriesPanel({
     }, { replace: true });
   }, [setSearchParams]);
 
-  const resetEntryFilters = useCallback(() => {
+  const resetEntryFilters = useCallback((clearPeriod = false) => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("entry_id");
@@ -1055,8 +1055,12 @@ export function EntriesPanel({
       next.delete("entry_min");
       next.delete("entry_max");
       next.delete("entry_figure");
-      next.delete("entry_from");
-      next.delete("entry_to");
+      // Only the phone island's Clear resets the period too. Existing Reset
+      // callers pass an event (or nothing) and keep their desktop behavior.
+      if (clearPeriod === true) {
+        next.delete("entry_from");
+        next.delete("entry_to");
+      }
       next.delete("from_ask");
       return next;
     });

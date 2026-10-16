@@ -15,7 +15,8 @@ position are required. Month return and Splits search clear reuse existing flows
   check includes the context text, so a changed result count reaches the island.
 - The context buttons share the lazy mobile context sheet chunk. Initial bundle
   and CSS limits remain unchanged. No new warmup or speculative read.
-- The same reset removes figure and multi-month bounds as well as category,
+- Clear invokes the reset with an explicit period-reset flag; existing desktop
+  Reset behavior is unchanged. Clear removes figure and multi-month bounds as well as category,
   account, type, search, amount, entry ids, investment-move and Ask parameters.
 - The existing sheet is reused; tapping the summary scrolls to its filters.
 - Nearby floating controls lift only for a non-default scope's stacked context;
@@ -52,6 +53,9 @@ lazy context body and disables motion for readable stills. Guide screenshots
 were regenerated for phone Entries, From Ask, Month and Summary; only the From
 Ask image changed. User/developer guides, design, architecture, scenario catalog
 and affected flow docs describe the final behavior.
+
+The desktop period-preservation browser test failed on the inherited shared
+reset before period clearing was limited to the island action.
 
 ## Validation
 

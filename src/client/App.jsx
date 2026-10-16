@@ -2667,7 +2667,7 @@ export function App() {
     onOpen: openMobileFilters,
     // Focus goes to the island's trigger as the line goes away, so it is not lost.
     onClear: () => {
-      entriesMobileFilterProps?.onResetFilters?.();
+      entriesMobileFilterProps?.onResetFilters?.(true);
       islandTriggerRef.current?.focus({ preventScroll: true });
     },
     onBack: () => {

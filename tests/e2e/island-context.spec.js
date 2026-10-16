@@ -316,3 +316,13 @@ test("Splits' floating group bar clears a search while keeping its group and mon
   await expect(groupBar.getByRole("button", { name: "Clear all filters" })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "All groups" })).toHaveCount(0);
 });
+
+test("desktop Reset keeps its existing multi-month period behavior", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await reseedDemo(page);
+  await page.goto(`${ENTRIES}&entry_from=2025-09&entry_to=2025-10&entry_category=Groceries`);
+  const reset = page.locator(".entries-filter-stack").getByRole("button", { name: "Reset filters", exact: true });
+  await expect(reset).toBeVisible();
+  await reset.click();
+  await expect.poll(() => params(page)).toEqual({ view: "person-tim", month: MONTH, entries_scope: "direct_plus_shared", entry_from: "2025-09", entry_to: "2025-10" });
+});
