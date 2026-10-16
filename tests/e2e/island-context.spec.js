@@ -31,10 +31,10 @@ async function openUsable(page, url) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-async function addEntries(page, count = 1) {
+async function addEntries(page, count = 1, month = MONTH) {
   for (let index = 0; index < count; index += 1) {
     await postJson(page, "/api/entries/create", {
-      date: `2025-10-${String(index + 1).padStart(2, "0")}`,
+      date: `${month}-${String(index + 1).padStart(2, "0")}`,
       description: `Island groceries ${index + 1}`,
       accountName: "UOB One", categoryName: "Groceries", amountMinor: 1200 + index,
       entryType: "expense", ownershipType: "direct", ownerName: "Tim"
@@ -183,8 +183,11 @@ test.describe("Entries on a phone", () => {
 
   test("the line appearing does not move the list, and the last row clears the island", async ({ page }) => {
     await phone(page);
-    await addEntries(page, 14);
-    await openUsable(page, ENTRIES);
+    // A month containing only these entries lets a real category selection
+    // keep every row, so a movement would be chrome rather than filtering.
+    const scrollMonth = "2027-01";
+    await addEntries(page, 14, scrollMonth);
+    await openUsable(page, ENTRIES.replace(MONTH, scrollMonth));
     const rows = page.locator(".entry-row");
     const total = await rows.count();
     expect(total).toBeGreaterThan(12);
@@ -196,14 +199,9 @@ test.describe("Entries on a phone", () => {
     }
     await page.evaluate(() => window.scrollBy({ top: 40, behavior: "instant" }));
     const before = await page.evaluate(() => ({ y: window.scrollY, top: document.querySelectorAll(".entry-row")[10].getBoundingClientRect().top }));
-    // A filter every row passes: the list is unchanged, only the island gains its line.
-    await page.evaluate(() => {
-      const next = new URL(window.location.href);
-      next.searchParams.set("entry_max", "9999999");
-      window.history.pushState({}, "", next);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
-    await expect(page.locator(".mobile-context-line-text")).toHaveText(new RegExp(`^Amount range · ${total} entries$`));
+    // Use the real sheet while scrolled down; every row passes this filter.
+    await filterByCategory(page, "Groceries");
+    await expect(page.locator(".mobile-context-line-text")).toHaveText(`Groceries · ${total} entries`);
     await expect(rows).toHaveCount(total);
     const during = await page.evaluate(() => ({ y: window.scrollY, top: document.querySelectorAll(".entry-row")[10].getBoundingClientRect().top }));
     expect(Math.abs(during.y - before.y)).toBeLessThanOrEqual(1);
