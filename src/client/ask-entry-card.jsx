@@ -84,7 +84,8 @@ export function AskEntryCard({
   descriptionRef,
   amountRef,
   onChange,
-  onOpenField = undefined
+  onOpenField = undefined,
+  walletChipRef = undefined
 }) {
   const isSaved = card.status === "saved";
   const isEditable = card.status === "draft";
@@ -188,14 +189,16 @@ export function AskEntryCard({
             {formatCardDateTime(card.fields.date, today, card.saved?.time)}
           </MetaChip>
           {!isTransfer && card.fields.accountName ? (
-            <MetaChip
-              data-chip="wallet"
-              icon={CreditCard}
-              actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
-              onClick={isEditable && onOpenField ? () => onOpenField("wallet") : undefined}
-            >
-              {card.fields.accountName}
-            </MetaChip>
+            <span ref={walletChipRef}>
+              <MetaChip
+                data-chip="wallet"
+                icon={CreditCard}
+                actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
+                onClick={onOpenField ? () => onOpenField("wallet") : undefined}
+              >
+                {card.fields.accountName}
+              </MetaChip>
+            </span>
           ) : null}
           {card.fields.ownerName ? (
             <MetaChip

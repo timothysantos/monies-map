@@ -1298,7 +1298,8 @@ Ask does not own:
 - After a save the card shows Saved and the chips offer the way back first;
   its bank state chip reads "Ask · provisional" ("Apple Pay · provisional"
   for the Shortcut's saved entry, `card.saved.addedBy`), and its Support
-  chips are no longer editors.
+  chips are no longer editors, except its wallet chip: it opens the same
+  account picker so a provisional Apple Pay entry can be corrected directly.
 - On a draft the date, wallet and owner chips open their rows' pickers (the
   owner's unfolds More details; on a wide screen the chip focuses the row's
   select), each a 44 × 44 px target named "Change <field>, <value>".

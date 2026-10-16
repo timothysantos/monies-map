@@ -282,6 +282,26 @@ test("draft_entry negatives: an invented amount, a future date, an unknown or in
   assert.notEqual(reply.draft.fields.description?.value, "Expensive steak dinner");
 });
 
+test("my wallet on a household Ask card resolves to the saved entry's payer", () => {
+  const context = makeContext({
+    viewId: "household",
+    focus: savedFocus(),
+    text: "put it on my UOB One Card",
+    entry: {
+      ...makeContext().entry,
+      accounts: [
+        account("acct-uob-tim", "UOB One Card", "person-tim"),
+        account("acct-uob-joyce", "UOB One Card", "person-joyce")
+      ]
+    }
+  });
+  const reply = validateAskTurnAction(act("edit_saved_entry", {
+    entry: { wallet: "my UOB One Card" }
+  }), context);
+  assert.equal(reply.kind, "change");
+  assert.equal(reply.change.save[0].body.accountId, "acct-uob-tim");
+});
+
 test("draft_split_expense: a shared expense with the payer and Joyce's share, on Splits in the named group", () => {
   const context = makeContext({ text: "dinner at nobu 120, I paid, Joyce owes 70%, home group" });
   const reply = validateAskTurnAction(act("draft_split_expense", {

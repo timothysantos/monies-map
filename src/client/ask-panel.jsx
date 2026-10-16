@@ -264,6 +264,7 @@ function AskConversation({
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [openPicker, setOpenPicker] = useState("");
   const [savedPicker, setSavedPicker] = useState(false);
+  const [savedWalletPicker, setSavedWalletPicker] = useState(false);
   const [splitGroupsFromCache, setSplitGroupsFromCache] = useState(() => readCachedSplitGroups(queryClient, view.id));
   const objectUrlsRef = useRef([]);
   const chipsRef = useRef(null);
@@ -272,6 +273,7 @@ function AskConversation({
   const descriptionRef = useRef(null);
   const amountRef = useRef(null);
   const noteRef = useRef(null);
+  const savedWalletAnchorRef = useRef(null);
   const composerRef = useRef(null);
   const cameraInputRef = useRef(null);
   const attachInputRef = useRef(null);
@@ -2115,10 +2117,15 @@ function AskConversation({
             descriptionRef={descriptionRef}
             amountRef={amountRef}
             onChange={updateCard}
+            walletChipRef={savedWalletAnchorRef}
             onOpenField={(key) => {
               // A chip opens its row's picker; the owner row folds into More
               // details. On a wide screen the row is a native select, so it
               // takes focus (and opens, where a browser allows it).
+              if (key === "wallet" && card?.status === "saved") {
+                setSavedWalletPicker(true);
+                return;
+              }
               if (key === "owner") setMoreOpen(true);
               setOpenPicker(key);
               window.requestAnimationFrame(() => {
@@ -2304,6 +2311,19 @@ function AskConversation({
           }}
         />
       ) : null}
+      {card?.status === "saved" ? (
+        <SavedWalletPicker
+          open={savedWalletPicker}
+          onOpenChange={setSavedWalletPicker}
+          value={card.fields.accountId}
+          accounts={context.accounts ?? []}
+          anchorRef={savedWalletAnchorRef}
+          onValueChange={(accountId) => {
+            const account = context.accounts?.find((item) => item.id === accountId);
+            return account ? changeSavedCard({ accountId, accountName: account.name }) : false;
+          }}
+        />
+      ) : null}
     </article>
   );
 }
@@ -2324,6 +2344,27 @@ function SavedCategoryPicker({ open, onOpenChange, value, description, categorie
       options={options}
       value={value}
       description={description}
+      onChoose={onValueChange}
+    />
+  );
+}
+
+function SavedWalletPicker({ open, onOpenChange, value, accounts, anchorRef, onValueChange }) {
+  const options = accounts
+    .filter((account) => account.isActive !== false)
+    .map((account) => ({
+      value: account.id,
+      label: account.ownerLabel ? `${account.name} · ${account.ownerLabel}` : account.name
+    }));
+  return (
+    <CategoryPickerHost
+      open={open}
+      onOpenChange={onOpenChange}
+      anchorRef={anchorRef}
+      returnFocusRef={anchorRef}
+      title={askCopy.card.rows.wallet}
+      options={options}
+      value={value}
       onChoose={onValueChange}
     />
   );

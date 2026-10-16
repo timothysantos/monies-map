@@ -723,7 +723,7 @@ export function findPerson(value: unknown, context: AskTurnContext): AskTurnPers
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!name) return null;
   if (["i", "me", "my", "mine", "myself", "i'm", "im", "i am"].includes(name)) {
-    const viewer = context.people.find((person) => person.id === context.viewId);
+    const viewer = currentPerson(context);
     return viewer ?? "unknown";
   }
   // Household order is owner first.
@@ -736,8 +736,16 @@ export function findWallet(value: unknown, context: AskTurnContext): AccountDto 
   const name = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (!name) return null;
   const active = context.entry.accounts.filter((account) => account.isActive);
-  const match = matchName(name, active.map((account) => account.name));
-  return match.kind === "match" ? active[match.index] : "unknown";
+  // "my UOB One card" must not ask between identically named household
+  // wallets. It means the person behind this Ask session, including a joint
+  // wallet they can use. We only narrow when the person is known.
+  const viewer = /\b(?:my|mine)\b/i.test(name) ? currentPerson(context) : null;
+  const candidates = viewer
+    ? active.filter((account) => account.ownerPersonId === viewer.id || account.isJoint)
+    : active;
+  const choices = candidates.length ? candidates : active;
+  const match = matchName(name, choices.map((account) => account.name));
+  return match.kind === "match" ? choices[match.index] : "unknown";
 }
 
 export function findCategory(value: unknown, context: AskTurnContext): string | null | "unknown" {
@@ -1470,7 +1478,19 @@ export function monthLabel(month: string) {
 }
 
 export function viewerName(context: AskTurnContext) {
-  return context.people.find((person) => person.id === context.viewId)?.name ?? null;
+  return currentPerson(context)?.name ?? null;
+}
+
+function currentPerson(context: AskTurnContext) {
+  const byView = context.people.find((person) => person.id === context.viewId);
+  if (byView) return byView;
+  const byShortcut = context.entry.viewerName
+    ? context.people.find((person) => person.name === context.entry.viewerName)
+    : null;
+  if (byShortcut) return byShortcut;
+  return context.focus?.kind === "saved_entry"
+    ? context.people.find((person) => person.id === context.focus.entry.payerPersonId) ?? null
+    : null;
 }
 
 function walletOwner(account: AccountDto, people: AskTurnPerson[]) {
