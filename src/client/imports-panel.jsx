@@ -64,6 +64,7 @@ import { saveAccount } from "./accounts-api";
 import { inspectCsv } from "../lib/csv";
 import {
   parseCitibankActivityCsv,
+  parseHsbcActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
   canRecognizeCitibankActivityCsv,
@@ -972,6 +973,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
       return {
         parsed: parseOcbcActivityCsv(nextText, file.name, activityContext),
+        sourceType: "csv"
+      };
+    }
+
+    if (csvKind === "hsbc-activity-csv") {
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
+      return {
+        parsed: parseHsbcActivityCsv(nextText, file.name, activityContext),
         sourceType: "csv"
       };
     }

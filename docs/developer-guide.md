@@ -1607,6 +1607,10 @@ comparison use `post_date`.
   but they are no longer required. In the Import Inbox multi-file flow, the
   user does not need to rename files before dropping them. The trailing card
   number is reduced to the last four digits in the note.
+- HSBC mid-cycle Transaction History CSV files are headerless too. The parser
+  uses the posting date and final SGD amount, retains the purchase date and
+  original-currency amount in the note, and recognises the export from its
+  HSBC filename or an HSBC credit-card context.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
   with withdrawal and deposit columns, so the app can recognize them from
   either the filename or the OCBC account-details and transaction-history

@@ -70,7 +70,9 @@ Imports owns:
   back from it leaves that review as it is and takes the rolled-back file
   off the file chips ("File i of n" follows). The last file commits with its
   own words and shows the full Done card (what changed per card, with
-  rollback). A plain CSV, opened from the queue or dropped on its own, is
+  rollback). A recognised bank activity CSV, including HSBC's headerless
+  mid-cycle Transaction History export, is parsed before review; a plain CSV,
+  opened from the queue or dropped on its own, is
   named by its file name (its summary reads "{file} saved"), unless the user
   typed a source label or took one from the inbox. A failed commit opens nothing; the refresh after a commit runs
   through `runBackgroundRefresh`, so a failure keeps the commit and raises the

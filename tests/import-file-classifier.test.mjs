@@ -75,6 +75,17 @@ test("classifyImportFile routes UOB/OCBC/Citi CSV variants explicitly", () => {
     text: "Account details for: OCBC",
     activityContext: ocbcContext
   }), "ocbc-activity-csv");
+
+  const hsbcActivityText = readFileSync(
+    new URL("./fixtures/hsbc-activity/hsbc_midcycle_TransactionHistory-sanitized.csv", import.meta.url),
+    "utf8"
+  );
+  assert.equal(classifyImportFile({
+    fileName: "hsbc_midcycle_TransactionHistory.csv",
+    fileType: "text/csv",
+    text: hsbcActivityText,
+    activityContext: {}
+  }), "hsbc-activity-csv");
 });
 
 test("classifyImportFile recognizes OCBC 360 exports with account preamble and compact SGD headers", () => {

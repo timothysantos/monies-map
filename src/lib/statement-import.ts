@@ -9,6 +9,7 @@ import {
   canRecognizeOcbcActivityCsv,
   parseOcbcActivityCsv
 } from "./statement-import/ocbc-activity-csv";
+import { canRecognizeHsbcActivityCsv, parseHsbcActivityCsv } from "./statement-import/hsbc-activity-csv";
 import { canParseIfastStatement, parseIfastWrapStatement } from "./statement-import/ifast";
 import { canParseStashawayStatement, parseStashawayStatement } from "./statement-import/stashaway";
 import { parseOcbc360Statement, parseOcbcCreditCardStatement, parseOcbcDepositStatement } from "./statement-import/ocbc";
@@ -27,10 +28,12 @@ import { parseCurrentTransactionSpreadsheet } from "./statement-import/xls";
 export {
   canParseCitibankActivityCsv,
   canRecognizeCitibankActivityCsv,
+  canRecognizeHsbcActivityCsv,
   canParseOcbcActivityCsv,
   canRecognizeOcbcActivityCsv,
   joinOcrTsvPasses,
   parseCitibankActivityCsv,
+  parseHsbcActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
   statementRowsToCsv

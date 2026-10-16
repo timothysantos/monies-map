@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { canRecognizeCitibankActivityCsv, parseCitibankActivityCsv, parseStatementText } from "../src/lib/statement-import.ts";
+import { canRecognizeCitibankActivityCsv, parseCitibankActivityCsv, parseHsbcActivityCsv, parseStatementText } from "../src/lib/statement-import.ts";
 import { parseOcbcActivityCsv } from "../src/lib/statement-import.ts";
 import { parseCurrentTransactionSpreadsheet } from "../src/lib/statement-import/xls.ts";
 
@@ -369,6 +369,38 @@ test("parseCitibankActivityCsv recognizes pasted headerless Citi activity from s
       type: "expense"
     }
   ]);
+});
+
+test("parseHsbcActivityCsv preserves a mid-cycle HSBC activity export", () => {
+  const parsed = parseHsbcActivityCsv(
+    readTextFixture("./fixtures/hsbc-activity/hsbc_midcycle_TransactionHistory-sanitized.csv"),
+    "hsbc_midcycle_TransactionHistory.csv",
+    { accountName: "HSBC Visa Revolution", accountKind: "credit_card", institution: "HSBC" }
+  );
+
+  assert.equal(parsed.parserKey, "hsbc_credit_card_activity_csv");
+  assert.equal(parsed.rows.length, 5);
+  assert.deepEqual(parsed.rows[0], {
+    date: "2026-10-06",
+    description: "PAYMENT VIA UOB VISA DIRECT",
+    expense: "",
+    income: "218.35",
+    account: "HSBC Visa Revolution",
+    category: "Transfer",
+    note: "txn date: 2026-10-05; card ending: 1234; original: 218.35 SGD",
+    type: "transfer"
+  });
+  assert.deepEqual(parsed.rows.at(-1), {
+    date: "2026-10-15",
+    description: "EXAMPLE GROCER SINGAPORE",
+    expense: "16.90",
+    income: "",
+    account: "HSBC Visa Revolution",
+    category: "Groceries",
+    note: "txn date: 2026-10-13; card ending: 1234; original: -16.90 SGD",
+    type: "expense"
+  });
+  assert.match(parsed.rows.find((row) => row.date === "2026-10-13")?.note ?? "", /original: -21\.80 USD/);
 });
 
 test("parseStatementText keeps OCBC 360 disclosure text out of transaction descriptions", () => {
