@@ -351,6 +351,7 @@ test("add to splits opens the group picker without waiting for the freshness ref
   });
   await postJson(page, "/api/splits/groups/create", { name: "Holiday" });
   await postJson(page, "/api/splits/groups/create", { name: "Home" });
+  await postJson(page, "/api/splits/groups/create", { name: "Away" });
 
   await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${createdEntry.entryId}`);
   const editor = page.locator(".entry-inline-editor").first();
@@ -365,6 +366,12 @@ test("add to splits opens the group picker without waiting for the freshness ref
   const picker = page.getByRole("dialog", { name: "Add to splits" });
   await expect(picker).toBeVisible({ timeout: 1000 });
   await expect(picker.getByRole("radio", { name: "Holiday" })).toBeVisible();
+  const groupChoices = picker.locator(".entry-split-group-choice");
+  expect(await groupChoices.count()).toBeGreaterThan(3);
+  await expect(groupChoices.first()).toHaveCSS("cursor", "pointer");
+  const firstGroupBox = await groupChoices.first().boundingBox();
+  const fourthGroupBox = await groupChoices.nth(3).boundingBox();
+  expect(fourthGroupBox?.y).toBeGreaterThan(firstGroupBox?.y ?? 0);
   await expect(picker.getByRole("radio", { name: "0%", exact: true })).toBeVisible();
   await expect(picker.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
   await expect(picker.getByRole("button", { name: "Add to splits" })).toBeDisabled();

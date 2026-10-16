@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Nfc, RefreshCw, Sparkles, X } from "lucide-react";
+import { Check, Nfc, RefreshCw, Sparkles, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -349,7 +349,10 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName
                   className={`entry-split-group-choice${selectedGroupId === group.value ? " is-selected" : ""}`}
                   onClick={() => setSelectedGroupId(group.value)}
                 >
-                  {group.label}
+                  <span>{group.label}</span>
+                  <span className="entry-split-group-choice-mark" aria-hidden="true">
+                    {selectedGroupId === group.value ? <Check size={15} strokeWidth={3} /> : null}
+                  </span>
                 </button>
               ))}
             </div>

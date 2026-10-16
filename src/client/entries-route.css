@@ -27,7 +27,12 @@
   font-weight: 700;
 }
 
-.entry-split-group-list,
+.entry-split-group-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 178px), 1fr));
+  gap: 8px;
+}
+
 .entry-split-share-choices {
   display: flex;
   gap: 8px;
@@ -41,13 +46,31 @@
   border-radius: 12px;
   background: var(--paper);
   color: var(--ink);
+  cursor: pointer;
   font: inherit;
   padding: 8px 12px;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .entry-split-group-choice {
-  flex: 1 1 132px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
   text-align: left;
+}
+
+.entry-split-group-choice-mark {
+  display: grid;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--accent-ink, var(--ink));
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .entry-split-share-choice {
@@ -59,6 +82,32 @@
   border-color: var(--accent);
   background: rgb(var(--accent-strong-rgb) / 0.12);
   color: rgb(var(--accent-ink-rgb, 113 62 34));
+}
+
+.entry-split-group-choice.is-selected .entry-split-group-choice-mark {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-strong);
+}
+
+.entry-split-group-choice:focus-visible,
+.entry-split-share-choice:focus-visible {
+  outline: 3px solid rgb(var(--accent-strong-rgb) / 0.3);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .entry-split-group-choice:hover:not(:disabled),
+  .entry-split-share-choice:hover:not(:disabled) {
+    border-color: rgb(var(--accent-strong-rgb) / 0.5);
+    background: rgb(var(--accent-strong-rgb) / 0.08);
+    box-shadow: 0 8px 18px rgb(var(--accent-strong-rgb) / 0.12);
+    transform: translateY(-1px);
+  }
+
+  .entry-split-group-choice:hover:not(:disabled) .entry-split-group-choice-mark {
+    border-color: var(--accent);
+  }
 }
 
 .entry-split-picker-hint {
