@@ -7791,6 +7791,8 @@ th {
     margin-left: auto;
   }
 
+  #mobile-plan-actions:empty { display: none; }
+
   /* The bar's controls on one row (the context line may sit above it). */
   .mobile-context-main {
     display: flex;

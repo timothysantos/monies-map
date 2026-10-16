@@ -235,3 +235,16 @@ For the first slice refactor:
 
 If the code proves one of these decisions wrong, update this document before
 continuing the refactor.
+
+## Route-owned phone plan actions (2026-10-16)
+
+Keep the shell's island host free of plan draft state. Month portals its existing
+mode choice into it; Plan Studio portals Undo from its own held-change history.
+The route publishes saving state so both actions respect the existing save lock,
+even though the portal is outside its inert subtree. List edits retain their
+existing save semantics and do not gain a fabricated undo history.
+
+The filter context line and View and scope body share one resolved lazy boundary.
+A summary tap mounts/focuses search synchronously; the body captures the opening
+intent once. Avoid a second lazy import between that tap and field focus, and
+never re-derive activation intent while the person edits the open sheet.

@@ -1,5 +1,6 @@
 // First, so these rules load before the stylesheets the modules below import.
 import "./month-route.css";
+import { PlanIslandActions } from "./plan-island-actions";
 import { spendingMinor } from "../domain/category-offset";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -117,6 +118,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   // been shown, so changes held there survive a look at Tables.
   const [planMode, setPlanMode] = usePlanMode();
   const [studioDirty, setStudioDirty] = useState(false);
+  const [studioSaving, setStudioSaving] = useState(false);
   const studioShownRef = useRef(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const useMobileMonthSheet = useIsMonthSheetLayout();
@@ -1680,6 +1682,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           onPlanThisMonth={() => monthLead.setLeadView("plan")}
         />
       ) : <>
+      {hasPlanStudioRows ? <PlanIslandActions mode={effectivePlanMode} disabled={studioSaving} onModeChange={setPlanMode} /> : null}
       {hasPlanStudioRows && effectivePlanMode === "tables" ? (
         <PlanModeSwitch mode={planMode} onChange={setPlanMode} studioDirty={studioDirty} />
       ) : null}
@@ -1693,6 +1696,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           menuActionsFor={studioMenuActionsFor}
           onAddLine={handleStudioAddLine}
           onDirtyChange={setStudioDirty}
+          onSavingChange={setStudioSaving}
           month={view.monthPage.month}
           monthLabel={formatService.formatMonthLabel(view.monthPage.month)}
           categories={categories}

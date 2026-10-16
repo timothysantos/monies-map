@@ -872,9 +872,16 @@ list when relevant:
 
 Testing depth rule:
 
+- Broad local suites run sequentially on one machine. Focused checks come first;
+  reuse a build only while unchanged, and run final gates after the change settles.
+- The unit runner owns one immutable, freshly migrated/seeded D1 template per
+  run. Every persistence test still copies a private database. Custom fixture
+  vars bypass sharing; cleanup belongs to the runner, never an individual test.
+
 - `npm run verify` is the local merge gate: dependency audit, strict
   TypeScript, the client type check, lint, unit tests, production build, the
-  initial bundle budget, and the desktop/mobile smoke bundle
+  initial bundle budget, and the desktop/mobile smoke bundle; fast loading, CSS,
+  colour and guide contracts run before database-heavy unit tests
 - `npm run lint` (`eslint.config.js`, ESLint flat config) checks correctness
   only: `eslint:recommended`, unused locals and imports (parameters and props
   are ignored, `_` names are exempt), `eqeqeq` smart, self-compare, template

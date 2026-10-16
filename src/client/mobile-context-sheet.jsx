@@ -1,6 +1,6 @@
 import "./mobile-context-sheet.css";
 import "./mobile-sheet-head.css";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { mobileContextCopy as copy } from "./copy/mobile-context-copy";
@@ -11,9 +11,10 @@ import { BottomActions } from "./ui-components";
 // The island's context line shares this chunk (App.jsx loads it from here): the
 // sheet is where filters are set, so the chunk is usually loaded already, and
 // a chunk of its own would split React DOM out of the first screen.
-export { default as IslandContextLine } from "./mobile-context-line.jsx";
+import IslandContextLine from "./mobile-context-line.jsx";
+export { IslandContextLine };
 
-const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
+import { EntriesFilterStack } from "./entries-filter-stack.jsx";
 
 // The inside of the phone's View and scope sheet, in the Lead · Support ·
 // Detail language (design.md, "Phone chrome"). Lead: who you are viewing, with the scope and
@@ -26,7 +27,7 @@ const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then(
 // and the URL; this only lays the inside out. The person chip comes in as an
 // element: importing App's own modules here would make this chunk import the
 // entry chunk and split the first screen into more files.
-export default function MobileContextSheetBody({
+function MobileContextSheetBody({
   viewLabel,
   personChip,
   people,
@@ -52,6 +53,13 @@ export default function MobileContextSheetBody({
       filtersRef.current?.scrollIntoView({ block: "start" });
     }
   }, [scrollToFilters]);
+  // Opening intent stays fixed while this sheet is edited.
+  const [initialTarget] = useState(() => scrollToFilters && filterProps?.island?.filterCount <= 2
+    ? filterProps.entryFilters.search ? "search"
+      : filterProps.entryFilters.categories?.length ? "category"
+        : filterProps.entryFilters.wallets?.length ? "wallet"
+          : filterProps.entryFilters.type ? "type" : ""
+    : "");
   return (
     <>
       <SheetSwipeDismiss onClose={onClose} />
@@ -110,9 +118,7 @@ export default function MobileContextSheetBody({
 
         {filterProps ? (
           <section ref={filtersRef} className="mobile-context-filters" aria-label={copy.filtersGroup}>
-            <Suspense fallback={null}>
-              <EntriesFilterStack {...filterProps} hideActions />
-            </Suspense>
+            <EntriesFilterStack {...filterProps} initialTarget={initialTarget} hideActions />
           </section>
         ) : null}
       </div>
@@ -126,4 +132,11 @@ export default function MobileContextSheetBody({
       />
     </>
   );
+}
+
+// Sharing one resolved lazy boundary with the visible line lets a tap mount
+// and focus the field synchronously, while mobile browsers still allow the
+// keyboard to open. The owner chip uses the same body without filter intent.
+export default function MobileContext(props) {
+  return props.contextLine ? <IslandContextLine {...props} /> : <MobileContextSheetBody {...props} />;
 }

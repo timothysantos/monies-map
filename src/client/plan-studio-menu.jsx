@@ -69,7 +69,7 @@ export function RowMenu({ row, actions }) {
   if (!items.length) return null;
   return (
     <>
-      <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Root modal open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
           <button type="button" className="ps-icon-button" aria-label={copy.menu.open(row.label)} aria-haspopup="menu" data-ps-menu-button>
             <MoreHorizontal size={18} aria-hidden="true" />

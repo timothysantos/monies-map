@@ -117,6 +117,10 @@ team conventions evolve.
   back what the last deploy shipped. `npm run deploy:*` enforces this
   (`scripts/check-deploy-source.mjs`); override with
   `ALLOW_DEPLOY_FROM_BRANCH=1` only in an emergency, and say why.
+- Run broad local suites sequentially: do not overlap `verify`, the full unit
+  suite, full browser suite, or performance measurements on the same machine.
+  Start with focused tests, reuse an unchanged build with `--skip-build`, then
+  run the final gates once the coherent change is ready.
 - Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
   unit and parser contracts, the production build, and the smoke bundle.
 - Keep `npm run lint` (correctness-only ESLint) and `npm run typecheck:client`

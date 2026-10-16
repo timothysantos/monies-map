@@ -9,6 +9,7 @@ const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 export function PeriodMonthPicker({
   triggerLabel,
   disabled = false,
+  modal = false,
   title,
   hint,
   yearsAriaLabel,
@@ -22,7 +23,7 @@ export function PeriodMonthPicker({
   onSelect
 }) {
   return (
-    <Popover.Root>
+    <Popover.Root modal={modal}>
       <Popover.Trigger asChild>
         <button type="button" className="period-range-segment" disabled={disabled}>
           {triggerLabel}

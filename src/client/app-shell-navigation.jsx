@@ -72,7 +72,7 @@ export function ShellRouteTabs({
     >
       {primaryTabs.map((tab) => renderTabLink(tab, tab.phoneOnly ? "tab tab-phone-only" : "tab"))}
       {secondaryTabs.map((tab) => renderTabLink(tab, "tab tab-secondary"))}
-      <Popover.Root>
+      <Popover.Root modal={selectedTabId === "month" || selectedTabId === "summary"}>
         <Popover.Trigger asChild>
           <button type="button" className={`tab tab-overflow-trigger ${secondaryTabs.some((tab) => isRouteTabActive(tab, selectedTabId)) ? "is-active" : ""}`} aria-label="More pages">
             <Ellipsis size={18} />

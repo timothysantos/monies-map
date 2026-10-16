@@ -1375,3 +1375,14 @@ scroll position stable while context appears; 44px actions; polite status;
 reduced motion; desktop exclusion; Month return to the current month; and
 Splits search clearing without leaving the group. Unit tests prove summary
 wording, counts, empty filters, long strings and accessible button names.
+
+## Contextual plan actions and safe popup dismissal
+
+`plan-studio-v2.spec.js` covers pinned-info dismissal over a slider, row and
+amount menus consuming outside presses, figure-menu dismissal, a second tap
+editing normally, island Undo restoring the same draft, 44px targets, unchanged
+default-scope island height and a visible non-default scope. Mode switching keeps
+the existing history. `island-context.spec.js` covers direct search focus,
+category-picker opening and the person chip opening without search focus.
+`d1-template-sharing.test.mjs` proves private writes, harmless per-file disposal,
+and custom-fixture isolation when a test run shares seed setup.

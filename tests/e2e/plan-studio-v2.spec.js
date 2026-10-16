@@ -61,6 +61,39 @@ async function allRows(page, month = MONTH) {
 test.describe("Plan Studio v2 on desktop", () => {
   test.use({ viewport: { width: 1440, height: 1000 } });
 
+  for (const popup of ["menu", "amount"]) {
+    test(`${popup} dismisses without editing the slider behind it`, async ({ page }) => {
+      await seed(page);
+      await open(page);
+      const food = row(page, "Food");
+      const slider = food.getByRole("slider");
+      await slider.scrollIntoViewIfNeeded();
+      const before = await slider.getAttribute("aria-valuenow");
+      const box = await slider.boundingBox();
+      if (popup === "menu") await food.locator("[data-ps-menu-button]").click();
+      else await planned(page, "Food").click();
+      await expect(page.locator(popup === "menu" ? ".ps-menu" : ".ps-pop:has(.ps-amount-field)")).toBeVisible();
+      await page.mouse.click(box.x + 10, box.y + 20);
+      await expect(page.locator(popup === "menu" ? ".ps-menu" : ".ps-pop:has(.ps-amount-field)")).toHaveCount(0);
+      await expect(slider).toHaveAttribute("aria-valuenow", before);
+    });
+  }
+
+  test("the header period picker consumes a dismissal click on a slider", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 6000 });
+    await seed(page);
+    await open(page);
+    const slider = row(page, "Food").getByRole("slider");
+    const before = await slider.getAttribute("aria-valuenow");
+    const box = await slider.boundingBox();
+    await page.locator(".control-bar .period-range-segment").first().click();
+    await expect(page.locator(".period-picker-popover")).toBeVisible();
+    expect(box.y + 20).toBeLessThan(6000);
+    await page.mouse.click(box.x + 10, box.y + 20);
+    await expect(page.locator(".period-picker-popover")).toHaveCount(0);
+    await expect(slider).toHaveAttribute("aria-valuenow", before);
+  });
+
   test("one list grouped by what the money does: dated lines sit in Spend with a due tag", async ({ page }) => {
     await seed(page);
     await open(page);
@@ -416,6 +449,118 @@ test.describe("Plan Studio v2 on desktop", () => {
 test.describe("Plan Studio v2 on a phone", () => {
   test.use({ ...iPhone13, hasTouch: true });
 
+  test("island Undo shares the slider draft and List returns to held changes", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    const slider = row(page, "Food").getByRole("slider");
+    const before = await slider.getAttribute("aria-valuenow");
+    const baseline = await page.locator(".mobile-context-sticky-bar").boundingBox();
+    await typeAmount(page, "Food", "1234");
+    await expect(slider).toHaveAttribute("aria-valuenow", "1234");
+    const island = page.locator(".mobile-context-sticky-bar");
+    await expect(island.locator("[data-plan-island-undo]")).toBeVisible();
+    const changed = await island.boundingBox();
+    expect(Math.abs(changed.height - baseline.height)).toBeLessThanOrEqual(1);
+    for (const action of await island.locator("#mobile-plan-actions button").all()) {
+      const box = await action.boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.x + box.width).toBeLessThanOrEqual(changed.x + changed.width);
+    }
+    await island.locator("[data-plan-island-undo]").click();
+    await expect(slider).toHaveAttribute("aria-valuenow", before);
+    await expect(island.locator("[data-plan-island-undo]")).toHaveCount(0);
+    await expect(island.locator("[data-plan-island-mode]")).toBeFocused();
+    await island.locator("[data-plan-island-mode]").click();
+    await expect(tables(page)).toBeVisible();
+    await expect(island.locator("[data-plan-island-mode]")).toHaveText("Sliders");
+    await island.locator("[data-plan-island-mode]").click();
+    await expect(studio(page)).toBeVisible();
+  });
+
+  test("island actions respect a plan save in flight", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    await typeAmount(page, "Food", "1234");
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    await page.route("**/api/month-plan/apply-changes", async (route) => { await held; await route.continue(); });
+    const sent = page.waitForRequest("**/api/month-plan/apply-changes");
+    await saveButton(page).click();
+    await sent;
+    const island = page.locator(".mobile-context-sticky-bar");
+    try {
+      await expect(island.locator("[data-plan-island-undo]")).toBeDisabled();
+      await expect(island.locator("[data-plan-island-mode]")).toBeDisabled();
+    } finally {
+      release();
+    }
+    await expect(studio(page)).not.toHaveAttribute("aria-busy", "true");
+    await expect(island.locator("[data-plan-island-undo]")).toHaveCount(0);
+    await expect(island.locator("[data-plan-island-mode]")).toBeEnabled();
+  });
+
+  test("non-default scope stays visible beside contextual plan actions", async ({ page }) => {
+    await seed(page);
+    await open(page, URL.replace("direct_plus_shared", "direct"));
+    const island = page.locator(".mobile-context-sticky-bar");
+    await expect(island.locator(".mobile-context-scope")).toHaveText("Direct");
+    await expect(island.locator(".mobile-context-scope")).toBeVisible();
+    await expect(island.locator("[data-plan-island-mode]")).toBeVisible();
+    const scope = await island.locator(".mobile-context-scope").boundingBox();
+    const action = await island.locator("[data-plan-island-mode]").boundingBox();
+    expect(action.y + action.height).toBeLessThanOrEqual(scope.y);
+  });
+
+  test("a figure menu consumes a dismissal tap on a slider", async ({ page }) => {
+    await seed(page);
+    await open(page, HISTORY_URL);
+    const food = row(page, "Food");
+    const slider = food.getByRole("slider");
+    await slider.scrollIntoViewIfNeeded();
+    const before = await slider.getAttribute("aria-valuenow");
+    await food.locator(".ps-row-figure").click();
+    await expect(page.locator(".figure-menu")).toBeVisible();
+    const box = await slider.boundingBox();
+    await page.touchscreen.tap(box.x + 20, box.y + 20);
+    await expect(page.locator(".figure-menu")).toHaveCount(0);
+    await expect(slider).toHaveAttribute("aria-valuenow", before);
+  });
+
+  test("More pages locks background scrolling until dismissed", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    const slider = row(page, "Food").getByRole("slider");
+    const before = await slider.getAttribute("aria-valuenow");
+    await page.getByRole("button", { name: "More pages" }).tap();
+    await expect(page.locator(".tab-overflow-popover")).toBeVisible();
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(20, 200);
+    await page.mouse.wheel(0, 800);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(scrollBefore, 0);
+    await page.touchscreen.tap(20, 200);
+    await expect(page.locator(".tab-overflow-popover")).toHaveCount(0);
+    await expect(slider).toHaveAttribute("aria-valuenow", before);
+  });
+
+  test("dismissing pinned information on a slider consumes the tap", async ({ page }) => {
+    await seed(page);
+    await open(page);
+    const food = row(page, "Food");
+    const slider = food.getByRole("slider");
+    await slider.scrollIntoViewIfNeeded();
+    const before = await slider.getAttribute("aria-valuenow");
+    await food.locator("[data-ps-info-button]").tap();
+    await expect(popover(page)).toBeVisible();
+    const box = await slider.boundingBox();
+    await page.touchscreen.tap(box.x + 20, box.y + 20);
+    await expect(popover(page)).toHaveCount(0);
+    await expect(slider).toHaveAttribute("aria-valuenow", before);
+    await page.touchscreen.tap(box.x + 20, box.y + 20);
+    await expect(slider).not.toHaveAttribute("aria-valuenow", before);
+  });
+
   test("the info button pins the popover, a second tap closes it, and every new control is 44px", async ({ page }) => {
     await seed(page);
     await open(page, HISTORY_URL);
@@ -423,7 +568,8 @@ test.describe("Plan Studio v2 on a phone", () => {
     await info.tap();
     await expect(popover(page)).toBeVisible();
     await expect(popover(page)).toContainText("Last month");
-    await info.tap();
+    const box = await info.boundingBox();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
     await expect(popover(page)).toHaveCount(0);
     const small = await page.evaluate(() => [...document.querySelectorAll("[data-ps-info-button], [data-ps-menu-button], [data-ps-add], [data-plan-mode-switch] input, [data-ps-extra-add]")]
       .filter((element) => { const r = element.getBoundingClientRect(); return r.width > 0 && (r.height < 43.5 || r.width < 43.5); })

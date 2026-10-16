@@ -23,6 +23,7 @@ const names = {
 };
 
 export const figureCopy = {
+  closeMenu: "Close figure actions",
   names,
   // The Entries lead: "Invested · Jun 2025 – May 2026".
   eyebrow: (figure, periodLabel) => `${names[figure] ?? names.spent} · ${periodLabel}`,

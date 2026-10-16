@@ -925,3 +925,14 @@ its padding. Month's return-to-current-month action stays within the displayed
 range. Splits clears its search through the group strip. No API, DTO, query,
 persistence, or optional AI boundary changes. See design.md, "Island context line",
 and `tests/e2e/island-context.spec.js` for layout and continuity contracts.
+
+The mobile filter summary and sheet share one resolved lazy component so a
+summary tap can synchronously mount and focus search. Opening intent is captured
+once per sheet visit; the owner chip has none. The Month route portals mode
+switching into the shell's island host; Plan Studio portals its own Undo callback
+only while visible and editable. Draft/history ownership stays in Plan Studio.
+Pinned slider explanations and figure action menus consume outside presses;
+interactive row/amount popovers and Summary/Month header menus are modal.
+Live drag hints stay passive.
+The unit runner shares only a freshly seeded template across test files, with
+private real-D1 copies per test and a separate path for custom fixtures.

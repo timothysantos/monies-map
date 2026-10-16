@@ -131,6 +131,7 @@ export const planStudioCopy = {
   // a press on a phone, and while a slider moves). Plain words; no figures
   // at all while money is hidden.
   info: {
+    close: "Close plan information",
     button: (label) => `Details for ${label}`,
     spent: { spend: "spent", income: "received", save: "kept", invest: "moved" },
     lastMonth: "Last month",

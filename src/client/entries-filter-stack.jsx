@@ -16,6 +16,7 @@ export function EntriesFilterStack({
   hideToggle = false,
   hideRefresh = false,
   hideActions = false,
+  initialTarget = "",
   onToggleMobileFilters,
   onChangeFilter,
   onChangeSearch,
@@ -24,9 +25,21 @@ export function EntriesFilterStack({
   onDone
 }) {
   const isOpen = hideToggle ? true : showMobileFilters;
+  const stackRef = useRef(null);
+  // Run only when this sheet mounts, never when typing updates its URL props.
+  useLayoutEffect(() => {
+    if (!initialTarget) return;
+    const control = stackRef.current?.querySelector(initialTarget === "search"
+      ? ".search-filter-input"
+      : `[data-filter-target="${initialTarget}"] button`);
+    if (!control) return;
+    control.scrollIntoView({ block: "nearest" });
+    if (initialTarget === "search") control.focus({ preventScroll: true });
+    else control.click();
+  }, [initialTarget]);
 
   return (
-    <section className={`entries-filter-stack ${isOpen ? "is-open" : ""}`}>
+    <section ref={stackRef} className={`entries-filter-stack ${isOpen ? "is-open" : ""}`}>
       {!hideToggle ? (
         <button type="button" className="entries-filter-toggle" onClick={onToggleMobileFilters}>
           <span>{activeEntryFilterCount ? `Filters · ${activeEntryFilterCount}` : "Filters"}</span>
@@ -53,40 +66,46 @@ export function EntriesFilterStack({
           listId="entries-search-suggestions"
           onChange={(value) => onChangeSearch?.(value) ?? onChangeFilter("search", value)}
         />
-        <FilterMultiSelect
-          label={messages.entries.wallet}
-          values={entryFilters.wallets}
-          options={wallets}
-          emptyLabel={messages.entries.allWallets}
-          selectionLabel={(selectedOptions) => {
-            if (selectedOptions.length === 1) {
-              return selectedOptions[0].label;
-            }
-            return `${selectedOptions.length} wallets`;
-          }}
-          onChange={(values) => onChangeFilter("wallet", values)}
-        />
-        <FilterMultiSelect
-          label={messages.entries.category}
-          values={entryFilters.categories}
-          options={entryCategoryOptions}
-          emptyLabel={messages.entries.allCategories}
-          categoryPick
-          selectionLabel={(selectedOptions) => {
-            if (selectedOptions.length === 1) {
-              return selectedOptions[0].label;
-            }
-            return `${selectedOptions.length} categories`;
-          }}
-          onChange={(values) => onChangeFilter("category", values)}
-        />
-        <FilterSelect
-          label={messages.entries.type}
-          value={entryFilters.type}
-          options={["expense", "income", "transfer"]}
-          emptyLabel={messages.entries.allTypes}
-          onChange={(value) => onChangeFilter("type", value)}
-        />
+        <div className="entries-filter-target" data-filter-target="wallet">
+          <FilterMultiSelect
+            label={messages.entries.wallet}
+            values={entryFilters.wallets}
+            options={wallets}
+            emptyLabel={messages.entries.allWallets}
+            selectionLabel={(selectedOptions) => {
+              if (selectedOptions.length === 1) {
+                return selectedOptions[0].label;
+              }
+              return `${selectedOptions.length} wallets`;
+            }}
+            onChange={(values) => onChangeFilter("wallet", values)}
+          />
+        </div>
+        <div className="entries-filter-target" data-filter-target="category">
+          <FilterMultiSelect
+            label={messages.entries.category}
+            values={entryFilters.categories}
+            options={entryCategoryOptions}
+            emptyLabel={messages.entries.allCategories}
+            categoryPick
+            selectionLabel={(selectedOptions) => {
+              if (selectedOptions.length === 1) {
+                return selectedOptions[0].label;
+              }
+              return `${selectedOptions.length} categories`;
+            }}
+            onChange={(values) => onChangeFilter("category", values)}
+          />
+        </div>
+        <div className="entries-filter-target" data-filter-target="type">
+          <FilterSelect
+            label={messages.entries.type}
+            value={entryFilters.type}
+            options={["expense", "income", "transfer"]}
+            emptyLabel={messages.entries.allTypes}
+            onChange={(value) => onChangeFilter("type", value)}
+          />
+        </div>
         {!hideActions ? (
           <div className="entries-filter-reset">
             <button type="button" className="subtle-action" onClick={onResetFilters}>
@@ -148,6 +167,7 @@ export function SearchFilterInput({
       <span className="search-filter-control">
         <Search size={16} aria-hidden="true" />
         <input
+          aria-label={label}
           className="table-edit-input search-filter-input"
           value={draft}
           placeholder={placeholder}

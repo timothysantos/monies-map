@@ -1,5 +1,5 @@
 // A real local D1 (workerd via Miniflare) for persistence contract tests.
-// schema.sql is applied and the demo household seeded once per test file;
+// schema.sql and demo seeding run once per unit run (or standalone file);
 // each test then gets its own copy of that database, so tests can write
 // freely and compare whole-database dumps.
 import assert from "node:assert/strict";
@@ -54,6 +54,12 @@ function openMiniflare(config, persistTo) {
 export async function createSeededTemplate({ vars = {} } = {}) {
   const baseConfig = await readTestConfig();
   const config = { ...baseConfig, vars: { ...baseConfig.vars, ...vars } };
+  // The unit runner owns this immutable template and removes it after every
+  // child finishes. Tests still copy it into a private database below. A
+  // custom fixture always takes the original migration + seed path.
+  if (process.env.MONIES_TEST_D1_TEMPLATE && Object.keys(vars).length === 0) {
+    return { config, persistTo: process.env.MONIES_TEST_D1_TEMPLATE, dispose: async () => {} };
+  }
   const persistTo = await mkdtemp(path.join(os.tmpdir(), "monies-map-d1-template-"));
   const migration = spawnSync(
     process.execPath,

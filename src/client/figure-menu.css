@@ -105,3 +105,15 @@
   color: var(--text);
   font-weight: 600;
 }
+
+.figure-menu-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}

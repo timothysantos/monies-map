@@ -987,3 +987,5 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   position: relative;
   z-index: 1;
 }
+
+.entries-filter-target { display: contents; }

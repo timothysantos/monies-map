@@ -34,6 +34,9 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
+    // A missing/covered control should fail promptly; long workflow and API
+    // waits retain their own explicit timeouts.
+    actionTimeout: 15_000,
     baseURL,
     storageState: PLAN_CHOSEN,
     trace: "on-first-retry"

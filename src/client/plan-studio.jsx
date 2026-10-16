@@ -1,4 +1,5 @@
 import "./plan-studio.css";
+import { PlanIslandUndo } from "./plan-island-actions";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { planStudioCopy } from "./copy/plan-studio-copy";
@@ -112,13 +113,13 @@ function noticeText(notice, fmt) {
  *   readOnly?: boolean, readOnlyHint?: string, figures: null | { income: number, spending: number, invested: number, kept: number },
  *   today: string, onSave: (request: { changes: any[], updates: any[], created: Array<{ sectionKey: string, row: any }> }) => Promise<void>,
  *   menuActionsFor?: (row: any) => any, onAddLine?: (kind: "income" | "line") => void,
- *   onDirtyChange?: (dirty: boolean) => void, visible?: boolean, modeSwitch?: any,
+ *   onDirtyChange?: (dirty: boolean) => void, onSavingChange?: (saving: boolean) => void, visible?: boolean, modeSwitch?: any,
  *   makeLine?: (kind: "income" | "save", plannedMinor: number) => any, ownerName?: string
  * }} props
  */
 export default function PlanStudio({
   month, monthLabel, categories, incomeRows, planSections, figures, today, onSave, readOnly = false, readOnlyHint = "",
-  menuActionsFor = () => ({}), onAddLine = undefined, onDirtyChange = undefined, visible = true,
+  menuActionsFor = () => ({}), onAddLine = undefined, onDirtyChange = undefined, onSavingChange = undefined, visible = true,
   modeSwitch = null, makeLine = undefined, ownerName = ""
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
@@ -154,6 +155,7 @@ export default function PlanStudio({
   const changed = changedKeys(rows, plan);
   const dirtyNow = changed.length > 0;
   useEffect(() => { onDirtyChange?.(dirtyNow); }, [dirtyNow, onDirtyChange]);
+  useEffect(() => { onSavingChange?.(save.phase === "saving"); }, [onSavingChange, save.phase]);
   // Held changes, an open what-if and a save in flight hold back optional
   // background work, as every other open editor on the page does.
   useRouteWorkBusy(changed.length > 0 || Boolean(state.whatIf) || save.phase === "saving");
@@ -298,6 +300,7 @@ export default function PlanStudio({
       hidden={!visible || undefined}
       inert={saving || !visible || undefined}
     >
+      {visible && !readOnly && state.history.length > 0 ? <PlanIslandUndo label={copy.toolbar.undo} disabled={saving} onUndo={() => send({ type: "undo" })} /> : null}
       {readOnly ? (
         <div className="ps-toolbar is-readonly-bar">
           <p className="ps-notice is-readonly" data-ps-readonly>{readOnlyHint}</p>

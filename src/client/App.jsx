@@ -4,7 +4,7 @@
 import "./account-display";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Receipt,
@@ -123,7 +123,6 @@ import { publishAppShell } from "./app-shell-watch";
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
-const IslandContextLine = lazy(() => import("./mobile-context-sheet.jsx").then((module) => ({ default: module.IslandContextLine })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -258,8 +257,10 @@ export function App() {
     setMobileContextOpen(true);
   }, []);
   const openMobileFilters = useCallback(() => {
-    setMobileContextToFilters(true);
-    setMobileContextOpen(true);
+    flushSync(() => {
+      setMobileContextToFilters(true);
+      setMobileContextOpen(true);
+    });
   }, []);
   const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
     setEntriesMobileFilterProps((current) => areEntriesMobileFilterPropsEqual(current, nextProps) ? current : nextProps);
@@ -3164,6 +3165,7 @@ export function App() {
               ) : isDetailMonthTab ? (
                 <strong className="period-range-value">
                   <PeriodMonthPicker
+                    modal={isSummaryTab}
                     triggerLabel={periodLabel}
                     disabled={isSplitsTab}
                     title="Month"
@@ -3181,6 +3183,7 @@ export function App() {
               ) : summaryRangePage?.rangeStartMonth && summaryRangePage?.rangeEndMonth ? (
                 <strong className="period-range-value">
                   <PeriodMonthPicker
+                    modal={isSummaryTab}
                     triggerLabel={formatMonthLabel(summaryRangePage.rangeStartMonth)}
                     title="Start month"
                     hint="Choose the first month in the summary range."
@@ -3195,6 +3198,7 @@ export function App() {
                   />
                   <span className="period-range-separator" aria-hidden="true">-</span>
                   <PeriodMonthPicker
+                    modal={isSummaryTab}
                     triggerLabel={formatMonthLabel(summaryRangePage.rangeEndMonth)}
                     title="End month"
                     hint="Choose the last month in the summary range."
@@ -3221,11 +3225,11 @@ export function App() {
       {/* The mobile sticky sheet mirrors the desktop chrome without forcing the user to scroll back to the top. */}
       {showMobileContextSticky ? (
         <section className="mobile-context-sticky-wrap" aria-label={stickyScopeConfig.label}>
-          <div className="mobile-context-sticky-bar">
+          <div className="mobile-context-sticky-bar" data-scope={stickyScopeConfig?.selectedKey}>
             <MobileContextStatus message={islandStatus} />
             {islandStacked ? (
               <div className="mobile-context-line is-stacked" ref={pageFlagRef(PAGE_FLAG.islandStacked)}>
-                <Suspense fallback={null}><IslandContextLine {...islandLineProps} /></Suspense>
+                <Suspense fallback={null}><MobileContextSheet contextLine {...islandLineProps} /></Suspense>
               </div>
             ) : null}
             <div className="mobile-context-main">
@@ -3282,7 +3286,8 @@ export function App() {
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
-            {islandInline ? <Suspense fallback={null}><IslandContextLine {...islandLineProps} /></Suspense> : null}
+            <span id="mobile-plan-actions" />
+            {islandInline ? <Suspense fallback={null}><MobileContextSheet contextLine {...islandLineProps} /></Suspense> : null}
             {showMobileMonthJump ? (
               <div className="mobile-month-jump" aria-label="Month navigation">
                 <button

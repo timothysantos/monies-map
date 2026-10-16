@@ -119,16 +119,16 @@ export function useInfoOpen() {
  * It is the same Radix popover as the exact-amount editor, placed under the
  * controls and kept inside the viewport. Hidden money renders no popover.
  */
-export function InfoPopover({ id, anchorProps, open, hidden, row, info, fmt, onDismiss, children }) {
+export function InfoPopover({ id, anchorProps, open, pinned = false, hidden, row, info, fmt, onDismiss, children }) {
   const shown = open && !hidden;
-  // The row's own state decides when it shows (hover, focus, the info button,
-  // a drag), so a press on the slider is never an "outside" press; only
-  // Escape closes it.
+  // A pinned explanation blocks dismissal taps from reaching the plan.
+  // Drag/hover previews have no shield, so the live thumb stays interactive.
   return (
     <Popover.Root open={shown}>
       <Popover.Anchor asChild>
         <div {...anchorProps}>{children}</div>
       </Popover.Anchor>
+      {shown && pinned ? <Popover.Portal><button type="button" className="ps-info-shield" aria-label={copy.close} onClick={onDismiss} /></Popover.Portal> : null}
       <Popover.Portal>
         <Popover.Content
           className="ps-pop ps-info-pop"

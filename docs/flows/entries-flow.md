@@ -243,3 +243,9 @@ Watch area:
 - An amount that is not a number still reads as zero in the card, as in
   the grid form; the update endpoint refuses it (see the zero-amount entry
   above), so the card keeps the draft and shows the reason.
+
+A filter-summary tap opens its relevant control: search receives focus in the
+tap's synchronous commit; category/account/type opens its existing picker.
+A summary of more than two filters opens the general filter area. The intent
+is fixed until the sheet closes, so typing or clearing inside it never opens
+another picker. The person chip always opens the plain View and scope sheet.

@@ -270,3 +270,5 @@ Historical records of finished work. Do not update them.
   completed import quality and transfer review tasks.
 - [`archive/route-data-code-flow.pdf`](archive/route-data-code-flow.pdf): PDF
   render of `route-data-code-flow.md`.
+
+- [`audits/contextual-actions.md`](audits/contextual-actions.md): slider popup dismissal, contextual filter focus, phone plan actions and repeated unit-setup measurements.

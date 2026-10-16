@@ -60,6 +60,32 @@ async function filterByCategory(page, name) {
 }
 
 test.describe("Entries on a phone", () => {
+  test("search summary focuses search; the person chip opens without a search keyboard @webkit", async ({ page }) => {
+    await phone(page);
+    await openUsable(page, `${ENTRIES}&entry_search=coffee`);
+    await page.locator(".mobile-context-line-text").click();
+    const sheet = page.locator(".mobile-context-dialog");
+    await expect(sheet.locator(".search-filter-input")).toBeFocused();
+    await sheet.getByRole("button", { name: "Done", exact: true }).last().click();
+    await page.locator(".mobile-context-trigger").click();
+    await expect(sheet.locator(".search-filter-input")).not.toBeFocused();
+  });
+
+  test("category summary opens the category picker directly @webkit", async ({ page }) => {
+    await phone(page);
+    await openUsable(page, `${ENTRIES}&entry_category=Groceries`);
+    await page.locator(".mobile-context-line-text").click();
+    const picker = page.getByRole("dialog", { name: "By category", exact: true });
+    const selected = picker.locator('[data-category-option="Groceries"]');
+    await expect(selected).toHaveAttribute("aria-selected", "true");
+    await selected.click();
+    await expect(selected).toHaveAttribute("aria-selected", "false");
+    await picker.getByRole("button", { name: "Done", exact: true }).click();
+    await page.locator(".mobile-context-dialog").getByRole("button", { name: "Done", exact: true }).last().click();
+    await expect.poll(() => new URL(page.url()).searchParams.has("entry_category")).toBe(false);
+    await expect(page.locator(".mobile-context-scope")).toHaveText("Direct + Shared");
+  });
+
   test("a category filter shows its name, the count and Clear in the same row; Clear keeps month and scope", async ({ page }) => {
     await phone(page);
     await addEntries(page);
@@ -116,7 +142,7 @@ test.describe("Entries on a phone", () => {
 
   test("the summary opens the filters, scrolled to them, and does not clear", async ({ page }) => {
     await phone(page);
-    await openUsable(page, `${ENTRIES}&entry_category=Groceries`);
+    await openUsable(page, `${ENTRIES}&entry_category=Groceries&entry_type=expense&entry_search=coffee`);
     const summary = page.locator(".mobile-context-line-text");
     await expect(summary).toBeVisible();
     await summary.click();

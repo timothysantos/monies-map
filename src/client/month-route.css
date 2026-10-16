@@ -576,3 +576,20 @@
   border-radius: 50%;
   background: var(--accent);
 }
+
+/* Route-owned actions share the phone island; non-default scope stays visible. */
+@media (max-width: 760px) {
+  #mobile-plan-actions:not(:empty) { display: flex; flex: 0 0 auto; }
+  .mobile-context-sticky-bar[data-scope="direct_plus_shared"]:has(> .mobile-context-main > #mobile-plan-actions:not(:empty)) .mobile-context-scope { display: none; }
+  .mobile-context-sticky-bar[data-scope="direct_plus_shared"]:has(> .mobile-context-main > #mobile-plan-actions:not(:empty)) .mobile-context-trigger { flex: 0 0 auto; }
+  .mobile-context-sticky-bar:has(> .mobile-context-main > .is-month) #mobile-plan-actions:not(:empty),
+  .mobile-context-sticky-bar:not([data-scope="direct_plus_shared"]):has(> .mobile-context-main > #mobile-plan-actions:not(:empty)) #mobile-plan-actions {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    right: 52px;
+    border: 1px solid var(--line);
+    border-radius: var(--chrome-radius);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
+  }
+}

@@ -154,7 +154,7 @@ export function MonthPanelHeader({
             ) : null}
           </>
         ) : (
-        <Popover.Root
+        <Popover.Root modal
           open={actionsOpen}
           onOpenChange={(open) => {
             if (!open) {

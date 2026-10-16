@@ -2098,6 +2098,12 @@ group). On Month and Summary the floating money toggle sits above the bar.
 
 On phones, narrowing Entries adds a plain summary and **Clear** (accessible
 name **Clear all filters**). The summary opens View and scope at its filters.
+Search focuses its input immediately; category, account and type summaries open
+that picker. An aggregate of more than two filters opens the general filters.
+The opening intent is fixed for that sheet visit, and the person chip always
+opens the plain view/scope sheet. The visible line and sheet use one resolved
+lazy boundary; filter focus is committed within the tap, without another lazy
+import delaying the keyboard.
 The person chip and month controls stay. For Direct + Shared (and the household),
 the summary replaces the secondary scope wording on the same row; the island
 keeps its height, with ellipsis only on the summary and 44px action targets.
@@ -2113,8 +2119,14 @@ month belongs to the displayed range. The return wording wraps inside its
 44px target to leave room for the month arrows. The month is already named in its control;
 a stacked context additionally says **Viewing Sep 2026**. All months has no
 extra context. Splits' existing floating group bar gains Clear while its search
-is active; the group picker remains a separate button. Desktop, Plan Studio and
-Ask retain their existing controls. The summary model lives with Entries;
+is active; the group picker remains a separate button. Desktop and Ask retain
+their existing contextual controls. In the Month Plan view the phone island also
+offers the other plan mode (Sliders/List), and Undo while the visible sliders
+have held changes. These are portals owned by Month and Plan Studio: the shell
+owns only the host, with no draft or copied history. Default scope makes room
+on the existing row; a non-default scope remains visible and the actions sit
+above, clear of the privacy button. Past-month context also moves plan actions
+above the row to preserve the month controls. The summary model lives with Entries;
 the context buttons load with the mobile context sheet rather than the first
 screen, and no server data or API contract changes.
 
@@ -3211,6 +3223,12 @@ details, matching entries and removing a line; "Add a line" adds one). Since v2
 the tables show only in the List view (Sliders | List), and the sliders stay mounted
 (hidden) while they do. Simple view never loads it.
 
+- Popup dismissal: pinned information, row menus, exact-amount popovers and
+  figure menus consume a dismissal press instead of forwarding it to a slider
+  or another plan control. Summary/Month header period and More pages menus
+  are modal too. Drag/hover/focus explanations remain passive so a
+  live thumb or keyboard edit can update its explanation. Phone amount editors
+  already use modal sheets. The next press after dismissal can edit normally.
 - Loading: `plan-studio.jsx` is its own chunk, imported by `month-panel.jsx`
   when Plan view renders; until it arrives an empty, invisible block
   (`.plan-studio-reserve`, 560 to 640 px) holds its place. Nothing is in the

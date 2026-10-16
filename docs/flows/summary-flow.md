@@ -157,3 +157,7 @@ Watch area:
 The All months island stays unchanged. Picking an older month opens Month;
 when the current month belongs to the displayed range, its island offers
 Back to this month through the existing month-choice navigation.
+
+Summary/Month header period and More pages popovers consume outside presses and
+lock background interaction until dismissed. A picked month uses Month's
+route-owned phone plan actions; All months has no slider draft or Undo action.

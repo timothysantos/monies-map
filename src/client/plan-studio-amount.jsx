@@ -166,7 +166,7 @@ export function AmountEditor({ label, valueMinor, savedMinor, fmt, disabled = fa
   }
 
   return (
-    <Popover.Root open={open} onOpenChange={(next) => (next ? openEditor() : close())}>
+    <Popover.Root modal open={open} onOpenChange={(next) => (next ? openEditor() : close())}>
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

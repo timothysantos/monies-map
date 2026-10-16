@@ -87,6 +87,7 @@ before. The presenter's walkthrough is
 npm run dev                  # local UI + Worker API
 npm run build                # production frontend bundle
 npm run verify               # audit, types, lint, unit, build, bundle budget, smoke
+npm run test:contracts       # fast loading, CSS, colour and guide contracts
 npm run test:unit            # unit and parser contracts
 npm run test:e2e:smoke       # smoke bundle on isolated stacks (part of verify)
 npm run test:e2e:sharded     # full browser suite on parallel isolated stacks
@@ -98,6 +99,25 @@ The full command reference, including database and deploy commands, is in
 `README.md` under "Command reference".
 
 # Testing
+
+## How can local testing avoid repeated setup?
+
+Start with `npm run test:contracts`, then the affected unit files and browser specs.
+The fast contracts run before database-heavy tests in `verify`. For example,
+`npm run test:unit -- tests/atomic-writes-plan-studio.test.mjs` or
+`npm run test:e2e:sharded -- --shards 1 tests/e2e/island-context.spec.js`.
+Use `--skip-build` only while the existing production build is unchanged.
+Run broad suites sequentially on one machine; overlapping full unit and browser
+runs competes for CPU and memory and can turn a short request into a timeout.
+The final merge gates still run all required checks. A missing or covered
+control fails after 15 seconds; full workflows still have two minutes and
+explicit long API/import waits keep their existing timeouts.
+
+The unit runner migrates and seeds one real local D1 template per run. Each
+persistence test copies it into its own private database; custom fixture
+variables still create a separate seed. The runner deletes the shared template
+when its children finish, so the next run always sees current application code.
+Repeated measurements are recorded in `docs/audits/contextual-actions.md`.
 
 ## How are the browser tests organised?
 

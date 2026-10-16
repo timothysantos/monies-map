@@ -88,3 +88,18 @@ before broadening warmup cache reuse.
 
 If a new refactor uncovers another repeated coupling pattern, add a row here
 before moving more code.
+
+## Plan controls outside the route's inert subtree
+
+Phone island actions are portals into the shell. They must honor the plan's
+saving state explicitly: the route's `inert` element does not cover the portal
+host. `plan-studio-v2.spec.js` holds a real plan save and proves Undo and the mode
+action disable, then recover after saving. The draft/history still belongs to
+Plan Studio; a shell action must never copy or reconstruct it.
+
+Popup dismissal tests use physical background coordinates. A modal intentionally
+hides background controls from accessibility queries, and a shield intentionally
+receives their first tap. Query a background control's box before opening a
+modal (or use its stable CSS hook for geometry), then assert its value after
+closing. The popup tests prove dismissal and the unchanged amount; pinned info
+also proves a second tap can edit. Live drag hints remain passive.

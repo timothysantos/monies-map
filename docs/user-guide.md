@@ -188,8 +188,9 @@ The app is designed for phones as well as desktops. The differences:
   bar.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
   When you filter Entries, this bar names the filters and how many entries
-  match. Tap those words to change the filters, or **Clear** to remove all of
-  them at once. Your person, month and scope stay. The usual **Direct + Shared**
+  match. Tap a search summary to go straight to the search box, or a category
+  summary to open the category choices. Tap the person chip to change view or
+  scope. **Clear** removes all filters at once. Your person, month and scope stay. The usual **Direct + Shared**
   words make room for the filters and return after Clear. **Direct** or
   **Shared** stays visible, with the filters on another row.
   When viewing an older month, **Back to this month** returns to the current
@@ -1429,7 +1430,8 @@ going and **What if I save more?** sit side by side (stacked on a phone).
   have spent so far and what is left, whether you are ahead of or behind where
   the line usually is today, and what your change does to **Left over**
   (for example, *+$40 → Left over $310*). It shows nothing while your money is
-  hidden.
+  hidden. When you pin the details open, tapping outside closes them without
+  changing the slider underneath. The next tap can change the plan.
 - **To type an exact amount, tap the amount.** A small box opens: type
   something like 137 or 137.50 and press Enter (Esc cancels). It shows the
   change from what is saved, and has quick **+$5, +$10, +$50** buttons.
@@ -1464,6 +1466,12 @@ going and **What if I save more?** sit side by side (stacked on a phone).
 ![The card a slider shows: last month, the average, so far, pace and what the change does to Left over](/faq/guide/desktop/thumbs/month-plan-studio-info.webp)
 
 ![Tapping a row's amount on a phone opens a sheet to type an exact amount](/faq/guide/phone/thumbs/phone-month-plan-studio.webp)
+
+On a phone, the floating bar offers **List** while you use sliders and
+**Sliders** while you use the list. After a slider change it also offers **Undo**,
+using the same held changes as the Undo above the plan. Switching views keeps
+those changes; **Save plan** still saves them together. A scope such as **Direct**
+or **Shared** stays visible.
 
 In the Household view Plan Studio is read-only, like the tables.
 Switch to your own name to change the plan.

@@ -1,4 +1,5 @@
 import "./figure-menu.css";
+import { figureCopy } from "./copy/figure-copy";
 import { figureMenu } from "./figure-menu-model";
 import { INSIGHT_LINE_ASK_EVENT } from "./insight-ask-event";
 
@@ -224,6 +225,17 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     });
     menu.appendChild(button);
   }
+  // In the slider plan an outside press is dismissal, never a plan edit.
+  // Other routes retain their existing figure-menu interaction.
+  const shield = document.querySelector("[data-plan-studio]:not([hidden])")
+    ? document.createElement("button") : null;
+  if (shield) {
+    shield.type = "button";
+    shield.className = "figure-menu-shield";
+    shield.setAttribute("aria-label", figureCopy.closeMenu);
+    shield.addEventListener("click", () => close({ restoreFocus: true }));
+    document.body.appendChild(shield);
+  }
   document.body.appendChild(menu);
   place(menu, trigger, point);
   trigger.setAttribute("aria-expanded", "true");
@@ -258,6 +270,7 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     menu,
     byHover: !focus,
     cleanup: () => {
+      shield?.remove();
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("click", onPress);
       menu.removeEventListener("focusout", onFocusOut);

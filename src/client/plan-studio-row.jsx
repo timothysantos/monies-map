@@ -96,6 +96,7 @@ export function StudioRow({
           id={infoId}
           anchorProps={{ className: "ps-row-ctl", ...popover.handlers }}
           open={popover.open}
+          pinned={popover.pinned}
           hidden={fmt.hidden}
           row={row}
           info={info}

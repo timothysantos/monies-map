@@ -1970,7 +1970,9 @@ design.md "Plan Studio"): one place to see where planned money in goes, to
 move money between jobs and to resize every plan row with a slider or an
 exact amount, saved together. It reads only the Month page DTO (planned
 income rows, planned items, budget buckets) and the lead's figures; it adds
-no table and no request except the save.
+no table and no request except the save. On phones the island's Undo uses the
+same held-change history as the plan toolbar; it does not undo saved list edits.
+Sliders/List switching preserves those held changes.
 
 Canonical terms:
 - `job`: a money job (see Money Job) as the studio draws it: `Money in`,
