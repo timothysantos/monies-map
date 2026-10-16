@@ -101,9 +101,10 @@ export function SplitsGroupStrip({
     scroller?.scrollTo({ left: 0 });
   }, [activeId, scroller]);
 
-  // On a phone the strip leaves the page when scrolled down; the bar takes over.
+  // When the strip leaves the page, its compact chooser preserves the active
+  // group on both touch and desktop screens.
   useEffect(() => {
-    if (!strip || !isMobile || typeof IntersectionObserver === "undefined") {
+    if (!strip || typeof IntersectionObserver === "undefined") {
       setIsScrolledPast(false);
       return undefined;
     }
@@ -112,13 +113,13 @@ export function SplitsGroupStrip({
     });
     observer.observe(strip);
     return () => observer.disconnect();
-  }, [isMobile, strip]);
+  }, [strip]);
 
   if (!groups.length) {
     return null;
   }
 
-  const showBar = isMobile && isScrolledPast && !hideBar && !inMatches && activeGroup && typeof document !== "undefined";
+  const showBar = isScrolledPast && !hideBar && !inMatches && activeGroup && typeof document !== "undefined";
   const activeTile = tiles.find((tile) => tile.isActive);
   const allLabel = hiddenCount > 0 ? copy.allMore(hiddenCount) : copy.allTile;
   const closeSheet = () => setIsSheetOpen(false);

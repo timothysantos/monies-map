@@ -8414,3 +8414,198 @@ html[data-money-privacy="hidden"] :is(.money-in, .money-short, .money-out, .mone
 td:is(.money-in, .money-short, .money-out) {
   font-weight: 700;
 }
+/* A directional page shortcut only appears while someone is travelling
+   through a long screen. Its left edge keeps it clear of Ask and add-entry. */
+.scroll-direction-fab {
+  position: fixed;
+  left: 22px;
+  bottom: 24px;
+  z-index: 57;
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scroll-direction-fab:hover {
+  background: var(--accent-soft);
+}
+
+.scroll-direction-fab:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-strong) 52%, transparent);
+  outline-offset: 3px;
+}
+
+@media (min-width: 761px) {
+  /* The support bar returns after its header leaves the viewport. */
+  .mobile-context-sticky-wrap.is-desktop-visible {
+    position: fixed;
+    bottom: 84px;
+    left: 22px;
+    z-index: 58;
+    display: block;
+    width: min(520px, calc(100vw - 44px));
+  }
+
+  .mobile-context-sticky-bar {
+    display: flex;
+    flex-direction: column;
+    min-height: 48px;
+    padding: 1px 4px 1px 3px;
+    border: 1px solid var(--line);
+    border-radius: var(--chrome-radius);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-context-main {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .mobile-context-trigger {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    gap: 7px;
+    padding: 0 7px;
+    border: 0;
+    border-radius: 15px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .mobile-context-trigger:hover {
+    background: rgb(var(--accent-strong-rgb) / 0.07);
+  }
+
+  .mobile-context-person-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    height: 27px;
+    padding: 0 10px;
+    border: 1px solid var(--person-chip-border, var(--line));
+    border-radius: 999px;
+    background: var(--person-chip-bg, rgb(var(--ink-rgb, 38 35 31) / 0.06));
+    color: var(--person-ink, var(--text));
+    font-size: 0.84rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .mobile-context-scope {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-context-trigger-caret {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--accent);
+  }
+
+  .mobile-context-line.is-stacked {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-left: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mobile-context-line-text {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 6px;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-context-line-action {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .mobile-month-jump,
+  .mobile-month-choice {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .mobile-month-jump-button,
+  .mobile-month-choice-step,
+  .mobile-month-choice-open,
+  .mobile-month-choice-all {
+    min-height: 40px;
+  }
+
+  body[data-splits-panel] .scroll-direction-fab {
+    bottom: 88px;
+  }
+}
+
+@media (max-width: 760px) {
+  .scroll-direction-fab {
+    left: var(--chrome-edge);
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    width: 48px;
+    height: 48px;
+  }
+
+  body[data-island-stacked] .scroll-direction-fab {
+    bottom: calc(188px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body[data-splits-panel] .scroll-direction-fab {
+    bottom: calc(162px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+body:has(> .note-dialog-overlay) .scroll-direction-fab,
+body:has(> .entry-mobile-sheet) .scroll-direction-fab {
+  display: none;
+}

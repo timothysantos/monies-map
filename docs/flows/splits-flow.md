@@ -31,7 +31,8 @@ page DTO's groups: the open group is the `split_group` address parameter, and
 with none the group this viewer used last (localStorage, per view) or the
 default. New and All sit in a column beside the tile scroller; All opens the
 All groups sheet, and a floating bar shows the open group once the strip has
-scrolled away on a phone.
+scrolled away on a phone or desktop. On a long Splits page, the directional
+page button appears briefly while scrolling and jumps to the opposite end.
 
 The open group's lead card (see design.md, "Splits page: lead card, search,
 activity list") is also a presentation of the page DTO: `buildSplitsLead`

@@ -165,3 +165,58 @@
     --bottom-actions-bleed: 16px;
   }
 }
+
+/* The desktop floating context opens the same dialog. Keep its controls calm
+   and compact instead of inheriting a phone sheet layout. */
+@media (min-width: 761px) {
+  .mobile-context-dialog.mobile-context-dialog {
+    width: min(560px, calc(100vw - 40px));
+  }
+
+  .mobile-context-body {
+    display: grid;
+    gap: 20px;
+  }
+
+  .mobile-context-lead,
+  .mobile-context-support,
+  .mobile-context-group {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-context-lead-hint,
+  .mobile-context-group-title {
+    color: var(--muted);
+    font-size: 0.86rem;
+  }
+
+  .mobile-context-segments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mobile-context-segment {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .mobile-context-segment[aria-pressed="true"] {
+    border-color: transparent;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .mobile-context-filters .entries-filter-stack {
+    margin: 0;
+  }
+}

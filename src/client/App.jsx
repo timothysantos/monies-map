@@ -240,6 +240,7 @@ export function App() {
   // Mobile context state only controls the sheet chrome around the current
   // route, not the route payload itself.
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
+  const [desktopContextVisible, setDesktopContextVisible] = useState(false);
   // The phone's "Pick a month" sheet on the Summary tab.
   const [monthSheetOpen, setMonthSheetOpen] = useState(false);
   const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
@@ -2678,6 +2679,28 @@ export function App() {
   };
   const islandStatus = useContextAnnouncement(entriesIsland?.announce ?? "");
 
+  // On wide screens this restores the context after its header leaves; the
+  // same delayed module provides a brief direction shortcut on long pages.
+  useEffect(() => {
+    let dispose, cancelled = false;
+    if ("summary month entries splits".includes(renderedTabId)) import("./scroll-direction-fab.js")
+      .then((module) => cancelled || (dispose = module.mountScrollDirectionFab()));
+    if (!showMobileContextSticky) {
+      setDesktopContextVisible(false);
+      return () => { cancelled = true; dispose?.(); };
+    }
+    const update = () => setDesktopContextVisible(!isMobileLayout() && window.scrollY > 180);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+    return () => {
+      cancelled = true;
+      dispose?.();
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [renderedTabId, showMobileContextSticky]);
+
   // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
     if (!showMobileContextSticky && mobileContextOpen) {
@@ -3224,7 +3247,7 @@ export function App() {
 
       {/* The mobile sticky sheet mirrors the desktop chrome without forcing the user to scroll back to the top. */}
       {showMobileContextSticky ? (
-        <section className="mobile-context-sticky-wrap" aria-label={stickyScopeConfig.label}>
+        <section className={`mobile-context-sticky-wrap${desktopContextVisible ? " is-desktop-visible" : ""}`} aria-label={stickyScopeConfig.label}>
           <div className="mobile-context-sticky-bar" data-scope={stickyScopeConfig?.selectedKey}>
             <MobileContextStatus message={islandStatus} />
             {islandStacked ? (

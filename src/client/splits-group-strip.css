@@ -400,3 +400,24 @@ body:has(> .entry-mobile-sheet) .splits-group-bar {
     padding: 2px 16px 12px;
   }
 }
+
+/* Desktop keeps the current group available after the horizontal strip has
+   scrolled away. It rests clear of the directional page shortcut. */
+@media (min-width: 761px) {
+  .splits-group-bar {
+    right: auto;
+    bottom: 24px;
+    left: 22px;
+    width: min(330px, calc(100vw - 44px));
+    min-height: 52px;
+    border-radius: 16px;
+  }
+
+  .splits-group-bar-trigger {
+    min-height: 50px;
+  }
+
+  .splits-group-bar-trigger:hover {
+    background: rgb(var(--accent-strong-rgb) / 0.08);
+  }
+}

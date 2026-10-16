@@ -296,6 +296,12 @@ test.describe("Splits group strip on a desktop", () => {
     expect(await strip.locator(".splits-strip-scroll").evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     await expect(page.getByRole("button", { name: "Create group" }).first()).toContainText("New");
     await expect(page.locator(".splits-group-bar")).toHaveCount(0);
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const context = page.locator(".splits-group-bar");
+    await expect(context).toBeVisible();
+    await expect(context).toContainText("Non-group expenses");
+    await expect(context).toHaveCSS("left", "22px");
   });
 
   test("a narrow row shows what fits and All carries the rest", async ({ page }) => {

@@ -125,6 +125,9 @@ Summary, Month and Entries all count the same way, so the numbers agree
 everywhere. The Household view has no scope buttons because it always counts
 every entry once. On a phone, Summary, Month and Entries keep the view and
 scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
+On a desktop, that same compact control returns near the lower left after you
+scroll past the header, so you can change view, scope or month without going
+back to the top.
 
 ## Hide or show money totals
 
@@ -217,7 +220,10 @@ The app is designed for phones as well as desktops. The differences:
   ![Editing a plan row on a phone opens a sheet](/faq/guide/phone/thumbs/phone-month-sheet.webp)
 - **Floating buttons.** The round **+** button on Entries opens a new entry
   card on Ask; on Splits, the receipt button opens one that is already
-  shared on Splits. The eye button hides or shows totals.
+  shared on Splits. The eye button hides or shows totals. While you are moving
+  through a long Summary, Month, Entries or Splits page, an arrow briefly
+  appears: it takes you back to the top after scrolling down, or to the end
+  after scrolling up.
 
 ![Summary on a phone](/faq/guide/phone/thumbs/phone-summary.webp)
 
