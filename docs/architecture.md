@@ -915,3 +915,13 @@ This plan does not aim to:
 Before implementation, the next useful planning documents are:
 
 - a migration order that reduces risk and preserves working behavior
+
+
+The phone island's contextual controls reuse the Entries filter publication and
+URL reset, with a lazy context body shared with the mobile View and scope sheet.
+Default scope wording gives way to the filter summary without changing island
+height; non-default scope stays visible above the existing list without changing
+its padding. Month's return-to-current-month action stays within the displayed
+range. Splits clears its search through the group strip. No API, DTO, query,
+persistence, or optional AI boundary changes. See design.md, "Island context line",
+and `tests/e2e/island-context.spec.js` for layout and continuity contracts.

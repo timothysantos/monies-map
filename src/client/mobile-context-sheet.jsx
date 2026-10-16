@@ -1,12 +1,17 @@
 import "./mobile-context-sheet.css";
 import "./mobile-sheet-head.css";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { mobileContextCopy as copy } from "./copy/mobile-context-copy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { useKeyboardInset } from "./use-keyboard-inset";
 import { BottomActions } from "./ui-components";
+
+// The island's context line shares this chunk (App.jsx loads it from here): the
+// sheet is where filters are set, so the chunk is usually loaded already, and
+// a chunk of its own would split React DOM out of the first screen.
+export { default as IslandContextLine } from "./mobile-context-line.jsx";
 
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
 
@@ -30,6 +35,7 @@ export default function MobileContextSheetBody({
   scopeHint,
   scopes,
   selectedScopeKey,
+  scrollToFilters = false,
   filterProps,
   onViewChange,
   onScopeChange,
@@ -39,6 +45,13 @@ export default function MobileContextSheetBody({
   // parent, App's Dialog.Content) lifts itself above it with its bottom bar.
   const [body, setBody] = useState(/** @type {HTMLElement | null} */ (null));
   useKeyboardInset(body?.parentElement ?? null);
+  // Opened from the island's filter summary: start at the filters.
+  const filtersRef = useRef(/** @type {HTMLElement | null} */ (null));
+  useEffect(() => {
+    if (scrollToFilters) {
+      filtersRef.current?.scrollIntoView({ block: "start" });
+    }
+  }, [scrollToFilters]);
   return (
     <>
       <SheetSwipeDismiss onClose={onClose} />
@@ -96,7 +109,7 @@ export default function MobileContextSheetBody({
         </section>
 
         {filterProps ? (
-          <section className="mobile-context-filters" aria-label={copy.filtersGroup}>
+          <section ref={filtersRef} className="mobile-context-filters" aria-label={copy.filtersGroup}>
             <Suspense fallback={null}>
               <EntriesFilterStack {...filterProps} hideActions />
             </Suspense>

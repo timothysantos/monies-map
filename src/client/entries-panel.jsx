@@ -30,6 +30,7 @@ import { EntriesAskChip, EntriesFigureChip } from "./entries-ask-chip";
 import { figureCopy } from "./copy/figure-copy";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
+import { buildEntriesIslandContext } from "./entries-island-context";
 import { buildEntriesTotalsModel, describeEntryFilters } from "./entries-totals-model";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileSheet, EntrySplitGroupPickerFooter } from "./entry-mobile-sheet";
@@ -1054,6 +1055,8 @@ export function EntriesPanel({
       next.delete("entry_min");
       next.delete("entry_max");
       next.delete("entry_figure");
+      next.delete("entry_from");
+      next.delete("entry_to");
       next.delete("from_ask");
       return next;
     });
@@ -1111,7 +1114,19 @@ export function EntriesPanel({
     }
   };
 
+  // The phone island's second line: what narrows the list, in words
+  // (entries-island-context.js); null while nothing does.
+  const islandContext = useMemo(
+    () => buildEntriesIslandContext({
+      entryFilters,
+      entryCount: filteredEntries.length,
+      wallets,
+      hasPeriod: Boolean(entriesPage.monthPage.rangeStartMonth)
+    }),
+    [entriesPage.monthPage.rangeStartMonth, entryFilters, filteredEntries.length, wallets]
+  );
   const filterStackProps = useMemo(() => ({
+    island: islandContext,
     showMobileFilters,
     activeEntryFilterCount,
     entryFilters,
@@ -1130,6 +1145,7 @@ export function EntriesPanel({
     activeEntryFilterCount,
     entryCategoryOptions,
     entryFilters,
+    islandContext,
     onCloseMobileContext,
     refreshEntriesFilters,
     resetEntryFilters,

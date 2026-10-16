@@ -19,6 +19,9 @@
 export const PAGE_FLAG = Object.freeze({
   entryInlineEditor: "entry-inline-editor",
   splitInlineEditor: "split-inline-editor",
+  // The island's context line on its own row (a non-default scope stays
+  // visible), so the round buttons above it lift by that row.
+  islandStacked: "island-stacked",
   splitsPanel: "splits-panel"
 });
 

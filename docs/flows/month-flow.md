@@ -245,3 +245,8 @@ Watch area:
   of hard-resetting the page
 - month refresh may still fan out to dependent slices when the mutation touches
   real ledger evidence
+
+On phones, a picked month other than the current month offers Back to this month
+when the current month is in the displayed range. It uses the same month-choice
+navigation, keeping person, scope and range. Default scope text makes room on
+the island row; non-default scope stays visible with a separate context row.

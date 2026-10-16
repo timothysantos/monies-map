@@ -31,6 +31,8 @@ export function SplitsGroupStrip({
   isHousehold = false,
   readOnly = false,
   hideBar = false,
+  searchQuery = "",
+  onClearSearch,
   onSelectGroup,
   onCreateGroup
 }) {
@@ -171,9 +173,10 @@ export function SplitsGroupStrip({
       </section>
 
       {showBar ? createPortal(
+        <div className={`splits-group-bar${searchQuery ? " has-search" : ""}`}>
         <button
           type="button"
-          className="splits-group-bar"
+          className="splits-group-bar-trigger"
           aria-label={copy.allGroups}
           aria-haspopup="dialog"
           onClick={() => setIsSheetOpen(true)}
@@ -184,7 +187,9 @@ export function SplitsGroupStrip({
             <span>{activeTile?.balanceLine}</span>
           </span>
           <ChevronDown size={18} aria-hidden="true" />
-        </button>,
+        </button>
+        {searchQuery ? <button type="button" className="splits-group-bar-clear" aria-label={copy.clearName} onClick={onClearSearch}>{copy.clear}</button> : null}
+        </div>,
         document.body
       ) : null}
 

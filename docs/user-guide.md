@@ -187,6 +187,15 @@ The app is designed for phones as well as desktops. The differences:
   down to close it. Entries adds previous and next month buttons beside the
   bar.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
+  When you filter Entries, this bar names the filters and how many entries
+  match. Tap those words to change the filters, or **Clear** to remove all of
+  them at once. Your person, month and scope stay. The usual **Direct + Shared**
+  words make room for the filters and return after Clear. **Direct** or
+  **Shared** stays visible, with the filters on another row.
+  When viewing an older month, **Back to this month** returns to the current
+  month if it is within your chosen range. Splits' floating group bar also
+  offers **Clear** while you search that group.
+
 - **Month button.** On Summary, the button beside the bar says **All
   months**. Tap it to pick one month of the range
   ([Pick a month](#pick-a-month)). With a month picked it shows that month,

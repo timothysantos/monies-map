@@ -2680,3 +2680,19 @@ card. With AI off (local and the e2e stack) the route answers
   is logged as `{"event":"ask_turn_repair","action","validatorError","field",
   "repaired"}` (no message text). Count them in the Worker logs to measure the
   repair rate.
+
+
+### Phone island context
+
+Entries publishes `buildEntriesIslandContext` with its existing filter props;
+the URL and filtered rows remain authoritative. App renders the context through
+the lazy mobile context sheet chunk. The same-row summary replaces only default
+scope text; a non-default scope uses a stacked row and the `islandStacked` page
+flag lifts nearby floating buttons. Clear uses the Entries reset, which also
+removes `entry_from` and `entry_to`, preserving view, month and scope. Month's
+return action uses the existing month-choice navigation within the loaded range.
+Splits passes its search and clear callback to its existing group strip.
+Run `node scripts/capture-island-context.mjs` after building for 30 demo-only
+review captures and an HTML gallery under `test-results/island-context-review`.
+`tests/e2e/island-context.spec.js` proves 390px height, scroll continuity, scope
+visibility, complete reset, touch targets, reduced motion and desktop exclusion.

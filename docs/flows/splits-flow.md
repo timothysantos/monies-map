@@ -203,3 +203,7 @@ Watch area:
 - a travel split's shares stay in its currency in Splits; Entries, Month,
   Summary and the stored month totals count each person's SGD share of the
   linked ledger row instead (DOMAIN.md, "Home share of a travel split")
+
+On phones, the existing floating group bar gains a separate Clear button while
+`split_search` is active. It calls the existing search updater with an empty
+value, keeping group, month and person, and does not open the group sheet.

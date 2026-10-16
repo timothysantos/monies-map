@@ -766,6 +766,10 @@
   backdrop-filter: blur(10px);
 }
 
+body[data-island-stacked] .entries-ask-chip.is-floating {
+  bottom: calc(185px + env(safe-area-inset-bottom, 0px));
+}
+
 body:has(> .note-dialog-overlay) > .entries-ask-chip,
 body:has(> .entry-mobile-sheet) > .entries-ask-chip,
 body[data-entry-inline-editor] > .entries-ask-chip {

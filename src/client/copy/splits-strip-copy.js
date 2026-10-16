@@ -2,6 +2,8 @@
 // group bar. Kept out of en-SG.js so the first screen does not carry them.
 export const splitsStripCopy = {
   done: "Done",
+  clear: "Clear",
+  clearName: "Clear all filters",
   newTile: "New",
   allTile: "All",
   allGroups: "All groups",

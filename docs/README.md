@@ -96,6 +96,8 @@ a doc here in the same change.
   audit.
 - [`import-inbox-task-list.md`](import-inbox-task-list.md): import inbox goals
   and remaining task.
+- [`audits/island-context.md`](audits/island-context.md): phone filter context,
+  scope visibility, scroll continuity, screenshots and closure evidence.
 - [`audits/macro-loading-baseline.md`](audits/macro-loading-baseline.md): macro
   loading baseline evidence (H00, H01).
 - [`audits/states-lsd.md`](audits/states-lsd.md): empty, loading and error

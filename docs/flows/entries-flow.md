@@ -35,6 +35,14 @@ is as it was; ✕ removes the list filters and `from_ask` and keeps the view,
 month and scope. On a phone it floats just above the View and scope bar,
 left of the + button; on a wide screen it sits at the top of the list.
 
+On phones, the floating island names the effective filters and row count.
+Tapping that summary opens the existing View and scope sheet at its filters;
+Clear resets every Entries filter (also figure/range bounds and `from_ask`),
+keeping view, month and scope. Default scope wording makes room on the same
+row; a non-default scope stays visible with a separate context row. A live
+status announces changes. The island remains fixed, without changing list
+padding or scroll position. No request or server-state owner is added.
+
 `editing_entry=<entryId>` links one entry's editor (from Splits, Settings,
 import review, a reload, or Add to splits keeping the open entry in the
 URL). The param is the only source of the linked entry; the panel keeps no

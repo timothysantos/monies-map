@@ -1281,6 +1281,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         isHousehold={isHouseholdView}
         readOnly={isHouseholdView}
         hideBar={Boolean(inlineSplitDraft)}
+        searchQuery={splitSearchQuery}
+        onClearSearch={() => updateSplitSearch("")}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onCreateGroup={openCreateGroupDialog}
       />

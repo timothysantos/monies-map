@@ -1364,3 +1364,14 @@ Stage 1 is complete when:
 - each scenario has a primary recommended test level
 - the implementation team can choose tests from scenarios instead of inventing
   behavior ad hoc during refactors
+
+## Phone island context
+
+Browser scenarios in `tests/e2e/island-context.spec.js` cover a category, search,
+and several filters; clear every filter while keeping person/month/scope;
+open the filter sheet from the summary; default-scope island height within 1px
+at 390px; non-default scope preserved; scope text restored; rendered rows and
+scroll position stable while context appears; 44px actions; polite status;
+reduced motion; desktop exclusion; Month return to the current month; and
+Splits search clearing without leaving the group. Unit tests prove summary
+wording, counts, empty filters, long strings and accessible button names.

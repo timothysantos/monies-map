@@ -2094,6 +2094,30 @@ View and scope` (`View` for the household, which has one Combined scope:
 the chip reads `Household`, there is no scope text and the sheet has no scope
 group). On Month and Summary the floating money toggle sits above the bar.
 
+### Island context line
+
+On phones, narrowing Entries adds a plain summary and **Clear** (accessible
+name **Clear all filters**). The summary opens View and scope at its filters.
+The person chip and month controls stay. For Direct + Shared (and the household),
+the summary replaces the secondary scope wording on the same row; the island
+keeps its height, with ellipsis only on the summary and 44px action targets.
+Direct or Shared scope stays visible and the summary uses a second row above.
+Clear removes all entry filters, including figure and multi-month bounds, while
+keeping person, month and scope; the default scope wording returns automatically.
+A polite status announces the applied filters and clearing. The fixed island
+never adds list padding when its context changes; stacked chrome lifts nearby
+floating controls instead. Reduced motion suppresses the entry animation.
+
+Month's selected past month offers **Back to this month** when the current
+month belongs to the displayed range. The return wording wraps inside its
+44px target to leave room for the month arrows. The month is already named in its control;
+a stacked context additionally says **Viewing Sep 2026**. All months has no
+extra context. Splits' existing floating group bar gains Clear while its search
+is active; the group picker remains a separate button. Desktop, Plan Studio and
+Ask retain their existing controls. The summary model lives with Entries;
+the context buttons load with the mobile context sheet rather than the first
+screen, and no server data or API contract changes.
+
 The active scope on Summary is the scope of the request the figures on
 screen answer: `buildSummaryPageView` reads it from the Summary owner's
 request key and sets `selectedScope` and `scopes` on the page view (the same

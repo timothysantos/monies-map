@@ -153,3 +153,7 @@ Watch area:
   it is not the default Summary path
 - summary account-pills remain a separate query surface and must stay aligned
   with note and drilldown behavior
+
+The All months island stays unchanged. Picking an older month opens Month;
+when the current month belongs to the displayed range, its island offers
+Back to this month through the existing month-choice navigation.

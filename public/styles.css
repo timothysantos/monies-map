@@ -7725,8 +7725,8 @@ th {
 
   .mobile-context-sticky-bar {
     display: flex;
-    align-items: center;
-    gap: 2px;
+    flex-direction: column;
+    align-items: stretch;
     min-height: 48px;
     padding: 1px 4px 1px 2px;
     border: 1px solid var(--line);
@@ -7789,6 +7789,123 @@ th {
     display: flex;
     align-items: center;
     margin-left: auto;
+  }
+
+  /* The bar's controls on one row (the context line may sit above it). */
+  .mobile-context-main {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  /* The island's context line (mobile-context-line.jsx): in the same row it
+     takes the scope text's place, so the trigger shrinks to the chip. */
+  .mobile-context-trigger.is-compact {
+    flex: 0 0 auto;
+  }
+
+  .mobile-context-line-text {
+    flex: 1 1 0;
+    min-width: 0;
+    display: block;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 44px;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button.mobile-context-line-text {
+    cursor: pointer;
+  }
+
+  .mobile-context-line-action {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* Full return wording fits beside the month and its 44px arrows. */
+  .mobile-context-line-action.is-month {
+    flex: 0 1 100px;
+    min-width: 76px;
+    width: 100px;
+    padding: 0 4px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .mobile-context-line-text:focus-visible,
+  .mobile-context-line-action:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+    outline-offset: -2px;
+  }
+
+  /* A scope that is not the default stays in the row, so the line goes above. */
+  .mobile-context-line.is-stacked {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 0 0 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* The round buttons above the island lift by the line's row (44px + its hairline). */
+  body[data-island-stacked] .totals-visibility-toggle--month,
+  body[data-island-stacked] .totals-visibility-toggle--summary {
+    bottom: calc(181px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body[data-island-stacked] .totals-visibility-toggle--entries {
+    bottom: calc(263px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body[data-island-stacked] .entries-fab:not(.splits-fab) {
+    bottom: calc(197px + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mobile-context-line.is-stacked {
+      animation: island-line-in 150ms ease-out;
+    }
+
+    .mobile-context-main .mobile-context-line-text,
+    .mobile-context-main .mobile-context-line-action {
+      animation: island-line-fade 150ms ease-out;
+    }
+  }
+
+  @keyframes island-line-in {
+    from { transform: translateY(6px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes island-line-fade {
+    from { transform: translateY(3px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 
   .mobile-month-jump-button {

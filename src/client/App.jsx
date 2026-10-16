@@ -110,6 +110,8 @@ import {
   stepMonthInRange
 } from "./summary-month-choice";
 import { ContextPersonChip } from "./mobile-context-chip";
+import { PAGE_FLAG, pageFlagRef } from "./page-flags";
+import { MobileContextStatus, useContextAnnouncement } from "./mobile-context-status";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
@@ -121,6 +123,7 @@ import { publishAppShell } from "./app-shell-watch";
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
+const IslandContextLine = lazy(() => import("./mobile-context-sheet.jsx").then((module) => ({ default: module.IslandContextLine })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -243,11 +246,19 @@ export function App() {
   const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
   // The entries filter stack mirrors route state but only updates when the
   // effective filter props actually change.
+  // The island's filter summary opens the sheet scrolled to the filters.
+  const [mobileContextToFilters, setMobileContextToFilters] = useState(false);
+  const islandTriggerRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
+    setMobileContextToFilters(false);
   }, []);
   // The Entries top's Filters row opens the same sheet as the floating bar.
   const openMobileContext = useCallback(() => {
+    setMobileContextOpen(true);
+  }, []);
+  const openMobileFilters = useCallback(() => {
+    setMobileContextToFilters(true);
     setMobileContextOpen(true);
   }, []);
   const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
@@ -2638,6 +2649,34 @@ export function App() {
   const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
 
+  // The island's context line: what narrows Entries (with Clear), or a month
+  // other than this one on the Summary tab (with a way back). It takes the
+  // scope text's place in the same row while the scope is the default (or the
+  // household's, which has none), so the island keeps its height; a scope
+  // that is not the default stays visible and the line goes on a second row.
+  const todayMonthKey = getCurrentMonthKey();
+  const entriesIsland = showMobileContextSticky && renderedTabId === "entries" ? entriesMobileFilterProps?.island ?? null : null;
+  const monthIsland = !entriesIsland && showMobileContextSticky && pickedSummaryMonth && pickedSummaryMonth !== todayMonthKey && summaryRangeMonths.includes(todayMonthKey);
+  const islandActive = Boolean(entriesIsland || monthIsland);
+  const islandStacked = islandActive && Boolean(mobileContextScopeLabel) && stickyScopeConfig?.selectedKey !== "direct_plus_shared";
+  const islandInline = islandActive && !islandStacked;
+  const islandLineProps = {
+    kind: entriesIsland ? "filters" : "month",
+    text: entriesIsland ? entriesIsland.text : pickedSummaryMonth ? formatMonthLabel(pickedSummaryMonth) : "",
+    inline: islandInline,
+    onOpen: openMobileFilters,
+    // Focus goes to the island's trigger as the line goes away, so it is not lost.
+    onClear: () => {
+      entriesMobileFilterProps?.onResetFilters?.();
+      islandTriggerRef.current?.focus({ preventScroll: true });
+    },
+    onBack: () => {
+      selectSummaryMonth(todayMonthKey);
+      islandTriggerRef.current?.focus({ preventScroll: true });
+    }
+  };
+  const islandStatus = useContextAnnouncement(entriesIsland?.announce ?? "");
+
   // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
     if (!showMobileContextSticky && mobileContextOpen) {
@@ -3183,18 +3222,26 @@ export function App() {
       {showMobileContextSticky ? (
         <section className="mobile-context-sticky-wrap" aria-label={stickyScopeConfig.label}>
           <div className="mobile-context-sticky-bar">
-            <Dialog.Root open={mobileContextOpen} onOpenChange={setMobileContextOpen}>
+            <MobileContextStatus message={islandStatus} />
+            {islandStacked ? (
+              <div className="mobile-context-line is-stacked" ref={pageFlagRef(PAGE_FLAG.islandStacked)}>
+                <Suspense fallback={null}><IslandContextLine {...islandLineProps} /></Suspense>
+              </div>
+            ) : null}
+            <div className="mobile-context-main">
+            <Dialog.Root open={mobileContextOpen} onOpenChange={(open) => { setMobileContextOpen(open); if (!open) setMobileContextToFilters(false); }}>
               <Dialog.Trigger asChild>
                 <button
                   type="button"
-                  className="mobile-context-trigger"
+                  ref={islandTriggerRef}
+                  className={`mobile-context-trigger${islandInline ? " is-compact" : ""}`}
                   aria-label={mobileContextTriggerName}
                   onClick={(event) => {
                     event.currentTarget.blur();
                   }}
                 >
                   <ContextPersonChip label={pageView?.label ?? ""} isHousehold={selectedViewId === "household"} />
-                  {mobileContextScopeLabel ? <span className="mobile-context-scope">{mobileContextScopeLabel}</span> : null}
+                  {mobileContextScopeLabel && !islandInline ? <span className="mobile-context-scope">{mobileContextScopeLabel}</span> : null}
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
               </Dialog.Trigger>
@@ -3224,6 +3271,7 @@ export function App() {
                         scopeHint={mobileContextScopeHint}
                         scopes={showMobileContextScopeSection ? mobileContextScopes : []}
                         selectedScopeKey={stickyScopeConfig.selectedKey}
+                        scrollToFilters={mobileContextToFilters}
                         filterProps={renderedTabId === "entries" ? entriesMobileFilterProps : null}
                         onViewChange={handleViewChange}
                         onScopeChange={handleStickyScopeChange}
@@ -3234,6 +3282,7 @@ export function App() {
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
+            {islandInline ? <Suspense fallback={null}><IslandContextLine {...islandLineProps} /></Suspense> : null}
             {showMobileMonthJump ? (
               <div className="mobile-month-jump" aria-label="Month navigation">
                 <button
@@ -3267,6 +3316,7 @@ export function App() {
                 intentProps={getNavIntentProps("month")}
               />
             ) : null}
+            </div>
           </div>
         </section>
       ) : null}
@@ -3476,6 +3526,8 @@ function areEntriesMobileFilterPropsEqual(current, next) {
   return (
     current.showMobileFilters === next.showMobileFilters
     && current.activeEntryFilterCount === next.activeEntryFilterCount
+    && current.island?.text === next.island?.text
+    && current.entryFilters?.search === next.entryFilters?.search
     && current.hideToggle === next.hideToggle
     && current.hideRefresh === next.hideRefresh
     && current.onToggleMobileFilters === next.onToggleMobileFilters
