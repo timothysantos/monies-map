@@ -41,6 +41,11 @@ test.describe("context and scroll shortcuts", () => {
 
     const bar = page.locator(".mobile-context-sticky-wrap.is-desktop-visible");
     await expect(bar).toBeVisible();
+    await expect(bar.locator(".desktop-floating-tabs")).toBeVisible();
+    await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Summary" })).toBeVisible();
+    await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Entries" })).toBeVisible();
+    await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Splits" })).toBeVisible();
+    await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Ask" })).toBeVisible();
     await expect(bar.locator(".mobile-context-person-chip")).toHaveText("Tim");
     await expect(bar.locator(".mobile-context-scope")).toHaveText("Direct + Shared");
     await bar.locator(".mobile-context-trigger").click();
@@ -53,16 +58,16 @@ test.describe("context and scroll shortcuts", () => {
   ]) {
     test(`${name} shows a short-lived direction button and moves to both ends`, async ({ page }) => {
       await openLongEntries(page, viewport);
-      await scrollTo(page, 420);
+      await scrollTo(page, 560);
+      const toBottom = page.getByRole("button", { name: "Go to bottom" });
+      await expect(toBottom).toBeVisible();
+      await page.evaluate(() => window.scrollTo({ top: 220, behavior: "instant" }));
       const toTop = page.getByRole("button", { name: "Go to top" });
       await expect(toTop).toBeVisible();
       await toTop.click();
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(1);
 
-      await page.evaluate(() => window.scrollTo({ top: 460, behavior: "instant" }));
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(160);
-      await page.evaluate(() => window.scrollTo({ top: 220, behavior: "instant" }));
-      const toBottom = page.getByRole("button", { name: "Go to bottom" });
+      await scrollTo(page, 420);
       await expect(toBottom).toBeVisible();
       await toBottom.click();
       await expect.poll(() => page.evaluate(() => Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 2)).toBe(true);

@@ -42,9 +42,11 @@ keeping view, month and scope. Default scope wording makes room on the same
 row; a non-default scope stays visible with a separate context row. A live
 status announces changes. The island remains fixed, without changing list
 padding or scroll position. On a wide screen, the same compact control returns
-at the lower left after the header scrolls away. A directional page button also
-appears briefly while a long list is moving, taking the reader to the opposite
-end. No request or server-state owner is added.
+above Ask after the header scrolls away: its left side carries the primary tabs
+and its right side carries the view, scope and month controls. A translucent
+directional page button appears briefly in the middle while a long list is
+moving: scrolling down offers the bottom, and scrolling up offers the top. No
+request or server-state owner is added.
 
 `editing_entry=<entryId>` links one entry's editor (from Splits, Settings,
 import review, a reload, or Add to splits keeping the open entry in the

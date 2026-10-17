@@ -90,6 +90,10 @@ test.describe("the Ask card's card question on a phone", () => {
 
     const kept = await makePurchase(`kept-${Date.now()}`);
     await page.goto(new URL(kept.openUrl).pathname + new URL(kept.openUrl).search);
+    const applePayCard = page.locator('[data-ask-card="saved"][data-source="apple-pay"]');
+    await expect(applePayCard).toBeVisible();
+    await expect(applePayCard.locator("[data-apple-pay-mark]")).toBeVisible();
+    await expect(applePayCard.locator('[data-chip="wallet"] .lucide-nfc')).toBeVisible();
     await expect(page.locator(".ask-question")).toHaveText("Past Grab Ride entries were on Citi Rewards. Was this on that card too?");
     const chips = page.getByRole("group", { name: "Suggestions" });
     await expect(chips.getByRole("button")).toHaveText(["Open this entry", "Yes, Citi Rewards", "No, keep UOB One"]);

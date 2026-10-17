@@ -125,9 +125,12 @@ Summary, Month and Entries all count the same way, so the numbers agree
 everywhere. The Household view has no scope buttons because it always counts
 every entry once. On a phone, Summary, Month and Entries keep the view and
 scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
-On a desktop, that same compact control returns near the lower left after you
-scroll past the header, so you can change view, scope or month without going
-back to the top.
+On a desktop, a compact bar returns above the Ask box after you scroll past the
+header. Its tabs stay on the left, followed by the view, scope and month
+controls, so you can move between Summary, Entries, Splits and Ask or change
+the current view without going back to the top. On a long page, a translucent
+arrow briefly appears in the middle while you scroll down to take you to the
+bottom; scrolling up changes it to the shortcut back to the top.
 
 ## Hide or show money totals
 

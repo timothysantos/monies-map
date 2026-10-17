@@ -24,7 +24,10 @@ export function ShellRouteTabs({
   buildTabTarget,
   getNavIntentProps,
   pendingCategorySuggestionCount,
-  askInProgress = false
+  askInProgress = false,
+  className = "",
+  showPhoneOnly = false,
+  includeOverflow = true
 }) {
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
@@ -66,13 +69,13 @@ export function ShellRouteTabs({
 
   return (
     <nav
-      className="tab-strip"
+      className={`tab-strip ${className}`.trim()}
       aria-label={messages.tabs.ariaLabel}
       style={/** @type {import("react").CSSProperties} */ ({ "--primary-tab-count": primaryTabs.length })}
     >
-      {primaryTabs.map((tab) => renderTabLink(tab, tab.phoneOnly ? "tab tab-phone-only" : "tab"))}
+      {primaryTabs.map((tab) => renderTabLink(tab, tab.phoneOnly && !showPhoneOnly ? "tab tab-phone-only" : "tab"))}
       {secondaryTabs.map((tab) => renderTabLink(tab, "tab tab-secondary"))}
-      <Popover.Root modal={selectedTabId === "month" || selectedTabId === "summary"}>
+      {includeOverflow ? <Popover.Root modal={selectedTabId === "month" || selectedTabId === "summary"}>
         <Popover.Trigger asChild>
           <button type="button" className={`tab tab-overflow-trigger ${secondaryTabs.some((tab) => isRouteTabActive(tab, selectedTabId)) ? "is-active" : ""}`} aria-label="More pages">
             <Ellipsis size={18} />
@@ -86,7 +89,7 @@ export function ShellRouteTabs({
             <Popover.Arrow className="category-popover-arrow" />
           </Popover.Content>
         </Popover.Portal>
-      </Popover.Root>
+      </Popover.Root> : null}
     </nav>
   );
 }

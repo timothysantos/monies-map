@@ -2679,13 +2679,18 @@ export function App() {
   };
   const islandStatus = useContextAnnouncement(entriesIsland?.announce ?? "");
 
-  // On wide screens this restores the context after its header leaves; the
-  // same delayed module provides a brief direction shortcut on long pages.
+  // Wide long-page chrome returns after its header leaves. Splits shares the
+  // tab bar even though its second control is the current group chooser.
   useEffect(() => {
-    let dispose, cancelled = false;
-    if ("summary month entries splits".includes(renderedTabId)) import("./scroll-direction-fab.js")
-      .then((module) => cancelled || (dispose = module.mountScrollDirectionFab()));
-    if (!showMobileContextSticky) {
+    const supportsDesktopFloat = ["summary", "month", "entries", "splits"].includes(renderedTabId);
+    let dispose;
+    let cancelled = false;
+    if (supportsDesktopFloat) {
+      import("./scroll-direction-fab.js").then((module) => {
+        if (!cancelled) dispose = module.mountScrollDirectionFab();
+      });
+    }
+    if (!supportsDesktopFloat) {
       setDesktopContextVisible(false);
       return () => { cancelled = true; dispose?.(); };
     }
@@ -2699,7 +2704,7 @@ export function App() {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [renderedTabId, showMobileContextSticky]);
+  }, [renderedTabId]);
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
@@ -3248,6 +3253,20 @@ export function App() {
       {/* The mobile sticky sheet mirrors the desktop chrome without forcing the user to scroll back to the top. */}
       {showMobileContextSticky ? (
         <section className={`mobile-context-sticky-wrap${desktopContextVisible ? " is-desktop-visible" : ""}`} aria-label={stickyScopeConfig.label}>
+          {desktopContextVisible ? (
+            <ShellRouteTabs
+              className="desktop-floating-tabs"
+              primaryTabs={primaryRouteTabs}
+              secondaryTabs={[]}
+              selectedTabId={selectedTabId}
+              buildTabTarget={buildTabTarget}
+              getNavIntentProps={getNavIntentProps}
+              pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+              askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
+              showPhoneOnly
+              includeOverflow={false}
+            />
+          ) : null}
           <div className="mobile-context-sticky-bar" data-scope={stickyScopeConfig?.selectedKey}>
             <MobileContextStatus message={islandStatus} />
             {islandStacked ? (
@@ -3346,6 +3365,23 @@ export function App() {
             ) : null}
             </div>
           </div>
+        </section>
+      ) : null}
+      {desktopContextVisible && renderedTabId === "splits" ? (
+        <section className="desktop-splits-floating-tabs" aria-label="Splits navigation">
+          <ShellRouteTabs
+            className="desktop-floating-tabs"
+            primaryTabs={primaryRouteTabs}
+            secondaryTabs={[]}
+            selectedTabId={selectedTabId}
+            buildTabTarget={buildTabTarget}
+            getNavIntentProps={getNavIntentProps}
+            pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+            askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
+            showPhoneOnly
+            includeOverflow={false}
+          />
+          <span className="desktop-splits-floating-label">Split groups</span>
         </section>
       ) : null}
       {showMobileMonthChoice && monthSheetOpen ? (

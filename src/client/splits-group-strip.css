@@ -405,12 +405,16 @@ body:has(> .entry-mobile-sheet) .splits-group-bar {
    scrolled away. It rests clear of the directional page shortcut. */
 @media (min-width: 761px) {
   .splits-group-bar {
-    right: auto;
-    bottom: 24px;
-    left: 22px;
-    width: min(330px, calc(100vw - 44px));
+    right: 22px;
+    bottom: 151px;
+    left: auto;
+    width: min(360px, calc(100vw - 44px));
     min-height: 52px;
     border-radius: 16px;
+  }
+
+  body[data-ask-dock="docked"] .splits-group-bar {
+    right: calc(22px + var(--ask-dock-width));
   }
 
   .splits-group-bar-trigger {

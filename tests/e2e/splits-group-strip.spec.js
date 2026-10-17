@@ -301,7 +301,11 @@ test.describe("Splits group strip on a desktop", () => {
     const context = page.locator(".splits-group-bar");
     await expect(context).toBeVisible();
     await expect(context).toContainText("Non-group expenses");
-    await expect(context).toHaveCSS("left", "22px");
+    await expect(context).toHaveCSS("right", "22px");
+    const tabs = page.locator(".desktop-splits-floating-tabs");
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Summary" })).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Splits" })).toHaveAttribute("aria-current", "page");
   });
 
   test("a narrow row shows what fits and All carries the rest", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Sparkles } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Nfc, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
@@ -110,6 +110,8 @@ export function AskEntryCard({
         : null;
   const ownerKey = card.fields.ownerName === SHARED_OWNER ? "shared" : card.fields.ownerName;
   const savedState = savedCardState(card);
+  const isApplePayCard = card.saved?.addedBy === "apple_pay_shortcut";
+  const walletIcon = isApplePayCard ? Nfc : CreditCard;
 
   const title = isTransfer ? (
     <strong className="lsd-title ask-card-merchant">{askCopy.card.transferTitle(from.accountName, to.accountName)}</strong>
@@ -160,6 +162,7 @@ export function AskEntryCard({
   return (
     <LeadCard
       className={`ask-card${isSaved ? " is-saved" : ""}${settled ? " is-settled" : ""}`}
+      data-source={isApplePayCard ? "apple-pay" : undefined}
       aria-label={isSaved ? askCopy.card.savedTo : askCopy.card.label}
       data-ask-card={card.status}
       category={bubble}
@@ -168,7 +171,7 @@ export function AskEntryCard({
       amount={amount}
       tag={tag ? (
         <span className={`ask-card-tag ${tag.className}`}>
-          {tag.icon}
+          {isApplePayCard ? <Nfc size={13} aria-hidden="true" data-apple-pay-mark /> : tag.icon}
           {tag.label}
         </span>
       ) : null}
@@ -192,7 +195,7 @@ export function AskEntryCard({
             <span ref={walletChipRef}>
               <MetaChip
                 data-chip="wallet"
-                icon={CreditCard}
+                icon={walletIcon}
                 actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
                 onClick={onOpenField ? () => onOpenField("wallet") : undefined}
               >
