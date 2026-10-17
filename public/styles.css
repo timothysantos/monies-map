@@ -8702,6 +8702,22 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
     align-self: stretch;
   }
 
+  /* Keep each route tab optically centred in the floating island. The month
+     arrows are navigation for the whole bar, so they always finish its row. */
+  .mobile-context-sticky-wrap.is-desktop-visible .desktop-floating-tabs {
+    align-self: stretch;
+    align-items: center;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .desktop-floating-tabs .tab {
+    align-self: center;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-month-jump,
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-month-choice {
+    margin-left: auto;
+  }
+
   /* Summary's month picker is the same quiet pill treatment as its person
      control; Month and Entries retain their arrow pair at the trailing edge. */
   .mobile-month-choice {

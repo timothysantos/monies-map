@@ -53,6 +53,12 @@ test.describe("context and scroll shortcuts", () => {
     expect(Math.abs(box.y + box.height - 800 + 29)).toBeLessThanOrEqual(2);
     const tabsBox = await bar.locator(".desktop-floating-tabs").boundingBox();
     expect(Math.abs((tabsBox.y + tabsBox.height / 2) - (box.y + box.height / 2))).toBeLessThanOrEqual(1);
+    for (const tab of await bar.locator(".desktop-floating-tabs .tab").all()) {
+      const tabBox = await tab.boundingBox();
+      expect(Math.abs((tabBox.y + tabBox.height / 2) - (box.y + box.height / 2))).toBeLessThanOrEqual(1);
+    }
+    const monthJump = await bar.locator(".mobile-month-jump").boundingBox();
+    expect(Math.abs(monthJump.x + monthJump.width - box.x - box.width)).toBeLessThanOrEqual(10);
     await bar.locator(".mobile-context-trigger").click();
     await expect(page.getByRole("dialog", { name: "View and scope" })).toBeVisible();
   });
