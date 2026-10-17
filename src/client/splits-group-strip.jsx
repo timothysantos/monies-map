@@ -43,6 +43,7 @@ export function SplitsGroupStrip({
   const [rowWidth, setRowWidth] = useState(0);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isScrolledPast, setIsScrolledPast] = useState(false);
+  const [desktopFloatingHost, setDesktopFloatingHost] = useState(null);
   const inMatches = selectedMode === "matches";
   const activeId = inMatches ? null : (activeGroup?.id ?? null);
 
@@ -115,6 +116,12 @@ export function SplitsGroupStrip({
     return () => observer.disconnect();
   }, [strip]);
 
+  // On a wide screen the route tabs and group choices share one bottom
+  // floating bar. The host appears only after the header has scrolled away.
+  useLayoutEffect(() => {
+    setDesktopFloatingHost(!isMobile && isScrolledPast ? document.getElementById("desktop-splits-groups") : null);
+  }, [isMobile, isScrolledPast]);
+
   if (!groups.length) {
     return null;
   }
@@ -173,25 +180,46 @@ export function SplitsGroupStrip({
         </div>
       </section>
 
-      {showBar ? createPortal(
+      {showBar && isMobile ? createPortal(
         <div className={`splits-group-bar${searchQuery ? " has-search" : ""}`}>
-        <button
-          type="button"
-          className="splits-group-bar-trigger"
-          aria-label={copy.allGroups}
-          aria-haspopup="dialog"
-          onClick={() => setIsSheetOpen(true)}
-        >
-          <GroupBarIcon iconKey={activeGroup.iconKey} />
-          <span className="splits-group-bar-text">
-            <strong>{activeGroup.name}</strong>
-            <span>{activeTile?.balanceLine}</span>
-          </span>
-          <ChevronDown size={18} aria-hidden="true" />
-        </button>
-        {searchQuery ? <button type="button" className="splits-group-bar-clear" aria-label={copy.clearName} onClick={onClearSearch}>{copy.clear}</button> : null}
+          <button
+            type="button"
+            className="splits-group-bar-trigger"
+            aria-label={copy.allGroups}
+            aria-haspopup="dialog"
+            onClick={() => setIsSheetOpen(true)}
+          >
+            <GroupBarIcon iconKey={activeGroup.iconKey} />
+            <span className="splits-group-bar-text">
+              <strong>{activeGroup.name}</strong>
+              <span>{activeTile?.balanceLine}</span>
+            </span>
+            <ChevronDown size={18} aria-hidden="true" />
+          </button>
+          {searchQuery ? <button type="button" className="splits-group-bar-clear" aria-label={copy.clearName} onClick={onClearSearch}>{copy.clear}</button> : null}
         </div>,
         document.body
+      ) : null}
+      {desktopFloatingHost ? createPortal(
+        <div className="desktop-splits-group-actions" role="group" aria-label={copy.allGroups}>
+          {tiles.map((tile) => (
+            <button
+              key={tile.id}
+              type="button"
+              className={`desktop-splits-group-button${tile.isActive ? " is-active" : ""}`}
+              aria-pressed={tile.isActive}
+              onClick={() => onSelectGroup(tile.id)}
+              title={tile.name}
+            >
+              {tile.name}
+            </button>
+          ))}
+          <button type="button" className="desktop-splits-group-more" aria-label={copy.allGroups} onClick={() => setIsSheetOpen(true)}>
+            <List size={16} aria-hidden="true" />
+          </button>
+          {searchQuery ? <button type="button" className="desktop-splits-group-clear" aria-label={copy.clearName} onClick={onClearSearch}>{copy.clear}</button> : null}
+        </div>,
+        desktopFloatingHost
       ) : null}
 
       <SplitsGroupsSheet

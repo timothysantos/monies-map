@@ -2300,7 +2300,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .note-dialog-content {
   position: fixed;
-  top: 50%;
+  bottom: calc(144px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   width: min(720px, calc(100vw - 40px));
   max-height: min(86vh, calc(100dvh - 48px));
@@ -8419,7 +8419,8 @@ td:is(.money-in, .money-short, .money-out) {
    permanent corner of the chrome. */
 .scroll-direction-fab {
   position: fixed;
-  top: 50%;
+  top: auto;
+  bottom: calc(144px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   z-index: 57;
   display: inline-grid;
@@ -8438,7 +8439,7 @@ td:is(.money-in, .money-short, .money-out) {
   line-height: 1;
   cursor: pointer;
   opacity: 0.84;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   backdrop-filter: blur(12px);
 }
 
@@ -8670,4 +8671,165 @@ td:is(.money-in, .money-short, .money-out) {
 body:has(> .note-dialog-overlay) .scroll-direction-fab,
 body:has(> .entry-mobile-sheet) .scroll-direction-fab {
   display: none;
+}
+
+/* Wide contextual bars sit at the same bottom baseline as the Ask field, but
+   begin at the page edge so the active controls are reached before the list. */
+@media (min-width: 761px) {
+  .mobile-context-sticky-wrap.is-desktop-visible,
+  .desktop-splits-floating-tabs {
+    right: auto;
+    bottom: 29px;
+    left: 22px;
+    align-items: center;
+    width: min(760px, calc(100vw - 44px));
+    min-height: 54px;
+  }
+
+  body[data-ask-dock="docked"] :is(.mobile-context-sticky-wrap.is-desktop-visible, .desktop-splits-floating-tabs) {
+    right: auto;
+    left: 22px;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-sticky-bar {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-main {
+    flex: 1 1 auto;
+    align-self: stretch;
+  }
+
+  /* Summary's month picker is the same quiet pill treatment as its person
+     control; Month and Entries retain their arrow pair at the trailing edge. */
+  .mobile-month-choice {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 44px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text);
+  }
+
+  .mobile-month-choice-all,
+  .mobile-month-choice-open {
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .mobile-month-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgb(var(--ink-rgb, 38 35 31) / 0.06);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .mobile-month-chip strong {
+    font-size: 0.84rem;
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-month-choice-caret {
+    color: var(--accent);
+    font-size: 0.8rem;
+  }
+
+  .mobile-month-choice-step {
+    width: 40px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-size: 1.35rem;
+    cursor: pointer;
+  }
+
+  .mobile-month-choice-step:disabled,
+  .mobile-month-choice:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .desktop-splits-floating-tabs {
+    justify-content: flex-start;
+  }
+
+  .desktop-splits-groups {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .desktop-splits-group-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 4px;
+    padding-left: 7px;
+  }
+
+  .desktop-splits-group-button,
+  .desktop-splits-group-more,
+  .desktop-splits-group-clear {
+    flex: 0 1 auto;
+    min-width: 44px;
+    min-height: 40px;
+    padding: 0 10px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .desktop-splits-group-button:hover,
+  .desktop-splits-group-more:hover {
+    background: rgb(var(--accent-strong-rgb) / 0.07);
+    color: var(--accent-strong);
+  }
+
+  .desktop-splits-group-button.is-active {
+    background: rgb(var(--accent-strong-rgb) / 0.12);
+    color: var(--accent-strong);
+  }
+
+  .desktop-splits-group-more {
+    display: grid;
+    place-items: center;
+    flex: 0 0 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  .desktop-splits-group-clear {
+    flex: 0 0 auto;
+    color: var(--accent);
+  }
+
+  .scroll-direction-fab {
+    top: auto;
+    bottom: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }

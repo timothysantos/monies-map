@@ -48,6 +48,11 @@ test.describe("context and scroll shortcuts", () => {
     await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Ask" })).toBeVisible();
     await expect(bar.locator(".mobile-context-person-chip")).toHaveText("Tim");
     await expect(bar.locator(".mobile-context-scope")).toHaveText("Direct + Shared");
+    const box = await bar.boundingBox();
+    expect(box.x).toBeLessThanOrEqual(23);
+    expect(Math.abs(box.y + box.height - 800 + 29)).toBeLessThanOrEqual(2);
+    const tabsBox = await bar.locator(".desktop-floating-tabs").boundingBox();
+    expect(Math.abs((tabsBox.y + tabsBox.height / 2) - (box.y + box.height / 2))).toBeLessThanOrEqual(1);
     await bar.locator(".mobile-context-trigger").click();
     await expect(page.getByRole("dialog", { name: "View and scope" })).toBeVisible();
   });
@@ -61,6 +66,9 @@ test.describe("context and scroll shortcuts", () => {
       await scrollTo(page, 560);
       const toBottom = page.getByRole("button", { name: "Go to bottom" });
       await expect(toBottom).toBeVisible();
+      const directionBox = await toBottom.boundingBox();
+      expect(Math.abs((directionBox.x + directionBox.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(1);
+      expect(directionBox.y + directionBox.height).toBeGreaterThan(viewport.height - 160);
       await page.evaluate(() => window.scrollTo({ top: 220, behavior: "instant" }));
       const toTop = page.getByRole("button", { name: "Go to top" });
       await expect(toTop).toBeVisible();

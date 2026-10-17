@@ -31,11 +31,11 @@ page DTO's groups: the open group is the `split_group` address parameter, and
 with none the group this viewer used last (localStorage, per view) or the
 default. New and All sit in a column beside the tile scroller; All opens the
 All groups sheet, and a floating bar shows the open group once the strip has
-scrolled away on a phone or desktop. On a wide screen the open-group bar sits
-above a compact, Ask-aligned navigation bar whose left side is Summary,
-Entries, Splits and Ask. On a long Splits page, the translucent directional
-button appears briefly in the middle: scrolling down offers the bottom and
-scrolling up offers the top.
+scrolled away on a phone. On a wide screen the active groups become direct
+buttons inside the compact navigation bar alongside Summary, Entries, Splits
+and Ask; its list button still opens every group. On a long Splits page, the
+translucent directional button appears briefly at the bottom centre: scrolling
+down offers the bottom and scrolling up offers the top.
 
 The open group's lead card (see design.md, "Splits page: lead card, search,
 activity list") is also a presentation of the page DTO: `buildSplitsLead`

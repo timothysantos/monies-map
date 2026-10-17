@@ -2001,9 +2001,6 @@ export function App() {
   // Summary tab (Summary for All months, Month for a picked month) keeps the
   // header on its range and picks the month in the island, sheet or row.
   const isDetailMonthTab = renderedTabId === "entries" || renderedTabId === "splits";
-  // Month is a picked monthly view too. Its range stays in the desktop header,
-  // while the floating bar keeps the arrows available beside the person chip.
-  const isSingleMonthTab = isDetailMonthTab || renderedTabId === "month";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSummaryTab = renderedTabId === "summary" || renderedTabId === "month";
   // The month the Summary tab has picked, "" for All months. It follows the
@@ -2030,8 +2027,8 @@ export function App() {
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
-    () => isSingleMonthTab ? availableMonths.indexOf(selectedMonth) : -1,
-    [availableMonths, isSingleMonthTab, selectedMonth]
+    () => isDetailMonthTab ? availableMonths.indexOf(selectedMonth) : -1,
+    [availableMonths, isDetailMonthTab, selectedMonth]
   );
   const canMoveToPreviousDetailMonth = currentDetailMonthIndex > 0;
   const canMoveToNextDetailMonth = currentDetailMonthIndex !== -1 && currentDetailMonthIndex < availableMonths.length - 1;
@@ -2651,7 +2648,7 @@ export function App() {
   // The Summary tab moves its range from the header and picks its month in
   // the bar (All months, or one month with arrows); Entries keeps the bar's
   // month arrows for its single month.
-  const showMobileMonthJump = showMobileContextSticky && isSingleMonthTab;
+  const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
 
   // The island's context line: what narrows Entries (with Clear), or a month
@@ -2869,7 +2866,7 @@ export function App() {
   // Month navigation either moves the single-month detail view or shifts the
   // summary range by one bucket.
   function handleMonthChange(direction) {
-    if (isSingleMonthTab) {
+    if (isDetailMonthTab) {
       const currentIndex = availableMonths.indexOf(selectedMonth);
       if (currentIndex === -1) {
         return;
@@ -3384,7 +3381,7 @@ export function App() {
             showPhoneOnly
             includeOverflow={false}
           />
-          <span className="desktop-splits-floating-label">Split groups</span>
+          <span id="desktop-splits-groups" className="desktop-splits-groups" />
         </section>
       ) : null}
       {showMobileMonthChoice && monthSheetOpen ? (

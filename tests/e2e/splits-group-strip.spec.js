@@ -298,14 +298,20 @@ test.describe("Splits group strip on a desktop", () => {
     await expect(page.locator(".splits-group-bar")).toHaveCount(0);
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const context = page.locator(".splits-group-bar");
-    await expect(context).toBeVisible();
-    await expect(context).toContainText("Non-group expenses");
-    await expect(context).toHaveCSS("right", "22px");
+    await expect(page.locator(".splits-group-bar")).toHaveCount(0);
     const tabs = page.locator(".desktop-splits-floating-tabs");
     await expect(tabs).toBeVisible();
     await expect(tabs.getByRole("link", { name: "Summary" })).toBeVisible();
     await expect(tabs.getByRole("link", { name: "Splits" })).toHaveAttribute("aria-current", "page");
+    const groupActions = tabs.locator(".desktop-splits-group-actions");
+    await expect(groupActions).toBeVisible();
+    await expect(groupActions.getByRole("button", { name: "Non-group expenses" })).toBeVisible();
+    // Groups are direct choices in the shared bar; the list icon still opens
+    // the complete sheet when more groups exist than fit.
+    await expect(groupActions.getByRole("button", { name: "All groups" })).toBeVisible();
+    const tabsBox = await box(tabs);
+    expect(tabsBox.x).toBeLessThanOrEqual(23);
+    expect(Math.abs(tabsBox.y + tabsBox.height - 800 + 29)).toBeLessThanOrEqual(2);
   });
 
   test("a narrow row shows what fits and All carries the rest", async ({ page }) => {
