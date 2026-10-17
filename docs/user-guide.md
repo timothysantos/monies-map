@@ -378,8 +378,9 @@ over plan.
   **›** to move the whole range, or select the start or end month to pick one.
   ![Selecting the start of the range opens a month picker](/faq/guide/desktop/thumbs/summary-range-picker.webp)
 - **Scope** (person views only): the small **Direct / Shared / Both** switch
-  under the Summary title. Hover an option to see what it counts; one click
-  switches ([Scopes](#scopes-direct-shared-direct-shared)).
+  above the **Income** and **Saved** cards on a computer. Hover an option to
+  see what it counts; one click switches
+  ([Scopes](#scopes-direct-shared-direct-shared)).
 - **Month** (on a computer, the row of months under the top bar; on a
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
@@ -1467,7 +1468,8 @@ going and **What if I save more?** sit side by side (stacked on a phone).
   new ones; a new line is Spend unless its category is Investments, and it can
   have an optional due date.
 - **Sliders | List.** The switch beside Undo and Discard changes (or Save plan
-  on a wide screen) changes how the plan shows. **List** is the plan as a
+  on a wide screen) changes how the plan shows. On a phone it sits in the
+  floating View and scope bar when there is room. **List** is the plan as a
   list, where you can see and sort everything. Changes you have not saved
   with the sliders are kept while you look at the list (a dot on Sliders says
   so). The page remembers your choice.

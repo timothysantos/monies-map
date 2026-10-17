@@ -251,8 +251,9 @@ when the current month is in the displayed range. It uses the same month-choice
 navigation, keeping person, scope and range. Default scope text makes room on
 the island row; non-default scope stays visible with a separate context row.
 
-The phone island offers the other plan mode and, while editable sliders hold
-changes, Undo from that same draft history. List mode does not invent an undo
-for already-saved row edits. Switching mode preserves held slider changes.
+The phone island puts the same Sliders | List segmented switch between the
+person chip and the month navigator, and while editable sliders hold changes,
+Undo from that same draft history. List mode does not invent an undo for
+already-saved row edits. Switching mode preserves held slider changes.
 A non-default scope remains visible. Pinned information and interactive menus
 consume dismissal presses, so the first outside tap cannot edit a slider.

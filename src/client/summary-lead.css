@@ -86,6 +86,32 @@ html[data-money-privacy="hidden"] .summary-lead-group .summary-lead-plan.money-p
   min-width: 0;
 }
 
+/* On Summary's wide Plan view, the support column has room above Income and
+   Saved. Keeping the viewer and its scope here balances the two columns and
+   makes those controls part of the figures they change. */
+.summary-support-context {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 2px 2px 0;
+}
+
+.summary-support-context > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.summary-support-context .summary-scope-switch {
+  flex-basis: auto;
+  contain: none;
+  margin: 0;
+}
+
+.summary-support-context .summary-scope-switch .pill-row {
+  margin: 0;
+}
+
 .summary-support-pill {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

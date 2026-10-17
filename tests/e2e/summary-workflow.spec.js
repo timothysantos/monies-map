@@ -32,8 +32,8 @@ test.describe("summary workflow", () => {
     await expect(page.getByText("Total spend")).toBeVisible();
   });
 
-  // Summary follows the route's scope, so on desktop a compact switch under
-  // the title names the scope its figures count and switches it in one click.
+  // Summary follows the route's scope, so on desktop a compact switch above
+  // Income and Saved names the scope its figures count and switches it in one click.
   test("summary shows the active scope and switching scope updates the figures", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -93,22 +93,9 @@ test.describe("summary workflow", () => {
     await expect(page.getByRole("group", { name: "Scope" })).toHaveCount(0);
   });
 
-  // The desktop switch lives in the space under the Summary title, so the
-  // header is exactly as tall and the cards exactly where they are without it.
-  test("the desktop scope switch fits under the title without moving the header", async ({ page }) => {
-    const measure = () => page.evaluate(() => {
-      const box = (element) => {
-        const rect = element.getBoundingClientRect();
-        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-      };
-      return {
-        head: box(document.querySelector(".summary-head")),
-        title: box(document.querySelector(".summary-head > div:first-child")),
-        cards: [...document.querySelectorAll(".summary-lead-group > *")].map(box),
-        insight: box(document.querySelector(".financial-insight-summary"))
-      };
-    });
-
+  // The desktop scope switch uses the spare support-column space above
+  // Income and Saved, leaving the Summary title column clean.
+  test("the desktop scope switch sits above the Summary support cards", async ({ page }) => {
     for (const width of [1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoPageAfterApi(
@@ -122,24 +109,22 @@ test.describe("summary workflow", () => {
       // The lead shows once the range's cards arrive; measure the header with it.
       await expect(page.locator(".summary-lead .summary-lead-spent")).toBeVisible();
       await expect(page.locator(".financial-insight-summary")).toBeVisible();
-      const withSwitch = await measure();
       const switchBox = await scope.boundingBox();
       const titleBox = await page.locator(".summary-head h2").boundingBox();
 
-      // Under the title, inside the title column and the header.
-      expect(switchBox.y, `${width}`).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
-      expect(switchBox.x, `${width}`).toBeGreaterThanOrEqual(withSwitch.title.x);
-      expect(switchBox.x + switchBox.width, `${width}`).toBeLessThanOrEqual(withSwitch.title.x + withSwitch.title.width);
-      expect(switchBox.y + switchBox.height, `${width}`).toBeLessThanOrEqual(withSwitch.head.y + withSwitch.head.height);
+      // The spare support-column space holds the viewer and scope above the
+      // Income and Saved cards, leaving the title column clean.
+      const support = await page.locator(".summary-support-pills").boundingBox();
+      const income = await page.locator('.summary-support-pill[data-metric="income"]').boundingBox();
+      expect(switchBox.x, `${width}`).toBeGreaterThanOrEqual(support.x);
+      expect(switchBox.x + switchBox.width, `${width}`).toBeLessThanOrEqual(support.x + support.width);
+      expect(switchBox.y + switchBox.height, `${width}`).toBeLessThanOrEqual(income.y);
+      expect(switchBox.x, `${width}`).toBeGreaterThan(titleBox.x + titleBox.width);
 
       // The same page without the switch is the no-control baseline.
       await page.addStyleTag({ content: ".summary-scope-switch { display: none !important; }" });
       await expect(scope).toBeHidden();
-      const baseline = await measure();
-      expect(withSwitch.head, `${width} header`).toEqual(baseline.head);
-      expect(withSwitch.title.width, `${width} title column`).toBe(baseline.title.width);
-      expect(withSwitch.cards, `${width} cards`).toEqual(baseline.cards);
-      expect(withSwitch.insight, `${width} check-in`).toEqual(baseline.insight);
+      await expect(page.locator(".summary-support-context")).toContainText("Viewing");
     }
 
     // The household counts every entry and has no switch.

@@ -178,9 +178,10 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       <div className="panel-head summary-head">
         <div>
           <h2>{messages.tabs.summary}</h2>
-          <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
-          {/* A phone switches scope from the floating View and scope bar instead. */}
-          {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
+          {isMobileLayout || leadView !== "simple" ? null : <>
+            <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
+            <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />
+          </>}
         </div>
         <SummaryLead
           model={leadModel}
@@ -189,6 +190,12 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           categoryShare={safeSummaryPage.categoryShareChart}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
+          supportHeader={isMobileLayout || leadView === "simple" ? null : (
+            <div className="summary-support-context">
+              <span>{messages.common.viewingDot(view.label)}</span>
+              <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />
+            </div>
+          )}
         />
       </div>
 

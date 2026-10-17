@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { planStudioAddCopy } from "./copy/plan-studio-add-copy";
+import { PlanModeSwitch } from "./plan-mode-switch";
 import { useIsMobileLayout } from "./use-viewport";
 
 function IslandAction({ children }) {
@@ -15,12 +15,9 @@ function IslandAction({ children }) {
 }
 
 export function PlanIslandActions({ mode, onModeChange, disabled = false }) {
-  const next = mode === "studio" ? "tables" : "studio";
   return (
     <IslandAction>
-      <button type="button" className="mobile-context-line-action" data-plan-island-mode disabled={disabled} onClick={() => onModeChange(next)}>
-        {planStudioAddCopy.modes[next]}
-      </button>
+      <PlanModeSwitch mode={mode} onChange={onModeChange} disabled={disabled} name="plan-mode-island" inline />
     </IslandAction>
   );
 }
@@ -28,7 +25,7 @@ export function PlanIslandActions({ mode, onModeChange, disabled = false }) {
 export function PlanIslandUndo({ label, disabled, onUndo }) {
   const undo = (event) => {
     // The last Undo removes this button; keep focus in the island.
-    event.currentTarget.parentElement.querySelector("[data-plan-island-mode]")?.focus({ preventScroll: true });
+    event.currentTarget.parentElement.querySelector("[data-plan-mode-switch] input:checked")?.focus({ preventScroll: true });
     onUndo();
   };
   return (

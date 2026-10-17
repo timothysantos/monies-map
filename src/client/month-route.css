@@ -579,7 +579,30 @@
 
 /* Route-owned actions share the phone island; non-default scope stays visible. */
 @media (max-width: 760px) {
-  #mobile-plan-actions:not(:empty) { display: flex; flex: 0 0 auto; }
+  #mobile-plan-actions:not(:empty) {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+  }
+  #mobile-plan-actions .plan-mode-inline {
+    margin: 0;
+  }
+  #mobile-plan-actions .lead-view-switch {
+    margin: 0;
+  }
+  #mobile-plan-actions .lead-view-switch label {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 28px;
+    padding-inline: 9px;
+  }
+  #mobile-plan-actions .lead-view-switch label:has(> input:disabled) {
+    cursor: default;
+    opacity: 0.55;
+  }
+  #mobile-plan-actions .lead-view-switch input {
+    inset: -8px -1px;
+  }
   .mobile-context-sticky-bar[data-scope="direct_plus_shared"]:has(> .mobile-context-main > #mobile-plan-actions:not(:empty)) .mobile-context-scope { display: none; }
   .mobile-context-sticky-bar[data-scope="direct_plus_shared"]:has(> .mobile-context-main > #mobile-plan-actions:not(:empty)) .mobile-context-trigger { flex: 0 0 auto; }
   .mobile-context-sticky-bar:has(> .mobile-context-main > .is-month) #mobile-plan-actions:not(:empty),

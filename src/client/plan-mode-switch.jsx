@@ -14,12 +14,12 @@ const copy = planStudioAddCopy.modes;
  * `inline` is the switch alone, for the toolbar's row; without it the switch
  * sits on a row of its own (over the list, which has no toolbar).
  */
-export function PlanModeSwitch({ mode, onChange, studioDirty = false, inline = false }) {
+export function PlanModeSwitch({ mode, onChange, studioDirty = false, inline = false, disabled = false, name = "plan-mode" }) {
   const control = (
     <div className={`lead-view-switch${inline ? " plan-mode-inline" : ""}`} role="radiogroup" aria-label={copy.label} data-plan-mode-switch>
       {["studio", "tables"].map((key) => (
         <label key={key} title={key === "studio" && studioDirty ? copy.unsavedStudio : undefined}>
-          <input type="radio" name="plan-mode" checked={mode === key} onChange={() => onChange(key)} data-plan-mode={key} />
+          <input type="radio" name={name} checked={mode === key} disabled={disabled} onChange={() => onChange(key)} data-plan-mode={key} />
           {copy[key]}
           {key === "studio" && studioDirty ? <i className="plan-mode-dot" role="img" aria-label={copy.unsavedStudio} data-plan-mode-dirty /> : null}
         </label>

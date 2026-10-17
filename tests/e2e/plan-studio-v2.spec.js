@@ -43,7 +43,8 @@ const row = (page, name) => page.locator("[data-ps-row]").filter({ has: page.loc
 const planned = (page, name) => row(page, name).locator("[data-ps-amount]");
 const saveButton = (page) => page.locator("[data-ps-save]");
 const popover = (page) => page.locator("[data-ps-info]");
-const modeSwitch = (page) => page.locator("[data-plan-mode-switch]");
+const modeSwitch = (page) => page.locator("#month-plan [data-plan-mode-switch]");
+const islandModeSwitch = (page) => page.locator(".mobile-context-sticky-bar [data-plan-mode-switch]");
 const tables = (page) => page.locator(".month-plan-stack");
 
 async function typeAmount(page, name, text) {
@@ -459,6 +460,13 @@ test.describe("Plan Studio v2 on a phone", () => {
     await expect(slider).toHaveAttribute("aria-valuenow", "1234");
     const island = page.locator(".mobile-context-sticky-bar");
     await expect(island.locator("[data-plan-island-undo]")).toBeVisible();
+    const personChip = await island.locator(".mobile-context-person-chip").boundingBox();
+    const switchBox = await islandModeSwitch(page).boundingBox();
+    const monthNavigation = await island.locator(".mobile-month-jump").boundingBox();
+    const islandBox = await island.boundingBox();
+    expect(personChip.x + personChip.width).toBeLessThanOrEqual(switchBox.x);
+    expect(switchBox.x + switchBox.width).toBeLessThanOrEqual(monthNavigation.x);
+    expect(monthNavigation.x + monthNavigation.width).toBeLessThanOrEqual(islandBox.x + islandBox.width);
     const changed = await island.boundingBox();
     expect(Math.abs(changed.height - baseline.height)).toBeLessThanOrEqual(1);
     for (const action of await island.locator("#mobile-plan-actions button").all()) {
@@ -470,11 +478,12 @@ test.describe("Plan Studio v2 on a phone", () => {
     await island.locator("[data-plan-island-undo]").click();
     await expect(slider).toHaveAttribute("aria-valuenow", before);
     await expect(island.locator("[data-plan-island-undo]")).toHaveCount(0);
-    await expect(island.locator("[data-plan-island-mode]")).toBeFocused();
-    await island.locator("[data-plan-island-mode]").click();
+    const switchInIsland = islandModeSwitch(page);
+    await expect(switchInIsland.locator('[data-plan-mode="studio"]')).toBeFocused();
+    await switchInIsland.locator('[data-plan-mode="tables"]').check();
     await expect(tables(page)).toBeVisible();
-    await expect(island.locator("[data-plan-island-mode]")).toHaveText("Sliders");
-    await island.locator("[data-plan-island-mode]").click();
+    await expect(switchInIsland.locator('[data-plan-mode="studio"]')).toBeVisible();
+    await switchInIsland.locator('[data-plan-mode="studio"]').check();
     await expect(studio(page)).toBeVisible();
   });
 
@@ -491,13 +500,14 @@ test.describe("Plan Studio v2 on a phone", () => {
     const island = page.locator(".mobile-context-sticky-bar");
     try {
       await expect(island.locator("[data-plan-island-undo]")).toBeDisabled();
-      await expect(island.locator("[data-plan-island-mode]")).toBeDisabled();
+      await expect(islandModeSwitch(page).locator("input")).toHaveCount(2);
+      for (const input of await islandModeSwitch(page).locator("input").all()) await expect(input).toBeDisabled();
     } finally {
       release();
     }
     await expect(studio(page)).not.toHaveAttribute("aria-busy", "true");
     await expect(island.locator("[data-plan-island-undo]")).toHaveCount(0);
-    await expect(island.locator("[data-plan-island-mode]")).toBeEnabled();
+    for (const input of await islandModeSwitch(page).locator("input").all()) await expect(input).toBeEnabled();
   });
 
   test("non-default scope stays visible beside contextual plan actions", async ({ page }) => {
@@ -506,9 +516,9 @@ test.describe("Plan Studio v2 on a phone", () => {
     const island = page.locator(".mobile-context-sticky-bar");
     await expect(island.locator(".mobile-context-scope")).toHaveText("Direct");
     await expect(island.locator(".mobile-context-scope")).toBeVisible();
-    await expect(island.locator("[data-plan-island-mode]")).toBeVisible();
+    await expect(islandModeSwitch(page)).toBeVisible();
     const scope = await island.locator(".mobile-context-scope").boundingBox();
-    const action = await island.locator("[data-plan-island-mode]").boundingBox();
+    const action = await islandModeSwitch(page).boundingBox();
     expect(action.y + action.height).toBeLessThanOrEqual(scope.y);
   });
 
@@ -626,10 +636,10 @@ test.describe("Plan Studio v2 on a phone", () => {
   test("Sliders | List switches on a phone and List keeps the tap-to-edit row sheet", async ({ page }) => {
     await seed(page);
     await open(page);
-    await modeSwitch(page).getByText("List").tap();
+    await islandModeSwitch(page).locator('[data-plan-mode="tables"]').check();
     await expect(tables(page)).toBeVisible();
     await expect(studio(page)).toBeHidden();
-    await modeSwitch(page).getByText("Sliders").tap();
+    await islandModeSwitch(page).locator('[data-plan-mode="studio"]').check();
     await expect(studio(page)).toBeVisible();
   });
 

@@ -37,7 +37,7 @@ const planWords = messages.summary.monthChoice;
 // Simple is "Earned $x · Spent $y" over the same savings bar without its plan
 // bar, and nothing else: the plan line, the money jobs and the Income, Saved
 // and Remaining budget figures (each a plan or a repeat of the lead) go.
-export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null }) {
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null, supportHeader = null }) {
   const simple = view === "simple";
   const over = model.headroom?.isOver;
   return (
@@ -78,6 +78,7 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
         ) : null}
       </LeadCard>
       {inline || simple ? null : <div className="summary-support-pills">
+        {supportHeader}
         <SummarySupportPill
           metric="income"
           label={copy.income}
