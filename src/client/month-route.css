@@ -616,3 +616,22 @@
     box-shadow: var(--chrome-shadow);
   }
 }
+
+@media (max-width: 760px) {
+  /* A held slider draft adds Undo to the island. Keep its 44px target just
+     above the compact mode switch so the labelled month navigator and the
+     Sliders | List control never run off the phone's edge. */
+  .mobile-context-sticky-bar[data-scope="direct_plus_shared"] #mobile-plan-actions:has([data-plan-island-undo]) {
+    position: relative;
+  }
+
+  .mobile-context-sticky-bar[data-scope="direct_plus_shared"] #mobile-plan-actions .mobile-context-line-action[data-plan-island-undo] {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 5px);
+    margin: 0;
+    border: 1px solid var(--line);
+    background: var(--chrome-surface);
+    box-shadow: var(--chrome-shadow);
+  }
+}

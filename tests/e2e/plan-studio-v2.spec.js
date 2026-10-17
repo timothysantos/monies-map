@@ -462,7 +462,11 @@ test.describe("Plan Studio v2 on a phone", () => {
     await expect(island.locator("[data-plan-island-undo]")).toBeVisible();
     const personChip = await island.locator(".mobile-context-person-chip").boundingBox();
     const switchBox = await islandModeSwitch(page).boundingBox();
-    const monthNavigation = await island.locator(".mobile-month-jump").boundingBox();
+    // Month's labelled picker already owns its previous/next actions. A
+    // second bare-arrow pair would crowd out the Sliders | List switch.
+    await expect(island.locator(".mobile-month-jump")).toHaveCount(0);
+    await expect(island.locator(".mobile-context-scope")).toBeHidden();
+    const monthNavigation = await island.locator(".mobile-month-choice").boundingBox();
     const islandBox = await island.boundingBox();
     expect(personChip.x + personChip.width).toBeLessThanOrEqual(switchBox.x);
     expect(switchBox.x + switchBox.width).toBeLessThanOrEqual(monthNavigation.x);
