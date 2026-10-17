@@ -56,11 +56,47 @@ test.describe("context and scroll shortcuts", () => {
     for (const tab of await bar.locator(".desktop-floating-tabs .tab").all()) {
       const tabBox = await tab.boundingBox();
       expect(Math.abs((tabBox.y + tabBox.height / 2) - (box.y + box.height / 2))).toBeLessThanOrEqual(1);
+      const labelBox = await tab.locator(".tab-label-with-badge").boundingBox();
+      expect(Math.abs((labelBox.y + labelBox.height / 2) - (box.y + box.height / 2))).toBeLessThanOrEqual(2);
     }
     const monthJump = await bar.locator(".mobile-month-jump").boundingBox();
     expect(Math.abs(monthJump.x + monthJump.width - box.x - box.width)).toBeLessThanOrEqual(10);
+    await expect(bar.locator(".mobile-month-jump-label")).toHaveText("Oct 2025");
     await bar.locator(".mobile-context-trigger").click();
     await expect(page.getByRole("dialog", { name: "View and scope" })).toBeVisible();
+  });
+
+  test("desktop Summary keeps Plan and Simple in its floating bar", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await reseedDemo(page);
+    await page.goto("/summary?view=person-tim&month=2025-10", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 60_000 }).toBe(true);
+    await page.evaluate(() => window.scrollTo({ top: 600, behavior: "instant" }));
+    const bar = page.locator(".mobile-context-sticky-wrap.is-desktop-visible");
+    await expect(bar).toBeVisible();
+    const switcher = bar.getByRole("radiogroup", { name: "Show this period" });
+    await switcher.getByRole("radio", { name: "Simple" }).check();
+    await expect(page.locator(".summary-lead-group[data-lead-view=simple]")).toBeVisible();
+    await switcher.getByRole("radio", { name: "Plan" }).check();
+    await expect(page.locator(".summary-lead-group[data-lead-view=plan]")).toBeVisible();
+    await expect(switcher.getByRole("radio", { name: "Plan" })).toBeChecked();
+    for (const width of [1280, 900, 761]) {
+      await page.setViewportSize({ width, height: 800 });
+      const barBox = await bar.boundingBox();
+      const tabsBox = await bar.locator(".desktop-floating-tabs").boundingBox();
+      const switchBox = await switcher.boundingBox();
+      const monthBox = await bar.locator(".mobile-month-choice").boundingBox();
+      expect(switchBox.x).toBeGreaterThanOrEqual(tabsBox.x + tabsBox.width);
+      expect(monthBox.x).toBeGreaterThanOrEqual(switchBox.x + switchBox.width);
+      expect(monthBox.x + monthBox.width).toBeLessThanOrEqual(barBox.x + barBox.width + 1);
+    }
+
+    await page.goto("/month?view=person-tim&month=2025-10", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 60_000 }).toBe(true);
+    await page.evaluate(() => window.scrollTo({ top: 600, behavior: "instant" }));
+    const monthBar = page.locator(".mobile-context-sticky-wrap.is-desktop-visible");
+    await expect(monthBar.getByRole("radiogroup", { name: "Show this period" }).getByRole("radio", { name: "Plan" })).toBeChecked();
+    await expect(monthBar.locator(".mobile-month-choice")).toContainText("Oct 2025");
   });
 
   for (const [name, viewport] of [

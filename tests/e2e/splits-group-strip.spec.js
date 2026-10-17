@@ -305,7 +305,9 @@ test.describe("Splits group strip on a desktop", () => {
     await expect(tabs.getByRole("link", { name: "Splits" })).toHaveAttribute("aria-current", "page");
     const groupActions = tabs.locator(".desktop-splits-group-actions");
     await expect(groupActions).toBeVisible();
+    await expect(groupActions.getByRole("button", { name: "Okaeri" })).toHaveCount(0);
     await expect(groupActions.getByRole("button", { name: "Non-group expenses" })).toBeVisible();
+    await expect(groupActions.locator(".desktop-splits-group-count").first()).toContainText(/\d+ entries?/);
     // Groups are direct choices in the shared bar; the list icon still opens
     // the complete sheet when more groups exist than fit.
     await expect(groupActions.getByRole("button", { name: "All groups" })).toBeVisible();

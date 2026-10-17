@@ -203,6 +203,11 @@ The app is designed for phones as well as desktops. The differences:
   When viewing an older month, **Back to this month** returns to the current
   month if it is within your chosen range. Splits' floating group bar also
   offers **Clear** while you search that group.
+  On a computer, the floating bar also keeps the page tabs. Entries names the
+  chosen month between its arrows. Summary and Month offer **Plan | Simple**
+  there as well as on the main card. On Splits, it shows groups with open
+  entries and their counts; **All groups** still shows every group. Settled
+  batches stay together behind the **Archived batches** row.
 
 - **Month button.** On Summary, the button beside the bar says **All
   months**. Tap it to pick one month of the range

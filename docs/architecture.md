@@ -925,6 +925,10 @@ its padding. Month's return-to-current-month action stays within the displayed
 range. Splits clears its search through the group strip. No API, DTO, query,
 persistence, or optional AI boundary changes. See design.md, "Island context line",
 and `tests/e2e/island-context.spec.js` for layout and continuity contracts.
+The desktop floating island shares the lead-view preference on Summary and
+Month. Entries names its selected month between matching navigation arrows;
+the Splits bar exposes only groups with open entries and keeps archived batches
+in their existing dated history surface.
 
 The mobile filter summary and sheet share one resolved lazy component so a
 summary tap can synchronously mount and focus search. Opening intent is captured

@@ -93,6 +93,11 @@ a floating bar shows the open group and opens the same sheet; it hides under
 any dialog. Desktop is one row with the control first; tiles that do not fit
 are dropped (never wrapped or scrolled) and the All half reads "All · N more".
 Group tiles carry no money tone (the Splits orange).
+The desktop floating bar keeps groups with open entries, labels each with its
+entry count, and leaves empty or archived-only groups in All groups. If none
+has open entries, it says "No open splits" and links to the selected group's
+settled batches when there are any. The page's Archived batches row remains
+the single entry to the dated batch list and individual batch details.
 
 ### Splits page: lead card, search, activity list
 
@@ -2119,8 +2124,10 @@ month belongs to the displayed range. The return wording wraps inside its
 44px target to leave room for the month arrows. The month is already named in its control;
 a stacked context additionally says **Viewing Sep 2026**. All months has no
 extra context. Splits' existing floating group bar gains Clear while its search
-is active; the group picker remains a separate button. Desktop and Ask retain
-their existing contextual controls. In the Month Plan view the phone island also
+is active; the group picker remains a separate button. On desktop the floating
+bar centres tab labels, puts the chosen month between matching arrows at the
+right edge on Entries, and offers Plan | Simple on Summary and Month. In the
+Month Plan view the phone island also
 offers the other plan mode (Sliders/List), and Undo while the visible sliders
 have held changes. These are portals owned by Month and Plan Studio: the shell
 owns only the host, with no draft or copied history. Default scope makes room

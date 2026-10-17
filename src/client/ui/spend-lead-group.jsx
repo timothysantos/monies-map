@@ -9,6 +9,7 @@ import { money } from "../formatters";
 import { LeadCard } from "./lead-support-detail";
 import { MoneyJobs } from "./money-jobs";
 import { SavingsBar } from "./savings-bar";
+import { LeadViewSwitch } from "../lead-view-switch";
 
 const copy = messages.summary.lead;
 const planWords = messages.summary.monthChoice;
@@ -151,24 +152,6 @@ function SimpleFigure({ label, figure, name, fig: kind, ask = "" }) {
       <small>{label}</small>
       <span className={moneyToneClass(figure.tone)} {...fig(kind, null, ask)}><PrivateMoney>{money(figure.amountMinor)}</PrivateMoney></span>
     </span>
-  );
-}
-
-// Plan | Simple, two native radio buttons drawn as one segmented control:
-// the browser gives the radio group's keys (the arrows move the choice and
-// the focus; only the chosen one is in the tab order). Each input is
-// invisible and covers its label and the space around it, a 44 px target.
-// One lead per page, so one group name.
-function LeadViewSwitch({ view, onChange }) {
-  return (
-    <div className="lead-view-switch" role="radiogroup" aria-label={copy.view.label}>
-      {["plan", "simple"].map((key) => (
-        <label key={key}>
-          <input type="radio" name="lead-view" checked={view === key} onChange={() => onChange(key)} />
-          {copy.view[key]}
-        </label>
-      ))}
-    </div>
   );
 }
 

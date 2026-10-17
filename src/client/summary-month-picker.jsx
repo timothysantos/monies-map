@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { formatMonthLabel } from "./formatters";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // The Summary tab's month choice controls that ship with the app shell (both
 // are small): the phone's floating-island control and the desktop month row.
@@ -50,7 +51,7 @@ export function SummaryMonthIslandControl({
         disabled={disabled || !previousMonth}
         onClick={() => onStep(previousMonth)}
       >
-        ‹
+        <ChevronLeft size={19} strokeWidth={2.2} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -71,7 +72,7 @@ export function SummaryMonthIslandControl({
         disabled={disabled || !nextMonth}
         onClick={() => onStep(nextMonth)}
       >
-        ›
+        <ChevronRight size={19} strokeWidth={2.2} aria-hidden="true" />
       </button>
     </div>
   );

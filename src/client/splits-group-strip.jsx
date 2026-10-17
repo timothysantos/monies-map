@@ -32,7 +32,9 @@ export function SplitsGroupStrip({
   readOnly = false,
   hideBar = false,
   searchQuery = "",
+  archivedBatchCount = 0,
   onClearSearch,
+  onOpenArchive,
   onSelectGroup,
   onCreateGroup
 }) {
@@ -51,6 +53,7 @@ export function SplitsGroupStrip({
     () => buildStripTiles(groups, { activeGroupId: activeId, areTotalsVisible, isHousehold }),
     [activeId, areTotalsVisible, groups, isHousehold]
   );
+  const floatingTiles = tiles.filter((tile) => tile.entryCount > 0);
   const sheetRows = useMemo(
     () => buildSheetRows(groups, { activeGroupId: activeId, areTotalsVisible, isHousehold }),
     [activeId, areTotalsVisible, groups, isHousehold]
@@ -202,18 +205,26 @@ export function SplitsGroupStrip({
       ) : null}
       {desktopFloatingHost ? createPortal(
         <div className="desktop-splits-group-actions" role="group" aria-label={copy.allGroups}>
-          {tiles.map((tile) => (
+          {floatingTiles.map((tile) => (
             <button
               key={tile.id}
               type="button"
               className={`desktop-splits-group-button${tile.isActive ? " is-active" : ""}`}
+              aria-label={tile.name}
               aria-pressed={tile.isActive}
               onClick={() => onSelectGroup(tile.id)}
-              title={tile.name}
+              title={`${tile.name} · ${copy.entryCount(tile.entryCount)} · ${tile.balanceLine}`}
             >
-              {tile.name}
+              <span className="desktop-splits-group-name">{tile.name}</span>
+              <small className="desktop-splits-group-count">{copy.entryCount(tile.entryCount)}</small>
             </button>
           ))}
+          {!floatingTiles.length ? <span className="desktop-splits-empty-groups">No open splits</span> : null}
+          {archivedBatchCount > 0 && !floatingTiles.length ? (
+            <button type="button" className="desktop-splits-group-clear" onClick={onOpenArchive}>
+              {archivedBatchCount} settled {archivedBatchCount === 1 ? "batch" : "batches"}
+            </button>
+          ) : null}
           <button type="button" className="desktop-splits-group-more" aria-label={copy.allGroups} onClick={() => setIsSheetOpen(true)}>
             <List size={16} aria-hidden="true" />
           </button>

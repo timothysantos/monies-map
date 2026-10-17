@@ -7,6 +7,8 @@ import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal, flushSync } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
+  ChevronLeft,
+  ChevronRight,
   Receipt,
   Plus
 } from "lucide-react";
@@ -117,7 +119,8 @@ import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
 import { useInsightAskLauncher } from "./use-insight-ask-launcher";
 import { useLiveSearchParams } from "./use-live-search-params";
-import { leadViewStore } from "./lead-view";
+import { leadViewStore, useLeadView } from "./lead-view";
+import { LeadViewSwitch } from "./lead-view-switch";
 import { publishAppShell } from "./app-shell-watch";
 
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
@@ -2650,6 +2653,7 @@ export function App() {
   // month arrows for its single month.
   const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileMonthChoice = showMobileContextSticky && isSummaryTab;
+  const [floatingLeadView, setFloatingLeadView] = useLeadView();
 
   // The island's context line: what narrows Entries (with Clear), or a month
   // other than this one on the Summary tab (with a way back). It takes the
@@ -3330,8 +3334,11 @@ export function App() {
             </Dialog.Root>
             <span id="mobile-plan-actions" />
             {islandInline ? <Suspense fallback={null}><MobileContextSheet contextLine {...islandLineProps} /></Suspense> : null}
+            {desktopContextVisible && isSummaryTab ? (
+              <LeadViewSwitch view={floatingLeadView} onChange={setFloatingLeadView} name="lead-view-floating" />
+            ) : null}
             {showMobileMonthJump ? (
-              <div className="mobile-month-jump" aria-label="Month navigation">
+              <div className="mobile-month-jump" role="group" aria-label="Month navigation">
                 <button
                   className="period-button mobile-month-jump-button"
                   type="button"
@@ -3339,8 +3346,9 @@ export function App() {
                   onClick={() => handleMonthChange(-1)}
                   disabled={!canMoveToPreviousDetailMonth}
                 >
-                  ‹
+                  <ChevronLeft size={19} strokeWidth={2.2} aria-hidden="true" />
                 </button>
+                <span className="mobile-month-jump-label">{formatMonthLabel(selectedMonth)}</span>
                 <button
                   className="period-button mobile-month-jump-button"
                   type="button"
@@ -3348,7 +3356,7 @@ export function App() {
                   onClick={() => handleMonthChange(1)}
                   disabled={!canMoveToNextDetailMonth}
                 >
-                  ›
+                  <ChevronRight size={19} strokeWidth={2.2} aria-hidden="true" />
                 </button>
               </div>
             ) : null}

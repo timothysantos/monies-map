@@ -7921,6 +7921,10 @@ th {
     box-shadow: none;
   }
 
+  .mobile-month-jump-label {
+    display: none;
+  }
+
   /* The Summary tab's month control: a 44px button around a quiet chip,
      "All months ▾", or "‹ Sep 2026 ▾ ›" with a month picked
      (summary-month-picker.jsx). */
@@ -8492,11 +8496,15 @@ td:is(.money-in, .money-short, .money-out) {
   }
 
   .desktop-floating-tabs .tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 40px;
     padding: 0 9px;
     border-radius: 11px;
     color: var(--muted);
     font-size: 0.84rem;
+    text-decoration: none;
     white-space: nowrap;
   }
 
@@ -8718,6 +8726,37 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
     margin-left: auto;
   }
 
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-month-jump {
+    flex: 0 0 auto;
+    gap: 1px;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-month-jump-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    padding: 0 8px;
+    color: var(--text);
+    font-size: 0.84rem;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .lead-view-switch {
+    flex: 0 0 auto;
+    margin: 0 2px 0 auto;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .lead-view-switch label {
+    min-height: 40px;
+    font-size: 0.8rem;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .lead-view-switch input {
+    inset: 0;
+  }
+
   /* Summary's month picker is the same quiet pill treatment as its person
      control; Month and Entries retain their arrow pair at the trailing edge. */
   .mobile-month-choice {
@@ -8775,6 +8814,12 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
     cursor: pointer;
   }
 
+  .mobile-month-choice-step,
+  .mobile-month-jump-button {
+    display: inline-grid;
+    place-items: center;
+  }
+
   .mobile-month-choice-step:disabled,
   .mobile-month-choice:disabled {
     opacity: 0.4;
@@ -8827,6 +8872,34 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
   .desktop-splits-group-button.is-active {
     background: rgb(var(--accent-strong-rgb) / 0.12);
     color: var(--accent-strong);
+  }
+
+  .desktop-splits-group-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .desktop-splits-group-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .desktop-splits-group-count {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .desktop-splits-empty-groups {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 9px;
+    color: var(--muted);
+    font-size: 0.84rem;
   }
 
   .desktop-splits-group-more {
