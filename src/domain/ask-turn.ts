@@ -339,6 +339,10 @@ export interface AskTurnContext {
   // Household order (owner first): the first person's share is what
   // splitBasisPoints means.
   people: AskTurnPerson[];
+  // The person asking: the signed-in login's person (Cloudflare Access,
+  // login_identities), when the server knows it. "I", "me" and "my" are
+  // this person; without it, the person being viewed (a person view).
+  askerPersonId?: string;
   // The entry draft reader's context: wallets, categories, rules, payment ways.
   entry: EntryDraftContext;
   groups: AskTurnGroup[];
@@ -508,7 +512,8 @@ export function parseAskTurnAction(value: unknown): AskTurnAction | null {
 // messages are sent as they wrote them, redacted.
 export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = []) {
   const viewer = viewerName(context);
-  const viewLabel = context.viewId === "household" ? "the whole household" : viewer ?? "the household";
+  const viewed = context.people.find((person) => person.id === context.viewId);
+  const viewLabel = context.viewId === "household" ? "the whole household" : viewed?.name ?? "the household";
   const wallets = context.entry.accounts
     .filter((account) => account.isActive)
     .slice(0, MAX_LIST_NAMES)
@@ -1088,7 +1093,7 @@ export function resolveShares(value: unknown, context: AskTurnContext, totalMino
   let items = listed.filter(shareValue).map(withShareFields).filter(shareValue);
   if (!items.length) {
     // Nothing usable from the model: the person's own words may still name a share.
-    const reading = readSharesByRules(context.text, people, context.viewId);
+    const reading = readSharesByRules(context.text, people, askerId(context));
     if (reading?.shares.length) items = reading.shares.map((share) => ({ ...share })).filter(shareValue);
     else if (listed.length && !reading) return { kind: "reply", reply: sharesQuestion(people) };
   }
@@ -1481,18 +1486,24 @@ export function viewerName(context: AskTurnContext) {
   return currentPerson(context)?.name ?? null;
 }
 
+// Who "I", "me" and "my" are: the person asking (the signed-in login), else
+// the person being viewed, else the entry reader's viewer. Never the payer
+// of the entry being discussed: in the household view that is often the
+// other person (459ddc25 read Tim's "my card" on Joyce's entry as Joyce's).
+// Unknown is null, and a "my" that matters is asked back.
 function currentPerson(context: AskTurnContext) {
+  const asker = context.askerPersonId ? context.people.find((person) => person.id === context.askerPersonId) : null;
+  if (asker) return asker;
   const byView = context.people.find((person) => person.id === context.viewId);
   if (byView) return byView;
-  const byShortcut = context.entry.viewerName
-    ? context.people.find((person) => person.name === context.entry.viewerName)
+  return context.entry.viewerName
+    ? context.people.find((person) => person.name === context.entry.viewerName) ?? null
     : null;
-  if (byShortcut) return byShortcut;
-  const focus = context.focus;
-  if (focus?.kind === "saved_entry") {
-    return context.people.find((person) => person.id === focus.entry.payerPersonId) ?? null;
-  }
-  return null;
+}
+
+// The id the rules' share reader takes for "I", "me" and "my".
+export function askerId(context: AskTurnContext) {
+  return currentPerson(context)?.id ?? "";
 }
 
 function walletOwner(account: AccountDto, people: AskTurnPerson[]) {

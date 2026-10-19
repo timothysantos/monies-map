@@ -24,13 +24,16 @@ export interface AskTurnRequestInput {
   month: string;
   page: string;
   focus: unknown;
+  // The signed-in person asking (loadAskerPersonId), when known.
+  askerPersonId?: string;
 }
 
 export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestInput, today: string): Promise<AskTurnContext> {
   const [people, groups, categories] = await Promise.all([loadPeople(db), loadGroups(db), loadCategoryRecords(db)]);
   const viewId = input.viewId === "household" || people.some((person) => person.id === input.viewId) ? input.viewId : "household";
+  const askerPersonId = people.some((person) => person.id === input.askerPersonId) ? input.askerPersonId : undefined;
   const [entry, planRows] = await Promise.all([
-    loadEntryDraftContext(db, { today, viewId }),
+    loadEntryDraftContext(db, { today, viewId, askerPersonId }),
     loadMonthPlanRowsForDraft(db, input.month)
   ]);
   const planLines = [...new Set(planRows.map((row) => row.label.trim()).filter(Boolean))];
@@ -41,6 +44,7 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
     scope: input.scope,
     page: input.page,
     people,
+    ...(askerPersonId ? { askerPersonId } : {}),
     entry,
     groups,
     planLines,

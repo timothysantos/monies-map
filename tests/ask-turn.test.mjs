@@ -13,7 +13,8 @@ import {
   buildAskTurnPrompt,
   parseAskTurnAction,
   readAmountMinor,
-  validateAskTurnAction
+  validateAskTurnAction,
+  viewerName
 } from "../src/domain/ask-turn.ts";
 
 const TODAY = "2026-10-13";
@@ -282,24 +283,69 @@ test("draft_entry negatives: an invented amount, a future date, an unknown or in
   assert.notEqual(reply.draft.fields.description?.value, "Expensive steak dinner");
 });
 
-test("my wallet on a household Ask card resolves to the saved entry's payer", () => {
-  const context = makeContext({
-    viewId: "household",
-    focus: savedFocus(),
+// "my" is the person asking (the signed-in login, askerPersonId), never the
+// payer of the entry being discussed (459ddc25 fell back to the payer, so in
+// the household view Tim's "my card" on Joyce's entry meant Joyce's card).
+function twoUobCards(overrides) {
+  const { entry: entryOverrides = {}, ...rest } = overrides;
+  const { viewerName: _viewerName, ...entry } = makeContext().entry;
+  return makeContext({
     text: "put it on my UOB One Card",
     entry: {
-      ...makeContext().entry,
+      ...entry,
       accounts: [
         account("acct-uob-tim", "UOB One Card", "person-tim"),
         account("acct-uob-joyce", "UOB One Card", "person-joyce")
-      ]
-    }
+      ],
+      ...entryOverrides
+    },
+    ...rest
   });
-  const reply = validateAskTurnAction(act("edit_saved_entry", {
-    entry: { wallet: "my UOB One Card" }
-  }), context);
+}
+
+const myUobCard = () => act("edit_saved_entry", { entry: { wallet: "my UOB One Card" } });
+
+test("household view: my wallet is the signed-in person's, even on an entry the other person paid", () => {
+  const context = twoUobCards({ viewId: "household", askerPersonId: "person-tim", focus: savedFocus({ payerPersonId: "person-joyce" }) });
+  const reply = validateAskTurnAction(myUobCard(), context);
   assert.equal(reply.kind, "change");
   assert.equal(reply.change.save[0].body.accountId, "acct-uob-tim");
+  assert.equal(viewerName(context), "Tim");
+});
+
+test("negative, household view: with no one signed in, my is not the entry's payer; Ask asks which card", () => {
+  const context = twoUobCards({ viewId: "household", focus: savedFocus({ payerPersonId: "person-joyce" }) });
+  assert.equal(viewerName(context), null);
+  const reply = validateAskTurnAction(myUobCard(), context);
+  assert.notEqual(reply.kind, "change");
+  assert.equal(reply.kind, "clarify");
+  assert.match(buildAskTurnPrompt(context), /"I", "me" and "my" mean the person asking\./);
+});
+
+test("person view: my is the person asking, not the person being viewed", () => {
+  const context = twoUobCards({ viewId: "person-joyce", askerPersonId: "person-tim", focus: savedFocus({ payerPersonId: "person-joyce" }) });
+  const reply = validateAskTurnAction(myUobCard(), context);
+  assert.equal(reply.kind, "change");
+  assert.equal(reply.change.save[0].body.accountId, "acct-uob-tim");
+  const prompt = buildAskTurnPrompt(context);
+  assert.match(prompt, /"I", "me" and "my" mean Tim\./);
+  // The view is still Joyce's.
+  assert.match(prompt, /Viewing: Joyce\./);
+});
+
+test("person view with no one signed in: my is the person being viewed, as before", () => {
+  const context = twoUobCards({ viewId: "person-joyce", focus: savedFocus({ payerPersonId: "person-tim" }) });
+  const reply = validateAskTurnAction(myUobCard(), context);
+  assert.equal(reply.kind, "change");
+  assert.equal(reply.change.save[0].body.accountId, "acct-uob-joyce");
+});
+
+test("a share the asker calls mine is theirs in the household view", () => {
+  const context = twoUobCards({ viewId: "household", askerPersonId: "person-joyce", focus: savedFocus({ payerPersonId: "person-tim" }), text: "add to splits, my share is 30%" });
+  const reply = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "me", value: "30%" }] } }), context);
+  assert.equal(reply.kind, "split_proposal");
+  // The first person's (Tim's) share is the rest: 70%.
+  assert.equal(reply.proposal.splitBasisPoints, 7_000);
 });
 
 test("draft_split_expense: a shared expense with the payer and Joyce's share, on Splits in the named group", () => {

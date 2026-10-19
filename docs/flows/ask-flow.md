@@ -322,7 +322,13 @@ Ask action follows these three rules, and every new Ask action must too.
      total (`ask-turn-shares.ts`); a second figure the person never wrote is
      the model's and is dropped;
    - defaults: the entry in focus (its payer, wallet, amount), the viewer for
-     "I", this month, the only split group.
+     "I", this month, the only split group. "I", "me" and "my" are the person
+     asking: the signed-in login's person (`loadAskerPersonId`, from the
+     verified Cloudflare Access email and `login_identities`; the request
+     cannot name it), else the person being viewed, else unknown, so a "my"
+     that matters is asked back. Never the payer of the entry in focus: in the
+     household view that is often the other person (459ddc25). The rules'
+     entry reader (`/api/ai-assist/entry-draft`) reads them the same way.
 2. **Draft with visible assumptions; ask only when outcomes differ.** What
    the app assumed is said in plain words on the reply (`assumptions`: a line
    and up to 3 chips; the page shows it under the draft, and a chip is sent as

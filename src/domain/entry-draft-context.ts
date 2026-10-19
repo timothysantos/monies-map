@@ -11,9 +11,27 @@ import { loadPaymentWays } from "./app-repository-payment-ways";
 import { loadShortcutAccountReferences, loadShortcutSettings } from "./app-repository-shortcuts";
 import type { EntryDraftContext } from "./entry-draft";
 
+// The person asking: the person the signed-in login (its Cloudflare Access
+// email, getAuthenticatedEmail) belongs to, or undefined with no login or an
+// unregistered one. Ask reads "I", "me" and "my" as this person. A read
+// only: a household without the login table yet simply has no asker.
+export async function loadAskerPersonId(db: D1Database, email: string | undefined): Promise<string | undefined> {
+  const login = email?.trim().toLowerCase();
+  if (!login) return undefined;
+  try {
+    const row = await db
+      .prepare("SELECT person_id FROM login_identities WHERE household_id = ? AND provider = ? AND email = ? LIMIT 1")
+      .bind(DEFAULT_HOUSEHOLD_ID, "cloudflare_access", login)
+      .first<{ person_id: string }>();
+    return row?.person_id || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function loadEntryDraftContext(
   db: D1Database,
-  input: { today: string; viewId?: string }
+  input: { today: string; viewId?: string; askerPersonId?: string }
 ): Promise<EntryDraftContext> {
   const accounts = await loadShortcutAccountReferences(db);
   const settings = await loadShortcutSettings(db, accounts);
@@ -33,7 +51,9 @@ export async function loadEntryDraftContext(
     people: householdPeople,
     priorityIds: settings.defaultAccountPriorityIds
   });
-  const viewerName = householdPeople.find((person) => person.id === input.viewId)?.name;
+  // "I", "me" and "my": the person asking, else the person being viewed.
+  const viewerName = householdPeople.find((person) => person.id === input.askerPersonId)?.name
+    ?? householdPeople.find((person) => person.id === input.viewId)?.name;
   return {
     today: input.today,
     accounts,

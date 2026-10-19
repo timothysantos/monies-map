@@ -33,7 +33,8 @@ import {
   parseEntryDraftAiSuggestion,
   parseEntrySentence
 } from "../domain/entry-draft";
-import { loadEntryDraftContext } from "../domain/entry-draft-context";
+import { loadAskerPersonId, loadEntryDraftContext } from "../domain/entry-draft-context";
+import { getAuthenticatedEmail } from "./access-identity";
 import { buildMonthPageDto } from "../domain/pages/month-page";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
@@ -91,7 +92,9 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
     }
     const context = await loadEntryDraftContext(env.DB, {
       today: todayInAppTimeZone(),
-      viewId: typeof body?.viewId === "string" ? body.viewId : undefined
+      viewId: typeof body?.viewId === "string" ? body.viewId : undefined,
+      // "I", "me" and "my" are the signed-in person asking (Ask's rules).
+      askerPersonId: await loadAskerPersonId(env.DB, getAuthenticatedEmail(request))
     });
     // The parser gets the text as sent, so it can flag a truncation itself.
     const draft = parseEntrySentence(body?.text, context);

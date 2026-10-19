@@ -42,6 +42,7 @@ import {
   ASK_TURN_MAX_HISTORY,
   ASK_TURN_MAX_TEXT,
   ASK_TURN_SCHEMA,
+  askerId,
   buildAskTurnPrompt,
   parseAskTurnAction,
   validateAskTurnAction,
@@ -56,6 +57,8 @@ import { lookupBudgetLeft, runLookupTool, type AskLookupCall } from "../domain/a
 import { applyNoteToNewEntry } from "./ask-auto-apply";
 import { readSharesByRules } from "../domain/ask-turn-shares";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
+import { loadAskerPersonId } from "../domain/entry-draft-context";
+import { getAuthenticatedEmail } from "./access-identity";
 import { buildAskRepairPrompt } from "../domain/ask-turn-repair";
 import { resolveAskTurnRequest } from "../domain/ask-turn-resolve";
 import { todayInAppTimeZone } from "../lib/app-calendar";
@@ -110,7 +113,9 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     scope: typeof body.scope === "string" && ["direct", "shared", "direct_plus_shared"].includes(body.scope) ? body.scope : "direct_plus_shared",
     month,
     page: typeof body.page === "string" && PAGES.has(body.page) ? body.page : "ask",
-    focus: body.focus
+    focus: body.focus,
+    // "my" is the signed-in person asking, never a name the request sends.
+    askerPersonId: await loadAskerPersonId(env.DB, getAuthenticatedEmail(request))
   };
   let context = await loadAskTurnContext(env.DB, contextInput, today);
 
@@ -304,7 +309,7 @@ function forPage(reply: AskTurnReply): AskTurnReply {
 // except a share on the saved entry in focus, which the rules' share reader
 // turns into the same action the model would send, checked the same way.
 function rulesAnswer(context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
-  const reading = context.focus?.kind === "saved_entry" ? readSharesByRules(text, context.people, context.viewId) : null;
+  const reading = context.focus?.kind === "saved_entry" ? readSharesByRules(text, context.people, askerId(context)) : null;
   // A bare "split 50/50" needs the word "split"; a named share stands alone.
   if (reading && (reading.shares.length || /\bsplits?\b/i.test(text))) {
     const action = parseAskTurnAction({ action: "add_entry_to_splits", split: { payer: null, group: null, shares: reading.shares } });

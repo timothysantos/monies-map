@@ -365,3 +365,46 @@ test("a provider that answers nothing usable falls back to the rules' reading of
   assert.equal(payload.reply.kind, "split_proposal");
   assert.deepEqual(figures(payload.reply), [["Tim", 553], ["Joyce", 237]]);
 });
+
+// "my" is the signed-in person asking (their Cloudflare Access login), read
+// by the server, never the payer of the entry in focus (459ddc25).
+async function registerLogin(db, email, personId) {
+  const person = await db.prepare("SELECT household_id FROM people WHERE id = ?").bind(personId).first();
+  await db.prepare("INSERT INTO login_identities (id, household_id, provider, email, person_id) VALUES (?, ?, 'cloudflare_access', ?, ?)")
+    .bind(`login-${personId}`, person.household_id, email, personId).run();
+}
+
+function allPrompts(ai) {
+  return ai.calls.map((call) => call.input.messages.map((message) => message.content).join("\n")).join("\n");
+}
+
+test("household view: the prompt's \"my\" is the signed-in person, not the payer of the entry in focus", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await applePayEntry(api);
+  await registerLogin(db, "joyce.login@example.test", "person-joyce");
+  const ai = stubAi({ action: "cannot_help", note: "Not here." });
+  await turn(db, { viewId: "household", text: "put it on my card", focus: { kind: "saved_entry", entryId } }, { ai, headers: { "CF-Access-Authenticated-User-Email": "joyce.login@example.test" } });
+  assert.match(allPrompts(ai), /"I", "me" and "my" mean Joyce\./);
+  assert.match(allPrompts(ai), /Viewing: the whole household\./);
+});
+
+test("negative: with no login the household view's \"my\" is the person asking, unnamed, even with Tim's entry in focus", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await applePayEntry(api);
+  const ai = stubAi({ action: "cannot_help", note: "Not here." });
+  await turn(db, { viewId: "household", text: "put it on my card", focus: { kind: "saved_entry", entryId } }, { ai });
+  assert.match(allPrompts(ai), /"I", "me" and "my" mean the person asking\./);
+  assert.doesNotMatch(allPrompts(ai), /"my" mean Tim/);
+});
+
+test("person view: the signed-in person is \"my\" even while viewing the other person; an unregistered login changes nothing", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await registerLogin(db, "tim.login@example.test", "person-tim");
+  const ai = stubAi({ action: "cannot_help", note: "Not here." });
+  await turn(db, { viewId: "person-joyce", text: "what did I spend" }, { ai, headers: { "CF-Access-Authenticated-User-Email": "tim.login@example.test" } });
+  assert.match(allPrompts(ai), /"I", "me" and "my" mean Tim\./);
+  assert.match(allPrompts(ai), /Viewing: Joyce\./);
+  const stranger = stubAi({ action: "cannot_help", note: "Not here." });
+  await turn(db, { viewId: "person-joyce", text: "what did I spend" }, { ai: stranger, headers: { "CF-Access-Authenticated-User-Email": "someone@example.test" } });
+  assert.match(allPrompts(stranger), /"I", "me" and "my" mean Joyce\./);
+});
