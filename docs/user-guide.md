@@ -1559,7 +1559,7 @@ words.
    ![The file names a card the app does not know yet: choose the account](/faq/guide/desktop/thumbs/imports-mapping.webp)
    Recognized Citi activity files also show **Check the card account**. If the
    automatic account is wrong, choose the right Citi card there; the preview
-   reruns its matching, duplicate and coverage checks before you commit.
+   checks the import again before you save it.
 5. Review the preview ([Read the import preview](#read-the-import-preview)).
    Fix anything under **Exceptions to resolve**. The chips under
    **Before you can commit:** at the top, or **Jump to next** beside the

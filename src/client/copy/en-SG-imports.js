@@ -162,7 +162,7 @@ export const importMessages = {
   accountMappingTitle: "Statement account mapping",
   accountMappingDetail: "Match each detected statement account to the account that should receive these rows and checkpoints.",
   activityAccountOverrideTitle: "Check the card account",
-  activityAccountOverrideDetail: "This file was assigned to the account shown below. If that is wrong, choose the card account it came from. The app will rerun all matching and coverage checks before you commit.",
+  activityAccountOverrideDetail: "This file was put on the account shown below. If that is wrong, choose the card account it came from; the import is checked again before you save it.",
   detectedAccount: (accountName) => `Detected: ${accountName}`,
   chooseAccount: "Choose account",
   createDetectedAccount: "Create account",
