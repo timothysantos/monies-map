@@ -50,6 +50,9 @@ export function IslandContextLineBody({ kind, text, inline, onClear, onOpen, onB
 // With `stacked` the line sits on its own row above the island's controls and
 // holds the page flag that lifts the round buttons above it by that row; the
 // row and its flag live here so the first screen does not carry page-flags.js.
+/**
+ * @param {{ stacked?: boolean, kind: "filters" | "month", text: string, inline: boolean, onClear?: () => void, onOpen?: () => void, onBack?: () => void }} props
+ */
 export default function IslandContextLine({ stacked = false, ...props }) {
   const line = useIsMobileLayout() ? <IslandContextLineBody {...props} /> : null;
   return stacked ? (
