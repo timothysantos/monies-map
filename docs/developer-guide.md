@@ -1313,6 +1313,15 @@ Those already-certified rows still keep the same import-versus-ledger comparison
 popover in the preview so a mismatch can be inspected without restoring the row
 first.
 
+An activity row dated inside a confirmed statement that has no certified
+same-amount cover is a separate accounting exception. Preview marks it
+`needs_review`, keeps it out of the commit payload, and shows the source-row
+reason beside an **Include row** action. This is deliberate: the closed
+statement remains authoritative by default, while a genuinely omitted bank row
+can still be added after the user verifies the export. Exact and probable
+statement-covered rows remain skipped, and explicitly including the exception
+creates a provisional transaction that a later statement can certify.
+
 If a statement mismatch is exactly resolved by including unresolved near-match
 rows, probable duplicates, or other app-skipped duplicate rows for that account,
 the preview treats those rows as statement-confirmed instead of duplicate

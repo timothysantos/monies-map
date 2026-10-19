@@ -471,8 +471,9 @@ async function loadCertifiedStatementPeriods(db: D1Database): Promise<CertifiedS
 // - one of the statement's certified entries with the same signed amount,
 //   inside the velocity window and not taken by another row, covers it: the
 //   row is skipped as already on the statement, however the export words it;
-// - nothing covers it: it is left out by default and says why, so it cannot
-//   slip into a closed statement and unbalance it. The user can include it.
+// - nothing covers it: it needs an explicit user decision before commit, so it
+//   cannot slip into a closed statement and unbalance it. The user can include
+//   it after checking the source row.
 // Rows the earlier lanes already handled (an exact duplicate, a promotion of
 // a manual entry, an explicit user choice) are only labelled.
 function applyCertifiedStatementCoverage(input: {
@@ -545,8 +546,8 @@ function applyCertifiedStatementCoverage(input: {
     return;
   }
 
-  previewRow.commitStatus = "skipped";
-  previewRow.commitStatusReason = `Dated inside the ${monthLabel} statement, which is already confirmed, but that statement doesn't have it. Include it only if the statement is wrong.`;
+  previewRow.commitStatus = "needs_review";
+  previewRow.commitStatusReason = `Dated inside the confirmed ${monthLabel} statement, but that statement does not list it. Review the source row before importing it.`;
   previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
 }
 

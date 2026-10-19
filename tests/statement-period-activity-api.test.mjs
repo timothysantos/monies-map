@@ -59,10 +59,11 @@ test("an activity export after a confirmed statement skips every row the stateme
   ]);
 
   // OPENAI appears twice in the export (the bank listed the authorisation and
-  // the charge): the statement has one, so the second stays out as not on it.
+  // the charge): the statement has one, so the second needs an explicit
+  // decision instead of being silently treated as covered.
   assert.deepEqual(summarise(preview), [
     ["OPENAI OPENAI.COM", "skipped", true],
-    ["OPENAI *CHATGPT SUBSCR", "skipped", false],
+    ["OPENAI *CHATGPT SUBSCR", "needs_review", false],
     ["Buyandship Limited", "skipped", true],
     ["BUS/MRT 123456 SINGAPORE", "skipped", true],
     ["GRAB RIDES SINGAPORE", "included", null]
@@ -70,7 +71,7 @@ test("an activity export after a confirmed statement skips every row the stateme
   const bus = preview.previewRows.find((row) => row.description.startsWith("BUS/MRT"));
   assert.equal(bus.commitStatusReason, "Already on the confirmed May 2026 statement as BUS/MRT 000000000 SINGAPORE.");
   const extraOpenai = preview.previewRows.find((row) => row.description === "OPENAI *CHATGPT SUBSCR");
-  assert.equal(extraOpenai.commitStatusReason, "Dated inside the May 2026 statement, which is already confirmed, but that statement doesn't have it. Include it only if the statement is wrong.");
+  assert.equal(extraOpenai.commitStatusReason, "Dated inside the confirmed May 2026 statement, but that statement does not list it. Review the source row before importing it.");
 });
 
 test("committing the export after the statement adds only the rows after it and keeps the statement balanced", async (t) => {
@@ -82,7 +83,8 @@ test("committing the export after the statement adds only the rows after it and 
     activityRow("2026-05-09", "BUS/MRT 123456 SINGAPORE", "3.94"),
     activityRow("2026-05-15", "GRAB RIDES SINGAPORE", "12.30")
   ]);
-  // The reworded OPENAI row is covered by the statement's one.
+  // With only one same-amount OPENAI row, the statement's row covers it. An
+  // unmatched same-amount duplicate is the case that needs review above.
   assert.deepEqual(summarise(preview).map((row) => row[1]), ["skipped", "skipped", "included"]);
 
   const commit = await api("/api/imports/commit", {
@@ -113,10 +115,28 @@ test("a row the user includes on purpose is kept, and repeated fares far apart a
   ]);
 
   assert.deepEqual(summarise(preview), [
-    ["BUS/MRT 999999 SINGAPORE", "skipped", false],
-    ["BUS/MRT 999998 SINGAPORE", "skipped", false],
+    ["BUS/MRT 999999 SINGAPORE", "needs_review", false],
+    ["BUS/MRT 999998 SINGAPORE", "needs_review", false],
     ["KOPITIAM", "included", false]
   ]);
+});
+
+test("a missing row can be imported only after the user explicitly includes it", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  await createCards(api);
+  await commitStatement(api);
+
+  const preview = await previewActivity(api, [activityRow("2026-05-04", "BUS/MRT 999999 SINGAPORE", "99.99")]);
+  assert.equal(preview.previewRows[0].commitStatus, "needs_review");
+
+  const commit = await api("/api/imports/commit", {
+    sourceLabel: "One Card activity",
+    sourceType: "csv",
+    rows: preview.previewRows.map((row) => ({ ...row, commitStatus: "included", commitStatusExplicit: true }))
+  });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  const added = await rows(db, "SELECT description, bank_certification_status FROM transactions WHERE import_id = ?", commit.payload.importId);
+  assert.deepEqual(added, [{ description: "BUS/MRT 999999 SINGAPORE", bank_certification_status: "provisional" }]);
 });
 
 test("a one-off fare five days from the statement's is covered by it", async (t) => {

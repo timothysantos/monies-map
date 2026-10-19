@@ -884,6 +884,8 @@ Examples of scenario families to define:
   - drop multiple downloaded files without filename conventions or original-file
     storage
   - import a known file
+  - flag an activity row inside a confirmed statement when no certified row
+    covers it; require an explicit review before it enters the ledger
   - review preview rows
   - commit rows
   - see imported effects in entries and month views

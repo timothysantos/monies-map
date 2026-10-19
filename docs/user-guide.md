@@ -1801,9 +1801,11 @@ For every import:
 - **Activity inside a confirmed statement**: a statement you committed is the
   complete record for its dates. An activity row dated inside it is skipped
   when the statement has it, even worded differently ("Already on the
-  confirmed May 2026 statement as …"), and left out with a reason when the
-  statement doesn't. Include it only if the statement is wrong. Rows after
-  the statement import as usual.
+  confirmed May 2026 statement as …"). If the statement does not list the
+  activity row, it is marked **Needs review** and stays out of the commit until
+  you check the source row and choose **Include row**. This keeps an omitted
+  bank activity visible without silently changing a closed statement. Rows
+  after the statement import as usual.
 
 A statement preview shows **Matched** for each account when its balance
 agrees with the bank. When every row on the statement is already in your
