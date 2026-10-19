@@ -74,6 +74,8 @@ import { buildEntriesPageParams } from "./app-routing";
 import { useIsMobileLayout } from "./use-viewport";
 import { useStableHandler } from "./use-stable-handler";
 import { useLiveSearchParams } from "./use-live-search-params";
+import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
+import { getQuickSplitGroup } from "./split-picker-defaults";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -641,6 +643,10 @@ export function EntriesPanel({
   const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
     ? createdSplitAction.splitExpenseId
     : activeEditingEntry?.linkedSplitExpenseId;
+  const quickSplitGroup = useMemo(
+    () => getQuickSplitGroup(entriesPage.splitGroups, readLastGroupId(entryView.id)),
+    [entriesPage.splitGroups, entryView.id]
+  );
   const mobileEditExpenseFooterMode = activeLinkedSplitExpenseId
     ? "linked"
     : isMobileSplitPickerOpen
@@ -860,6 +866,9 @@ export function EntriesPanel({
   async function handleAddEntryToSplits(entry, splitGroupId = null, splitBasisPoints = 5000) {
     setCreatedSplitActionError("");
     preserveEntryEditorInUrl(entry.id);
+    if (splitGroupId) {
+      writeLastGroupId(entryView.id, splitGroupId);
+    }
     const result = await addEntryToSplits(entry, splitGroupId, splitBasisPoints);
     if (result?.alreadyLinked) {
       await refreshEntriesPage({ bypassCache: true });
@@ -1450,9 +1459,15 @@ export function EntriesPanel({
                 isWorking={addingToSplitsEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
                 onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
                 onAddToSplits={() => {
+                  setMobileSplitGroupId("");
                   setIsMobileSplitPickerOpen(true);
                   setIsMobileSplitSelectorOpen(true);
                 }}
+                quickAddLabel={quickSplitGroup ? `Add ${quickSplitGroup.name} · 50/50` : ""}
+                quickAddTitle={quickSplitGroup ? `Add this expense to ${quickSplitGroup.name} split, 50/50` : ""}
+                onQuickAddToSplits={quickSplitGroup
+                  ? () => void handleAddEntryToSplits(activeEditingEntry, quickSplitGroup.id, 5000)
+                  : undefined}
               />
             ) : null}
             transferTools={(
@@ -1490,6 +1505,7 @@ export function EntriesPanel({
           ownerOptions={ownerOptions}
           people={people}
           splitGroups={entriesPage.splitGroups}
+          quickSplitGroup={quickSplitGroup}
           viewId={entryView.id}
           editingEntryId={editingEntryId}
           addingToSplitsEntryId={addingToSplitsEntryId}
@@ -1934,7 +1950,8 @@ function buildInitialEntriesPage(view) {
     label: view.label,
     splitGroups: view.splitsPage.groups.map((group) => ({
       id: group.id,
-      name: group.name
+      name: group.name,
+      isDefault: group.isDefault
     })),
     monthPage: {
       month: view.monthPage.month,

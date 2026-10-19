@@ -541,16 +541,47 @@ export function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, loc
 // The Splits row of an expense: "Add to splits", or "View split" once it is
 // on Splits. Removing it from Splits (Delete split) sits with the other
 // destructive actions in the bottom bar.
-export function EntrySplitsRow({ isLinked, isWorking = false, onAddToSplits, onViewSplit }) {
+export function EntrySplitsRow({
+  isLinked,
+  isWorking = false,
+  onAddToSplits,
+  onViewSplit,
+  quickAddLabel = "",
+  quickAddTitle = "",
+  onQuickAddToSplits = undefined
+}) {
+  if (isLinked || !quickAddLabel || !onQuickAddToSplits) {
+    return (
+      <DetailRow
+        label={copy.editCard.splits}
+        value={isWorking ? messages.common.working : isLinked ? copy.editCard.viewSplit : copy.addToSplits}
+        state="action"
+        disabled={isWorking}
+        data-row="splits"
+        onClick={isLinked ? onViewSplit : onAddToSplits}
+      />
+    );
+  }
+
   return (
-    <DetailRow
-      label={copy.editCard.splits}
-      value={isWorking ? messages.common.working : isLinked ? copy.editCard.viewSplit : copy.addToSplits}
-      state="action"
-      disabled={isWorking}
-      data-row="splits"
-      onClick={isLinked ? onViewSplit : onAddToSplits}
-    />
+    <div className="entry-split-action-row" data-row="splits">
+      <DetailRow
+        label={copy.editCard.splits}
+        value={copy.addToSplits}
+        state="action"
+        disabled={isWorking}
+        onClick={onAddToSplits}
+      />
+      <button
+        type="button"
+        className="entry-split-quick-action"
+        disabled={isWorking}
+        title={quickAddTitle || quickAddLabel}
+        onClick={onQuickAddToSplits}
+      >
+        {isWorking ? messages.common.working : quickAddLabel}
+      </button>
+    </div>
   );
 }
 

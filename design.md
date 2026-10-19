@@ -93,6 +93,17 @@ a floating bar shows the open group and opens the same sheet; it hides under
 any dialog. Desktop is one row with the control first; tiles that do not fit
 are dropped (never wrapped or scrolled) and the All half reads "All · N more".
 Group tiles carry no money tone (the Splits orange).
+
+### Entries split shortcut
+
+An expense editor shows the normal **Add to splits** row alongside a compact
+one-tap shortcut for the viewer's last real split group. The shortcut names the
+group and its explicit 50/50 default (for example, "Add Okaeri · 50/50"). It
+uses the same atomic entry-to-split command as the full picker. The full picker
+remains available for a different group or a 0%, 50% or 100% share; linked
+entries show **View split** instead, so the shortcut cannot create a duplicate.
+The last group is the existing per-view local preference and is only a default,
+never an automatic write without the user's tap.
 The desktop floating bar keeps groups with open entries, labels each with its
 entry count, and leaves empty or archived-only groups in All groups. If none
 has open entries, it says "No open splits" and links to the selected group's

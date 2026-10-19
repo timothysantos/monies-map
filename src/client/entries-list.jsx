@@ -97,6 +97,7 @@ export function EntriesDateGroups({
   onLinkTransferCandidate,
   onSettleTransfer,
   onAddEntryToSplits,
+  quickSplitGroup = null,
   onRefreshSplitGroups,
   onViewCreatedSplit,
   onDeleteCreatedSplit,
@@ -243,6 +244,10 @@ export function EntriesDateGroups({
       onLinkTransferCandidate,
       onSettleTransfer,
       onOpenSplitPicker: openSplitPicker,
+      quickSplitGroup,
+      onQuickAddToSplits: quickSplitGroup
+        ? () => onAddEntryToSplits(entry, quickSplitGroup.id, 5000)
+        : undefined,
       onViewCreatedSplit,
       onDeleteCreatedSplit,
       onDeleteEntry,
@@ -316,7 +321,10 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName
     if (!entry) {
       setSelectedGroupId("");
       setSplitBasisPoints(5000);
+      return;
     }
+    setSelectedGroupId("");
+    setSplitBasisPoints(5000);
   }, [entry]);
 
   return (
@@ -650,6 +658,8 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
     onLinkTransferCandidate,
     onSettleTransfer,
     onOpenSplitPicker,
+    quickSplitGroup,
+    onQuickAddToSplits,
     onViewCreatedSplit,
     onDeleteCreatedSplit,
     onDeleteEntry,
@@ -719,6 +729,9 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
             isWorking={!linkedSplitExpenseId && (isAddingToSplits || isSavingEntry)}
             onViewSplit={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
             onAddToSplits={() => void onOpenSplitPicker(entry)}
+            quickAddLabel={quickSplitGroup ? `Add ${quickSplitGroup.name} · 50/50` : ""}
+            quickAddTitle={quickSplitGroup ? `Add this expense to ${quickSplitGroup.name} split, 50/50` : ""}
+            onQuickAddToSplits={onQuickAddToSplits}
           />
         ) : null}
         transferTools={(
