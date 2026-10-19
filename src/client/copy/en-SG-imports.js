@@ -161,6 +161,8 @@ export const importMessages = {
   unknownAccounts: "Unknown accounts need mapping before commit.",
   accountMappingTitle: "Statement account mapping",
   accountMappingDetail: "Match each detected statement account to the account that should receive these rows and checkpoints.",
+  activityAccountOverrideTitle: "Check the card account",
+  activityAccountOverrideDetail: "This file was assigned to the account shown below. If that is wrong, choose the card account it came from. The app will rerun all matching and coverage checks before you commit.",
   detectedAccount: (accountName) => `Detected: ${accountName}`,
   chooseAccount: "Choose account",
   createDetectedAccount: "Create account",

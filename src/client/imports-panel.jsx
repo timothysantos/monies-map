@@ -520,6 +520,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
+    isActivityAccountOverride,
     ledgerMatchedStatement,
     commitKind,
     commitLabel,
@@ -1189,8 +1190,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setReviewChangeCount(0);
 
     const activityContext = buildActivityContext();
-    if (canRecognizeCitibankActivityCsv(csvText, undefined, activityContext)) {
-      const parsed = parseCitibankActivityCsv(csvText, undefined, activityContext);
+    const fileName = currentImportSourceRef.current?.fileName;
+    if (canRecognizeCitibankActivityCsv(csvText, fileName, activityContext)) {
+      const parsed = parseCitibankActivityCsv(csvText, fileName, activityContext);
       setIsSubmitting(true);
       try {
         await previewParsedImport({
@@ -1219,9 +1221,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   async function maybeAutoPreviewCitibankActivityCsv(nextText, context) {
     const activityContext = buildActivityContext(context);
-    const signature = `${activityContext.accountName ?? ""}::${activityContext.accountKind ?? ""}::${activityContext.institution ?? ""}::${nextText}`;
+    // Keep the original filename in the auto-preview path. Citi's activity
+    // exports use `rewards`/`miles` in the filename as the authoritative card
+    // hint; reparsing normalized rows without it would fall back to the last
+    // selected default account and could move a Rewards file to Miles.
+    const fileName = currentImportSourceRef.current?.fileName;
+    const signature = `${fileName ?? ""}::${activityContext.accountName ?? ""}::${activityContext.accountKind ?? ""}::${activityContext.institution ?? ""}::${nextText}`;
 
-    if (isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked || !nextText || !canRecognizeCitibankActivityCsv(nextText, undefined, activityContext)) {
+    if (isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked || !nextText || !canRecognizeCitibankActivityCsv(nextText, fileName, activityContext)) {
       lastAutoPreviewCitibankSignatureRef.current = "";
       return;
     }
@@ -1231,7 +1238,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     lastAutoPreviewCitibankSignatureRef.current = signature;
-    const parsed = parseCitibankActivityCsv(nextText, undefined, activityContext);
+    const parsed = parseCitibankActivityCsv(nextText, fileName, activityContext);
     setIsSubmitting(true);
     try {
       await previewParsedImport({
@@ -2524,6 +2531,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             unknownPreviewAccountNames={unknownPreviewAccountNames}
             unknownCategoryMode={unknownCategoryMode}
             showStatementAccountMapping={showStatementAccountMapping}
+            isActivityAccountOverride={isActivityAccountOverride}
             visibleOverlapImports={visibleOverlapImports}
             previewReconciliationRowCount={previewReconciliationRowCount}
             certifiedConflictRows={certifiedConflictRows}

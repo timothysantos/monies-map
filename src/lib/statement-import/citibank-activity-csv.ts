@@ -157,10 +157,13 @@ function cleanCsvCell(value: string) {
 }
 
 function resolveCitibankActivityAccountName(fileName?: string, context?: CitibankActivityContext) {
-  if (/\brewards\b/i.test(fileName ?? "")) {
+  // Underscores are common in downloaded filenames but are word characters in
+  // JavaScript regexes, so `\b` would miss names such as
+  // `citi_rewards_midcycle_...`.
+  if (/(?:^|[^a-z])rewards(?:[^a-z]|$)/i.test(fileName ?? "")) {
     return "Citi Rewards";
   }
-  if (/\bmiles\b/i.test(fileName ?? "")) {
+  if (/(?:^|[^a-z])miles(?:[^a-z]|$)/i.test(fileName ?? "")) {
     return "Citi Miles";
   }
   if (isCitibankCreditCardContext(context) && context?.accountName) {

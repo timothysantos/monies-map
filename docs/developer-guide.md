@@ -1606,7 +1606,12 @@ comparison use `post_date`.
   mapping. Recognized filename suffixes can still provide an extra card hint,
   but they are no longer required. In the Import Inbox multi-file flow, the
   user does not need to rename files before dropping them. The trailing card
-  number is reduced to the last four digits in the note.
+  number is reduced to the last four digits in the note. The review keeps the
+  detected Citi account selectable even when it is already known; changing it
+  remaps every preview row and reruns the complete preview checks. Preserve the
+  original filename through the normalized-row auto-preview path so a filename
+  such as `citi_rewards_...csv` cannot fall back to the previous Citi Miles
+  default.
 - HSBC mid-cycle Transaction History CSV files are headerless too. The parser
   uses the posting date and final SGD amount, retains the purchase date and
   original-currency amount in the note, and recognises the export from its

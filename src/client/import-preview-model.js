@@ -175,6 +175,8 @@ export function buildImportPreviewModel({
   const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0
     || noLongerListedEntriesToRemove.length > 0 || reopenedEstimates.length > 0 || wrongCardDuplicatesToRemove.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
+  const isActivityAccountOverride = statementImportMeta.parserKey === "citibank_credit_card_activity_csv"
+    && accountMappingAccountNames.length > 0;
 
   return {
     accountMappingAccountNames,
@@ -206,11 +208,13 @@ export function buildImportPreviewModel({
     skippedPreviewRowCount,
     commitKind,
     commitLabel: COMMIT_LABELS[commitKind](toCertifyRowCount),
-    // A statement whose cards all map to one account each only shows the
-    // mapping on request; an unknown, ambiguous or unmapped card needs it.
+    // Official statements whose cards already map cleanly stay compact until
+    // requested; recognized Citi activity files keep an account choice visible
+    // so a filename/default-account guess can be corrected before commit.
     needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,
+    isActivityAccountOverride,
     showStatementAccountMapping: preview && accountMappingAccountNames.length > 0 && (
-      statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
+      statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || isActivityAccountOverride
     ),
     statementReconciliations,
     statementDiagnosis: preview?.statementDiagnosis,

@@ -49,6 +49,7 @@ export function ImportPreviewReview({
   unknownPreviewAccountNames,
   unknownCategoryMode,
   showStatementAccountMapping,
+  isActivityAccountOverride = false,
   visibleOverlapImports,
   previewReconciliationRowCount,
   certifiedConflictRows,
@@ -137,6 +138,7 @@ export function ImportPreviewReview({
             statementCheckpoints={statementCheckpoints}
             onRemapPreviewAccount={onRemapPreviewAccount}
             onCreateStatementAccount={onCreateStatementAccount}
+            isActivityAccountOverride={isActivityAccountOverride}
           />
         ) : null}
         unknownCategories={preview.unknownCategories?.length ? (
@@ -202,6 +204,7 @@ export function ImportPreviewReview({
           statementCheckpoints={statementCheckpoints}
           onRemapPreviewAccount={onRemapPreviewAccount}
           onCreateStatementAccount={onCreateStatementAccount}
+          isActivityAccountOverride={isActivityAccountOverride}
         />
       ) : null}
 
@@ -490,7 +493,8 @@ function StatementAccountMapping({
   previewRows,
   statementCheckpoints,
   onRemapPreviewAccount,
-  onCreateStatementAccount
+  onCreateStatementAccount,
+  isActivityAccountOverride = false
 }) {
   // Account names in statements are not reliable foreign keys. We treat the
   // detected label as a hint, then let the user anchor it to a concrete account.
@@ -532,10 +536,12 @@ function StatementAccountMapping({
   return (
     <div className="import-account-map" data-import-target="account-mapping">
       <div className="import-account-map-copy">
-        <strong className={unknownPreviewAccountNames.length ? "is-action" : undefined}>
-          {unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}
+        <strong className={unknownPreviewAccountNames.length || isActivityAccountOverride ? "is-action" : undefined}>
+          {isActivityAccountOverride
+            ? importMessages.activityAccountOverrideTitle
+            : unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}
         </strong>
-        <p>{importMessages.accountMappingDetail}</p>
+        <p>{isActivityAccountOverride ? importMessages.activityAccountOverrideDetail : importMessages.accountMappingDetail}</p>
       </div>
       <div className="statement-account-map-grid">
         {accountMappingAccountNames.map((accountName) => {
@@ -561,7 +567,9 @@ function StatementAccountMapping({
                   ))}
                 </select>
               </DetailRow>
-              <AddRow onClick={() => onCreateStatementAccount(accountName)}>{importMessages.createDetectedAccount}</AddRow>
+              {isActivityAccountOverride ? null : (
+                <AddRow onClick={() => onCreateStatementAccount(accountName)}>{importMessages.createDetectedAccount}</AddRow>
+              )}
             </DetailRows>
           );
         })}

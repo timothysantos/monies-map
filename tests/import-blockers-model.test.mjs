@@ -25,19 +25,40 @@ function row(overrides) {
   };
 }
 
-function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], statementDiagnosis, sourceType = "pdf", unknownCategories = [], unknownCategoryMode = "other" }) {
+function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], statementDiagnosis, sourceType = "pdf", parserKey, unknownCategories = [], unknownCategoryMode = "other" }) {
   return buildImportPreviewModel({
     accounts,
     preview: { statementReconciliations, unknownCategories, overlapImports: [], ...(statementDiagnosis ? { statementDiagnosis } : {}) },
     previewRows,
     statementCheckpoints,
-    statementImportMeta: { sourceType, parserKey: sourceType === "pdf" ? "uob_credit_card_pdf" : "generic_csv" },
+    statementImportMeta: { sourceType, parserKey: parserKey ?? (sourceType === "pdf" ? "uob_credit_card_pdf" : "generic_csv") },
     dismissedOverlapIds: [],
     unknownCategoryMode,
     isSubmitting: false,
     isParsingStatement: false
   });
 }
+
+test("a recognized Citi activity file keeps an account choice visible even when the inferred account is known", () => {
+  const model = previewModelFor({
+    accounts: [
+      { id: "acct-miles", name: "Citi Miles" },
+      { id: "acct-rewards", name: "Citi Rewards" }
+    ],
+    sourceType: "csv",
+    parserKey: "citibank_credit_card_activity_csv",
+    previewRows: [row({
+      rowId: "citi-1",
+      accountId: "acct-miles",
+      accountName: "Citi Miles",
+      statementAccountName: "Citi Miles"
+    })]
+  });
+
+  assert.equal(model.isActivityAccountOverride, true);
+  assert.equal(model.showStatementAccountMapping, true);
+  assert.equal(model.needsStatementAccountMapping, false);
+});
 
 function blockersFor(input, extra = {}) {
   const previewModel = previewModelFor(input);

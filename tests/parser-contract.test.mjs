@@ -371,6 +371,26 @@ test("parseCitibankActivityCsv recognizes pasted headerless Citi activity from s
   ]);
 });
 
+test("parseCitibankActivityCsv keeps the filename card hint over the selected default account", () => {
+  const csvText = [
+    `"12/09/2026","AMAZE* EXIMBAY CO., LTD Seoul KR KRW 60,300","-60.30","","'5425503003296349'"`,
+    `"10/09/2026","AMAZE* EXIMBAY CO., LTD Seoul KR KRW 16,610","-16.61","","'5425503003296349'"`
+  ].join("\n");
+  const context = {
+    accountName: "Citi Miles",
+    accountKind: "credit_card",
+    institution: "Citibank"
+  };
+
+  const parsed = parseCitibankActivityCsv(
+    csvText,
+    "citi_rewards_midcycle_ACCT_349_01_09_2026-19oct.csv",
+    context
+  );
+
+  assert.deepEqual(parsed.rows.map((row) => row.account), ["Citi Rewards", "Citi Rewards"]);
+});
+
 test("parseHsbcActivityCsv preserves a mid-cycle HSBC activity export", () => {
   const parsed = parseHsbcActivityCsv(
     readTextFixture("./fixtures/hsbc-activity/hsbc_midcycle_TransactionHistory-sanitized.csv"),
