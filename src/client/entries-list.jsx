@@ -21,6 +21,7 @@ import { moneyToneClass } from "./money-tone-class";
 import { flowTone } from "../domain/money-tone";
 import { trackStuckDateRow } from "./stuck-date-row";
 import { buildEntryDeepLink } from "./entry-deep-link";
+import { SplitShareChoices } from "./split-share-choices";
 
 const {
   categories: categoryService,
@@ -367,21 +368,7 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName
           </fieldset>
           <fieldset className="entry-split-picker-field" disabled={isSubmitting}>
             <legend>{sharePersonName}'s share</legend>
-            <p className="entry-split-picker-hint">0% means {sharePersonName} owes none; if they paid, they are owed the full amount. 100% means this expense is all theirs.</p>
-            <div className="entry-split-share-choices" role="radiogroup" aria-label={`${sharePersonName}'s share`}>
-              {[0, 5000, 10000].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={splitBasisPoints === value}
-                  className={`entry-split-share-choice${splitBasisPoints === value ? " is-selected" : ""}`}
-                  onClick={() => setSplitBasisPoints(value)}
-                >
-                  {value / 100}%
-                </button>
-              ))}
-            </div>
+            <SplitShareChoices personName={sharePersonName} value={splitBasisPoints} onChange={setSplitBasisPoints} />
           </fieldset>
           {isSubmitting ? <p className="entry-split-picker-status">Adding entry to splits...</p> : null}
           <div className="note-dialog-actions">

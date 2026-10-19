@@ -5,6 +5,7 @@ import { hideOthers } from "aria-hidden";
 import { X } from "lucide-react";
 import { RemoveScroll } from "react-remove-scroll";
 import { ResponsiveSelect } from "./responsive-select";
+import { SplitShareChoices } from "./split-share-choices";
 import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
 import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
 import { InlineError } from "./ui-states";
@@ -264,22 +265,7 @@ export function EntrySplitGroupPickerFooter({
           {selectedGroup.label}
         </button>
         <span className="entry-mobile-sheet-confirm-copy">{sharePersonName}'s share</span>
-        <p className="entry-split-picker-hint">0% means {sharePersonName} owes none; if they paid, they are owed the full amount. 100% means this expense is all theirs.</p>
-        <div className="entry-split-share-choices" role="radiogroup" aria-label={`${sharePersonName}'s share`}>
-          {[0, 5000, 10000].map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={splitBasisPoints === value}
-              className={`entry-split-share-choice${splitBasisPoints === value ? " is-selected" : ""}`}
-              disabled={isWorking}
-              onClick={() => onSplitBasisPointsChange(value)}
-            >
-              {value / 100}%
-            </button>
-          ))}
-        </div>
+        <SplitShareChoices personName={sharePersonName} value={splitBasisPoints} disabled={isWorking} onChange={onSplitBasisPointsChange} />
         <div className="entry-mobile-sheet-confirm-buttons">
           <button
             type="button"
