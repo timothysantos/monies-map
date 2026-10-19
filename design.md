@@ -2851,6 +2851,19 @@ the plan-table redesign.
   fill with the same lift in the accent's shade) share the tab bar's right
   edge. The More pages popover uses the chrome radius and lift and 44 px
   rows. Proof: `tests/e2e/mobile-chrome.spec.js`.
+- The direction button (`scroll-direction-fab.js`, Go to top / Go to
+  bottom) shows for five seconds while a long Summary, Month, Entries or
+  Splits page scrolls. It wears the chrome surface, hairline and lift with
+  the month arrows' `--accent`, and draws lucide's chevron-up / chevron-down
+  at their 19 px and 2.2 stroke (never a text glyph;
+  `tests/scroll-direction-fab.test.mjs`). It sits at the bottom centre 16 px
+  above whatever floats there: the island, its stacked context row, the
+  From Ask chip or the Splits group bar; on a wide screen above the floating
+  bar. Proof: `tests/e2e/context-scroll-shortcuts.spec.js`.
+- The desktop floating bar sits at the bottom left on the Ask field's
+  baseline; below 1226 px, where it would cover the Ask field and the + or
+  receipt button, it sits just above them, and beside a docked Ask it
+  narrows to the space left of the panel.
 
 ## Category list
 

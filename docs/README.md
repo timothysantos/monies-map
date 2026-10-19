@@ -272,3 +272,4 @@ Historical records of finished work. Do not update them.
   render of `route-data-code-flow.md`.
 
 - [`audits/contextual-actions.md`](audits/contextual-actions.md): slider popup dismissal, contextual filter focus, phone plan actions and repeated unit-setup measurements.
+- [`audits/codex-polish/README.md`](audits/codex-polish/README.md): review of the 2026-10-16..19 commits (phone island, floating bars, direction button, split choices), the fixes with before/after screenshots, and what is left for the owner.

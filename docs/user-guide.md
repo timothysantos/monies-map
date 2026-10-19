@@ -126,10 +126,11 @@ everywhere. The Household view has no scope buttons because it always counts
 every entry once. On a phone, Summary, Month and Entries keep the view and
 scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
 On a desktop, a compact bar returns at the bottom left after you scroll past
-the header, aligned with the Ask box. Its tabs stay on the left, followed by
+the header, aligned with the Ask box (in a narrower window it sits just above
+the Ask box). Its tabs stay on the left, followed by
 the view, scope and month controls, so you can move between Summary, Entries,
 Splits and Ask or change the current view without going back to the top. On a
-long page, a translucent arrow briefly appears at the bottom centre while you
+long page, a round arrow button briefly appears at the bottom centre while you
 scroll down to take you to the bottom; scrolling up changes it to the shortcut
 back to the top.
 
@@ -230,9 +231,9 @@ The app is designed for phones as well as desktops. The differences:
 - **Floating buttons.** The round **+** button on Entries opens a new entry
   card on Ask; on Splits, the receipt button opens one that is already
   shared on Splits. The eye button hides or shows totals. While you are moving
-  through a long Summary, Month, Entries or Splits page, an arrow briefly
-  appears: it takes you back to the top after scrolling down, or to the end
-  after scrolling up.
+  through a long Summary, Month, Entries or Splits page, a round arrow
+  button briefly appears above the bar: it takes you to the end while you
+  scroll down, or back to the top while you scroll up.
 
 ![Summary on a phone](/faq/guide/phone/thumbs/phone-summary.webp)
 
