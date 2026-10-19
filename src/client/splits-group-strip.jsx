@@ -219,10 +219,10 @@ export function SplitsGroupStrip({
               <small className="desktop-splits-group-count">{copy.entryCount(tile.entryCount)}</small>
             </button>
           ))}
-          {!floatingTiles.length ? <span className="desktop-splits-empty-groups">No open splits</span> : null}
+          {!floatingTiles.length ? <span className="desktop-splits-empty-groups">{copy.noOpenSplits}</span> : null}
           {archivedBatchCount > 0 && !floatingTiles.length ? (
             <button type="button" className="desktop-splits-group-clear" onClick={onOpenArchive}>
-              {archivedBatchCount} settled {archivedBatchCount === 1 ? "batch" : "batches"}
+              {copy.settledBatches(archivedBatchCount)}
             </button>
           ) : null}
           <button type="button" className="desktop-splits-group-more" aria-label={copy.allGroups} onClick={() => setIsSheetOpen(true)}>

@@ -15,5 +15,8 @@ export const splitsStripCopy = {
   settled: "Settled",
   settledGroups: (count) => `${count} settled ${count === 1 ? "group" : "groups"}`,
   entryCount: (count) => `${count} ${count === 1 ? "entry" : "entries"}`,
+  // The desktop floating bar's group choices (no group has open entries).
+  noOpenSplits: "No open splits",
+  settledBatches: (count) => `${count} settled ${count === 1 ? "batch" : "batches"}`,
   chooseGroupHint: "Choose which split group to open."
 };
