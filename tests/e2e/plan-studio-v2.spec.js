@@ -89,6 +89,7 @@ test.describe("Plan Studio v2 on desktop", () => {
       if (popup === "menu") await food.locator("[data-ps-menu-button]").click();
       else await planned(page, "Food").click();
       await expect(page.locator(popup === "menu" ? ".ps-menu" : ".ps-pop:has(.ps-amount-field)")).toBeVisible();
+      await popoverListensOutside(page);
       await page.mouse.click(box.x + 10, box.y + 20);
       await expect(page.locator(popup === "menu" ? ".ps-menu" : ".ps-pop:has(.ps-amount-field)")).toHaveCount(0);
       await expect(slider).toHaveAttribute("aria-valuenow", before);

@@ -60,7 +60,7 @@ test.describe("the Ask card's split question on a phone", () => {
 
     const chips = page.getByRole("group", { name: "Suggestions" });
     await expect(page.locator(".ask-question")).toHaveText(`You usually split this with ${partner}. Add it to Baby River?`);
-    await expect(chips.getByRole("button")).toHaveText(["Split 50/50 in Baby River", "Not this time", "Edit in form"]);
+    await expect(chips.getByRole("button")).toHaveText(["Half each in Baby River", "Not this time", "Edit in form"]);
     expect(requests.at(-1)).toMatchObject({ entryType: "expense", description, ownerName: expect.any(String), date: "2025-10-16" });
     if (process.env.SPLIT_SUGGEST_SHOT_DIR) {
       await page.screenshot({ path: `${process.env.SPLIT_SUGGEST_SHOT_DIR}/question-phone.png` });
@@ -70,7 +70,7 @@ test.describe("the Ask card's split question on a phone", () => {
     // Nothing is on Splits yet.
     await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "false");
 
-    await chips.getByRole("button", { name: "Split 50/50 in Baby River" }).click();
+    await chips.getByRole("button", { name: "Half each in Baby River" }).click();
     await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "true");
     await expect(page.locator(".ask-share small")).toHaveText("Baby River");
     if (process.env.SPLIT_SUGGEST_SHOT_DIR) {

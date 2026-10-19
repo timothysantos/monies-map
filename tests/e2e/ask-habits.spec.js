@@ -98,7 +98,7 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       const inline = page.locator("[data-ask-done-inline]");
       await expect(inline).toBeVisible();
       await expect(inline).toContainText("Category set to Food & Drinks");
-      await expect(inline).toContainText("Added to splits 50/50 with Joyce");
+      await expect(inline).toContainText("Added to splits half each with Joyce");
       await expect(page.locator("[data-ask-habit-suggestion]")).toHaveCount(0);
       await shot(page, `done-inline-${name}`);
 
@@ -106,7 +106,7 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       const list = page.locator("[data-ask-done-list]");
       await list.getByRole("button", { name: /Done for you/ }).click();
       await expect(list.locator('[data-done-kind="category"]')).toContainText(shop.toUpperCase());
-      await expect(list.locator('[data-done-kind="split"]')).toContainText("Added to splits 50/50 with Joyce");
+      await expect(list.locator('[data-done-kind="split"]')).toContainText("Added to splits half each with Joyce");
       await list.scrollIntoViewIfNeeded();
       await shot(page, `done-list-${name}`);
 
@@ -179,7 +179,7 @@ test.describe("Settings: What Ask remembers", () => {
     const categoryRow = section.locator(`[data-habit-id="category:${shop.toLowerCase()}"]`);
     await expect(categoryRow).toContainText("Food & Drinks");
     await expect(categoryRow).toContainText("Ask does this by itself");
-    await expect(section.locator(`[data-habit-id="split:${shop.toLowerCase()}"]`)).toContainText("Add to splits 50/50 with Joyce");
+    await expect(section.locator(`[data-habit-id="split:${shop.toLowerCase()}"]`)).toContainText("Add to splits half each with Joyce");
     await section.scrollIntoViewIfNeeded();
     await shot(page, "settings-section-phone");
 
