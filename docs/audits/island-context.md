@@ -47,7 +47,8 @@ Tests: `entries-island-context.test.mjs`, `mobile-context-line-dom.test.mjs`,
 `e2e/island-context.spec.js`, and the existing `e2e/splits-group-strip.spec.js`.
 The Splits Clear browser test failed on the old group bar before implementation.
 
-Review captures: `node scripts/capture-island-context.mjs` produces 30 screenshots
+Review captures (the one-off script was removed on 2026-10-20, see
+`docs/audits/codex-polish-2/README.md`): `node scripts/capture-island-context.mjs` produced 30 screenshots
 and an HTML gallery in `test-results/island-context-review`, using isolated local
 D1, demo records, 390px width, 70s light/dark and 60s Mod light. It waits for the
 lazy context body and disables motion for readable stills. Guide screenshots

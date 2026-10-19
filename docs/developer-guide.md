@@ -2731,7 +2731,5 @@ flag lifts nearby floating buttons. Clear calls the Entries reset with its expli
 desktop Reset callers retain the period as before. Month's
 return action uses the existing month-choice navigation within the loaded range.
 Splits passes its search and clear callback to its existing group strip.
-Run `node scripts/capture-island-context.mjs` after building for 30 demo-only
-review captures and an HTML gallery under `test-results/island-context-review`.
 `tests/e2e/island-context.spec.js` proves 390px height, scroll continuity, scope
 visibility, complete reset, touch targets, reduced motion and desktop exclusion.

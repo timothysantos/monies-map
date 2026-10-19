@@ -91,7 +91,9 @@ capturing its temporary empty loading area.
 
 ## Review and closure
 
-`node scripts/capture-contextual-actions.mjs` produces the current demo-only
+(The one-off script was removed on 2026-10-20, see
+`docs/audits/codex-polish-2/README.md`.)
+`node scripts/capture-contextual-actions.mjs` produced the demo-only
 390px gallery in `test-results/contextual-actions-review/`; `--before` captures
 original states. Themes: 70s light, 70s dark and 60s Mod light. States include
 sliders, changed plan/Undo, pinned information, row menu, List, non-default scope,
