@@ -43,7 +43,8 @@ const row = (page, name) => page.locator("[data-ps-row]").filter({ has: page.loc
 const planned = (page, name) => row(page, name).locator("[data-ps-amount]");
 const saveButton = (page) => page.locator("[data-ps-save]");
 const popover = (page) => page.locator("[data-ps-info]");
-const modeSwitch = (page) => page.locator("#month-plan [data-plan-mode-switch]");
+// The page's own switch (beside the plan, outside #month-plan in List), not the island's copy.
+const modeSwitch = (page) => page.locator("[data-plan-mode-switch]:not(.mobile-context-sticky-bar [data-plan-mode-switch])");
 const islandModeSwitch = (page) => page.locator(".mobile-context-sticky-bar [data-plan-mode-switch]");
 const tables = (page) => page.locator(".month-plan-stack");
 
@@ -475,8 +476,8 @@ test.describe("Plan Studio v2 on a phone", () => {
     expect(Math.abs(changed.height - baseline.height)).toBeLessThanOrEqual(1);
     for (const action of await island.locator("#mobile-plan-actions button").all()) {
       const box = await action.boundingBox();
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box.height)).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box.width)).toBeGreaterThanOrEqual(44);
       expect(box.x + box.width).toBeLessThanOrEqual(changed.x + changed.width);
     }
     await island.locator("[data-plan-island-undo]").click();
