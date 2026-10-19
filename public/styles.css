@@ -8421,9 +8421,10 @@ td:is(.money-in, .money-short, .money-out) {
 /* A directional page shortcut appears only while someone is travelling
    through a long screen. It floats over the content rather than claiming a
    permanent corner of the chrome. */
+/* It wears the island's chrome (surface, hairline, lift) and its arrows'
+   colour, with lucide chevrons drawn by scroll-direction-fab.js. */
 .scroll-direction-fab {
   position: fixed;
-  top: auto;
   bottom: calc(144px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   z-index: 57;
@@ -8431,25 +8432,19 @@ td:is(.money-in, .money-short, .money-out) {
   place-items: center;
   width: 46px;
   height: 46px;
-  padding: 0 0 3px;
-  border: 1px solid color-mix(in srgb, var(--accent-strong) 32%, var(--line));
+  padding: 0;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-soft) 68%, var(--chrome-surface));
-  box-shadow: 0 8px 24px rgb(var(--ink-rgb, 38 35 31) / 0.12);
-  color: var(--accent-strong);
-  font: inherit;
-  font-size: 1.3rem;
-  font-weight: 800;
-  line-height: 1;
+  background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow);
+  color: var(--accent);
   cursor: pointer;
-  opacity: 0.84;
   transform: translateX(-50%);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
 }
 
 .scroll-direction-fab:hover {
-  background: var(--accent-soft);
-  opacity: 1;
+  background: color-mix(in srgb, var(--accent-strong) 7%, var(--chrome-surface));
 }
 
 .scroll-direction-fab:focus-visible {
@@ -8458,19 +8453,19 @@ td:is(.money-in, .money-short, .money-out) {
 }
 
 @media (min-width: 761px) {
-  /* This bar shares Ask's right edge and sits directly above its field. Tabs
-     are always first; the route-specific controls retain the space after. */
+  /* The bar starts at the page edge on the Ask field's bottom baseline, so
+     the active controls are reached before the list. Tabs are always first;
+     the route-specific controls retain the space after. */
   .mobile-context-sticky-wrap.is-desktop-visible,
   .desktop-splits-floating-tabs {
     position: fixed;
-    right: 22px;
-    bottom: 89px;
-    left: auto;
+    bottom: 29px;
+    left: 22px;
     z-index: 58;
     display: flex;
     align-items: center;
     width: min(760px, calc(100vw - 44px));
-    min-height: 50px;
+    min-height: 54px;
     padding: 3px 5px;
     border: 1px solid var(--line);
     border-radius: var(--chrome-radius);
@@ -8479,8 +8474,9 @@ td:is(.money-in, .money-short, .money-out) {
     backdrop-filter: blur(10px);
   }
 
+  /* A docked Ask panel takes the right of the window; the bar stays left of it. */
   body[data-ask-dock="docked"] :is(.mobile-context-sticky-wrap.is-desktop-visible, .desktop-splits-floating-tabs) {
-    right: calc(22px + var(--ask-dock-width));
+    width: min(760px, calc(100vw - 44px - var(--ask-dock-width)));
   }
 
   .desktop-floating-tabs {
@@ -8520,8 +8516,10 @@ td:is(.money-in, .money-short, .money-out) {
   }
 
   .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-sticky-bar {
-    display: block;
+    display: flex;
     flex: 1 1 auto;
+    align-items: center;
+    align-self: stretch;
     min-width: 0;
     min-height: 44px;
     padding: 0;
@@ -8655,24 +8653,31 @@ td:is(.money-in, .money-short, .money-out) {
   .mobile-month-choice-all {
     min-height: 40px;
   }
-
-  .desktop-splits-floating-tabs {
-    justify-content: space-between;
-  }
-
-  .desktop-splits-floating-label {
-    padding: 0 11px;
-    color: var(--muted);
-    font-size: 0.84rem;
-    font-weight: 650;
-    white-space: nowrap;
-  }
 }
 
 @media (max-width: 760px) {
   .scroll-direction-fab {
     width: 44px;
     height: 44px;
+  }
+
+  /* The shortcut rests 16px above whatever floats at the bottom centre: the
+     island (lifted by its context row when that is stacked), the From Ask
+     chip on Entries, or the Splits group bar. */
+  body[data-island-stacked] .scroll-direction-fab {
+    bottom: calc(189px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body:has(> .splits-group-bar) .scroll-direction-fab {
+    bottom: calc(166px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body:has(> .entries-ask-chip.is-floating) .scroll-direction-fab {
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body[data-island-stacked]:has(> .entries-ask-chip.is-floating) .scroll-direction-fab {
+    bottom: calc(241px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -8681,30 +8686,7 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
   display: none;
 }
 
-/* Wide contextual bars sit at the same bottom baseline as the Ask field, but
-   begin at the page edge so the active controls are reached before the list. */
 @media (min-width: 761px) {
-  .mobile-context-sticky-wrap.is-desktop-visible,
-  .desktop-splits-floating-tabs {
-    right: auto;
-    bottom: 29px;
-    left: 22px;
-    align-items: center;
-    width: min(760px, calc(100vw - 44px));
-    min-height: 54px;
-  }
-
-  body[data-ask-dock="docked"] :is(.mobile-context-sticky-wrap.is-desktop-visible, .desktop-splits-floating-tabs) {
-    right: auto;
-    left: 22px;
-  }
-
-  .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-sticky-bar {
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-  }
-
   .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-main {
     flex: 1 1 auto;
     align-self: stretch;
@@ -8916,9 +8898,28 @@ body:has(> .entry-mobile-sheet) .scroll-direction-fab {
   }
 
   .scroll-direction-fab {
-    top: auto;
     bottom: 96px;
-    left: 50%;
-    transform: translateX(-50%);
+  }
+}
+
+/* Where the window is too narrow for the bar and the Ask field (with its +
+   or receipt button) side by side, the bar sits just above them, and the
+   shortcut above the bar. */
+@media (min-width: 761px) and (max-width: 1225px) {
+  .mobile-context-sticky-wrap.is-desktop-visible,
+  .desktop-splits-floating-tabs {
+    bottom: 89px;
+  }
+
+  .scroll-direction-fab {
+    bottom: 156px;
+  }
+
+  body[data-ask-dock="docked"] :is(.mobile-context-sticky-wrap.is-desktop-visible, .desktop-splits-floating-tabs) {
+    bottom: 29px;
+  }
+
+  body[data-ask-dock="docked"] .scroll-direction-fab {
+    bottom: 96px;
   }
 }

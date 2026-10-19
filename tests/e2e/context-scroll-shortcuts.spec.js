@@ -29,6 +29,18 @@ async function openLongEntries(page, viewport) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight * 1.7)).toBe(true);
 }
 
+// Whether a tap at the element's centre reaches it (nothing floats over it).
+function isOnTop(locator) {
+  return locator.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+  });
+}
+
+function overlaps(a, b) {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
 async function scrollTo(page, top) {
   await page.evaluate((value) => window.scrollTo({ top: value, behavior: "instant" }), top);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(160);
@@ -110,10 +122,16 @@ test.describe("context and scroll shortcuts", () => {
       await expect(toBottom).toBeVisible();
       const directionBox = await toBottom.boundingBox();
       expect(Math.abs((directionBox.x + directionBox.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(1);
+      // One lucide chevron, on the island's solid chrome surface (not see-through).
+      await expect(toBottom.locator("svg path")).toHaveAttribute("d", "m6 9 6 6 6-6");
+      expect(await toBottom.evaluate((element) => element.textContent.trim())).toBe("");
+      await expect(toBottom).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      expect(await isOnTop(toBottom)).toBe(true);
       expect(directionBox.y + directionBox.height).toBeGreaterThan(viewport.height - 160);
       await page.evaluate(() => window.scrollTo({ top: 220, behavior: "instant" }));
       const toTop = page.getByRole("button", { name: "Go to top" });
       await expect(toTop).toBeVisible();
+      await expect(toTop.locator("svg path")).toHaveAttribute("d", "m18 15-6-6-6 6");
       await toTop.click();
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(1);
 
@@ -123,4 +141,47 @@ test.describe("context and scroll shortcuts", () => {
       await expect.poll(() => page.evaluate(() => Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 2)).toBe(true);
     });
   }
+
+  // The direction button never hides behind what floats at the bottom of a
+  // phone: the island with its context row on top, the From Ask chip, or the
+  // Splits group bar.
+  for (const [name, path, cover] of [
+    ["the stacked island", `${ENTRIES.replace("direct_plus_shared", "direct")}&entry_type=expense`, ".mobile-context-sticky-wrap"],
+    ["the From Ask chip", `${ENTRIES}&from_ask=1&entry_search=shortcut`, ".entries-ask-chip.is-floating"],
+    ["the Splits group bar", "/splits?view=person-tim&month=2025-10&split_group=split-group-none", ".splits-group-bar"]
+  ]) {
+    test(`phone direction button stays clear of ${name}`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await reseedDemo(page);
+      await seedLongEntries(page);
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 60_000 }).toBe(true);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await page.mouse.wheel(0, 260);
+      const button = page.locator(".scroll-direction-fab");
+      await expect(button).toBeVisible();
+      await expect(page.locator(cover)).toBeVisible();
+      expect(overlaps(await button.boundingBox(), await page.locator(cover).boundingBox())).toBe(false);
+      expect(await isOnTop(button)).toBe(true);
+    });
+  }
+
+  test("a narrow desktop window keeps the floating bar clear of the Ask field and the add button", async ({ page }) => {
+    await openLongEntries(page, { width: 900, height: 800 });
+    await scrollTo(page, 420);
+    const bar = page.locator(".mobile-context-sticky-wrap.is-desktop-visible");
+    await expect(bar).toBeVisible();
+    const barBox = await bar.boundingBox();
+    for (const selector of [".ask-dock-field", ".entries-fab"]) {
+      const other = page.locator(selector).first();
+      await expect(other).toBeVisible();
+      expect(overlaps(barBox, await other.boundingBox())).toBe(false);
+      expect(await isOnTop(other)).toBe(true);
+    }
+    await page.mouse.wheel(0, 200);
+    const button = page.locator(".scroll-direction-fab");
+    await expect(button).toBeVisible();
+    expect(overlaps(barBox, await button.boundingBox())).toBe(false);
+  });
 });
