@@ -2126,6 +2126,8 @@ function AskConversation({
                 setSavedWalletPicker(true);
                 return;
               }
+              // A card on its way to the server takes no edits.
+              if (card?.status !== "draft") return;
               if (key === "owner") setMoreOpen(true);
               setOpenPicker(key);
               window.requestAnimationFrame(() => {

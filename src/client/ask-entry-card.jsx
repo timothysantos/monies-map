@@ -88,6 +88,9 @@ export function AskEntryCard({
   walletChipRef = undefined
 }) {
   const isSaved = card.status === "saved";
+  // Only a draft's chips edit it; a saved card's wallet chip opens the saved
+  // wallet picker. While the card saves no chip can be tapped, so nothing
+  // changes the card on its way to the server.
   const isEditable = card.status === "draft";
   const category = categoryOf(context, card.fields.categoryName);
   const isTransfer = card.variant === "transfer";
@@ -197,7 +200,7 @@ export function AskEntryCard({
                 data-chip="wallet"
                 icon={walletIcon}
                 actionLabel={messages.common.changeChip(askCopy.card.rows.wallet, card.fields.accountName)}
-                onClick={onOpenField ? () => onOpenField("wallet") : undefined}
+                onClick={(isEditable || isSaved) && onOpenField ? () => onOpenField("wallet") : undefined}
               >
                 {card.fields.accountName}
               </MetaChip>
