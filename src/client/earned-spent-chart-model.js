@@ -11,7 +11,10 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 //   (the Summary month row's actual income and real expenses) and a Planned
 //   spending line (the month's estimated expenses, the figure the Plan lead
 //   measures spend against). A month with no plan has no point there: the
-//   line breaks, it is never drawn through zero.
+//   line breaks, it is never drawn through zero. And Spent so far, adding up:
+//   a running total of Spent from the first month shown, on its own axis on
+//   the right (it soon dwarfs any one month, and the columns keep their
+//   height). The line once drawn here repeated each Spent column (087b4637).
 // Months run oldest to newest, left to right (the list runs newest first).
 // Pure: the component draws what this returns.
 
@@ -27,7 +30,7 @@ export function chartSeries(mode) {
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
       { key: "spent", kind: "bar", label: words.spent, tone: "short" },
       { key: "plan", kind: "line", label: words.plan, tone: "plan" },
-      { key: "actual", kind: "line", label: words.actual, tone: "short" }
+      { key: "running", kind: "line", axis: "right", label: words.running, tone: "neutral" }
     ]
     : [
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
@@ -39,7 +42,7 @@ export function chartSeries(mode) {
 /**
  * One entry per month, oldest first: earnedMinor, spentMinor and lineMinor
  * (Kept in Simple, Planned spending in Plan; null where there is no plan),
- * plus actualMinor for Plan's actual-spending line.
+ * plus runningMinor in Plan: Spent added up from the first month shown.
  */
 export function buildChartMonths({ mode, months = [], categoryShareByMonth = [], investmentMovesByMonth = [] }) {
   if (mode === "simple") {
@@ -47,16 +50,32 @@ export function buildChartMonths({ mode, months = [], categoryShareByMonth = [],
       .reverse()
       .map((row) => ({ month: row.month, earnedMinor: row.earnedMinor, spentMinor: row.spentMinor, lineMinor: row.keptMinor }));
   }
+  let runningMinor = 0;
   return [...months]
     .sort((left, right) => left.month.localeCompare(right.month))
-    .map((row) => ({
-      month: row.month,
-      earnedMinor: row.actualIncomeMinor,
-      spentMinor: row.realExpensesMinor,
-      actualMinor: row.realExpensesMinor,
-      // As the Intent vs Outcome card reads it: no planned spend is no plan.
-      lineMinor: row.estimatedExpensesMinor > 0 ? row.estimatedExpensesMinor : null
-    }));
+    .map((row) => {
+      runningMinor += row.realExpensesMinor;
+      return {
+        month: row.month,
+        earnedMinor: row.actualIncomeMinor,
+        spentMinor: row.realExpensesMinor,
+        // As the Intent vs Outcome card reads it: no planned spend is no plan.
+        lineMinor: row.estimatedExpensesMinor > 0 ? row.estimatedExpensesMinor : null,
+        runningMinor
+      };
+    });
+}
+
+/**
+ * The chart's scales: the left one of every month figure (so hiding a series
+ * never rescales the rest), and in Plan a right one for the running total
+ * alone (null in Simple).
+ * @param {Array<{ earnedMinor: number, spentMinor: number, lineMinor: number | null, runningMinor?: number }>} rows
+ */
+export function chartScales(rows) {
+  const left = niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor]));
+  const hasRunning = rows.some((row) => Number.isFinite(row.runningMinor));
+  return { left, right: hasRunning ? niceScale(rows.map((row) => row.runningMinor)) : null };
 }
 
 /** Hides or shows a series; the last one showing stays (an empty chart says nothing). */
@@ -123,11 +142,14 @@ const MAX_BAR = 28;
  * Where the columns sit. Twelve months or fewer always fit the width by
  * narrowing the columns; past twelve, and only when a month would be
  * narrower than 36 px, the plot scrolls sideways while the y axis stays put.
- * @param {{ width: number, monthCount: number, barCount: number, height?: number }} input
+ * With `rightAxis` (the running total's scale) a second axis of the same
+ * width sits on the right and the plot is that much narrower.
+ * @param {{ width: number, monthCount: number, barCount: number, height?: number, rightAxis?: boolean }} input
  */
-export function chartGeometry({ width, monthCount, barCount, height = 232 }) {
+export function chartGeometry({ width, monthCount, barCount, height = 232, rightAxis = false }) {
   const axisWidth = 40;
-  const available = Math.max(120, width - axisWidth);
+  const rightAxisWidth = rightAxis ? axisWidth : 0;
+  const available = Math.max(120, width - axisWidth - rightAxisWidth);
   const scrolls = monthCount > 12 && available / monthCount < MIN_SCROLL_BAND;
   const plotWidth = scrolls ? monthCount * MIN_SCROLL_BAND : available;
   const band = plotWidth / Math.max(1, monthCount);
@@ -138,6 +160,7 @@ export function chartGeometry({ width, monthCount, barCount, height = 232 }) {
   const bottom = 36;
   return {
     axisWidth,
+    rightAxisWidth,
     plotWidth,
     height,
     top,
@@ -159,9 +182,10 @@ export function chartGeometry({ width, monthCount, barCount, height = 232 }) {
  * View entries lists that month's rows behind the figure.
  * @param {"plan" | "simple"} mode
  * @param {{ key: string }} series
- * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null, actualMinor?: number }} row
+ * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null, runningMinor?: number }} row
+ * @param {string} [firstMonth] the first month shown (where the running total starts)
  */
-export function pointFigure(mode, series, row) {
+export function pointFigure(mode, series, row, firstMonth = "") {
   const monthLabel = formatMonthLabel(row.month);
   const period = `${row.month}:${row.month}`;
   const spent = money(row.spentMinor);
@@ -200,13 +224,19 @@ export function pointFigure(mode, series, row) {
       note: [copy.planned(money(planned)), copy.spentAmount(spent)]
     };
   }
-  if (series.key === "actual") {
+  if (series.key === "running") {
+    // Its figure is the spending from the first month shown to this one, so
+    // View entries over that period totals the running figure.
+    const from = firstMonth || row.month;
+    const fromLabel = formatMonthLabel(from);
+    const total = money(row.runningMinor);
     return {
       ...base,
+      period: `${from}:${row.month}`,
       fig: "spent",
-      name: copy.series.actual,
-      label: labelled(copy.seriesWord.actual, row.actualMinor),
-      note: [copy.actualSpending(money(row.actualMinor)), ...(planned === null ? [copy.noPlan] : [])]
+      name: copy.series.running,
+      label: labelled(copy.seriesWord.running, row.runningMinor),
+      note: [from === row.month ? copy.spentIn(total, monthLabel) : copy.spentFromTo(total, fromLabel, monthLabel)]
     };
   }
   // Spent.

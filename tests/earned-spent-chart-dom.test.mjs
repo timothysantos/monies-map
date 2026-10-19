@@ -74,15 +74,24 @@ test("Simple draws two columns and a Kept point per month, each an openable figu
   assert.doesNotMatch(html, /Planned spending/);
 });
 
-test("Plan draws actual spending and breaks only the planned line where a month has no plan", () => {
+test("Plan draws spending so far, adding up, on its own axis, and breaks only the planned line where a month has no plan", () => {
   const html = render({ mode: "plan", page: { months: FOUR } });
   assert.match(html, /Planned spending/);
-  assert.match(html, /Actual spending/);
+  assert.match(html, /Spent so far, adding up/);
+  assert.doesNotMatch(html, /Actual spending/);
   assert.doesNotMatch(html, /aria-label="[^"]* kept /);
-  // March has no plan: three planned points in two runs; actual has all four.
+  // March has no plan: three planned points in two runs; the running total
+  // has all four, adding up month by month.
   assert.equal(count(html, /class="ec-point is-line"/g), 7);
   assert.equal(count(html, /class="ec-line is-plan"/g), 2);
-  assert.equal(count(html, /class="ec-line is-actual"/g), 1);
+  assert.equal(count(html, /class="ec-line is-running"/g), 1);
+  assert.match(html, /aria-label="Jan 2026 spent so far, adding up \$2,500\.00"/);
+  assert.match(html, /aria-label="Apr 2026 spent so far, adding up \$10,000\.00"/);
+  assert.match(html, /data-ec-series="running"[^>]*data-fig="spent" data-fig-period="2026-01:2026-04"/);
+  // Its axis is on the right; the left axis stays the columns' ($5k top, not $10k).
+  assert.equal(count(html, /class="ec-axis is-right"/g), 1);
+  assert.match(html, /class="ec-axis is-right"[\s\S]*>\$10k</);
+  assert.doesNotMatch(html.split('class="ec-axis is-right"')[0], />\$10k</);
   assert.doesNotMatch(html, /aria-label="Mar 2026 planned spending/);
   assert.match(html, /aria-label="Feb 2026 planned spending \$3,000\.00"/);
   // Spent opens the plan too, so the menu offers Open plan.

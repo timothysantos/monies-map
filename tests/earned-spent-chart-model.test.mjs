@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   buildChartMonths,
   chartGeometry,
+  chartScales,
   chartSeries,
   compactMoney,
   niceScale,
@@ -50,7 +51,10 @@ test("Plan: the line is the month's planned spending; a month without a plan has
   const rows = buildChartMonths({ mode: "plan", months: MONTHS });
   assert.deepEqual(rows.map((row) => row.month), ["2026-01", "2026-02", "2026-03"]);
   assert.deepEqual(rows.map((row) => row.lineMinor), [null, 250000, 300000]);
-  assert.deepEqual(rows.map((row) => row.actualMinor), [160000, 200000, 250000]);
+  // Spent so far, adding up: a running total over the months shown, not a
+  // copy of each month's Spent column (087b4637 drew the column's own figure).
+  assert.deepEqual(rows.map((row) => row.runningMinor), [160000, 360000, 610000]);
+  assert.equal(rows.some((row) => "actualMinor" in row), false);
   // Earned and spent are the Intent vs Outcome card's figures.
   assert.deepEqual(rows.map((row) => [row.earnedMinor, row.spentMinor]), [[100000, 160000], [300000, 200000], [480000, 250000]]);
 });
@@ -59,7 +63,17 @@ test("Plan and Simple name different series; the line is the only one that diffe
   const simple = chartSeries("simple");
   const plan = chartSeries("plan");
   assert.deepEqual(simple.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["kept", "line", "Kept"]]);
-  assert.deepEqual(plan.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["plan", "line", "Planned spending"], ["actual", "line", "Actual spending"]]);
+  assert.deepEqual(plan.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["plan", "line", "Planned spending"], ["running", "line", "Spent so far, adding up"]]);
+  // The running total reads off its own axis on the right, so the columns
+  // keep their height; every other series shares the left one.
+  assert.deepEqual(plan.map((series) => series.axis ?? "left"), ["left", "left", "left", "right"]);
+});
+
+test("Plan: the running total has its own scale; the columns' scale never includes it", () => {
+  const rows = buildChartMonths({ mode: "plan", months: MONTHS });
+  assert.deepEqual(chartScales(rows).left, niceScale([100000, 160000, null, 300000, 200000, 250000, 480000, 250000, 300000]));
+  assert.deepEqual(chartScales(rows).right, niceScale([160000, 360000, 610000]));
+  assert.equal(chartScales(buildChartMonths({ mode: "simple", months: MONTHS })).right, null);
 });
 
 test("toggleSeries hides and shows a series but never the last one", () => {
@@ -112,6 +126,13 @@ test("chartGeometry fits 12 months at a phone's width and scrolls only past 12",
   const many = chartGeometry({ width: 366, monthCount: 18, barCount: 2 });
   assert.equal(many.scrolls, true);
   assert.ok(many.plotWidth >= 18 * 36);
+  // A right axis (the running total) takes its width from the plot, never
+  // from the page: 12 months still fit at a phone's width.
+  const phoneRight = chartGeometry({ width: 366, monthCount: 12, barCount: 2, rightAxis: true });
+  assert.equal(phoneRight.scrolls, false);
+  assert.equal(phoneRight.rightAxisWidth, phoneRight.axisWidth);
+  assert.ok(phoneRight.plotWidth <= 366 - phoneRight.axisWidth - phoneRight.rightAxisWidth);
+  assert.equal(phone.rightAxisWidth, 0);
   const wide = chartGeometry({ width: 900, monthCount: 3, barCount: 2 });
   assert.ok(wide.barWidth <= 28, "few months do not make fat columns");
   // Bars sit inside their band, in series order.
@@ -144,11 +165,18 @@ test("pointFigure: each point's menu names the month and series and keeps the li
   assert.equal(planned.ask, "plan");
   assert.match(planned.label, /^Feb 2026 planned spending \$2,500\.00$/);
   assert.deepEqual(planned.note, ["$2,500.00 planned", "$2,000.00 spent"]);
-  const actual = pointFigure("plan", chartSeries("plan")[3], planRows[1]);
-  assert.equal(actual.fig, "spent");
-  assert.equal(actual.name, "Actual spending");
-  assert.match(actual.label, /^Feb 2026 actual spending \$2,000\.00$/);
-  assert.deepEqual(actual.note, ["$2,000.00 actual spending"]);
+  // The running point's figure is the spending from the first month shown to
+  // its own: View entries over that period totals the running figure.
+  const running = pointFigure("plan", chartSeries("plan")[3], planRows[1], planRows[0].month);
+  assert.equal(running.fig, "spent");
+  assert.equal(running.period, "2026-01:2026-02");
+  assert.equal(running.name, "Spent so far, adding up");
+  assert.equal(running.plan, null);
+  assert.match(running.label, /^Feb 2026 spent so far, adding up \$3,600\.00$/);
+  assert.deepEqual(running.note, ["$3,600.00 spent from Jan 2026 to Feb 2026"]);
+  const firstRunning = pointFigure("plan", chartSeries("plan")[3], planRows[0], planRows[0].month);
+  assert.equal(firstRunning.period, "2026-01:2026-01");
+  assert.deepEqual(firstRunning.note, ["$1,600.00 spent in Jan 2026"]);
   const planSpent = pointFigure("plan", chartSeries("plan")[1], planRows[1]);
   assert.equal(planSpent.fig, "spent");
   assert.equal(planSpent.plan, "");

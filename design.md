@@ -1186,16 +1186,22 @@ Where it is used:
   Simple: Earned (mint) and Spent (rose) columns, in the savings bar's
   colours, and a Kept line (mint ink; a point below zero is rose ink), with
   the zero line marked. Plan: the same columns, a Planned spending line (sky
-  ink) that breaks where a month has no plan, and a dashed Actual spending
-  line (rose ink) that follows the tops of the Spent columns. Months run oldest
-  to
+  ink) that breaks where a month has no plan, and Spent so far, adding up: a
+  dashed line in the page's ink (2 px, dashes 6/4, never a money tone: it
+  is a running total, not a month's money) that adds each month's Spent to
+  the months before it, read on its own axis on the right (ink labels), so
+  the columns keep their height on the left axis. It fades in (a dashed line
+  cannot draw on) and its point's figure is `spent` from the first month
+  shown to its own, so View entries totals it. (An earlier Actual spending
+  line repeated each Spent column's figure in the same rose, 087b4637.)
+  Months run oldest to
   newest with short labels and the year on the first and each January; 12
   months fit a phone by narrowing the columns, and only past 12 does the
   plot scroll sideways while the y axis stays put. A few gridlines carry
   compact labels ($8k). The legend chips (Earned, Spent, Kept, Planned
-  spending or Actual spending) show and hide a series; the last one showing
-  stays, and the
-  scale is of every series so hiding one never rescales the rest. Each
+  spending or Spent so far, adding up) show and hide a series; the last one
+  showing stays, and the left scale is of every month series so hiding one
+  never rescales the rest (the right axis shows only with its line). Each
   column and point is an openable figure whose menu is titled with the series
   and the month ("Spent · Oct 2026"), with quick facts first, then View
   entries (that month's money behind the figure), Open plan on the plan

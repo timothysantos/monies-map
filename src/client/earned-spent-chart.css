@@ -2,12 +2,15 @@
    (earned-spent-chart.js). Colours are tokens only: the columns and the
    line take the money tones (Earned and Kept mint, Spent rose, Planned
    spending sky), as the savings bar does, so every colour preset and dark
-   mode reads. Labels are the page's ink tokens. */
+   mode reads. Spent so far, adding up is not a month's money but a running
+   total, so it is the page's ink, dashed, with its own axis labels in ink on
+   the right. Labels are the page's ink tokens. */
 .earned-spent-chart {
   --ec-earned: color-mix(in srgb, var(--pastel-mint-ink) 78%, var(--paper));
   --ec-spent: color-mix(in srgb, var(--pastel-rose-ink) 78%, var(--paper));
   --ec-kept: var(--pastel-mint-ink);
   --ec-plan: var(--pastel-sky-ink);
+  --ec-running: var(--text);
   display: grid;
   align-content: start;
   gap: 8px;
@@ -79,6 +82,11 @@
   border-radius: 2px;
 }
 
+/* The running total's swatch is dashed like its line. */
+[data-series="running"] .ec-swatch.is-line {
+  background: repeating-linear-gradient(90deg, var(--ec-colour) 0 4px, transparent 4px 7px);
+}
+
 .ec-chip.is-off .ec-swatch {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px var(--ec-colour);
@@ -88,7 +96,7 @@
 [data-series="spent"] { --ec-colour: var(--ec-spent); }
 [data-series="kept"] { --ec-colour: var(--ec-kept); }
 [data-series="plan"] { --ec-colour: var(--ec-plan); }
-[data-series="actual"] { --ec-colour: var(--pastel-rose-ink); }
+[data-series="running"] { --ec-colour: var(--ec-running); }
 
 /* The y axis stays put; the plot beside it scrolls sideways only when more
    than twelve months do not fit. */
@@ -156,7 +164,11 @@
 
 .ec-line.is-kept { stroke: var(--ec-kept); }
 .ec-line.is-plan { stroke: var(--ec-plan); }
-.ec-line.is-actual { stroke: var(--pastel-rose-ink); stroke-dasharray: 5 3; }
+.ec-line.is-running {
+  stroke: var(--ec-running);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
 
 .ec-dot {
   fill: var(--paper);
@@ -165,7 +177,8 @@
 
 .ec-dot.is-kept { stroke: var(--ec-kept); }
 .ec-dot.is-plan { stroke: var(--ec-plan); }
-.ec-dot.is-actual { stroke: var(--pastel-rose-ink); }
+.ec-dot.is-running { stroke: var(--ec-running); }
+.ec-axis-label.is-running { fill: var(--ec-running); }
 .ec-dot.is-negative { stroke: var(--pastel-rose-ink); }
 
 /* A column or point is an openable figure: a clear target over it takes the
@@ -207,13 +220,22 @@
     transform: scaleY(0);
   }
 
-  [data-chart-motion="armed"] .ec-line,
-  [data-chart-motion="playing"] .ec-line {
+  [data-chart-motion="armed"] .ec-line:not(.is-running),
+  [data-chart-motion="playing"] .ec-line:not(.is-running) {
     stroke-dasharray: 1;
   }
 
-  [data-chart-motion="armed"] .ec-line {
+  [data-chart-motion="armed"] .ec-line:not(.is-running) {
     stroke-dashoffset: 1;
+  }
+
+  /* The dashed running total fades in rather than drawing on. */
+  [data-chart-motion="armed"] .ec-line.is-running {
+    opacity: 0;
+  }
+
+  [data-chart-motion="playing"] .ec-line.is-running {
+    animation: ec-pop 500ms ease-out 300ms both;
   }
 
   [data-chart-motion="armed"] .ec-dot {
@@ -225,7 +247,7 @@
     animation-delay: calc(var(--ec-i, 0) * 28ms);
   }
 
-  [data-chart-motion="playing"] .ec-line {
+  [data-chart-motion="playing"] .ec-line:not(.is-running) {
     animation: ec-draw 800ms ease-out 200ms both;
   }
 

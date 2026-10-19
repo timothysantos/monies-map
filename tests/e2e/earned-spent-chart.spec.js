@@ -53,6 +53,22 @@ async function simpleRow(page, month) {
   };
 }
 
+// Plan: every Intent card's Spent from the first month shown to `month`,
+// added up and written as the app writes money ("$12,345.67").
+async function spentSoFar(page, month) {
+  const cards = page.locator(".summary-intent .summary-intent-month");
+  await expect(cards.first()).toBeVisible();
+  let totalCents = 0;
+  for (const card of await cards.all()) {
+    const cardMonth = await card.getAttribute("data-month");
+    if (cardMonth > month) continue;
+    const text = (await card.locator(".summary-intent-spent").innerText()).trim();
+    const cents = Math.round(Number(text.replace(/[^\d.-]/g, "")) * 100);
+    totalCents += text.startsWith("-") ? -Math.abs(cents) : cents;
+  }
+  return `$${(totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 test.beforeEach(async ({ page }) => {
   await reseedDemo(page);
 });
@@ -233,11 +249,11 @@ test.describe("Plan, desktop", () => {
     await useView(page, "plan");
   });
 
-  test("Intent vs Outcome carries earned, spent, planned and actual spending", async ({ page }) => {
+  test("Intent vs Outcome carries earned, spent, planned spending and spending so far, adding up", async ({ page }) => {
     await openSummary(page);
     const card = page.locator(".summary-intent");
     await expect(card.locator("[data-earned-spent-chart]")).toHaveAttribute("data-earned-spent-chart", "plan", { timeout: 30_000 });
-    await expect(chart(page).locator(".ec-legend .ec-chip")).toHaveText(["Earned", "Spent", "Planned spending", "Actual spending"]);
+    await expect(chart(page).locator(".ec-legend .ec-chip")).toHaveText(["Earned", "Spent", "Planned spending", "Spent so far, adding up"]);
     await expect(chart(page).locator('.ec-chip[data-series="kept"]')).toHaveCount(0);
     // A point for each month that has a plan; a month without one has none.
     const cards = card.locator(".summary-intent-month");
@@ -250,12 +266,32 @@ test.describe("Plan, desktop", () => {
     expect(planned).toBeGreaterThan(0);
     await expect(chart(page).locator('.ec-point[data-ec-series="earned"]')).toHaveCount(months);
     await expect(chart(page).locator('.ec-point[data-ec-series="plan"]')).toHaveCount(planned);
-    await expect(chart(page).locator('.ec-point[data-ec-series="actual"]')).toHaveCount(months);
+    await expect(chart(page).locator('.ec-point[data-ec-series="running"]')).toHaveCount(months);
     const spentLabel = await card.locator(`[data-month="${MONTH}"] .summary-intent-spent`).innerText();
     await expect(point(page, "spent")).toHaveAttribute("aria-label", `May 2026 spent ${spentLabel.trim()}`);
     const plannedMay = (await card.locator(`[data-month="${MONTH}"] .summary-intent-plan`).innerText()).match(/\$[\d,]+\.\d\d/)[0];
     await expect(point(page, "plan")).toHaveAttribute("aria-label", `May 2026 planned spending ${plannedMay}`);
-    await expect(point(page, "actual")).toHaveAttribute("aria-label", `May 2026 actual spending ${spentLabel.trim()}`);
+    // The last running point is every shown month's Spent added up.
+    const runningMay = await spentSoFar(page, MONTH);
+    await expect(point(page, "running")).toHaveAttribute("aria-label", `May 2026 spent so far, adding up ${runningMay}`);
+    // A dashed ink line on its own axis on the right, not the Spent rose.
+    const line = chart(page).locator(".ec-line.is-running");
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveCSS("stroke-dasharray", /\d/);
+    const spentFill = await chart(page).locator(".ec-bar.is-spent").first().evaluate((node) => getComputedStyle(node).fill);
+    const lineStroke = await line.evaluate((node) => getComputedStyle(node).stroke);
+    expect(lineStroke).not.toBe(spentFill);
+    await expect(chart(page).locator(".ec-axis.is-right .ec-axis-label").first()).toBeVisible();
+  });
+
+  test("a running point's View entries totals the spending from the first month shown to its own", async ({ page }) => {
+    await openSummary(page);
+    await settledChart(page);
+    const runningMay = await spentSoFar(page, MONTH);
+    await point(page, "running").click();
+    await expect(menu(page).locator(".figure-menu-title")).toContainText("Spent so far, adding up");
+    await menu(page).getByRole("button", { name: "View entries" }).click();
+    await expect(page.locator(".entries-totals-lead .lsd-amount")).toHaveText(runningMay, { timeout: 30_000 });
   });
 
   test("the planned point's menu names the series and month, lists View entries, Open plan and Ask", async ({ page }) => {

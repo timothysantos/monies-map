@@ -6,7 +6,7 @@
 export const earnedSpentChartCopy = {
   chartLabel: {
     simple: "Earned, spent and kept, month by month",
-    plan: "Earned, spent, planned spending and actual spending, month by month"
+    plan: "Earned, spent and planned spending month by month, and spending so far, adding up"
   },
   legendLabel: "Show or hide in the chart",
   series: {
@@ -14,7 +14,7 @@ export const earnedSpentChartCopy = {
     spent: "Spent",
     kept: "Kept",
     plan: "Planned spending",
-    actual: "Actual spending"
+    running: "Spent so far, adding up"
   },
   // What a column or point is called for assistive tech and the quick
   // facts' first line: "Oct 2026 earned $113.30".
@@ -24,7 +24,7 @@ export const earnedSpentChartCopy = {
     kept: "kept",
     overspent: "overspent",
     plan: "planned spending",
-    actual: "actual spending"
+    running: "spent so far, adding up"
   },
   pointLabel: (monthLabel, word, amount) => `${monthLabel} ${word} ${amount}`,
   // The quick facts under a menu's title, one per line (figure-menu.js).
@@ -34,7 +34,9 @@ export const earnedSpentChartCopy = {
   overspentAmount: (amount) => `${amount} overspent`,
   earnedAndSpent: (earned, spent) => `Earned ${earned}, spent ${spent}`,
   planned: (amount) => `${amount} planned`,
-  actualSpending: (amount) => `${amount} actual spending`,
+  // A running point: the spending from the first month shown to its own.
+  spentFromTo: (amount, from, to) => `${amount} spent from ${from} to ${to}`,
+  spentIn: (amount, month) => `${amount} spent in ${month}`,
   spentAmount: (amount) => `${amount} spent`,
   underPlan: (amount) => `${amount} under plan`,
   overPlan: (amount) => `${amount} over plan`,

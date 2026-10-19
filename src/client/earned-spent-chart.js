@@ -4,9 +4,9 @@ import { earnedSpentChartCopy as copy } from "./copy/earned-spent-chart-copy";
 import {
   buildChartMonths,
   chartGeometry,
+  chartScales,
   chartSeries,
   compactMoney,
-  niceScale,
   pointFigure,
   toggleSeries
 } from "./earned-spent-chart-model";
@@ -16,7 +16,8 @@ import { formatMonthLabel } from "./formatters";
 // Simple view's "Earned vs spent by month", the Plan view's Intent vs
 // Outcome; design.md "Plan or Simple"). Simple: Earned and Spent columns and
 // a Kept line. Plan: Earned and Spent columns, a Planned spending line and
-// an Actual spending line over the monthly spending columns.
+// Spent so far, adding up: a dashed ink running total on its own axis on the
+// right (it would flatten the columns on theirs).
 // It shows only for a range of two or more months (a single column says
 // nothing the card does not), and with money hidden it draws nothing: no
 // columns, no line, no axis, because their sizes and the line's side of zero
@@ -127,11 +128,18 @@ function EarnedSpentChartBody({ mode, rows }) {
   const visible = series.filter((item) => !hiddenKeys.has(item.key));
   const bars = visible.filter((item) => item.kind === "bar");
   const lines = visible.filter((item) => item.kind === "line");
-  // The scale is of every series, so hiding one never rescales the rest.
-  const scale = R.useMemo(() => niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor, row.actualMinor])), [rows]);
-  const geometry = chartGeometry({ width, monthCount: rows.length, barCount: bars.length });
+  // The left scale is of every month figure, so hiding one never rescales
+  // the rest; the running total has the right one to itself.
+  const scales = R.useMemo(() => chartScales(rows), [rows]);
+  const scale = scales.left;
+  const rightScale = lines.some((line) => line.axis === "right") ? scales.right : null;
+  const geometry = chartGeometry({ width, monthCount: rows.length, barCount: bars.length, rightAxis: Boolean(rightScale) });
   const { top, plotHeight, plotWidth, height } = geometry;
-  const yOf = (minor) => top + (plotHeight * (scale.max - minor)) / (scale.max - scale.min);
+  const yAt = (axis) => (minor) => top + (plotHeight * (axis.max - minor)) / (axis.max - axis.min);
+  const yOf = yAt(scale);
+  const yRight = rightScale ? yAt(rightScale) : yOf;
+  const yFor = (seriesItem) => (seriesItem.axis === "right" ? yRight : yOf);
+  const firstMonth = rows[0]?.month ?? "";
   const baseline = yOf(0);
 
   const points = [];
@@ -221,7 +229,7 @@ function EarnedSpentChartBody({ mode, rows }) {
     const hitWidth = geometry.band / bars.length;
     return h(
       PointGroup,
-      { key: keyOf(point), point, mode, ...handlers(point) },
+      { key: keyOf(point), point, mode, firstMonth, ...handlers(point) },
       h("rect", {
         className: `ec-bar is-${item.key}`,
         x,
@@ -235,20 +243,22 @@ function EarnedSpentChartBody({ mode, rows }) {
     );
   });
 
-  const linePaths = lines.flatMap((line) => lineSegments(rows, geometry, yOf, line.key).map((segment) => h("path", {
+  // A dashed line keeps its dashes in pixels: it fades in instead of drawing
+  // on (the draw-on uses a one-unit path length and dash).
+  const linePaths = lines.flatMap((line) => lineSegments(rows, geometry, yFor(line), line.key).map((segment) => h("path", {
     key: `line-${line.key}-${segment.start}`,
     className: `ec-line is-${line.key}`,
     d: segment.d,
-    pathLength: 1,
+    pathLength: line.axis === "right" ? undefined : 1,
     fill: "none"
   })));
   const linePoints = points.filter((point) => point.series.kind === "line").map((point) => {
     const cx = geometry.bandCenter(point.index);
     const value = lineValue(point.row, point.series.key);
-    const cy = yOf(value);
+    const cy = yFor(point.series)(value);
     return h(
       PointGroup,
-      { key: keyOf(point), point, mode, ...handlers(point) },
+      { key: keyOf(point), point, mode, firstMonth, ...handlers(point) },
       h("circle", { className: `ec-dot is-${point.series.key}${value < 0 ? " is-negative" : ""}`, cx, cy, r: 4.5, style: { "--ec-i": point.index } }),
       h("circle", { className: "ec-hit", cx, cy, r: 14 })
     );
@@ -312,7 +322,12 @@ function EarnedSpentChartBody({ mode, rows }) {
           linePaths,
           linePoints
         )
-      )
+      ),
+      rightScale ? h(
+        "svg",
+        { className: "ec-axis is-right", width: geometry.rightAxisWidth, height, "aria-hidden": "true" },
+        rightScale.ticks.map((tick) => h("text", { key: tick, className: "ec-axis-label is-running", x: 6, y: yRight(tick) + 3.5, textAnchor: "start" }, compactMoney(tick)))
+      ) : null
     )
   );
 }
@@ -320,9 +335,9 @@ function EarnedSpentChartBody({ mode, rows }) {
 // One column or point as an openable figure (figure-menu.js reads these
 // attributes): the figure, the month as its period, the quick facts, the
 // plan link, and a label that says the month, the series and the amount.
-function PointGroup({ point, mode, isTab, onFocus, onBlur, onHoverOpen, onHoverLeave, children }) {
+function PointGroup({ point, mode, firstMonth, isTab, onFocus, onBlur, onHoverOpen, onHoverLeave, children }) {
   const { series: item, row, index } = point;
-  const figure = pointFigure(mode, item, row);
+  const figure = pointFigure(mode, item, row, firstMonth);
   return h(
     "g",
     {
@@ -351,7 +366,7 @@ function PointGroup({ point, mode, isTab, onFocus, onBlur, onHoverOpen, onHoverL
 // Runs of months that have a point, each its own path, so a month without
 // one (no plan) breaks the line instead of being drawn through zero.
 function lineValue(row, key) {
-  if (key === "actual") return row.actualMinor ?? null;
+  if (key === "running") return row.runningMinor ?? null;
   return row.lineMinor;
 }
 
