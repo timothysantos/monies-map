@@ -82,7 +82,7 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       await openAskOn(page, first);
       const row = page.locator("[data-ask-habit-suggestion]");
       await expect(row).toBeVisible();
-      await expect(row).toContainText("Food & Drinks · Add to splits 50/50 with Joyce, as you usually do");
+      await expect(row).toContainText("Food & Drinks · Add to splits half each with Joyce, as you usually do");
       await expect(page.locator("[data-ask-done-inline]")).toHaveCount(0);
       await shot(page, `suggestion-row-${name}`);
 

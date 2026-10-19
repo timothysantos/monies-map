@@ -1549,7 +1549,7 @@ export const COPY = {
     notNow: "Not now",
     noGroup: "No group",
     openSplits: "Open Splits",
-    even: "Split 50/50",
+    even: "Half each",
     allOf: (name: string) => `All ${name}'s`,
     addWithPayer: (name: string) => `Yes, ${name} paid`,
     onWallet: (name: string) => `On ${name}`,

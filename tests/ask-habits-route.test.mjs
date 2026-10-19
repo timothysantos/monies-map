@@ -124,7 +124,7 @@ test("an Apple Pay entry is handled by Ask: category set, added to splits, logge
   const done = (await api("/api/ask/done")).payload.items;
   assert.deepEqual(done.map((item) => [item.kind, item.entryId, item.summary, item.undone]).sort(), [
     ["category", entryId, "Category set to Food & Drinks", false],
-    ["split", entryId, "Added to splits 50/50 with Joyce", false]
+    ["split", entryId, "Added to splits half each with Joyce", false]
   ]);
   assert.ok(done.every((item) => item.entryDescription === "BENGAWAN SOLO 91234567" && Date.parse(item.at) > 0));
 
@@ -159,7 +159,7 @@ test("every excluded case is left alone: low confidence, old, certified, importe
   const low = await applePayEntry(fetch, "TWO TIMES CAFE");
   assert.equal((await entryState(db, low)).onSplits, false);
   const lowAsk = await api("/api/ask/entry-habits", { entryId: low });
-  assert.equal(lowAsk.payload.suggestion.text, "Food & Drinks \u00b7 Add to splits 50/50 with Joyce, as you usually do");
+  assert.equal(lowAsk.payload.suggestion.text, "Food & Drinks \u00b7 Add to splits half each with Joyce, as you usually do");
   assert.deepEqual(lowAsk.payload.done, []);
 
   // Three entries are made before the shop has a split habit, then made
@@ -195,7 +195,7 @@ test("every excluded case is left alone: low confidence, old, certified, importe
   assert.equal((await entryState(db, manual)).onSplits, false);
   const suggested = await api("/api/ask/entry-habits", { entryId: manual });
   assert.deepEqual(suggested.payload.done, []);
-  assert.equal(suggested.payload.suggestion.text, "Add to splits 50/50 with Joyce, as you usually do");
+  assert.equal(suggested.payload.suggestion.text, "Add to splits half each with Joyce, as you usually do");
   assert.equal((await api("/api/ask/done")).payload.items.filter((item) => item.entryId === manual).length, 0);
 });
 

@@ -102,7 +102,8 @@ export const askCopy = {
     shareOnSplits: "Share on Splits",
     addToGroup: (name) => `Add to ${name}`,
     // The split suggestion's two answers (ask-split-suggestion.js).
-    suggestedSplit: (share, groupName) => `Split ${share} in ${groupName}`,
+    halfEach: "Half each",
+    suggestedSplit: (share, groupName) => `${share} in ${groupName}`,
     notThisTime: "Not this time",
     // The card suggestion's two answers.
     suggestedCard: (cardName) => `Yes, ${cardName}`,

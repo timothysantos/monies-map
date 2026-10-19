@@ -1063,7 +1063,7 @@ Splits, Ask makes one debounced (500 ms) read-only `POST /api/splits/suggestion`
 (`src/domain/split-suggestion.ts`: same shop, at least 2 entries and 60%
 split in one group; same category only for a shop with no history, at least
 4 and 75%), shows one follow-up question in the chip row: "You usually
-split this with {name}. Add it to {group}?" with "Split 50/50 in {group}"
+split this with {name}. Add it to {group}?" with "Half each in {group}"
 and "Not this time". Choosing it turns the Splits switch on with that group
 (nothing is written until Save; on the Apple Pay card it is the existing
 Add to Splits). "Not this time" hides it for that card. Only an even share is

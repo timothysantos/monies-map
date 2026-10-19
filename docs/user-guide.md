@@ -689,7 +689,7 @@ always know you are working on shared money rather than your bank ledger.
   entry count and the balance; a group you have never settled up reads **Group
   spend** and adds up everything. The chart behind it shows your own share of
   that same spending and says so in its middle ("Your share since last
-  settle-up"), so it is half of a 50/50 chip, not a different total. The
+  settle-up"), so with half each it is half of the chip, not a different total. The
   insights follow the same rule: what they say about "now" counts only what has
   not been settled up, and a fun fact about the whole group says "(settled or
   not, since 2 Apr)". **History** is quiet and **Settle group** is
@@ -907,7 +907,7 @@ The card is marked **Saved** and the suggestions change:
 If you usually share a purchase with your partner (the same shop, split
 evenly in the same group, most of the times you bought there), Ask notices
 when you add it again and asks: "You usually split this with Joyce. Add it
-to Home?" **Split 50/50 in Home** turns Splits on for the new entry (it is
+to Home?" **Half each in Home** turns Splits on for the new entry (it is
 saved when you tap **Save**); **Not this time** puts the question away. It
 only looks at your own past entries and never guesses from one purchase.
 
@@ -1047,12 +1047,12 @@ your plan's own, and nothing is saved until you tap Save plan.
 Ask quietly notices what you choose. When you put a shop's entries in the
 same category, or add them to Splits the same way, a few times, Ask
 remembers it. It remembers only these small facts, such as "Bengawan Solo is
-Food & Drinks" or "Hawker Dinner is split 50/50 with Joyce". It does not keep
+Food & Drinks" or "Hawker Dinner is split half each with Joyce". It does not keep
 what you type in the chat.
 
 - **A quiet suggestion.** When you open a new entry in Ask (an Apple Pay
   purchase, or one you added), a single line can appear under it, such as
-  *Food & Drinks · Add to splits 50/50 with Joyce, as you usually do*. Tap
+  *Food & Drinks · Add to splits half each with Joyce, as you usually do*. Tap
   the tick to do it, or the cross for "not this time". It never pops up on
   its own and is never a notification.
 - **Done for you.** Once Ask has seen you do the same thing three times in a
@@ -2032,7 +2032,7 @@ There are two ways, depending on where the expense is.
 2. Select **Add to splits**.
 3. Pick the group from **Split group**. The split is created as soon as you
    choose; **Cancel** closes the box without sharing anything.
-4. The split starts 50/50 with the entry's owner as the payer. Select
+4. The split starts half each, with the entry's owner as the payer. Select
    **View split** to change the people, shares, group, category or note.
 
 ![Add to splits asks which group the entry belongs to](/faq/guide/desktop/thumbs/entries-add-to-splits.webp)

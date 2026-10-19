@@ -115,13 +115,14 @@ export function planEntryHabits(input: {
   return plan;
 }
 
-// "50/50" for an even split, else the payer's share first ("70/30").
+// "half each" for an even split (the app never says 50/50), else the payer's
+// share first ("70/30").
 export function shareLabel(payerShareBasisPoints: number) {
   const payer = Math.round(payerShareBasisPoints / 100);
-  return `${payer}/${100 - payer}`;
+  return payer === 50 ? "half each" : `${payer}/${100 - payer}`;
 }
 
-// The one quiet line: "Food & Drinks · Add to splits 50/50 with Joyce, as
+// The one quiet line: "Food & Drinks · Add to splits half each with Joyce, as
 // you usually do". Parts are joined with a middle dot; a plan with nothing
 // to say has no line.
 export function suggestionLine(plan: HabitPlan): string {

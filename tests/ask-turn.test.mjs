@@ -185,7 +185,7 @@ test("negative: shares that do not add up to 100% are asked, never rounded off",
   assert.deepEqual(reply, {
     kind: "clarify",
     question: "How should it be split? The two shares need to add up to the whole amount.",
-    options: ["Split 50/50", "All Tim's", "All Joyce's"],
+    options: ["Half each", "All Tim's", "All Joyce's"],
     error: { code: "shares_mismatch", field: "split.shares", valid: ["Tim", "Joyce"] }
   });
   const over = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [{ person: "Joyce", percent: 140 }] } }), context);

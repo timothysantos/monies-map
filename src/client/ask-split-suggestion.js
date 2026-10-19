@@ -13,6 +13,7 @@
 //   card can repeat.
 
 import { SHARED_OWNER } from "./ask-card-model";
+import { askCopy } from "./copy/ask-copy";
 
 const EVEN_SHARE = 5000;
 
@@ -81,8 +82,9 @@ export function usableSplitSuggestion(suggestion, splitGroups = []) {
   return suggestion;
 }
 
-// "50/50": the payer's share, then the other person's.
+// "Half each" for an even share (the app never says 50/50); otherwise the
+// payer's share, then the other person's ("70/30").
 export function formatSuggestedShare(basisPoints) {
   const percent = Math.round(basisPoints / 100);
-  return `${percent}/${100 - percent}`;
+  return percent === 50 ? askCopy.chips.halfEach : `${percent}/${100 - percent}`;
 }

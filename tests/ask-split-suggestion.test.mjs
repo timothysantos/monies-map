@@ -98,7 +98,7 @@ test("only an even share in a group the card can choose is offered (the Splits s
   assert.equal(usableSplitSuggestion({ ...suggestion, groupId: "split-group-gone" }, splitGroups), null);
   assert.equal(usableSplitSuggestion(suggestion, []), null);
   assert.equal(usableSplitSuggestion(null, splitGroups), null);
-  assert.equal(formatSuggestedShare(5000), "50/50");
+  assert.equal(formatSuggestedShare(5000), "Half each");
   assert.equal(formatSuggestedShare(7000), "70/30");
 });
 
@@ -127,10 +127,10 @@ test("the request fails soft: a network error or a refusal is no suggestion", as
   assert.equal(await requestSplitSuggestion({ entryId: "x" }, { fetchImpl: async () => { throw new TypeError("offline"); } }), null);
 });
 
-test("a draft with a suggestion asks one question: Split 50/50 in Home (filled) or Not this time", () => {
+test("a draft with a suggestion asks one question: Half each in Home (filled) or Not this time", () => {
   const result = buildAskChips({ intent: add, card: filled(), context, splitGroups, partner: "Joyce", splitSuggestion: suggestion, actions });
   assert.equal(result.prompt, "You usually split this with Joyce. Add it to Home?");
-  assert.deepEqual(labels(result), ["‹ Entries", "Split 50/50 in Home", "Not this time", "Edit in form"]);
+  assert.deepEqual(labels(result), ["‹ Entries", "Half each in Home", "Not this time", "Edit in form"]);
   assert.equal(result.items[1].primary, true);
   assert.equal(result.items[1].onClick(), "acceptSplitSuggestion");
   assert.equal(result.items[2].onClick(), "declineSplitSuggestion");
@@ -175,7 +175,7 @@ test("the Apple Pay card: the suggestion replaces the plain Splits chips; Other 
   const apple = cardFromSavedEntry(appleEntry, context);
   const result = buildAskChips({ intent: shortcut, card: apple, context, splitGroups, splitSuggestion: suggestion, actions });
   assert.equal(result.prompt, "You usually split this with Joyce. Add it to Home?");
-  assert.deepEqual(labels(result), ["Open this entry", "Split 50/50 in Home", "Not this time"]);
+  assert.deepEqual(labels(result), ["Open this entry", "Half each in Home", "Not this time"]);
   assert.equal(result.items[0].primary, undefined);
   assert.equal(result.items[1].primary, true);
   assert.equal(result.items[1].onClick(), "acceptSplitSuggestion");

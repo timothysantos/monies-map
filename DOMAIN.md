@@ -2431,7 +2431,7 @@ Canonical terms:
   applied without a Save
 - `Let Ask handle safe things`: the Settings switch (default on)
 - `suggestion row`: the one quiet line under a saved entry in Ask, "Food &
-  Drinks · Add to splits 50/50 with Joyce, as you usually do", with a tick
+  Drinks · Add to splits half each with Joyce, as you usually do", with a tick
   and a cross
 - `nickname`: an `alias` habit; reaches the model as a fact
 
@@ -2478,7 +2478,7 @@ Important distinctions:
   the owner and the other person only; mixed groups, tied habits, income,
   transfers, an entry already on Splits and other people's purchases give no
   suggestion.
-- Ask offers only an even share, since the Splits switch saves 50/50.
+- Ask offers only an even share, since the Splits switch saves an even split (shown as "half each", never "50/50").
 - "Not this time" is kept on the card only; nothing is learned from it.
 
 ### Card Suggestion
