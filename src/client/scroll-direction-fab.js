@@ -16,6 +16,23 @@ export function scrollFabIcon(direction) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
 }
 
+// A long page's chrome (App.jsx): the direction button, and `onScroll`, run
+// now and on every scroll or resize (App shows the wide floating bar once the
+// header has scrolled away). This module imports nothing, so loading it never
+// changes how the first screen's shared modules are grouped into files.
+export function mountLongPageChrome(onScroll) {
+  const disposeFab = mountScrollDirectionFab();
+  if (typeof window === "undefined") return disposeFab;
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  return () => {
+    disposeFab();
+    window.removeEventListener("scroll", onScroll);
+    window.removeEventListener("resize", onScroll);
+  };
+}
+
 export function mountScrollDirectionFab() {
   if (typeof window === "undefined") return () => {};
   const button = document.createElement("button");

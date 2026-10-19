@@ -96,7 +96,7 @@ import {
   invalidateImportsPageQueries,
   invalidateMonthQueries
 } from "./query-mutations";
-import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-plan";
+import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-request";
 import {
   buildSummaryAccountPillsParams,
   buildSummaryPageParams,
@@ -112,7 +112,6 @@ import {
   stepMonthInRange
 } from "./summary-month-choice";
 import { ContextPersonChip } from "./mobile-context-chip";
-import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { MobileContextStatus, useContextAnnouncement } from "./mobile-context-status";
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
@@ -2684,29 +2683,22 @@ export function App() {
   const islandStatus = useContextAnnouncement(entriesIsland?.announce ?? "");
 
   // Wide long-page chrome returns after its header leaves. Splits shares the
-  // tab bar even though its second control is the current group chooser.
+  // tab bar even though its second control is the current group chooser. The
+  // watcher and the direction button load after the route paints
+  // (scroll-direction-fab.js), so the first screen does not carry them.
   useEffect(() => {
-    const supportsDesktopFloat = ["summary", "month", "entries", "splits"].includes(renderedTabId);
+    if (!["summary", "month", "entries", "splits"].includes(renderedTabId)) {
+      setDesktopContextVisible(false);
+      return undefined;
+    }
     let dispose;
     let cancelled = false;
-    if (supportsDesktopFloat) {
-      import("./scroll-direction-fab.js").then((module) => {
-        if (!cancelled) dispose = module.mountScrollDirectionFab();
-      });
-    }
-    if (!supportsDesktopFloat) {
-      setDesktopContextVisible(false);
-      return () => { cancelled = true; dispose?.(); };
-    }
-    const update = () => setDesktopContextVisible(!isMobileLayout() && window.scrollY > 180);
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update, { passive: true });
+    import("./scroll-direction-fab.js").then((module) => {
+      if (!cancelled) dispose = module.mountLongPageChrome(() => setDesktopContextVisible(!isMobileLayout() && window.scrollY > 180));
+    });
     return () => {
       cancelled = true;
       dispose?.();
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
     };
   }, [renderedTabId]);
 
@@ -2824,6 +2816,22 @@ export function App() {
 
     return { pathname: tab.path, search: params.toString() ? `?${params.toString()}` : "" };
   };
+  // The wide floating bar's tabs (the island's on Summary, Month and Entries,
+  // the Splits bar's on Splits).
+  const desktopFloatingTabs = desktopContextVisible ? (
+    <ShellRouteTabs
+      className="desktop-floating-tabs"
+      primaryTabs={primaryRouteTabs}
+      secondaryTabs={[]}
+      selectedTabId={selectedTabId}
+      buildTabTarget={buildTabTarget}
+      getNavIntentProps={getNavIntentProps}
+      pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+      askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
+      showPhoneOnly
+      includeOverflow={false}
+    />
+  ) : null;
   // Route-driven view changes need to keep the month and entries tabs
   // internally consistent when the active household member changes.
   function handleViewChange(nextViewId) {
@@ -3257,26 +3265,11 @@ export function App() {
       {/* The mobile sticky sheet mirrors the desktop chrome without forcing the user to scroll back to the top. */}
       {showMobileContextSticky ? (
         <section className={`mobile-context-sticky-wrap${desktopContextVisible ? " is-desktop-visible" : ""}`} aria-label={stickyScopeConfig.label}>
-          {desktopContextVisible ? (
-            <ShellRouteTabs
-              className="desktop-floating-tabs"
-              primaryTabs={primaryRouteTabs}
-              secondaryTabs={[]}
-              selectedTabId={selectedTabId}
-              buildTabTarget={buildTabTarget}
-              getNavIntentProps={getNavIntentProps}
-              pendingCategorySuggestionCount={pendingCategorySuggestionCount}
-              askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
-              showPhoneOnly
-              includeOverflow={false}
-            />
-          ) : null}
+          {desktopContextVisible ? desktopFloatingTabs : null}
           <div className="mobile-context-sticky-bar" data-scope={stickyScopeConfig?.selectedKey}>
             <MobileContextStatus message={islandStatus} />
             {islandStacked ? (
-              <div className="mobile-context-line is-stacked" ref={pageFlagRef(PAGE_FLAG.islandStacked)}>
-                <Suspense fallback={null}><MobileContextSheet contextLine {...islandLineProps} /></Suspense>
-              </div>
+              <Suspense fallback={null}><MobileContextSheet contextLine stacked {...islandLineProps} /></Suspense>
             ) : null}
             <div className="mobile-context-main">
             <Dialog.Root open={mobileContextOpen} onOpenChange={(open) => { setMobileContextOpen(open); if (!open) setMobileContextToFilters(false); }}>
@@ -3377,18 +3370,7 @@ export function App() {
       ) : null}
       {desktopContextVisible && renderedTabId === "splits" ? (
         <section className="desktop-splits-floating-tabs" aria-label="Splits navigation">
-          <ShellRouteTabs
-            className="desktop-floating-tabs"
-            primaryTabs={primaryRouteTabs}
-            secondaryTabs={[]}
-            selectedTabId={selectedTabId}
-            buildTabTarget={buildTabTarget}
-            getNavIntentProps={getNavIntentProps}
-            pendingCategorySuggestionCount={pendingCategorySuggestionCount}
-            askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
-            showPhoneOnly
-            includeOverflow={false}
-          />
+          {desktopFloatingTabs}
           <span id="desktop-splits-groups" className="desktop-splits-groups" />
         </section>
       ) : null}
