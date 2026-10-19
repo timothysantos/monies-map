@@ -273,3 +273,4 @@ Historical records of finished work. Do not update them.
 
 - [`audits/contextual-actions.md`](audits/contextual-actions.md): slider popup dismissal, contextual filter focus, phone plan actions and repeated unit-setup measurements.
 - [`audits/codex-polish/README.md`](audits/codex-polish/README.md): review of the 2026-10-16..19 commits (phone island, floating bars, direction button, split choices), the fixes with before/after screenshots, and what is left for the owner.
+- [`audits/codex-polish-2/README.md`](audits/codex-polish-2/README.md): the owner-approved follow-ups to that review (first-screen budget restored, phone quick add, the plan chart's running total, the Month bar's scope, plain words, Copy link failure, three Ask/import bugs, the Plan Studio flake), with before/after screenshots.

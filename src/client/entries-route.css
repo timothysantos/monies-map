@@ -185,7 +185,7 @@
     align-self: stretch;
     max-width: none;
     min-height: 44px;
-    margin-bottom: 6px;
+    margin: 0 14px 8px;
   }
 }
 

@@ -465,7 +465,7 @@ test("phone quick add sits on its own line under the Splits row and never cuts A
   const quickBox = await quickAdd.boundingBox();
   expect(quickBox.height).toBeGreaterThanOrEqual(44);
   expect(quickBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1);
-  expect(quickBox.width).toBeGreaterThanOrEqual(rowBox.width - 2);
+  expect(quickBox.width).toBeGreaterThanOrEqual(rowBox.width - 32);
   const quickFits = await quickAdd.evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
   expect(quickFits).toBe(true);
 
