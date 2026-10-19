@@ -212,7 +212,7 @@
 
   .mobile-context-segment[aria-pressed="true"] {
     border-color: transparent;
-    background: var(--accent-soft);
+    background: rgb(var(--accent-strong-rgb) / 0.12);
     color: var(--accent-strong);
   }
 

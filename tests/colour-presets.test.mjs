@@ -116,6 +116,36 @@ test("the default keeps every colour in :root of the first-screen stylesheet and
   assert.doesNotMatch(readFileSync(path.join(ROOT, "public/styles.css"), "utf8"), /data-palette|data-mode/);
 });
 
+// Names read before this guard that no stylesheet or preset defines, and how
+// many reads each still has. They resolve to nothing (a border with one
+// vanishes, a background goes transparent), so the counts may only fall.
+const LEGACY_UNDEFINED_TOKEN_READS = { "--ink": 28, "--focus-ring": 4, "--line-strong": 1, "--muted-text": 1 };
+
+test("every token a stylesheet reads is one the stylesheets, a preset or the page defines", () => {
+  const defined = new Set(Object.keys(ROOT_TOKENS));
+  const declare = (text) => {
+    for (const [, name] of text.matchAll(/(--[\w-]+)\s*:/g)) defined.add(name);
+  };
+  for (const file of STYLESHEETS) declare(readFileSync(file, "utf8"));
+  for (const file of walk(path.join(ROOT, "public/palettes"), [".css"])) declare(readFileSync(file, "utf8"));
+  // Tokens the page sets from code: a style prop or setProperty("--name", ...).
+  for (const file of walk(path.join(ROOT, "src"), [".js", ".jsx", ".ts"])) {
+    for (const [, name] of readFileSync(file, "utf8").matchAll(/["'`](--[\w-]+)["'`]/g)) defined.add(name);
+  }
+  const undefinedReads = {};
+  for (const file of STYLESHEETS) {
+    const css = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const [, name] of css.matchAll(/var\((--[\w-]+)\s*[,)]/g)) {
+      // Radix sets its own --radix-* sizes on the popper it places.
+      if (!defined.has(name) && !name.startsWith("--radix-")) undefinedReads[name] = (undefinedReads[name] ?? 0) + 1;
+    }
+  }
+  const problems = Object.entries(undefinedReads)
+    .filter(([name, count]) => count > (LEGACY_UNDEFINED_TOKEN_READS[name] ?? 0))
+    .map(([name, count]) => `${name} is read ${count} time(s) but never defined (allowed ${LEGACY_UNDEFINED_TOKEN_READS[name] ?? 0})`);
+  assert.deepEqual(problems, []);
+});
+
 for (const preset of PRESETS.filter((variant) => variant.sheetId)) {
   test(`${preset.id}: sets every token of a whole scheme`, () => {
     for (const name of [...COLOUR_TOKENS, ...SURFACE_TOKENS, ...PRESET_ONLY_TOKENS]) {
