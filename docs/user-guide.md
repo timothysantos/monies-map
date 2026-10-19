@@ -367,15 +367,17 @@ over plan.
   has two columns, **Earned** and **Spent**, and a line runs across the
   months. In Simple the line is what you **Kept**; it drops below the zero
   line in a month you spent more than you earned. In Plan the line is your
-  **Planned spending**, so a month where the Spent column rises above the
-  line went over plan; a month with no plan has no point on the line. The
-  columns grow up and the line draws itself the first time you scroll to
-  it (not at all if your phone is set to reduce motion). Select a column or
+  **Planned spending** and a rose dashed **Actual spending** line that follows
+  the tops of the Spent columns, making the monthly spending trend easy to
+  compare with the plan. A month with no plan has no point on the blue line.
+  The columns grow and the lines draw the first time you scroll to the chart
+  (not at all if your phone is set to reduce motion). Select a column or
   a point, or on a computer rest the pointer on it, to see that month's
   figure with a few facts, then choose **View entries** for the entries
   behind it, **Open plan** (Plan only) or **Ask about this**. The arrow keys
   move between them. Select a name above the chart (**Earned**, **Spent**,
-  **Kept** or **Planned spending**) to hide or show it. Hide money totals
+  **Kept**, **Planned spending** or **Actual spending**) to hide or show it.
+  Hide money totals
   and the chart goes away, and with a single month there is no chart.
 
   ![Earned vs spent by month starts with a chart of each month's earned and spent and a line for what was kept](/faq/guide/desktop/thumbs/summary-month-chart.webp)

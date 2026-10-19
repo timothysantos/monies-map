@@ -88,6 +88,7 @@
 [data-series="spent"] { --ec-colour: var(--ec-spent); }
 [data-series="kept"] { --ec-colour: var(--ec-kept); }
 [data-series="plan"] { --ec-colour: var(--ec-plan); }
+[data-series="actual"] { --ec-colour: var(--pastel-rose-ink); }
 
 /* The y axis stays put; the plot beside it scrolls sideways only when more
    than twelve months do not fit. */
@@ -155,6 +156,7 @@
 
 .ec-line.is-kept { stroke: var(--ec-kept); }
 .ec-line.is-plan { stroke: var(--ec-plan); }
+.ec-line.is-actual { stroke: var(--pastel-rose-ink); stroke-dasharray: 5 3; }
 
 .ec-dot {
   fill: var(--paper);
@@ -163,6 +165,7 @@
 
 .ec-dot.is-kept { stroke: var(--ec-kept); }
 .ec-dot.is-plan { stroke: var(--ec-plan); }
+.ec-dot.is-actual { stroke: var(--pastel-rose-ink); }
 .ec-dot.is-negative { stroke: var(--pastel-rose-ink); }
 
 /* A column or point is an openable figure: a clear target over it takes the

@@ -233,11 +233,11 @@ test.describe("Plan, desktop", () => {
     await useView(page, "plan");
   });
 
-  test("Intent vs Outcome carries the chart: Earned, Spent and a Planned spending line, no Kept", async ({ page }) => {
+  test("Intent vs Outcome carries earned, spent, planned and actual spending", async ({ page }) => {
     await openSummary(page);
     const card = page.locator(".summary-intent");
     await expect(card.locator("[data-earned-spent-chart]")).toHaveAttribute("data-earned-spent-chart", "plan", { timeout: 30_000 });
-    await expect(chart(page).locator(".ec-legend .ec-chip")).toHaveText(["Earned", "Spent", "Planned spending"]);
+    await expect(chart(page).locator(".ec-legend .ec-chip")).toHaveText(["Earned", "Spent", "Planned spending", "Actual spending"]);
     await expect(chart(page).locator('.ec-chip[data-series="kept"]')).toHaveCount(0);
     // A point for each month that has a plan; a month without one has none.
     const cards = card.locator(".summary-intent-month");
@@ -250,10 +250,12 @@ test.describe("Plan, desktop", () => {
     expect(planned).toBeGreaterThan(0);
     await expect(chart(page).locator('.ec-point[data-ec-series="earned"]')).toHaveCount(months);
     await expect(chart(page).locator('.ec-point[data-ec-series="plan"]')).toHaveCount(planned);
+    await expect(chart(page).locator('.ec-point[data-ec-series="actual"]')).toHaveCount(months);
     const spentLabel = await card.locator(`[data-month="${MONTH}"] .summary-intent-spent`).innerText();
     await expect(point(page, "spent")).toHaveAttribute("aria-label", `May 2026 spent ${spentLabel.trim()}`);
     const plannedMay = (await card.locator(`[data-month="${MONTH}"] .summary-intent-plan`).innerText()).match(/\$[\d,]+\.\d\d/)[0];
     await expect(point(page, "plan")).toHaveAttribute("aria-label", `May 2026 planned spending ${plannedMay}`);
+    await expect(point(page, "actual")).toHaveAttribute("aria-label", `May 2026 actual spending ${spentLabel.trim()}`);
   });
 
   test("the planned point's menu names the series and month, lists View entries, Open plan and Ask", async ({ page }) => {

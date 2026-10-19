@@ -1488,9 +1488,11 @@ function currentPerson(context: AskTurnContext) {
     ? context.people.find((person) => person.name === context.entry.viewerName)
     : null;
   if (byShortcut) return byShortcut;
-  return context.focus?.kind === "saved_entry"
-    ? context.people.find((person) => person.id === context.focus.entry.payerPersonId) ?? null
-    : null;
+  const focus = context.focus;
+  if (focus?.kind === "saved_entry") {
+    return context.people.find((person) => person.id === focus.entry.payerPersonId) ?? null;
+  }
+  return null;
 }
 
 function walletOwner(account: AccountDto, people: AskTurnPerson[]) {

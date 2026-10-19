@@ -621,7 +621,7 @@
   /* A held slider draft adds Undo to the island. Keep its 44px target just
      above the compact mode switch so the labelled month navigator and the
      Sliders | List control never run off the phone's edge. */
-  .mobile-context-sticky-bar[data-scope="direct_plus_shared"] #mobile-plan-actions:has([data-plan-island-undo]) {
+  .mobile-context-sticky-bar[data-scope="direct_plus_shared"] #mobile-plan-actions:has(> [data-plan-island-undo]) {
     position: relative;
   }
 

@@ -50,6 +50,7 @@ test("Plan: the line is the month's planned spending; a month without a plan has
   const rows = buildChartMonths({ mode: "plan", months: MONTHS });
   assert.deepEqual(rows.map((row) => row.month), ["2026-01", "2026-02", "2026-03"]);
   assert.deepEqual(rows.map((row) => row.lineMinor), [null, 250000, 300000]);
+  assert.deepEqual(rows.map((row) => row.actualMinor), [160000, 200000, 250000]);
   // Earned and spent are the Intent vs Outcome card's figures.
   assert.deepEqual(rows.map((row) => [row.earnedMinor, row.spentMinor]), [[100000, 160000], [300000, 200000], [480000, 250000]]);
 });
@@ -58,7 +59,7 @@ test("Plan and Simple name different series; the line is the only one that diffe
   const simple = chartSeries("simple");
   const plan = chartSeries("plan");
   assert.deepEqual(simple.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["kept", "line", "Kept"]]);
-  assert.deepEqual(plan.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["plan", "line", "Planned spending"]]);
+  assert.deepEqual(plan.map((series) => [series.key, series.kind, series.label]), [["earned", "bar", "Earned"], ["spent", "bar", "Spent"], ["plan", "line", "Planned spending"], ["actual", "line", "Actual spending"]]);
 });
 
 test("toggleSeries hides and shows a series but never the last one", () => {
@@ -143,6 +144,11 @@ test("pointFigure: each point's menu names the month and series and keeps the li
   assert.equal(planned.ask, "plan");
   assert.match(planned.label, /^Feb 2026 planned spending \$2,500\.00$/);
   assert.deepEqual(planned.note, ["$2,500.00 planned", "$2,000.00 spent"]);
+  const actual = pointFigure("plan", chartSeries("plan")[3], planRows[1]);
+  assert.equal(actual.fig, "spent");
+  assert.equal(actual.name, "Actual spending");
+  assert.match(actual.label, /^Feb 2026 actual spending \$2,000\.00$/);
+  assert.deepEqual(actual.note, ["$2,000.00 actual spending"]);
   const planSpent = pointFigure("plan", chartSeries("plan")[1], planRows[1]);
   assert.equal(planSpent.fig, "spent");
   assert.equal(planSpent.plan, "");

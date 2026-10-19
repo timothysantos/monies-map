@@ -74,13 +74,15 @@ test("Simple draws two columns and a Kept point per month, each an openable figu
   assert.doesNotMatch(html, /Planned spending/);
 });
 
-test("Plan draws the planned spending line and breaks it where a month has no plan", () => {
+test("Plan draws actual spending and breaks only the planned line where a month has no plan", () => {
   const html = render({ mode: "plan", page: { months: FOUR } });
   assert.match(html, /Planned spending/);
+  assert.match(html, /Actual spending/);
   assert.doesNotMatch(html, /aria-label="[^"]* kept /);
-  // March has no plan: three points, two runs of the line, none through March.
-  assert.equal(count(html, /class="ec-point is-line"/g), 3);
+  // March has no plan: three planned points in two runs; actual has all four.
+  assert.equal(count(html, /class="ec-point is-line"/g), 7);
   assert.equal(count(html, /class="ec-line is-plan"/g), 2);
+  assert.equal(count(html, /class="ec-line is-actual"/g), 1);
   assert.doesNotMatch(html, /aria-label="Mar 2026 planned spending/);
   assert.match(html, /aria-label="Feb 2026 planned spending \$3,000\.00"/);
   // Spent opens the plan too, so the menu offers Open plan.

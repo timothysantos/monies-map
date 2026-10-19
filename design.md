@@ -1174,13 +1174,16 @@ Where it is used:
   invisible `.earned-spent-chart-reserve`, so the cards under it do not move).
   Simple: Earned (mint) and Spent (rose) columns, in the savings bar's
   colours, and a Kept line (mint ink; a point below zero is rose ink), with
-  the zero line marked. Plan: the same columns and a Planned spending line
-  (sky ink) that breaks where a month has no plan. Months run oldest to
+  the zero line marked. Plan: the same columns, a Planned spending line (sky
+  ink) that breaks where a month has no plan, and a dashed Actual spending
+  line (rose ink) that follows the tops of the Spent columns. Months run oldest
+  to
   newest with short labels and the year on the first and each January; 12
   months fit a phone by narrowing the columns, and only past 12 does the
   plot scroll sideways while the y axis stays put. A few gridlines carry
-  compact labels ($8k). The legend chips (Earned, Spent, Kept or Planned
-  spending) show and hide a series; the last one showing stays, and the
+  compact labels ($8k). The legend chips (Earned, Spent, Kept, Planned
+  spending or Actual spending) show and hide a series; the last one showing
+  stays, and the
   scale is of every series so hiding one never rescales the rest. Each
   column and point is an openable figure whose menu is titled with the series
   and the month ("Spent · Oct 2026"), with quick facts first, then View

@@ -26,7 +26,8 @@ export function chartSeries(mode) {
     ? [
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
       { key: "spent", kind: "bar", label: words.spent, tone: "short" },
-      { key: "plan", kind: "line", label: words.plan, tone: "plan" }
+      { key: "plan", kind: "line", label: words.plan, tone: "plan" },
+      { key: "actual", kind: "line", label: words.actual, tone: "short" }
     ]
     : [
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
@@ -37,7 +38,8 @@ export function chartSeries(mode) {
 
 /**
  * One entry per month, oldest first: earnedMinor, spentMinor and lineMinor
- * (Kept in Simple, Planned spending in Plan; null where there is no plan).
+ * (Kept in Simple, Planned spending in Plan; null where there is no plan),
+ * plus actualMinor for Plan's actual-spending line.
  */
 export function buildChartMonths({ mode, months = [], categoryShareByMonth = [], investmentMovesByMonth = [] }) {
   if (mode === "simple") {
@@ -51,6 +53,7 @@ export function buildChartMonths({ mode, months = [], categoryShareByMonth = [],
       month: row.month,
       earnedMinor: row.actualIncomeMinor,
       spentMinor: row.realExpensesMinor,
+      actualMinor: row.realExpensesMinor,
       // As the Intent vs Outcome card reads it: no planned spend is no plan.
       lineMinor: row.estimatedExpensesMinor > 0 ? row.estimatedExpensesMinor : null
     }));
@@ -156,7 +159,7 @@ export function chartGeometry({ width, monthCount, barCount, height = 232 }) {
  * View entries lists that month's rows behind the figure.
  * @param {"plan" | "simple"} mode
  * @param {{ key: string }} series
- * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null }} row
+ * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null, actualMinor?: number }} row
  */
 export function pointFigure(mode, series, row) {
   const monthLabel = formatMonthLabel(row.month);
@@ -195,6 +198,15 @@ export function pointFigure(mode, series, row) {
       name: copy.series.plan,
       label: labelled(copy.seriesWord.plan, planned),
       note: [copy.planned(money(planned)), copy.spentAmount(spent)]
+    };
+  }
+  if (series.key === "actual") {
+    return {
+      ...base,
+      fig: "spent",
+      name: copy.series.actual,
+      label: labelled(copy.seriesWord.actual, row.actualMinor),
+      note: [copy.actualSpending(money(row.actualMinor)), ...(planned === null ? [copy.noPlan] : [])]
     };
   }
   // Spent.

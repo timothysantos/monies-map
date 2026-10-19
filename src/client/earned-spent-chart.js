@@ -15,7 +15,8 @@ import { formatMonthLabel } from "./formatters";
 // The column + line chart at the top of Summary's month-by-month card (the
 // Simple view's "Earned vs spent by month", the Plan view's Intent vs
 // Outcome; design.md "Plan or Simple"). Simple: Earned and Spent columns and
-// a Kept line. Plan: Earned and Spent columns and a Planned spending line.
+// a Kept line. Plan: Earned and Spent columns, a Planned spending line and
+// an Actual spending line over the monthly spending columns.
 // It shows only for a range of two or more months (a single column says
 // nothing the card does not), and with money hidden it draws nothing: no
 // columns, no line, no axis, because their sizes and the line's side of zero
@@ -125,9 +126,9 @@ function EarnedSpentChartBody({ mode, rows }) {
 
   const visible = series.filter((item) => !hiddenKeys.has(item.key));
   const bars = visible.filter((item) => item.kind === "bar");
-  const line = visible.find((item) => item.kind === "line") ?? null;
+  const lines = visible.filter((item) => item.kind === "line");
   // The scale is of every series, so hiding one never rescales the rest.
-  const scale = R.useMemo(() => niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor])), [rows]);
+  const scale = R.useMemo(() => niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor, row.actualMinor])), [rows]);
   const geometry = chartGeometry({ width, monthCount: rows.length, barCount: bars.length });
   const { top, plotHeight, plotWidth, height } = geometry;
   const yOf = (minor) => top + (plotHeight * (scale.max - minor)) / (scale.max - scale.min);
@@ -137,11 +138,11 @@ function EarnedSpentChartBody({ mode, rows }) {
   rows.forEach((row, index) => {
     bars.forEach((item, barIndex) => points.push({ series: item, row, index, barIndex }));
   });
-  if (line) {
+  lines.forEach((line) => {
     rows.forEach((row, index) => {
-      if (row.lineMinor !== null) points.push({ series: line, row, index, barIndex: -1 });
+      if (lineValue(row, line.key) !== null) points.push({ series: line, row, index, barIndex: -1 });
     });
-  }
+  });
   const keyOf = (point) => `${point.series.key}:${point.index}`;
   const tabKey = points.some((point) => keyOf(point) === activeKey) ? activeKey : points.length ? keyOf(points[0]) : "";
 
@@ -234,23 +235,24 @@ function EarnedSpentChartBody({ mode, rows }) {
     );
   });
 
-  const linePaths = line ? lineSegments(rows, geometry, yOf).map((segment) => h("path", {
-    key: `line-${segment.start}`,
+  const linePaths = lines.flatMap((line) => lineSegments(rows, geometry, yOf, line.key).map((segment) => h("path", {
+    key: `line-${line.key}-${segment.start}`,
     className: `ec-line is-${line.key}`,
     d: segment.d,
     pathLength: 1,
     fill: "none"
-  })) : [];
-  const linePoints = line ? points.filter((point) => point.series.kind === "line").map((point) => {
+  })));
+  const linePoints = points.filter((point) => point.series.kind === "line").map((point) => {
     const cx = geometry.bandCenter(point.index);
-    const cy = yOf(point.row.lineMinor);
+    const value = lineValue(point.row, point.series.key);
+    const cy = yOf(value);
     return h(
       PointGroup,
       { key: keyOf(point), point, mode, ...handlers(point) },
-      h("circle", { className: `ec-dot is-${line.key}${point.row.lineMinor < 0 ? " is-negative" : ""}`, cx, cy, r: 4.5, style: { "--ec-i": point.index } }),
+      h("circle", { className: `ec-dot is-${point.series.key}${value < 0 ? " is-negative" : ""}`, cx, cy, r: 4.5, style: { "--ec-i": point.index } }),
       h("circle", { className: "ec-hit", cx, cy, r: 14 })
     );
-  }) : [];
+  });
 
   return h(
     "div",
@@ -348,15 +350,21 @@ function PointGroup({ point, mode, isTab, onFocus, onBlur, onHoverOpen, onHoverL
 
 // Runs of months that have a point, each its own path, so a month without
 // one (no plan) breaks the line instead of being drawn through zero.
-function lineSegments(rows, geometry, yOf) {
+function lineValue(row, key) {
+  if (key === "actual") return row.actualMinor ?? null;
+  return row.lineMinor;
+}
+
+function lineSegments(rows, geometry, yOf, key) {
   const segments = [];
   let current = null;
   rows.forEach((row, index) => {
-    if (row.lineMinor === null) {
+    const value = lineValue(row, key);
+    if (value === null) {
       current = null;
       return;
     }
-    const command = `${geometry.bandCenter(index).toFixed(1)} ${yOf(row.lineMinor).toFixed(1)}`;
+    const command = `${geometry.bandCenter(index).toFixed(1)} ${yOf(value).toFixed(1)}`;
     if (current) {
       current.d += ` L${command}`;
     } else {
