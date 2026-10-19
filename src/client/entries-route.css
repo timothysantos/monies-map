@@ -173,6 +173,51 @@
   opacity: 0.65;
 }
 
+/* On a phone the quick add goes on its own line under the Splits row, a full
+   44 px target, so the row keeps its whole "Add to splits". */
+@media (max-width: 760px) {
+  .entry-split-action-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .entry-split-quick-action {
+    align-self: stretch;
+    max-width: none;
+    min-height: 44px;
+    margin-bottom: 6px;
+  }
+}
+
+/* Copy link when the browser refused the clipboard: what happened, and the
+   link to copy by hand. */
+.entry-link-copy-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.entry-link-copy-message {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.entry-link-copy-field {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+}
+
 .entry-mobile-sheet-confirm-actions.is-split-share {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -22,6 +22,8 @@ import { flowTone } from "../domain/money-tone";
 import { trackStuckDateRow } from "./stuck-date-row";
 import { buildEntryDeepLink } from "./entry-deep-link";
 import { SplitShareChoices } from "./split-share-choices";
+import { EntryLinkCopyButton } from "./entry-link-copy";
+import { splitShareCopy } from "./copy/split-share-copy";
 
 const {
   categories: categoryService,
@@ -306,6 +308,7 @@ export function EntriesDateGroups({
         entry={splitPickerEntry}
         splitGroupOptions={splitPickerOptions}
         sharePersonName={people[0]?.name ?? "First person"}
+        otherPersonName={people[1]?.name}
         isSubmitting={Boolean(splitPickerEntry && addingToSplitsEntryId === splitPickerEntry.id)}
         onClose={() => setSplitPickerEntry(null)}
         onAdd={(splitGroupId, splitBasisPoints) => splitPickerEntry ? handleAddEntryToSplits(splitPickerEntry, splitGroupId, splitBasisPoints) : undefined}
@@ -314,7 +317,7 @@ export function EntriesDateGroups({
   );
 }
 
-function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName, isSubmitting, onClose, onAdd }) {
+function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName, otherPersonName, isSubmitting, onClose, onAdd }) {
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [splitBasisPoints, setSplitBasisPoints] = useState(5000);
 
@@ -368,7 +371,7 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, sharePersonName
           </fieldset>
           <fieldset className="entry-split-picker-field" disabled={isSubmitting}>
             <legend>{sharePersonName}'s share</legend>
-            <SplitShareChoices personName={sharePersonName} value={splitBasisPoints} onChange={setSplitBasisPoints} />
+            <SplitShareChoices personName={sharePersonName} otherPersonName={otherPersonName} value={splitBasisPoints} onChange={setSplitBasisPoints} />
           </fieldset>
           {isSubmitting ? <p className="entry-split-picker-status">Adding entry to splits...</p> : null}
           <div className="note-dialog-actions">
@@ -664,25 +667,11 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
       {isDeletingEntry ? messages.common.working : messages.entries.editCard.deleteEntry}
     </button>
   );
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  async function copyEntryLink() {
-    const link = buildEntryDeepLink(window.location, {
-      entryId: entry.id,
-      month: entry.date.slice(0, 7),
-      viewId
-    });
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard access is unavailable");
-      }
-      await navigator.clipboard.writeText(link);
-      setLinkCopied(true);
-      window.setTimeout(() => setLinkCopied(false), 1800);
-    } catch {
-      setLinkCopied(false);
-    }
-  }
+  const buildEntryLink = () => buildEntryDeepLink(window.location, {
+    entryId: entry.id,
+    month: entry.date.slice(0, 7),
+    viewId
+  });
 
   return (
     <>
@@ -716,8 +705,8 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
             isWorking={!linkedSplitExpenseId && (isAddingToSplits || isSavingEntry)}
             onViewSplit={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
             onAddToSplits={() => void onOpenSplitPicker(entry)}
-            quickAddLabel={quickSplitGroup ? `Add ${quickSplitGroup.name} · 50/50` : ""}
-            quickAddTitle={quickSplitGroup ? `Add this expense to ${quickSplitGroup.name} split, 50/50` : ""}
+            quickAddLabel={quickSplitGroup ? splitShareCopy.quickAdd(quickSplitGroup.name) : ""}
+            quickAddTitle={quickSplitGroup ? splitShareCopy.quickAddTitle(quickSplitGroup.name) : ""}
             onQuickAddToSplits={onQuickAddToSplits}
           />
         ) : null}
@@ -765,7 +754,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
         )}
         secondary={(
           <>
-            <button type="button" className="lsd-quiet" onClick={() => void copyEntryLink()}>{linkCopied ? "Link copied" : "Copy link"}</button>
+            <EntryLinkCopyButton buildLink={buildEntryLink} />
             <button
               type="button"
               className="lsd-quiet inline-cancel-action"

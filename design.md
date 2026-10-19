@@ -96,14 +96,25 @@ Group tiles carry no money tone (the Splits orange).
 
 ### Entries split shortcut
 
-An expense editor shows the normal **Add to splits** row alongside a compact
-one-tap shortcut for the viewer's last real split group. The shortcut names the
-group and its explicit 50/50 default (for example, "Add Okaeri · 50/50"). It
+An expense editor shows the normal **Add to splits** row with a compact
+one-tap shortcut for the viewer's last real split group: beside the row on a
+wide screen, on its own 44 px line under it on a phone (beside it, it cut the
+row's own words to "Add to s…"). The shortcut names the group and its even
+default in plain words (for example, "Add to Okaeri · Half each"; an even
+split is "half each" wherever the app names it, never "50/50"). Its words
+and the share hint live in `copy/split-share-copy.js`. It
 uses the same atomic entry-to-split command as the full picker. The full picker
 remains available for a different group or a 0%, 50% or 100% share; linked
 entries show **View split** instead, so the shortcut cannot create a duplicate.
 The last group is the existing per-view local preference and is only a default,
 never an automatic write without the user's tap.
+
+The editor's **Copy link** (`entry-link-copy.jsx`, words in
+`copy/entry-link-copy.js`) says **Link copied** when the clipboard takes the
+link. When the browser refuses, it says so in the editor ("Couldn't copy.
+Select the link and copy it instead.", or "Press and hold the link…" on a
+phone) and shows the link in a read-only box, selected; never a browser
+alert, never silence (`tests/e2e/entry-link-copy.spec.js`).
 The desktop floating bar keeps groups with open entries, labels each with its
 entry count, and leaves empty or archived-only groups in All groups. If none
 has open entries, it says "No open splits" and links to the selected group's

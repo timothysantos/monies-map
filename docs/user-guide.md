@@ -611,11 +611,15 @@ bar on the left is the owner's colour.
   rules, what you usually pick for that shop and everyday words. On a
   computer you can start typing straight away and press Enter to pick; on a
   phone, tap the search box to type.
-- **Splits** row: the quick action shows the last split group and **50/50** so
-  you can add the entry with one tap. Use **Add to splits** when you need a
-  different group or the person's 0%, 50% or 100% share. At 0%, that person
-  owes none; if they paid, they are owed the whole amount. Once it is shared,
-  **View split** opens it on Splits.
+- **Splits** row: the quick button (for example **Add to Home · Half each**)
+  adds the entry to the last split group you used, half each, with one tap.
+  On a phone it sits on its own line under the row. Use **Add to splits**
+  when you need a different group or the first person's 0%, 50% or 100%
+  share. At 0%, none of it is theirs: if they paid, the other person owes
+  them all of it. Once it is shared, **View split** opens it on Splits.
+- **Copy link** (computer): copies a link that opens this entry. If the
+  browser won't let the app copy, it says so and shows the link, ready for
+  you to select and copy yourself.
 - **Delete entry**: asks you to confirm first. An entry a bank statement
   confirmed can't be deleted on its own; roll back that statement import
   instead.

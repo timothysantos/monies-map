@@ -242,6 +242,7 @@ export function EntrySplitGroupPickerFooter({
   splitGroupOptions = [],
   splitBasisPoints = 5000,
   sharePersonName = "First person",
+  otherPersonName = undefined,
   isWorking = false,
   isSplitSelectorOpen = false,
   onSplitSelectorOpenChange,
@@ -265,7 +266,7 @@ export function EntrySplitGroupPickerFooter({
           {selectedGroup.label}
         </button>
         <span className="entry-mobile-sheet-confirm-copy">{sharePersonName}'s share</span>
-        <SplitShareChoices personName={sharePersonName} value={splitBasisPoints} disabled={isWorking} onChange={onSplitBasisPointsChange} />
+        <SplitShareChoices personName={sharePersonName} otherPersonName={otherPersonName} value={splitBasisPoints} disabled={isWorking} onChange={onSplitBasisPointsChange} />
         <div className="entry-mobile-sheet-confirm-buttons">
           <button
             type="button"

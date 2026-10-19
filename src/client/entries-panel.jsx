@@ -28,6 +28,7 @@ import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams, readEntriesRangeStart } from "./entry-filter-params";
 import { EntriesAskChip, EntriesFigureChip } from "./entries-ask-chip";
 import { figureCopy } from "./copy/figure-copy";
+import { splitShareCopy } from "./copy/split-share-copy";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
 import { buildEntriesIslandContext } from "./entries-island-context";
@@ -1377,6 +1378,7 @@ export function EntriesPanel({
                   splitGroupOptions={splitGroupOptions}
                   splitBasisPoints={mobileSplitBasisPoints}
                   sharePersonName={people[0]?.name ?? "First person"}
+                  otherPersonName={people[1]?.name}
                   isWorking={addingToSplitsEntryId === activeEditingEntry.id}
                   isSplitSelectorOpen={isMobileSplitSelectorOpen}
                   onSplitSelectorOpenChange={setIsMobileSplitSelectorOpen}
@@ -1463,8 +1465,8 @@ export function EntriesPanel({
                   setIsMobileSplitPickerOpen(true);
                   setIsMobileSplitSelectorOpen(true);
                 }}
-                quickAddLabel={quickSplitGroup ? `Add ${quickSplitGroup.name} · 50/50` : ""}
-                quickAddTitle={quickSplitGroup ? `Add this expense to ${quickSplitGroup.name} split, 50/50` : ""}
+                quickAddLabel={quickSplitGroup ? splitShareCopy.quickAdd(quickSplitGroup.name) : ""}
+                quickAddTitle={quickSplitGroup ? splitShareCopy.quickAddTitle(quickSplitGroup.name) : ""}
                 onQuickAddToSplits={quickSplitGroup
                   ? () => void handleAddEntryToSplits(activeEditingEntry, quickSplitGroup.id, 5000)
                   : undefined}

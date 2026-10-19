@@ -199,7 +199,7 @@ test("newly added split can be viewed immediately and preserves the entries scop
   // Each choice has a visible edge, like the other choice buttons.
   await expect(groupPicker.getByRole("radio", { name: "0%", exact: true })).not.toHaveCSS("border-top-style", "none");
   await expect(groupPicker.getByRole("radio", { name: "Non-group expenses" })).not.toHaveCSS("border-top-style", "none");
-  await expect(groupPicker.getByText("0% means Tim owes none; if they paid, they are owed the full amount.")).toBeVisible();
+  await expect(groupPicker.getByText("0% means none of it is Tim's: if Tim paid, Joyce owes Tim all of it. 100% means it is all Tim's.")).toBeVisible();
   await expect(groupPicker.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
   await groupPicker.getByRole("radio", { name: "Non-group expenses" }).click();
   await groupPicker.getByRole("radio", { name: "0%", exact: true }).click();
@@ -416,13 +416,63 @@ test("phone Add to splits asks for a preset share after the group", async ({ pag
   await groupPicker.getByRole("button", { name: "Non-group expenses" }).click();
   await expect(groupPicker).toHaveCount(0);
 
-  await expect(sheet.getByText("0% means Tim owes none; if they paid, they are owed the full amount.")).toBeVisible();
+  await expect(sheet.getByText("0% means none of it is Tim's: if Tim paid, Joyce owes Tim all of it. 100% means it is all Tim's.")).toBeVisible();
   await expect(sheet.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
   await sheet.getByRole("radio", { name: "100%", exact: true }).click();
   const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
   await sheet.getByRole("button", { name: "Add to splits", exact: true }).click();
   const createdSplit = await splitResponse;
   expect(JSON.parse(createdSplit.request().postData() ?? "{}")).toMatchObject({ splitBasisPoints: 10000 });
+});
+
+// The quick add once sat beside the Splits row on a phone and cut the row's
+// own "Add to splits" to "Add to s…" (docs/audits/codex-polish-2). It goes on
+// its own line under the row, a full 44 px target, and says "Half each".
+test("phone quick add sits on its own line under the Splits row and never cuts Add to splits", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright phone quick add ${Date.now()}`;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${entry.entryId}`);
+  const sheet = page.getByRole("dialog", { name: "Edit entry" });
+  await expect(sheet).toBeVisible();
+  const row = sheet.locator(".entry-split-action-row");
+  const splitsRow = row.getByRole("button", { name: "Splits Add to splits" });
+  const quickAdd = row.locator(".entry-split-quick-action");
+  await expect(splitsRow).toBeVisible();
+  await expect(quickAdd).toHaveText(/^Add to .+ · Half each$/);
+  await expect(quickAdd).not.toContainText("50/50");
+
+  const valueText = splitsRow.locator(".lsd-row-text");
+  await expect(valueText).toHaveText("Add to splits");
+  const fits = await valueText.evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
+  expect(fits).toBe(true);
+
+  const rowBox = await splitsRow.boundingBox();
+  const quickBox = await quickAdd.boundingBox();
+  expect(quickBox.height).toBeGreaterThanOrEqual(44);
+  expect(quickBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1);
+  expect(quickBox.width).toBeGreaterThanOrEqual(rowBox.width - 2);
+  const quickFits = await quickAdd.evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
+  expect(quickFits).toBe(true);
+
+  const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
+  await quickAdd.click();
+  const createdSplit = await splitResponse;
+  expect(JSON.parse(createdSplit.request().postData() ?? "{}")).toMatchObject({ splitBasisPoints: 5000 });
 });
 
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
