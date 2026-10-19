@@ -96,13 +96,27 @@
   outline-offset: 2px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .entry-split-group-choice,
+  .entry-split-share-choice,
+  .entry-split-group-choice-mark {
+    transition: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .entry-split-group-choice:hover:not(:disabled),
+  .entry-split-share-choice:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .entry-split-group-choice:hover:not(:disabled),
   .entry-split-share-choice:hover:not(:disabled) {
     border-color: rgb(var(--accent-strong-rgb) / 0.5);
     background: rgb(var(--accent-strong-rgb) / 0.08);
     box-shadow: 0 8px 18px rgb(var(--accent-strong-rgb) / 0.12);
-    transform: translateY(-1px);
   }
 
   .entry-split-group-choice:hover:not(:disabled) .entry-split-group-choice-mark {
