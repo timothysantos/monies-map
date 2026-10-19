@@ -2300,7 +2300,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .note-dialog-content {
   position: fixed;
-  bottom: calc(144px + env(safe-area-inset-bottom, 0px));
+  top: 50%;
   left: 50%;
   width: min(720px, calc(100vw - 40px));
   max-height: min(86vh, calc(100dvh - 48px));

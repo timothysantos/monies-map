@@ -188,7 +188,17 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await editor.getByRole("button", { name: "Add to splits" }).click();
   const groupPicker = page.getByRole("dialog", { name: "Add to splits" });
   await expect(groupPicker).toBeVisible();
+  // A desktop dialog is centred in the window, whole: its top never runs
+  // above the window however tall it is (a stray bottom anchor once did).
+  const viewport = page.viewportSize();
+  const pickerBox = await groupPicker.boundingBox();
+  expect(pickerBox.y).toBeGreaterThanOrEqual(0);
+  expect(pickerBox.y + pickerBox.height).toBeLessThanOrEqual(viewport.height);
+  expect(Math.abs(pickerBox.y + pickerBox.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(2);
   await expect(groupPicker.getByRole("button", { name: "Add to splits" })).toBeDisabled();
+  // Each choice has a visible edge, like the other choice buttons.
+  await expect(groupPicker.getByRole("radio", { name: "0%", exact: true })).not.toHaveCSS("border-top-style", "none");
+  await expect(groupPicker.getByRole("radio", { name: "Non-group expenses" })).not.toHaveCSS("border-top-style", "none");
   await expect(groupPicker.getByText("0% means Tim owes none; if they paid, they are owed the full amount.")).toBeVisible();
   await expect(groupPicker.getByRole("radio", { name: "50%", exact: true })).toHaveAttribute("aria-checked", "true");
   await groupPicker.getByRole("radio", { name: "Non-group expenses" }).click();
