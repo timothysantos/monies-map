@@ -8479,6 +8479,33 @@ td:is(.money-in, .money-short, .money-out) {
     width: min(760px, calc(100vw - 44px - var(--ask-dock-width)));
   }
 
+  /* The bar is at least 760 px but grows to its controls, so the scope
+     ("Direct + Shared" beside Plan | Simple and the month) is never cut;
+     only where the window is narrower does the scope wrap onto two lines. */
+  .mobile-context-sticky-wrap.is-desktop-visible {
+    width: max-content;
+    min-width: min(760px, calc(100vw - 44px));
+    max-width: calc(100vw - 44px);
+  }
+
+  body[data-ask-dock="docked"] .mobile-context-sticky-wrap.is-desktop-visible {
+    width: max-content;
+    min-width: min(760px, calc(100vw - 44px - var(--ask-dock-width)));
+    max-width: calc(100vw - 44px - var(--ask-dock-width));
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-trigger {
+    flex: 0 1 auto;
+  }
+
+  .mobile-context-sticky-wrap.is-desktop-visible .mobile-context-scope {
+    min-width: min-content;
+    overflow: visible;
+    line-height: 1.1;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
   .desktop-floating-tabs {
     position: static;
     flex: 0 0 auto;

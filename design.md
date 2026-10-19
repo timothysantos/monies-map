@@ -2880,7 +2880,12 @@ the plan-table redesign.
 - The desktop floating bar sits at the bottom left on the Ask field's
   baseline; below 1226 px, where it would cover the Ask field and the + or
   receipt button, it sits just above them, and beside a docked Ask it
-  narrows to the space left of the panel.
+  narrows to the space left of the panel. It is at least 760 px wide and
+  grows to its controls (`width: max-content`, never past the window), so
+  the scope ("Direct + Shared" beside Plan | Simple and the month on Month)
+  is never cut to "Direct + Shar…"; only in a window too narrow for it does
+  the scope wrap onto two lines (`context-scroll-shortcuts.spec.js`, 1280,
+  1440 and 1920 px).
 
 ## Category list
 

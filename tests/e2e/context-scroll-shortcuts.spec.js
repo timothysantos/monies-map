@@ -111,6 +111,32 @@ test.describe("context and scroll shortcuts", () => {
     await expect(monthBar.locator(".mobile-month-choice")).toContainText("Oct 2025");
   });
 
+  // The Month bar once cut its scope to "Direct + Shar…" beside Plan | Simple
+  // and the month (95f91554). The bar grows to its controls instead.
+  test("desktop Month bar shows the whole scope at 1280, 1440 and 1920 px", async ({ page }) => {
+    await reseedDemo(page);
+    for (const width of [1280, 1440, 1920]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/month?view=person-tim&month=2025-10&scope=direct_plus_shared", { waitUntil: "domcontentloaded" });
+      await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 60_000 }).toBe(true);
+      await page.evaluate(() => window.scrollTo({ top: 900, behavior: "instant" }));
+      const bar = page.locator(".mobile-context-sticky-wrap.is-desktop-visible");
+      await expect(bar).toBeVisible();
+      const scope = bar.locator(".mobile-context-scope");
+      await expect(scope).toHaveText("Direct + Shared");
+      const fits = await scope.evaluate((element) => element.scrollWidth <= element.clientWidth + 1 && getComputedStyle(element).textOverflow !== "ellipsis");
+      expect(fits, `scope fits at ${width}px`).toBe(true);
+      // One line, inside the bar, the bar inside the window.
+      const scopeBox = await scope.boundingBox();
+      const barBox = await bar.boundingBox();
+      expect(scopeBox.height).toBeLessThan(24);
+      expect(scopeBox.x + scopeBox.width).toBeLessThanOrEqual(barBox.x + barBox.width);
+      expect(barBox.x + barBox.width).toBeLessThanOrEqual(width - 22 + 1);
+      await expect(bar.getByRole("radiogroup", { name: "Show this period" })).toBeVisible();
+      await expect(bar.locator(".mobile-month-choice")).toContainText("Oct 2025");
+    }
+  });
+
   for (const [name, viewport] of [
     ["desktop", { width: 1280, height: 800 }],
     ["phone", { width: 390, height: 844 }]
