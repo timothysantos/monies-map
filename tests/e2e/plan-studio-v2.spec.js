@@ -55,6 +55,20 @@ async function typeAmount(page, name, text) {
   await field.press("Enter");
 }
 
+// A Radix popover shows in the commit that mounts it, but it starts
+// listening for a press outside only afterwards: its modal layer turns the
+// page's pointer events off in an effect, and it adds the outside-press
+// listener in a setTimeout(0) from that effect, so the press that opened it
+// cannot close it. A click sent the moment the popover is visible can land
+// before either, and then nothing dismisses the popover (the old flake:
+// "expected 0, received 1", about 3 runs in 10). No person clicks within
+// those milliseconds; the test waits for both.
+async function popoverListensOutside(page) {
+  await expect.poll(() => page.evaluate(() => document.body.style.pointerEvents)).toBe("none");
+  // The outside-press listener's timer was queued before this one.
+  await page.evaluate(() => new Promise((resolve) => { window.setTimeout(resolve, 0); }));
+}
+
 async function allRows(page, month = MONTH) {
   const data = await loadMonthPage(page, { view: VIEW, month });
   return data.monthPage.planSections.flatMap((section) => section.rows);
@@ -90,6 +104,7 @@ test.describe("Plan Studio v2 on desktop", () => {
     const box = await slider.boundingBox();
     await page.locator(".control-bar .period-range-segment").first().click();
     await expect(page.locator(".period-picker-popover")).toBeVisible();
+    await popoverListensOutside(page);
     expect(box.y + 20).toBeLessThan(6000);
     await page.mouse.click(box.x + 10, box.y + 20);
     await expect(page.locator(".period-picker-popover")).toHaveCount(0);
