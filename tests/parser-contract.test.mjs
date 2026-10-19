@@ -391,6 +391,35 @@ test("parseCitibankActivityCsv keeps the filename card hint over the selected de
   assert.deepEqual(parsed.rows.map((row) => row.account), ["Citi Rewards", "Citi Rewards"]);
 });
 
+// The HSBC activity file names its card only by its last four digits. With
+// no HSBC card selected the parser once fell back to a made-up "HSBC Visa
+// Revolution" (7e85fa0d); it now maps the card by its last four digits to
+// the household's own HSBC card, and otherwise names what the file says so
+// the preview asks which account it is (the unknown-account step).
+const HSBC_ACTIVITY = "./fixtures/hsbc-activity/hsbc_midcycle_TransactionHistory-sanitized.csv";
+const UOB_SELECTED = { accountName: "UOB One", accountKind: "bank", institution: "UOB" };
+const card = (name, institution = "HSBC") => ({ name, kind: "credit_card", institution });
+const hsbcAccountsOf = (context) => [...new Set(parseHsbcActivityCsv(readTextFixture(HSBC_ACTIVITY), "hsbc_midcycle_TransactionHistory.csv", context).rows.map((row) => row.account))];
+
+test("parseHsbcActivityCsv maps the file's card to the household's HSBC card by its last four digits", () => {
+  assert.deepEqual(hsbcAccountsOf({ ...UOB_SELECTED, accounts: [card("UOB One", "UOB"), card("HSBC Live+ 9876"), card("HSBC Revolution 1234")] }), ["HSBC Revolution 1234"]);
+  // The household's only HSBC card is the file's card.
+  assert.deepEqual(hsbcAccountsOf({ ...UOB_SELECTED, accounts: [card("UOB One", "UOB"), card("My HSBC card")] }), ["My HSBC card"]);
+  // A selected HSBC card wins, as before.
+  assert.deepEqual(hsbcAccountsOf({ accountName: "HSBC Live+ 9876", accountKind: "credit_card", institution: "HSBC", accounts: [card("HSBC Live+ 9876"), card("HSBC Revolution 1234")] }), ["HSBC Live+ 9876"]);
+});
+
+test("negative: parseHsbcActivityCsv never invents an account; an unmatched card is left for the person to choose", () => {
+  // No HSBC card in the household: the file's own card, by its last four digits.
+  assert.deepEqual(hsbcAccountsOf({ ...UOB_SELECTED, accounts: [card("UOB One", "UOB")] }), ["HSBC card ending 1234"]);
+  // Two HSBC cards and neither ends 1234: which one is the person's choice.
+  assert.deepEqual(hsbcAccountsOf({ ...UOB_SELECTED, accounts: [card("HSBC Live+ 9876"), card("HSBC Revolution 5555")] }), ["HSBC card ending 1234"]);
+  // No context at all.
+  assert.deepEqual(hsbcAccountsOf(undefined), ["HSBC card ending 1234"]);
+  const source = readFileSync(new URL("../src/lib/statement-import/hsbc-activity-csv.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /Visa Revolution/);
+});
+
 test("parseHsbcActivityCsv preserves a mid-cycle HSBC activity export", () => {
   const parsed = parseHsbcActivityCsv(
     readTextFixture("./fixtures/hsbc-activity/hsbc_midcycle_TransactionHistory-sanitized.csv"),

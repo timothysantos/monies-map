@@ -299,7 +299,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     return {
       accountName: context.accountName ?? account?.name ?? account?.accountName ?? defaultAccountName,
       accountKind: context.accountKind ?? account?.kind ?? account?.accountKind,
-      institution: context.institution ?? account?.institution ?? account?.institutionName
+      institution: context.institution ?? account?.institution ?? account?.institutionName,
+      // An activity file that names its card only by its last four digits
+      // (HSBC) finds the household's card among these.
+      accounts: accounts.map((item) => ({ name: item.name, kind: item.kind ?? item.accountKind, institution: item.institution ?? item.institutionName }))
     };
   }
 

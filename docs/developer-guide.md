@@ -1624,7 +1624,12 @@ comparison use `post_date`.
 - HSBC mid-cycle Transaction History CSV files are headerless too. The parser
   uses the posting date and final SGD amount, retains the purchase date and
   original-currency amount in the note, and recognises the export from its
-  HSBC filename or an HSBC credit-card context.
+  HSBC filename or an HSBC credit-card context. Its rows go to the selected
+  HSBC card; else to the household's HSBC card whose name carries the file's
+  last four digits (or its only HSBC card, when that name has no other card
+  number); otherwise to "HSBC card ending 1234", which the preview lists as
+  an unknown account to choose before saving. It never names an account the
+  household does not have.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
   with withdrawal and deposit columns, so the app can recognize them from
   either the filename or the OCBC account-details and transaction-history
