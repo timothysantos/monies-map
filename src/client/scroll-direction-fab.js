@@ -4,6 +4,18 @@ const SHOW_AFTER_PX = 160;
 const DIRECTION_DELTA_PX = 24;
 const HIDE_AFTER_MS = 5000;
 
+// The app's icon family is lucide (lucide-react elsewhere). This plain DOM
+// module draws the same chevron-up / chevron-down paths at the island month
+// arrows' size and stroke (19 px, 2.2), so the pair matches the rest of the
+// chrome in every font (tests/scroll-direction-fab.test.mjs).
+const ICON_PATHS = { top: "m18 15-6-6-6 6", bottom: "m6 9 6 6 6-6" };
+
+export function scrollFabIcon(direction) {
+  const path = ICON_PATHS[direction];
+  if (!path) throw new Error(`Unknown scroll direction: ${direction}`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
+}
+
 export function mountScrollDirectionFab() {
   if (typeof window === "undefined") return () => {};
   const button = document.createElement("button");
@@ -34,7 +46,7 @@ export function mountScrollDirectionFab() {
     direction = nextDirection;
     button.setAttribute("aria-label", nextDirection === "top" ? "Go to top" : "Go to bottom");
     button.title = button.getAttribute("aria-label");
-    button.textContent = nextDirection === "top" ? "⌃" : "⌄";
+    button.innerHTML = scrollFabIcon(nextDirection);
     if (!button.isConnected) document.body.appendChild(button);
     clearHideTimer();
     hideTimer = window.setTimeout(hide, HIDE_AFTER_MS);
@@ -71,7 +83,7 @@ export function mountScrollDirectionFab() {
     const behavior = reduced ? "instant" : "smooth";
     window.scrollTo({ top: target, behavior });
     // A long page can measure taller after the first layout at its end. One
-    // frame later keeps the promise of “bottom” without a persistent control.
+    // frame later keeps the promise of "bottom" without a persistent control.
     if (direction === "bottom") {
       window.requestAnimationFrame(() => window.scrollTo({ top: pageEnd(), behavior }));
       bottomSettleTimer = window.setTimeout(() => {
