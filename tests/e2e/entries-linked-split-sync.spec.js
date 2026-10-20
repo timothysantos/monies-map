@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, loadSummaryPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, loadSummaryPage, postJson, reseedDemo, sectionLink } from "./helpers";
 
 const month = "2026-05";
 
@@ -104,7 +104,7 @@ test("editing a linked entry's description and date in Entries updates its split
   const splitCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
   await expect(splitCard).toBeVisible({ timeout: 60_000 });
 
-  await page.getByRole("link", { name: "Entries", exact: true }).click();
+  await sectionLink(page, "Entries").click();
   await expect(page).toHaveURL(/\/entries\?/);
   const row = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(row).toBeVisible({ timeout: 60_000 });
@@ -119,7 +119,7 @@ test("editing a linked entry's description and date in Entries updates its split
   await expect(page.locator(".entry-row").filter({ hasText: renamed }).first()).not.toContainText("Updating");
 
   // Splits, reached in-app, shows the copied description instead of its cached page.
-  await page.getByRole("link", { name: "Splits", exact: true }).click();
+  await sectionLink(page, "Splits").click();
   await expect(page).toHaveURL(/\/splits\?/);
   await expect(page.locator(".split-activity-card").filter({ hasText: renamed }).first()).toBeVisible({ timeout: 30_000 });
 

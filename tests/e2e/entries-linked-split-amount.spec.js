@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, loadSplitsPage, loadSummaryPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, loadSplitsPage, loadSummaryPage, postJson, reseedDemo, sectionLink } from "./helpers";
 
 const month = "2026-05";
 
@@ -48,7 +48,7 @@ test("editing a linked entry's amount in a person view moves the viewer's split 
   await expect(splitCard).toBeVisible({ timeout: 60_000 });
   await expect(splitCard).toContainText("$60.00");
 
-  await page.getByRole("link", { name: "Entries", exact: true }).click();
+  await sectionLink(page, "Entries").click();
   await expect(page).toHaveURL(/\/entries\?/);
   const row = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(row).toBeVisible({ timeout: 60_000 });
@@ -92,7 +92,7 @@ test("editing a linked entry's amount in a person view moves the viewer's split 
   expect(await timMonthExpenses(page) - expensesBefore).toBe(4025);
 
   // Splits, reached in-app, shows the new split instead of its cached page.
-  await page.getByRole("link", { name: "Splits", exact: true }).click();
+  await sectionLink(page, "Splits").click();
   await expect(page).toHaveURL(/\/splits\?/);
   const refreshedCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
   await expect(refreshedCard).toContainText("$80.50", { timeout: 30_000 });

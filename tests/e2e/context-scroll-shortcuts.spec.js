@@ -58,6 +58,10 @@ test.describe("context and scroll shortcuts", () => {
     await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Entries" })).toBeVisible();
     await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Splits" })).toBeVisible();
     await expect(bar.locator(".desktop-floating-tabs").getByRole("link", { name: "Ask" })).toBeVisible();
+    // The kept-in-view copy of the page links is its own landmark: a screen
+    // reader lists two navigations with two names, never one name twice.
+    await expect(page.getByRole("navigation", { name: "Dashboard sections", exact: true })).toHaveCount(1);
+    await expect(bar.getByRole("navigation", { name: "Dashboard sections, kept in view", exact: true })).toBeVisible();
     await expect(bar.locator(".mobile-context-person-chip")).toHaveText("Tim");
     await expect(bar.locator(".mobile-context-scope")).toHaveText("Direct + Shared");
     const box = await bar.boundingBox();

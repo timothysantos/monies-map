@@ -38,6 +38,13 @@ export async function chooseStudio(page) {
   });
 }
 
+// The header's link to a page. On a long desktop page a kept-in-view copy of
+// these links floats at the bottom under its own landmark name, so a bare
+// link name would match two links.
+export function sectionLink(page, name) {
+  return page.getByRole("navigation", { name: "Dashboard sections", exact: true }).getByRole("link", { name, exact: true });
+}
+
 export async function reseedDemo(page) {
   let lastText = "";
   let lastOk = false;
