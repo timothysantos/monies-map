@@ -440,7 +440,12 @@ export async function saveMonthPlanEntryLinks(
         SELECT id
         FROM transactions
         WHERE household_id = ?
-          AND entry_type = 'expense'
+          -- An expense, or a transfer out that says what it pays for: the
+          -- sender's view counts it as their spending (transfer-purpose.ts).
+          AND (
+            entry_type = 'expense'
+            OR (entry_type = 'transfer' AND transfer_direction = 'out' AND transfer_purpose_category_id IS NOT NULL)
+          )
           AND id IN (${placeholders})
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...uniqueTransactionIds)

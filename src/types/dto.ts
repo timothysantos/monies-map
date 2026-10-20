@@ -349,6 +349,24 @@ export interface EntryDto {
   // split itself keeps its own-currency shares.
   linkedSplitShares?: EntrySplitDto[];
   splits: EntrySplitDto[];
+  // What a transfer out to another person of the household pays for
+  // (DOMAIN.md "Transfer Purpose"); left out for every other entry.
+  transferPurpose?: TransferPurposeDto;
+}
+
+// A transfer's purpose. On the ledger entry it names the category and the
+// person the money went to; a person view's reading (readEntryForPerson)
+// adds `role`: "sent" for the sender, "received" for that person.
+export interface TransferPurposeDto {
+  categoryName: string;
+  toPersonId: string;
+  toPersonName: string;
+  // Set like last month (the transfer purpose learning rule), not by hand.
+  remembered?: true;
+  role?: "sent" | "received";
+  // In a person view: the ledger category the reading replaced, so the
+  // entry can be shown and edited as the transfer it is.
+  ledgerCategoryName?: string;
 }
 
 export interface EntriesPageDto {

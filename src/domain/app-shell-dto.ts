@@ -1,6 +1,6 @@
 import { getCurrentMonthKey } from "../lib/month";
 import { buildEntriesContextView, ensureAppData, loadAppShellContext } from "./app-shell";
-import { adjustEntriesForView } from "./month-projection";
+import { adjustEntriesForList } from "./month-projection";
 import {
   findSuggestedLoginPersonId,
   loadCategories,
@@ -74,7 +74,7 @@ export async function buildEntriesShellDto(
     buildEntriesContextView(
       id,
       personNameById[id] ?? "Household",
-      adjustEntriesForView(monthEntries, id),
+      adjustEntriesForList(monthEntries, id),
       splitGroups,
       effectiveSelectedMonth,
       availableMonths

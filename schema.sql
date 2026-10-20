@@ -453,6 +453,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   transfer_review_dismissed_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- A transfer out to another person of the household can carry what it
+  -- pays for (DOMAIN.md "Transfer Purpose"): the category, the person the
+  -- money went to, and 'person' or 'remembered'. NULL for every other row.
+  transfer_purpose_category_id TEXT REFERENCES categories(id),
+  transfer_purpose_person_id TEXT REFERENCES people(id),
+  transfer_purpose_source TEXT,
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (import_id) REFERENCES imports(id),
   FOREIGN KEY (import_row_id) REFERENCES import_rows(id),

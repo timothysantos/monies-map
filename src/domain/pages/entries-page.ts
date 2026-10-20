@@ -1,6 +1,6 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildEntriesContextView } from "../app-shell";
-import { adjustEntriesForView } from "../month-projection";
+import { adjustEntriesForList } from "../month-projection";
 import { buildPersonScopes } from "../person-view-scope";
 import {
   loadEntries,
@@ -81,7 +81,7 @@ export async function buildEntriesPageDto(
       selectedPersonId: viewId,
       selectedScope: viewId === "household" ? "direct_plus_shared" : "direct_plus_shared",
       scopes: buildPersonScopes(viewId),
-      entries: adjustEntriesForView(monthEntries, viewId)
+      entries: adjustEntriesForList(monthEntries, viewId)
     }
   };
 }

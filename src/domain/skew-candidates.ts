@@ -254,6 +254,8 @@ function collectSides(input: SkewCandidateInput): Side[] {
       || entry.amountMinor <= 0
       || entry.linkedTransfer
       || entry.linkedSplitExpenseId
+      // A transfer that says what it pays for is not a settlement.
+      || entry.transferPurpose
       || linked.has(entry.id)
     ) {
       return [];

@@ -4,6 +4,12 @@ import {
   buildReferenceDataDto
 } from "./domain/app-shell-dto";
 import {
+  applyRememberedTransferPurposes,
+  applyRememberedTransferPurposesForImport,
+  setTransferPurposeRecord,
+  TransferPurposeError
+} from "./domain/app-repository-transfer-purpose";
+import {
   invalidateAppDataCache,
   resetAppData
 } from "./domain/app-shell";
@@ -1283,6 +1289,12 @@ export default {
           await learnCategoryHabit(env.DB, { description: body.description, categoryName: body.categoryName, source: "entries" });
           await applyHabitsToNewEntry(env.DB, createdEntry.entryId);
         }
+        // A transfer out like last month's gets its purpose. Best effort.
+        if (createdEntry.created && body.entryType === "transfer") {
+          await applyRememberedTransferPurposes(env.DB, [createdEntry.entryId]).catch((error) => {
+            console.error("Remembered transfer purposes failed", error);
+          });
+        }
         return json({ ok: true, ...createdEntry });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create entry" }, 400);
@@ -1432,6 +1444,11 @@ export default {
         if (created.created && entryType === "expense") {
           await applyHabitsToNewEntry(env.DB, created.entryId, { applePay: true });
         }
+        if (created.created && entryType === "transfer") {
+          await applyRememberedTransferPurposes(env.DB, [created.entryId]).catch((error) => {
+            console.error("Remembered transfer purposes failed", error);
+          });
+        }
         const openUrl = buildShortcutEntryOpenUrl(request, {
           entryId: created.entryId,
           date: shortcutDate,
@@ -1485,6 +1502,23 @@ export default {
           toEntryId: body.toEntryId
         }))
       });
+    }
+
+    // "What is this for?" on a transfer out to someone in the household
+    // (DOMAIN.md "Transfer Purpose"); categoryName null clears it.
+    if (url.pathname === "/api/transfers/purpose" && request.method === "POST") {
+      const body = await request.json<{ entryId?: unknown; categoryName?: unknown }>().catch(() => ({ entryId: undefined, categoryName: undefined }));
+      if (typeof body.entryId !== "string" || !body.entryId || !(body.categoryName === null || (typeof body.categoryName === "string" && body.categoryName))) {
+        return json({ ok: false, error: "Missing transfer purpose fields" }, 400);
+      }
+      try {
+        return json({ ok: true, ...(await setTransferPurposeRecord(env.DB, { entryId: body.entryId, categoryName: body.categoryName })) });
+      } catch (error) {
+        if (error instanceof TransferPurposeError) {
+          return json({ ok: false, error: error.message }, 400);
+        }
+        throw error;
+      }
     }
 
     if (url.pathname === "/api/transfers/settle" && request.method === "POST") {
@@ -2418,9 +2452,7 @@ export default {
       }
 
       try {
-        return json({
-          ok: true,
-          ...(await commitImportBatch(env.DB, {
+        const committed = await commitImportBatch(env.DB, {
             sourceLabel: body.sourceLabel,
             sourceType: body.sourceType ?? "csv",
             parserKey: body.parserKey ?? "generic_csv",
@@ -2444,8 +2476,15 @@ export default {
               : [],
             reviewedRows: Array.isArray(body.reviewedRows) ? body.reviewedRows : undefined,
             rows: body.rows ?? []
-          }))
-        });
+          });
+        // A monthly transfer out gets what last month's said it was for
+        // (transfer purpose learning). Best effort, never part of the import.
+        if (committed.created) {
+          await applyRememberedTransferPurposesForImport(env.DB, committed.importId).catch((error) => {
+            console.error("Remembered transfer purposes failed", error);
+          });
+        }
+        return json({ ok: true, ...committed });
       } catch (error) {
         const message = describeError(error);
         console.error("Import commit failed", error);

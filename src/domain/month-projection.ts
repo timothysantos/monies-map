@@ -6,6 +6,7 @@ import { incomeMinor, offsetsCategory, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { headroomTone, spendTone } from "./money-tone";
 import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
+import { readEntriesForView } from "./transfer-purpose";
 import type {
   CategoryDto,
   EntryDto,
@@ -236,7 +237,19 @@ export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string):
     .map((row) => normalizePlanRowForView(row));
 }
 
+// Entries as a view counts them: a split-linked entry at the person's share,
+// and a transfer with a purpose read for the person (transfer-purpose.ts).
+// Every figure a view shows (Summary, Month, plan history, stored month
+// totals) reads these.
 export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
+  return readEntriesForView(adjustEntriesForList(entries, personId), personId);
+}
+
+// The ledger rows a view lists for editing (the Entries page, the app
+// shell's entries, Splits' transfers): split shares applied, but a transfer
+// with a purpose stays the transfer it is. The browser reads them for its
+// figures (src/client/entry-filtering.js).
+export function adjustEntriesForList(entries: EntryDto[], personId: string): EntryDto[] {
   return entries.map((entry) => adjustEntryForView(entry, personId));
 }
 

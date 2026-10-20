@@ -11,15 +11,19 @@
 
 const NOT_SPENDING = new Set(["transfer", "savings", "investments", "loans", "other"]);
 
-type OffsetEntry = { entryType: string; categoryName?: string | null };
+type OffsetEntry = { entryType: string; categoryName?: string | null; transferPurpose?: { role?: string } | null };
 
 export function isSpendingCategoryName(name?: string | null) {
   const normalized = String(name ?? "").trim().toLowerCase();
   return Boolean(normalized) && !NOT_SPENDING.has(normalized) && !/\bincome\b/.test(normalized) && normalized !== "salary";
 }
 
+// A person's reading of a transfer someone sent them for a purpose
+// (transfer-purpose.ts) is a payback in that category even under Loans,
+// which otherwise takes money in as income.
 export function offsetsCategory(entry: OffsetEntry) {
-  return entry.entryType === "income" && isSpendingCategoryName(entry.categoryName);
+  return entry.entryType === "income"
+    && (entry.transferPurpose?.role === "received" || isSpendingCategoryName(entry.categoryName));
 }
 
 // What an entry adds to spending: an expense adds, a payback takes away.

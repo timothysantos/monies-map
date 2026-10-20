@@ -7,7 +7,7 @@ import { readEntryTime } from "../lib/entry-time";
 import { homeCurrencyShareAmounts } from "./split-allocation";
 import { isCurrencyMatch } from "./split-currency";
 import { selectTransferCandidates, transferCandidateWindow } from "./transfer-candidates";
-import type { EntryDto, LinkedTransferDto } from "../types/dto";
+import type { EntryDto, LinkedTransferDto, TransferPurposeDto } from "../types/dto";
 
 // Only the Entries page reads an entry's time of day (`withTime`); every other
 // page's entries stay as they were, so no response grows for a field its
@@ -164,12 +164,20 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
           WHEN accounts.is_joint = 1 THEN 'Shared'
           ELSE account_owners.display_name
         END AS account_owner_label,
-        categories.name AS category_name
+        categories.name AS category_name,
+        transactions.transfer_purpose_person_id,
+        transactions.transfer_purpose_source,
+        purpose_categories.name AS transfer_purpose_category_name,
+        purpose_people.display_name AS transfer_purpose_person_name
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN people ON people.id = transactions.owner_person_id
       LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
       LEFT JOIN categories ON categories.id = transactions.category_id
+      -- A transfer's purpose (transfer-purpose.ts): its category and the
+      -- person the money went to, NULL for every other entry.
+      LEFT JOIN categories AS purpose_categories ON purpose_categories.id = transactions.transfer_purpose_category_id
+      LEFT JOIN people AS purpose_people ON purpose_people.id = transactions.transfer_purpose_person_id
       LEFT JOIN imports ON imports.id = transactions.import_id
       -- An archived (deleted) split keeps its link only for a restore; the
       -- entry is linked to its active split, if any.
@@ -218,6 +226,10 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       account_name: string;
       account_owner_label: string | null;
       category_name: string | null;
+      transfer_purpose_person_id: string | null;
+      transfer_purpose_source: string | null;
+      transfer_purpose_category_name: string | null;
+      transfer_purpose_person_name: string | null;
     }>();
 
   const linkedSplitShares = await db
@@ -328,9 +340,38 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
           ratioBasisPoints: 10000,
           amountMinor: row.amount_minor
         }]
-        : []
+        : [],
+      // Only on a transfer out that has one, so no other entry grows.
+      ...readStoredTransferPurpose(row)
     };
   });
+}
+
+function readStoredTransferPurpose(row: {
+  entry_type: string;
+  transfer_direction: string | null;
+  transfer_purpose_person_id: string | null;
+  transfer_purpose_source: string | null;
+  transfer_purpose_category_name: string | null;
+  transfer_purpose_person_name: string | null;
+}): { transferPurpose?: TransferPurposeDto } {
+  if (
+    row.entry_type !== "transfer"
+    || row.transfer_direction !== "out"
+    || !row.transfer_purpose_category_name
+    || !row.transfer_purpose_person_id
+    || !row.transfer_purpose_person_name
+  ) {
+    return {};
+  }
+  return {
+    transferPurpose: {
+      categoryName: row.transfer_purpose_category_name,
+      toPersonId: row.transfer_purpose_person_id,
+      toPersonName: row.transfer_purpose_person_name,
+      ...(row.transfer_purpose_source === "remembered" ? { remembered: true as const } : {})
+    }
+  };
 }
 
 type LinkedSplitShareRow = {

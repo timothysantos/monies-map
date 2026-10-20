@@ -1,4 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { transferPurposeSettleUpRefusal } from "./transfer-purpose-links";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import {
   groupSplits,
@@ -569,6 +570,9 @@ export async function matchSplitSettlementCheckpoint(db: D1Database, input: { ch
   const row = await db.prepare("SELECT amount_minor, currency, entry_type FROM transactions WHERE id = ? AND household_id = ?")
     .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; currency: string; entry_type: string }>();
   if (!row || row.entry_type !== "transfer") throw new Error("Checkpoint matches require a transfer entry.");
+  // A transfer that says what it pays for is not a settle-up (transfer-purpose.ts).
+  const purposeRefusal = await transferPurposeSettleUpRefusal(db, input.transactionId);
+  if (purposeRefusal) throw new Error(purposeRefusal);
   const ledgerAmountMinor = Math.abs(row.amount_minor);
   const ledgerCurrency = normalizeSplitCurrency(row.currency);
   const checkpointCurrency = normalizeSplitCurrency(checkpoint.currency);
@@ -1716,6 +1720,8 @@ export async function linkSplitSettlementMatch(
   if (!settlement) throw new Error("This settle-up is unavailable or already linked.");
   if (!transaction || transaction.entry_type !== "transfer") throw new Error("Settle-up matches require an imported transfer.");
   if (alreadyUsed) throw new Error(LEDGER_ROW_ALREADY_LINKED);
+  const purposeRefusal = await transferPurposeSettleUpRefusal(db, input.transactionId);
+  if (purposeRefusal) throw new Error(purposeRefusal);
   const splitCurrency = normalizeSplitCurrency(settlement.currency);
   const transactionCurrency = normalizeSplitCurrency(transaction.currency);
   if (splitCurrency !== transactionCurrency && (settlement.payment_method !== "bank" || settlement.payment_status !== "awaiting_statement")) {

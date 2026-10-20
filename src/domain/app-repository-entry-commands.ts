@@ -5,6 +5,7 @@
 // then commit as one db.batch(), and the affected months' snapshots are
 // refreshed after it (see app-repository-snapshots.ts).
 
+import { buildStalePurposeClearStatement, buildTransferPurposeLinkStatements } from "./transfer-purpose-links";
 import {
   buildMonthlySnapshotRefreshMarkers,
   recalculateMonthlySnapshots,
@@ -372,6 +373,7 @@ export async function updateEntryRecord(
   if (resolvedEntryType !== "transfer" && transaction.transfer_group_id) {
     statements.push(...buildTransferGroupDissolveStatements(db, transaction.transfer_group_id));
   }
+  statements.push(buildStalePurposeClearStatement(db, input.entryId));
 
   statements.push(
     ...linkedSplitStatements,
@@ -811,6 +813,7 @@ export async function updateEntryClassificationRecord(
   if (input.entryType !== "transfer" && transaction.transfer_group_id) {
     statements.push(...buildTransferGroupDissolveStatements(db, transaction.transfer_group_id));
   }
+  statements.push(buildStalePurposeClearStatement(db, input.entryId));
 
   const months = [transaction.transaction_date.slice(0, 7)];
   statements.push(
@@ -1262,6 +1265,8 @@ export async function linkTransferPair(
 
   const groupId = `tg-${crypto.randomUUID()}`;
   const months = new Set([fromEntry.transaction_date.slice(0, 7), toEntry.transaction_date.slice(0, 7)]);
+  // A purpose on the sending side follows the link (transfer-purpose-links.ts).
+  statements.push(...await buildTransferPurposeLinkStatements(db, input));
   statements.push(
     db
       .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
@@ -1414,6 +1419,12 @@ export async function settleTransferPair(
         counterpartEntry.id,
         DEFAULT_HOUSEHOLD_ID
       ));
+  }
+
+  // Neither side is a transfer now, so neither keeps a purpose.
+  statements.push(buildStalePurposeClearStatement(db, currentEntry.id));
+  if (counterpartEntry) {
+    statements.push(buildStalePurposeClearStatement(db, counterpartEntry.id));
   }
 
   const groupIds = new Set([currentEntry.transfer_group_id, counterpartEntry?.transfer_group_id].filter(Boolean));

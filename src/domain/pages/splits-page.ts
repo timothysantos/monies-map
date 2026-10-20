@@ -1,6 +1,6 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildSplitsPage } from "../splits-projection";
-import { adjustEntriesForView } from "../month-projection";
+import { adjustEntriesForList } from "../month-projection";
 import {
   loadEntries,
   loadSplitExpenses,
@@ -37,7 +37,7 @@ export async function buildSplitsPageDto(
     loadSplitActivityHistory(db),
     loadEntries(db, effectiveSelectedMonth)
   ]);
-  const monthTransfers = adjustEntriesForView(monthEntries, viewId).filter((entry) => entry.entryType === "transfer");
+  const monthTransfers = adjustEntriesForList(monthEntries, viewId).filter((entry) => entry.entryType === "transfer");
 
   return {
     viewId,

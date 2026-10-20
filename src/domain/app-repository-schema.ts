@@ -11,6 +11,14 @@ import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 // checks single-filed so two requests cannot attempt the same D1 migration.
 const schemaInitializationByDatabase = new WeakMap<D1Database, Promise<void>>();
 
+// The production and demo migration for transfer purposes runs these same
+// statements (docs/proposals/transfer-purpose.md, "Storage and migration").
+export const TRANSFER_PURPOSE_COLUMN_STATEMENTS = [
+  "ALTER TABLE transactions ADD COLUMN transfer_purpose_category_id TEXT REFERENCES categories(id)",
+  "ALTER TABLE transactions ADD COLUMN transfer_purpose_person_id TEXT REFERENCES people(id)",
+  "ALTER TABLE transactions ADD COLUMN transfer_purpose_source TEXT"
+] as const;
+
 export async function ensureDemoSchema(db: D1Database) {
   const pending = schemaInitializationByDatabase.get(db);
   if (pending) {
@@ -387,6 +395,14 @@ async function ensureDemoSchemaOnce(rawDb: D1Database) {
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transfer_review_dismissed_at")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN transfer_review_dismissed_at TEXT").run();
+  }
+
+  // A transfer's purpose (DOMAIN.md "Transfer Purpose"): nullable and
+  // additive, read from the column list above, so no extra round trip.
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transfer_purpose_category_id")) {
+    for (const statement of TRANSFER_PURPOSE_COLUMN_STATEMENTS) {
+      await db.prepare(statement).run();
+    }
   }
 
   const peopleColumns = await db
