@@ -138,6 +138,52 @@
   background: rgb(var(--on-strong-rgb) / 0.08);
 }
 
+/* What a settlement covered: one quiet dashed row at the end of the list,
+   the same outline as Archived batches; open, its days follow under it. */
+.panel-splits .split-settled-section {
+  display: block;
+  margin-top: 18px;
+}
+
+.panel-splits .split-settled-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px dashed rgb(var(--on-strong-rgb) / 0.45);
+  border-radius: 14px;
+  background: transparent;
+  color: rgb(var(--on-strong-rgb) / 0.9);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-splits .split-settled-section-toggle:hover {
+  border-color: rgb(var(--on-strong-rgb) / 0.7);
+  background: rgb(var(--on-strong-rgb) / 0.08);
+}
+
+.panel-splits .split-settled-section-chevron {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.panel-splits .split-settled-section.is-open .split-settled-section-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-splits .split-settled-section-chevron {
+    transition: none;
+  }
+}
+
 @media (max-width: 760px) {
   .panel-splits .split-list-section {
     gap: 0;

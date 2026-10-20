@@ -1,6 +1,6 @@
 import "./splits-list-sheets.css";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRightLeft, ChevronLeft, ChevronRight, CircleCheck } from "lucide-react";
 import { useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
@@ -9,12 +9,17 @@ import { SplitActivityGroups } from "./splits-activity";
 import { BottomActions } from "./ui/lead-support-detail";
 import { useKeyboardInset } from "./use-keyboard-inset";
 import { paletteColour } from "./palette-colour";
+import { useMoneyPrivacy } from "./money-privacy";
+import { settledSectionArchiveSummary } from "./splits-settled-sections";
 
 const { format: formatService, splits: splitService } = moniesClient;
 
 export function SplitArchiveDialog({
   archiveDialog,
   archivedBatches,
+  settledSections = [],
+  settlementCheckpoints = [],
+  onOpenSettlement,
   selectedArchivedBatch,
   categories,
   viewId,
@@ -31,6 +36,7 @@ export function SplitArchiveDialog({
   // Batches grouped without a stored batch id (older rows) cannot be reopened.
   // Every sheet with a bottom bar follows the keyboard (it has no field here).
   const [content, setContent] = useState(null);
+  const { areTotalsVisible } = useMoneyPrivacy();
   useKeyboardInset(content);
   const canUndoSettleUp = Boolean(onUndoSettleUp && selectedArchivedBatch?.batchId && !selectedArchivedBatch.batchId.startsWith("split-batch-fallback-"));
   return (
@@ -46,7 +52,7 @@ export function SplitArchiveDialog({
               <Dialog.Description>
                 {selectedArchivedBatch
                   ? (selectedArchivedBatch.closedAt ? `Settled ${formatService.formatDateOnly(selectedArchivedBatch.closedAt)}` : "Settled batch")
-                  : "Closed settle-up batches stay here as muted history."}
+                  : "Settled batches and earlier settle-ups stay here."}
               </Dialog.Description>
             </div>
           </div>
@@ -84,6 +90,25 @@ export function SplitArchiveDialog({
           ) : (
             <div className="split-archive-dialog-body split-archive-list-dialog split-list-sheet-body" data-sheet-body>
               <div className="lsd-rows split-archive-rows">
+              {/* A settlement's records stay in the list, collapsed at its end:
+                  its row here opens that section. */}
+              {settledSections.map((section) => {
+                const summary = settledSectionArchiveSummary(section, settlementCheckpoints, { viewId, areTotalsVisible });
+                return (
+                  <button key={section.checkpointId} type="button" className="split-archive-row is-settlement" onClick={() => onOpenSettlement?.(section.checkpointId)}>
+                    <span className="split-archive-row-date">{splitService.formatArchiveDate(section.settlementDate)}</span>
+                    <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": paletteColour("#BF7D51") }}>
+                      <CircleCheck size={16} />
+                    </span>
+                    <span className="split-archive-row-copy">
+                      <strong>{summary.title}</strong>
+                      <small>{summary.subtitle}</small>
+                    </span>
+                    <span className="split-archive-row-meta">{summary.meta}</span>
+                    <ChevronRight size={16} aria-hidden="true" className="split-archive-row-chevron" />
+                  </button>
+                );
+              })}
               {archivedBatches.map((batch) => {
                 const summary = splitService.getArchivedBatchSummary(batch, viewId);
                 return (

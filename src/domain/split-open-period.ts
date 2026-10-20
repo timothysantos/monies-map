@@ -28,6 +28,72 @@ export function isOpenExpense(item: Pick<OpenPeriodItem, "kind" | "settlementSta
   return item.kind === "expense" && !isCoveredBySettleUp(item);
 }
 
+export interface SettledSectionItem extends OpenPeriodItem {
+  date: string;
+  settlementCheckpointId?: string;
+  currency?: string;
+}
+
+export interface SettledSectionCheckpoint {
+  id: string;
+  settlementDate: string;
+  status: string;
+  settledAt?: string;
+}
+
+export interface SettledSection<T> {
+  checkpointId: string;
+  settlementDate: string;
+  // True once the people are square: the bank payment is matched, the
+  // balances cancelled out, or the payment was marked paid. False while a
+  // simplified settlement still waits for its payment.
+  isPaid: boolean;
+  items: T[];
+  // Every record in the section, expenses and settle-ups alike.
+  entryCount: number;
+  // The expense totals only, in the group's own currency (the chip's rule).
+  spendMinor: number;
+}
+
+/**
+ * The Splits activity list in two parts: the open records, and the records a
+ * settlement checkpoint covers, one section per checkpoint (newest first).
+ * "Covered" is `isCoveredBySettleUp`, the open period's own rule, so a
+ * reopened or voided checkpoint's records are open again. A covered record
+ * with no checkpoint is in a closed batch: it belongs to the archive, so it
+ * is in neither part.
+ */
+export function partitionActivityBySettlement<T extends SettledSectionItem>(
+  activity: T[],
+  checkpoints: SettledSectionCheckpoint[] = []
+) {
+  const open: T[] = [];
+  const byCheckpoint = new Map<string, T[]>();
+  for (const item of activity) {
+    if (!isCoveredBySettleUp(item)) {
+      open.push(item);
+    } else if (item.settlementCheckpointId) {
+      const items = byCheckpoint.get(item.settlementCheckpointId) ?? [];
+      items.push(item);
+      byCheckpoint.set(item.settlementCheckpointId, items);
+    }
+  }
+  const sections: Array<SettledSection<T>> = [...byCheckpoint].map(([checkpointId, items]) => {
+    const checkpoint = checkpoints.find((candidate) => candidate.id === checkpointId);
+    const latestItemDate = items.map((item) => item.date).sort().at(-1) ?? "";
+    return {
+      checkpointId,
+      settlementDate: checkpoint?.settlementDate ?? latestItemDate,
+      isPaid: !checkpoint || ["matched", "internally_offset"].includes(checkpoint.status) || Boolean(checkpoint.settledAt),
+      items,
+      entryCount: items.length,
+      spendMinor: items.reduce((sum, item) => sum + (item.kind === "expense" ? item.totalAmountMinor : 0), 0)
+    };
+  });
+  sections.sort((left, right) => right.settlementDate.localeCompare(left.settlementDate) || left.checkpointId.localeCompare(right.checkpointId));
+  return { open, sections };
+}
+
 /**
  * Spend of the open period, how many expenses it holds, and whether any record
  * of the group was ever settled (which is what lets a label say "since last

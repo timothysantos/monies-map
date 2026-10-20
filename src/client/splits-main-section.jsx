@@ -4,6 +4,7 @@ import { EmptyState } from "./ui-states";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
 import { SplitMatchesList } from "./splits-matches";
+import { archiveTriggerSummary } from "./splits-settled-sections";
 
 // Main split content is presentation-only; SplitsPanel keeps URL state and API handlers.
 export function SplitsMainSection({
@@ -20,6 +21,9 @@ export function SplitsMainSection({
   categoryOptions,
   visibleMatches,
   groupedCurrentActivity,
+  settledSections = [],
+  openSettlementIds = [],
+  onToggleSettlement,
   archivedBatches,
   searchQuery = "",
   inlineSplitDraft,
@@ -114,6 +118,9 @@ export function SplitsMainSection({
           ) : null}
           <SplitsActivitySection
             groupedCurrentActivity={groupedCurrentActivity}
+            settledSections={settledSections}
+            openSettlementIds={openSettlementIds}
+            onToggleSettlement={onToggleSettlement}
             archivedBatches={archivedBatches}
             searchQuery={searchQuery}
             categories={categories}
@@ -131,7 +138,6 @@ export function SplitsMainSection({
             onAddExpense={onAddExpense}
             onClearSearch={onClearSearch}
             activeGroupId={activeGroup?.id ?? ""}
-            onOpenArchive={onOpenArchive}
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}
             onChangeInlineSplitDraft={onChangeInlineSplitDraft}
@@ -145,16 +151,12 @@ export function SplitsMainSection({
             archiveControl={
               <button
                 type="button"
-                className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
-                onClick={archivedBatches.length ? onOpenArchive : undefined}
-                disabled={!archivedBatches.length}
+                className={`split-archive-trigger ${archivedBatches.length || settledSections.length ? "" : "is-empty"}`}
+                onClick={archivedBatches.length || settledSections.length ? onOpenArchive : undefined}
+                disabled={!archivedBatches.length && !settledSections.length}
               >
                 <span>Archived batches</span>
-                <small>
-                  {archivedBatches.length
-                    ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
-                    : "No settled batches yet"}
-                </small>
+                <small>{archiveTriggerSummary(archivedBatches.length, settledSections.length)}</small>
               </button>
             }
           />

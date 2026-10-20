@@ -421,6 +421,21 @@ export const messages = {
     reviewMatches: "Review matches",
     backToGroup: "Back to split group",
     entryCount: (count) => countOf(count, "entry", "entries"),
+    // The collapsed section at the end of the activity list for what one
+    // settlement covered, and its row in the Archived batches sheet.
+    settledSection: {
+      settledOn: (day) => `Settled up on ${day}`,
+      simplifiedOn: (day) => `Simplified on ${day}`,
+      settledTitle: "Settled up",
+      simplifiedTitle: "Simplified, not paid yet",
+      you: "You",
+      youObject: "you",
+      payment: ({ from, to, amount, isPaid }) => `${from} ${isPaid ? "paid" : from === "You" ? "pay" : "pays"} ${to} ${amount} for every group`,
+      evenedOut: "Nothing to pay: the groups evened out",
+      noArchive: "No settled batches yet",
+      settledBatches: (count) => `${count} settled ${count === 1 ? "batch" : "batches"}`,
+      earlierSettleUps: (count) => `${count} earlier ${count === 1 ? "settle-up" : "settle-ups"}`
+    },
     allClear: "All clear",
     toReview: (count) => `${count} to review`,
     matchInboxTitle: (count) => `${count} possible split ${count === 1 ? "link" : "links"}`,
