@@ -545,6 +545,9 @@ there is income. A gift received belongs in `Extra Income`, not `Gifts`.
 A category's spending may reach zero but is never shown below zero. Totals are
 not clamped, so income minus spending stays the real net.
 
+A person's reading of a `transfer purpose` sent to them is a payback in its
+category in that person's view, Loans included (see "Transfer Purpose").
+
 Storage:
 - derived from `transactions.entry_type` and the entry's category. The old
   per-entry `transactions.offsets_category` column is still written by some
@@ -1577,6 +1580,67 @@ and the bank's GIRO row that paid it, in the import's own batch, recorded in
 `import_transfer_links` so the import's rollback dissolves the group and puts
 the bank row back as it was (see "Investment Statement Value").
 
+### Transfer Purpose
+
+What a transfer from one person of the household to another pays for: a
+spending category, such as Home for Tim's monthly $450 to Joyce's account,
+from which the bank takes the house loan (owner decision, 2026-10-20,
+"option 2"; `docs/proposals/transfer-purpose.md`).
+
+Canonical term:
+- `transfer purpose` (UI: "What is this for?")
+
+Storage:
+- on the sending `transfer entry` (direction `out`):
+  `transactions.transfer_purpose_category_id`,
+  `transfer_purpose_person_id` (the person the money went to) and
+  `transfer_purpose_source` (`person`, or `remembered` when set like last
+  month). NULL on every other row. It is on the entry, not the `transfer
+  group`, so both people's figures are dated by the sending entry and still
+  add up when the other side lands in another month or is never imported.
+
+Rules (`src/domain/transfer-purpose.ts`, `readEntryForPerson`):
+- The household view is unchanged: the entry stays a transfer and adds
+  nothing to spending or income.
+- In the sender's view the entry reads as their expense in the purpose
+  category at its full amount: Spent, category totals, Spending Mix, the
+  spend money job, budget lines, and a dated plan line it is linked to (a
+  `plan-entry link` may name a transfer out that has a purpose).
+- In the receiver's view the same entry reads as a payback in that category
+  (a `category offset`, also under Loans): it lowers their spending there
+  by the amount and is never income. A category may show $0 when the
+  contribution is more than that month's spending there; totals are not
+  clamped.
+- Both readings are direct money (Direct ownership and Direct + Shared,
+  never Shared). For each category and month the people's views add up to
+  the household's to the cent; the stored person month totals follow.
+- A purpose counts only on a transfer out with an owner, to another person,
+  not on Splits. It is refused (plain words) for a move between one
+  person's own accounts, a receiving side with no owner, an unlinked
+  transfer with no receiver, an investment account on either side, two
+  currencies, an entry on Splits, and a settle-up (either side linked to a
+  split settlement or matched to a settlement checkpoint). A settle-up
+  match is refused while a purpose is set. Purpose categories are spending
+  categories and Loans, never Transfer, Savings, Investments, Other or
+  income.
+- Linking the pair makes the receiver the other side's owner; a link to the
+  sender's own account clears it. A write that makes the entry stop being a
+  transfer out to someone else clears it in the same batch.
+- Learning: a new transfer out (import commit, manual add, Shortcut) gets
+  the purpose of the newest earlier transfer out of the same account with
+  the same amount and description (digits ignored) within 100 days, marked
+  `remembered` ("Set like last month", with Undo). An undone month has no
+  purpose, so the next month is left alone. Deterministic, no AI.
+
+Code:
+- `src/domain/transfer-purpose.ts` (reading, refusals; shared with the
+  browser), `src/domain/app-repository-transfer-purpose.ts` (commands,
+  learning), `src/domain/transfer-purpose-links.ts` (statements other
+  commands put in their own batch)
+- `POST /api/transfers/purpose` `{ entryId, categoryName | null }`
+- `EntryDto.transferPurpose` (`TransferPurposeDto`), only on such entries
+- `src/client/entry-transfer-purpose-row.jsx`
+
 ### Split Workspace
 
 The shared-expense settle-up subsystem. It is intentionally separate from the
@@ -2139,7 +2203,9 @@ Relationships:
 ### Plan-Entry Link
 
 An explicit link between a month plan row and one ledger entry. These links are
-how planned-item actuals are resolved against real activity.
+how planned-item actuals are resolved against real activity. The entry is an
+expense, or a transfer out with a `transfer purpose`, which pays the line in
+the sender's view only (the household's line counts expenses, as before).
 
 Canonical term:
 - `plan-entry link`
@@ -2182,7 +2248,10 @@ Person month total and person views:
   the person) is that person's own spend: every expense they own that is not
   linked to a split, at its full amount, plus their share of every
   split-linked expense (a travel split's home share, see `split expense
-  share`). An entry that is someone else's direct expense never counts
+  share`). An entry that is someone else's direct expense never counts. A
+  transfer with a `transfer purpose` adds to the sender's total and takes
+  from the receiver's in the sending entry's month; the household's total
+  does not change
 - a person view counts entries by the same rule
   (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
   metric cards and category charts, in the Month lead's spent figure,
@@ -2868,6 +2937,10 @@ These boundaries are important enough to preserve explicitly:
   `shared ownership` != a third `person`
 - Transfer linkage vs transfer facts:
   `transfer group` links transfer entries but does not replace them
+- Transfer purpose vs settle-up:
+  a `transfer purpose` says what a transfer between two people pays for and
+  moves spending between their views only; a settle-up clears a Splits
+  balance. One transfer is never both
 - Skew candidate vs transfer group:
   a `skew candidate` only flags entries that look like an unlinked transfer
   or settlement; it never links, refiles or matches anything itself

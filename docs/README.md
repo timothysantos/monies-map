@@ -32,6 +32,9 @@ a doc here in the same change.
 - [`proposals/ask-ai-first/inventory.md`](proposals/ask-ai-first/inventory.md):
   every user-facing capability with its Ask action, reused command, risk
   and phase (Ask, AI first).
+- [`proposals/transfer-purpose.md`](proposals/transfer-purpose.md): a
+  transfer between two people that says what it pays for (model, rules, edge
+  cases, invariants, migration); frames in `audits/transfer-purpose/`.
 - [`proposals/colour-directions/README.md`](proposals/colour-directions/README.md):
   the shipped 1970s colour tokens beside the 60s mod and 80s pop
   alternatives, as tables with their contrast.

@@ -349,6 +349,34 @@ write routes that resolve each candidate (`/api/transfers/link`,
 `/api/entries/update-classification`, `/api/splits/checkpoints/match`,
 `/api/splits/settlements/create`); it never calls them. No AI is involved.
 
+### Transfer purpose: person views of a transfer (current, 2026-10)
+
+A transfer between two people of the household can say what it pays for
+(DOMAIN.md "Transfer Purpose"; `docs/proposals/transfer-purpose.md`). The
+purpose is stored on the sending entry and changes person views only, through
+one pure reading shared by the Worker and the browser:
+
+```text
+transactions.transfer_purpose_*      on the sending transfer entry
+app-repository-entries.ts            EntryDto.transferPurpose (only those rows)
+transfer-purpose.ts (pure)           readEntryForPerson / readEntriesForView:
+                                     sender -> expense in the purpose category
+                                     receiver -> payback in that category
+                                     household -> the same array, untouched
+month-projection.ts                  adjustEntriesForView = split shares + reading
+                                     (Summary, Month, plan history, Ask facts)
+                                     adjustEntriesForList = split shares only
+                                     (Entries, app shell, Splits' transfers)
+app-repository-snapshots.ts          stored person month totals read per scope
+src/client/entry-filtering.js        Entries reads its ledger rows for filters,
+                                     totals and figures; a read row keeps
+                                     `ledgerEntry` for the editor
+```
+
+The Entries list keeps ledger facts because it is where entries are edited: a
+row read as spending is never saved as an expense. Household figures are
+untouched by construction (the household reading returns its input).
+
 ### Wrong-card Apple Pay duplicates (current, 2026-10)
 
 An Apple Pay entry saved on the wrong card is counted twice once the right

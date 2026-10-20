@@ -2970,6 +2970,32 @@ the plan-table redesign.
   the scope wrap onto two lines (`context-scroll-shortcuts.spec.js`, 1280,
   1440 and 1920 px).
 
+## Transfer purpose row ("What is this for?")
+
+A transfer out to someone else in the household (DOMAIN.md "Transfer
+Purpose") has one more Detail row in its edit card, after Transfer match:
+"What is this for?" (`entry-transfer-purpose-row.jsx`, slotted into
+`EntryEditCard` as `transferPurposeRow`, inline and in the phone sheet).
+
+- It is offered when the entry is a transfer out matched to an account whose
+  owner is not the entry's owner (and not joint), or already has a purpose
+  (`offersTransferPurpose`). The Worker re-checks and answers in plain words.
+- It opens the one category list (`PickerRow` with `categoryPick`), limited to
+  categories a transfer can pay for (spending categories and Loans). Choosing
+  saves at once through `POST /api/transfers/purpose`, like a row's category
+  list; the editor's Save is not needed and the draft is untouched.
+- Under it, quiet and right-aligned like "Clear time": "Just a transfer"
+  (clears it), or for a purpose set like last month "Set like last month" and
+  "Undo". An error shows inline under the row.
+- The list row: in a person view a transfer with a purpose shows under its
+  purpose category with the chip "Transfer to Joyce" or "Tim's transfer to
+  you"; the household row keeps "Matched transfer out" and adds " · for
+  Home". In a person view the row's category list changes the purpose. No
+  chip carries an amount, so hidden money hides nothing new.
+- The Entries list keeps ledger rows; `entry-filtering.js` reads them for the
+  view and a read row carries `ledgerEntry`, which the inline editor, the
+  sheet and `beginEntryEdit` use.
+
 ## Category list
 
 Every place a category is chosen opens one list (`category-pick-list.jsx`,

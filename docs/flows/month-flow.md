@@ -231,6 +231,14 @@ Month owns:
 - plan-link editing
 - drilldown return behavior
 
+A transfer with a purpose (DOMAIN.md "Transfer Purpose") reaches Month
+already read for the view (`adjustEntriesForView`): in the sender's view it
+is an expense in its category, so it counts in the lead, Spending Mix and
+budget lines, and the plan-link picker offers it for a dated line such as
+"House loan" (the link command accepts a transfer out with a purpose). In the
+receiver's view it is a payback in that category. The household view is
+unchanged, and its plan lines count expenses only, as before.
+
 ## Audit Status
 
 Current status: aligned with tests and runtime behavior.

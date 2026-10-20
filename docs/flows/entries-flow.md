@@ -206,6 +206,16 @@ Entries owns:
 - quick-entry persistence
 - add-to-splits behavior
 - delete behavior
+- a transfer's purpose ("What is this for?", DOMAIN.md "Transfer Purpose"):
+  the page DTO lists ledger rows (`adjustEntriesForList`), and
+  `entry-filtering.js` reads them for the view (`readEntriesForList`) before
+  filtering, totals and figures, so in a person view the transfer counts as
+  the sender's spending or the receiver's payback in its category. A read
+  row keeps `ledgerEntry`; the inline editor, the edit sheet and
+  `beginEntryEdit` use the ledger row, so it is saved as the transfer it is.
+  The "What is this for?" row (`entry-transfer-purpose-row.jsx`) saves at
+  once through `POST /api/transfers/purpose`, like the row's category list,
+  and a person view's row category list sets the purpose
 
 ## Audit Status
 

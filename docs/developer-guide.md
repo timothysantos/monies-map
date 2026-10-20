@@ -706,6 +706,14 @@ and `db:migrate:demo`, then add the column to both databases yourself when
 as no time. `tests/entry-time-api.test.mjs` proves a database without the
 column is repaired on the first request.
 
+The transfer purpose columns (DOMAIN.md "Transfer Purpose") went the same
+way: `transactions.transfer_purpose_category_id`,
+`transfer_purpose_person_id` and `transfer_purpose_source`, all nullable
+`TEXT` with no foreign key (a deleted category or person leaves a purpose
+that simply no longer counts). The statements are
+`TRANSFER_PURPOSE_COLUMN_STATEMENTS` in `app-repository-schema.ts`;
+`tests/transfer-purpose-projections.test.mjs` proves the repair.
+
 ### What body should the shortcut send?
 
 Send JSON.

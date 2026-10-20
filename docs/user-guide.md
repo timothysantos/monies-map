@@ -1535,6 +1535,33 @@ them can share a category (for example Bills).
 The app remembers what you linked so it can suggest the same kind of entries
 next month. It never links them without you.
 
+## Say what a transfer to your partner pays for
+
+Money you move to someone else in the household is a transfer, so on its own
+it is nobody's spending. Sometimes it pays for something: Ethan sends Serene
+$450 every month, and the bank takes the $900 house loan from Serene's
+account. Tell the app what the $450 is for and each of you sees your own part.
+
+1. On **Entries**, open the transfer out of Ethan's account. It must be
+   matched with the money arriving in Serene's account (**Transfer match**).
+2. Select **What is this for?** and choose the category, here **Home**. It
+   saves at once.
+
+Now Ethan's view counts the $450 as his Home spending: his Spent goes up by
+$450, and his dated payment "House loan" can be linked to it and shows paid.
+Serene's view takes the $450 off her Home spending, so the loan counts $450 for
+her instead of $900. The Household view does not change: the loan still
+counts once, and the transfer stays a transfer. In a person's list the row
+shows under Home and says **Transfer to Serene** or **Ethan's transfer to
+you**.
+
+Next month the same transfer (same account, same amount, same description)
+gets the same answer by itself and says **Set like last month**. Select
+**Undo** if it was not for that this time; the month after is then left alone
+too. **Just a transfer** clears it. A move between your own accounts, money
+into investments and a settle-up on Splits cannot have one. If the bill is
+already shared on Splits, record the transfer as the settle-up instead.
+
 ## Duplicate, reset or delete a month
 
 On **Summary**, pick the month, then select **Actions**.
@@ -2684,6 +2711,9 @@ saves every row or none of them.
   one currency.
 - **Settle-up**: a payment between the two of you that clears a group's
   balance.
+- **What is this for?**: the category a transfer to the other person pays for.
+  It counts as the sender's spending there and comes off the other person's
+  (see "Say what a transfer to your partner pays for").
 - **Batch**: a group's open splits since its last settle-up. Settled batches
   move to Archived batches.
 - **Simplification** or **simplified settlement**: one combined amount for

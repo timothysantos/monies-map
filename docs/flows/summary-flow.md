@@ -143,6 +143,12 @@ Summary owns:
 `tests/e2e/summary-month-choice.spec.js` proves the month choice on a phone
 and a desktop.
 
+A person view reads its entries through `adjustEntriesForView`, so a
+transfer with a purpose (DOMAIN.md "Transfer Purpose") is the sender's
+spending and the receiver's payback in its category, in the sending entry's
+month; the person month totals Summary reads follow. The household view is
+unchanged (`tests/transfer-purpose-projections.test.mjs`).
+
 ## Audit Status
 
 Current status: aligned with tests and runtime behavior.

@@ -681,6 +681,14 @@ A persistence command is all-or-nothing:
   certifications, after re-checking them on rows read before the batch; a
   fix that no longer holds throws before anything is written
   (`tests/atomic-writes-statement-fixes.test.mjs`)
+- a transfer purpose (`src/domain/app-repository-transfer-purpose.ts`,
+  DOMAIN.md "Transfer Purpose") is set or cleared in one batch with its
+  audit event and the refresh markers of both sides' months; the
+  remembered purposes after an import commit or a manual add are one more
+  batch after that command (best effort: a failure leaves the entries as
+  saved, never half-applied). Linking a pair and refiling an entry put the
+  purpose's follow-up statements (`transfer-purpose-links.ts`) in their own
+  batch (`tests/transfer-purpose-projections.test.mjs`)
 - an activity export's removal of the entries the bank no longer lists
   (`src/domain/import-no-longer-listed-entries.ts`) re-checks each entry,
   then saves it to `import_no_longer_listed_entries` and deletes it in the
