@@ -206,8 +206,12 @@ test.describe("entry source", { tag: "@webkit" }, () => {
     const saved = page.locator('[data-ask-card="saved"]');
     await expect(saved).toBeVisible();
     await expect(saved.locator('[data-chip="state"]')).toHaveText("Ask · provisional");
-    // A saved card is not edited from its chips.
-    await expect(saved.locator(".lsd-chip-hit")).toHaveCount(0);
+    // A saved card is not edited from its chips: the state chip is plain text,
+    // and the one tappable chip is the wallet, which opens the saved wallet
+    // picker (459ddc25, kept for saved cards by 25b093c9).
+    await expect(saved.locator(".lsd-chip-hit")).toHaveCount(1);
+    await expect(saved.locator('.lsd-chip-hit[data-chip="wallet"]')).toHaveCount(1);
+    await expect(saved.locator('.lsd-chip-hit [data-chip="state"], .lsd-chip-hit[data-chip="state"]')).toHaveCount(0);
 
     await enableShortcut(page);
     const shortcutId = await createShortcutEntry(page, { description: `Source opened ${Date.now()}` });
