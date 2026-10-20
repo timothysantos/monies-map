@@ -214,6 +214,29 @@ async function expectNoSidewaysScroll(page, selector) {
   expect(result.scrollers, `${selector} sideways scrollers`).toEqual([]);
 }
 
+// A mouse resting on an element, as a person's would. Playwright's hover()
+// first asks Chromium to scroll the target into view; for SVG text that can
+// start a scroll to the top of the page, which the page's smooth scrolling
+// plays out after the pointer has landed, so the slice slides away from a
+// still pointer and its quarter-second rest never completes. Bring it into
+// view at once, wait for the page to stop moving, then put the mouse on the
+// element's centre.
+async function restPointerOn(page, locator) {
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+  await expect.poll(() => page.evaluate(() => new Promise((resolve) => {
+    const before = window.scrollY;
+    let frames = 0;
+    const check = () => {
+      if (window.scrollY !== before) return resolve(false);
+      if (++frames === 4) return resolve(true);
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }))).toBe(true);
+  const target = await box(locator);
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
+}
+
 async function expectRankedList(page, share) {
   const TOP = topCount(page);
   const rows = mixCard(page).locator(".summary-mix-row");
@@ -321,7 +344,7 @@ for (const device of [
       if (device.name === "desktop") {
         // A resting pointer opens it too, without taking the focus.
         await page.mouse.move(0, 0);
-        await slice.locator(".donut-slice-label").hover();
+        await restPointerOn(page, slice.locator(".donut-slice-label"));
         await expect(menu).toBeVisible();
         await expect(menu.getByRole("button", { name: "View entries" })).not.toBeFocused();
       } else {
