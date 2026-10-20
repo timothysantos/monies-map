@@ -7,7 +7,7 @@
 // sticky top has changed since (the banner arrived late) moves to the right
 // observer on its next callback. When a row pins, the space from the window's
 // edges to its own goes to --date-bleed-left and --date-bleed-right, so the
-// Entries band behind it reaches both edges of the window. The attribute and
+// Entries and Splits band behind it reaches both edges of the window. The attribute and
 // the variables are set on the element directly, so no render follows.
 
 const observers = new Map();
