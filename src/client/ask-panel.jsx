@@ -36,6 +36,7 @@ import {
   markCardSaveFailed,
   markCardSaving,
   markCardUndone,
+  resolveShareGroupId,
   setCardField,
   setCardVariant,
   setShare,
@@ -43,6 +44,7 @@ import {
   validateCard
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
+import { ASK_SPLIT_DRAFT_STATE_KEY, buildAskSplitFormDraft } from "./ask-split-form-handoff";
 import { buildTurnFocus, buildTurnHistory, effectiveChange, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal, selectedChoiceId } from "./ask-turn-api";
 import { AskChangeCard, AskMatchesCard, AskSettlementDraftCard, AskSplitProposalCard, openPageOf } from "./ask-turn-cards";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
@@ -1601,7 +1603,7 @@ function AskConversation({
 
   const params = useMemo(() => buildContextParams(searchParams, view.id, selectedMonth, selectedScope), [searchParams, selectedMonth, selectedScope, view.id]);
 
-  function goTo(pathname, extra = {}, base = params) {
+  function goTo(pathname, extra = {}, base = params, state = undefined) {
     const next = new URLSearchParams(base);
     for (const [key, value] of Object.entries(extra)) {
       if (value === undefined || value === null || value === "") {
@@ -1610,7 +1612,7 @@ function AskConversation({
         next.set(key, value);
       }
     }
-    navigate({ pathname, search: `?${next.toString()}` });
+    navigate({ pathname, search: `?${next.toString()}` }, state ? { state } : undefined);
   }
 
   // Back to the page the + or the receipt button opened Ask from, exactly
@@ -1682,8 +1684,13 @@ function AskConversation({
       if (field === "date") setOpenPicker("date");
     },
     editInForm: () => {
+      // From the Splits receipt button: New split expense, filled in with
+      // what the card drafted (ask-split-form-handoff.js). The values travel
+      // in history state, so no amount or text is put in the link.
       if (intent.mode === "expense" && intent.from === "splits") {
-        goTo("/splits", { split_group: intent.splitGroupId, split_action: "add-expense" });
+        const splitDraft = card ? buildAskSplitFormDraft(card, context) : null;
+        const splitGroupId = (card ? resolveShareGroupId(card, splitGroups) : "") || intent.splitGroupId;
+        goTo("/splits", { split_group: splitGroupId, split_action: "add-expense" }, params, splitDraft ? { [ASK_SPLIT_DRAFT_STATE_KEY]: splitDraft } : undefined);
         return;
       }
       const fields = card?.fields;

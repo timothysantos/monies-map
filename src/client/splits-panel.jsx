@@ -3,7 +3,7 @@
 // load before this route's overrides.
 import "./splits-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { messages } from "./copy/en-SG";
@@ -43,6 +43,7 @@ import {
   removeOptimisticSplitActivity,
   upsertOptimisticSplitActivity
 } from "./splits-optimistic";
+import { ASK_SPLIT_DRAFT_STATE_KEY, readAskSplitFormDraft } from "./ask-split-form-handoff";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
@@ -87,6 +88,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   };
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [showBreakdown, setShowBreakdown] = useState(false);
   const useMobileSplitSheet = useIsMobileLayout();
   const [archiveDialog, setArchiveDialog] = useState(null);
@@ -420,16 +422,19 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   // The Ask page's "Edit in form" (?split_action=add-expense) opens the
   // usual new expense dialog for the open group, once, when the page (and
-  // so the group) is there. The effect runs on the link and the page's
-  // arrival only: the group and the opener are read from a ref, so a
-  // render that rebuilds them cannot open the dialog again before the
-  // router drops the parameter.
+  // so the group) is there, filled in with what Ask's card drafted (history
+  // state, ask-split-form-handoff.js; unsaved until the form's Save). The
+  // effect runs on the link and the page's arrival only: the group, the
+  // hand-off and the opener are read from a ref, so a render that rebuilds
+  // them cannot open the dialog again before the router drops the
+  // parameter, and dropping it (a replace) drops the hand-off with it.
   const splitAction = searchParams.get("split_action");
   const isSplitsPageReady = Boolean(view.splitsPage);
   const addExpenseLinkRef = useRef(null);
+  const askSplitDraft = location.state?.[ASK_SPLIT_DRAFT_STATE_KEY];
   addExpenseLinkRef.current = () => {
     if (!isHouseholdView) {
-      openNewExpenseDialog({ activeGroup, view });
+      openNewExpenseDialog({ activeGroup, view, askDraft: readAskSplitFormDraft(askSplitDraft) });
     }
   };
   useEffect(() => {
