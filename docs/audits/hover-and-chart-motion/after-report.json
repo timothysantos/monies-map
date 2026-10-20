@@ -1,0 +1,304 @@
+{
+ "chart-plan-light": [
+  {
+   "at": 0,
+   "state": "armed",
+   "bar": "matrix(1, 0, 0, 0, 0, 0)"
+  },
+  {
+   "at": 120,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.471942, 0, 0)"
+  },
+  {
+   "at": 250,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.89123, 0, 0)"
+  },
+  {
+   "at": 400,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.985066, 0, 0)"
+  },
+  {
+   "at": 600,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.998937, 0, 0)"
+  },
+  {
+   "at": 900,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 1500,
+   "state": "done",
+   "bar": "none"
+  }
+ ],
+ "donut-plan-light": [
+  {
+   "before": "armed"
+  },
+  {
+   "at": 0,
+   "state": "armed"
+  },
+  {
+   "at": 150,
+   "state": "playing"
+  },
+  {
+   "at": 300,
+   "state": "playing"
+  },
+  {
+   "at": 450,
+   "state": "playing"
+  },
+  {
+   "at": 650,
+   "state": "playing"
+  },
+  {
+   "at": 900,
+   "state": "playing"
+  },
+  {
+   "at": 1400,
+   "state": "done"
+  }
+ ],
+ "chart-plan-dark": [
+  {
+   "at": 0,
+   "state": "armed",
+   "bar": "matrix(1, 0, 0, 0, 0, 0)"
+  },
+  {
+   "at": 120,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.433073, 0, 0)"
+  },
+  {
+   "at": 250,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.883547, 0, 0)"
+  },
+  {
+   "at": 400,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.971314, 0, 0)"
+  },
+  {
+   "at": 600,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.998889, 0, 0)"
+  },
+  {
+   "at": 900,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 1500,
+   "state": "done",
+   "bar": "none"
+  }
+ ],
+ "donut-plan-dark": [
+  {
+   "before": "armed"
+  },
+  {
+   "at": 0,
+   "state": "armed"
+  },
+  {
+   "at": 150,
+   "state": "playing"
+  },
+  {
+   "at": 300,
+   "state": "playing"
+  },
+  {
+   "at": 450,
+   "state": "playing"
+  },
+  {
+   "at": 650,
+   "state": "playing"
+  },
+  {
+   "at": 900,
+   "state": "playing"
+  },
+  {
+   "at": 1400,
+   "state": "done"
+  }
+ ],
+ "chart-simple-light": [
+  {
+   "at": 0,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.921048, 0, 0)"
+  },
+  {
+   "at": 120,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.975965, 0, 0)"
+  },
+  {
+   "at": 250,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.997128, 0, 0)"
+  },
+  {
+   "at": 400,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 600,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 900,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 1500,
+   "state": "done",
+   "bar": "none"
+  }
+ ],
+ "donut-simple-light": [
+  {
+   "before": "armed"
+  },
+  {
+   "at": 0,
+   "state": "armed"
+  },
+  {
+   "at": 150,
+   "state": "playing"
+  },
+  {
+   "at": 300,
+   "state": "playing"
+  },
+  {
+   "at": 450,
+   "state": "playing"
+  },
+  {
+   "at": 650,
+   "state": "playing"
+  },
+  {
+   "at": 900,
+   "state": "playing"
+  },
+  {
+   "at": 1400,
+   "state": "done"
+  }
+ ],
+ "chart-simple-dark": [
+  {
+   "at": 0,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.930916, 0, 0)"
+  },
+  {
+   "at": 120,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.981705, 0, 0)"
+  },
+  {
+   "at": 250,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 0.998149, 0, 0)"
+  },
+  {
+   "at": 400,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 600,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 900,
+   "state": "playing",
+   "bar": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+   "at": 1500,
+   "state": "done",
+   "bar": "none"
+  }
+ ],
+ "donut-simple-dark": [
+  {
+   "before": "armed"
+  },
+  {
+   "at": 0,
+   "state": "armed"
+  },
+  {
+   "at": 150,
+   "state": "playing"
+  },
+  {
+   "at": 300,
+   "state": "playing"
+  },
+  {
+   "at": 450,
+   "state": "playing"
+  },
+  {
+   "at": 650,
+   "state": "playing"
+  },
+  {
+   "at": 900,
+   "state": "playing"
+  },
+  {
+   "at": 1400,
+   "state": "done"
+  }
+ ],
+ "entryRows": [
+  {
+   "glyph": "pop",
+   "category": "Transfer",
+   "bg": "color(srgb 0.666667 0.4 0.278431 / 0.06)"
+  },
+  {
+   "glyph": "shake",
+   "category": "Bills",
+   "bg": "color(srgb 0.32549 0.501961 0.435294 / 0.06)"
+  },
+  {
+   "glyph": "tilt",
+   "category": "Food & Drinks",
+   "bg": "color(srgb 0.776471 0.490196 0.247059 / 0.06)"
+  },
+  {
+   "glyph": "rise",
+   "category": "Savings",
+   "bg": "color(srgb 0.431373 0.521569 0.541176 / 0.06)"
+  }
+ ]
+}

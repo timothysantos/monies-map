@@ -1213,29 +1213,36 @@ Where it is used:
   Simple: Earned (mint) and Spent (rose) columns, in the savings bar's
   colours, and a Kept line (mint ink; a point below zero is rose ink), with
   the zero line marked. Plan: the same columns, a Planned spending line (sky
-  ink) that breaks where a month has no plan, and Spent so far, adding up: a
-  dashed line in the page's ink (2 px, dashes 6/4, never a money tone: it
-  is a running total, not a month's money) that adds each month's Spent to
-  the months before it, read on its own axis on the right (ink labels), so
-  the columns keep their height on the left axis. It fades in (a dashed line
-  cannot draw on) and its point's figure is `spent` from the first month
-  shown to its own, so View entries totals it. (An earlier Actual spending
-  line repeated each Spent column's figure in the same rose, 087b4637.)
+  ink) that breaks where a month has no plan, and two running totals read
+  on their own axis on the right (so the columns keep their height on the
+  left axis): Spent so far (rose ink, dashes 6/4) and Planned so far (sky
+  ink, dashes 2/4), each 2 px, added up from the first month shown. They
+  count as the Plan lead does (`splitMoneyUse`): money filed under
+  Investments or Savings is not spending, and the savings target and the
+  Investments plan rows (the page's `plannedInvestByMonth`) are not spending
+  plan, so the gap between the two in the last month is the lead's "under /
+  over plan" for the range, and in any month how far ahead of or behind the
+  plan the household was by then (`tests/openable-figures.test.mjs`,
+  `tests/e2e/earned-spent-chart.spec.js`). A running point's figure is
+  `spending` from the first month shown to its own (View entries totals
+  Spent so far) with Open plan, and its quick facts give both totals and the
+  gap. (Owner, 2026-10-20: one "Spent so far, adding up" line alone said
+  nothing about the plan; an earlier Actual spending line repeated each
+  Spent column's figure, 087b4637.)
   Months run oldest to
   newest with short labels and the year on the first and each January; 12
   months fit a phone by narrowing the columns, and only past 12 does the
   plot scroll sideways while the y axis stays put. A few gridlines carry
   compact labels ($8k). The legend chips (Earned, Spent, Kept, Planned
-  spending or Spent so far, adding up) show and hide a series; the last one
-  showing stays, and the left scale is of every month series so hiding one
-  never rescales the rest (the right axis shows only with its line). Each
+  spending, Spent so far, Planned so far) show and hide a series; the last
+  one showing stays, the left scale is of every month series and the right
+  one of both running totals, so hiding one never rescales the rest (the
+  right axis shows only with one of its lines). Each
   column and point is an openable figure whose menu is titled with the series
   and the month ("Spent · Oct 2026"), with quick facts first, then View
   entries (that month's money behind the figure), Open plan on the plan
   figures and Ask about this. Pointing, focus or the menu marks the month's
-  row in the list. Columns grow from the baseline and the line draws on once
-  when first seen (700-800 ms ease-out); reduced motion starts the chart at
-  rest. Hidden money draws no chart at all. The chunk imports neither React
+  row in the list. Motion is under "Motion" below. Hidden money draws no chart at all. The chunk imports neither React
   nor money-privacy (the panel hands it React): either would split a shared
   module out of the first screen's chunks (`npm run check:bundle`).
   Each row carries its month as the period, and Earned, Spent, Invested and
@@ -1580,6 +1587,55 @@ actions; it gives them the layout:
   Done for several choices).
 - Tests: `tests/e2e/dialogs-lead-support-detail.spec.js` (primary, Cancel,
   destructive confirm, tap targets, hidden money; WebKit and Chromium).
+
+## Motion
+
+Hover, press and first-view motion (owner, 2026-10-20). Transforms,
+opacity or a clip only: nothing changes size or moves the layout
+(`tests/e2e/hover-and-chart-motion.spec.js` measures layout shift on
+Summary while the charts play). Everything that moves sits behind
+`prefers-reduced-motion: no-preference`, which is also how tests and the
+guide screenshots turn it off (`reducedMotion: "reduce"`); before/after
+frames are in `docs/audits/hover-and-chart-motion/`.
+
+- **Rows and cards** (`row-motion.js`, `row-motion.css`, loaded by the lazy
+  chunks that use it, never `public/styles.css`): Entries rows, the Entries
+  and Splits category lists, Spending Mix's list, "Earned vs spent by
+  month" rows, Intent vs Outcome's month cards, the Month plan table rows,
+  Splits activity rows and the Imports preview rows on a phone carry
+  `motion-row`. Under a mouse or trackpad (`hover: hover` and
+  `pointer: fine`) or keyboard focus the row takes a 6% wash of its
+  category colour (`--row-tint`, through `paletteColour`) or of the strong
+  accent, over its own surface (`--row-base`: the card's colour on a card),
+  fading in over 180 ms. Every ink keeps AA on it in every preset and mode
+  (`tests/colour-contrast.test.mjs`). On a touch screen there is no hover:
+  a press shows the wash while the finger is down, 60 ms late so a scroll
+  does not flash rows, and nothing stays after a tap. The wash only
+  colours; it never touches money tones or hidden money.
+- **Category icons**: under a mouse or trackpad the bubble lifts 1.5 px
+  and the glyph makes its category's move once (`data-glyph` from
+  `glyphMotion`, 220-240 ms ease-out): Food tilts its fork and knife
+  (`tilt`), Travel's plane nudges forward (`fly`), Transport and Taxi slide
+  (`drive`), Shopping and Groceries bounce, Bills, Tax and Subscriptions
+  shake, Salary, Extra income, Investments and Savings nudge up (`rise`, the
+  last two by name), and everything else pops (Spending Mix's colour dot
+  pops too). Never on touch, never on focus.
+- **The month chart** (`earned-spent-chart.css`): it waits at its start
+  while off screen (`data-chart-motion="armed"`) and plays once when 30% of
+  it is seen: columns grow from the baseline (700 ms, 28 ms apart), the
+  solid lines draw on (800 ms), the dashed running totals are revealed left
+  to right by a clip (800 ms), and the points pop in (320 ms, staggered),
+  ending exactly where a still chart is drawn. Once played, a pointer on a
+  column widens it by 18% from its centre and dims the other columns; a
+  point grows 30%. All of it stays inside the plot, which clips.
+- **The Spending Mix donut** (`donut-motion.css`, `spending-mix-recharts.jsx`):
+  it waits hidden until half of it is seen, then sweeps in clockwise from
+  the top (a turning wedge clip on the ring's own layer, 720 ms, so the
+  slices arrive one after another), and the labels and the total fade in
+  after it; at rest there is no clip. The clip never covers the slices'
+  clear targets, so a pointer or a tap reaches a slice while it plays.
+  Once played, a pointer on a slice redraws it in its own colour 4.5%
+  larger from the centre.
 
 ## Openable Figures
 

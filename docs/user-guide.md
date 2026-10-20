@@ -370,20 +370,25 @@ over plan.
   has two columns, **Earned** and **Spent**, and a line runs across the
   months. In Simple the line is what you **Kept**; it drops below the zero
   line in a month you spent more than you earned. In Plan the line is your
-  **Planned spending**, and a dark dashed line, **Spent so far, adding up**,
-  adds each month's spending to the months before it, so you can see how much
-  has gone out since the first month shown. It is read against the amounts
-  on the right of the chart (the columns use the amounts on the left). A
-  month with no plan has no point on the blue line.
-  The columns grow and the lines draw the first time you scroll to the chart
-  (not at all if your phone is set to reduce motion). Select a column or
+  **Planned spending**, and two dashed lines add the months up from the
+  first month shown: **Spent so far** (red) and **Planned so far** (blue).
+  The gap between them shows how far ahead of or behind your plan you are by
+  each month, and in the last month it is the "under plan" or "over plan"
+  at the top of Summary. Like the top of Summary, they leave out money you
+  moved to investments or savings. They are read against the amounts on the
+  right of the chart (the columns use the amounts on the left). A month with
+  no plan has no point on the solid blue line.
+  The columns grow, the lines draw and the points pop in the first time you
+  scroll to the chart, and the Spending Mix ring sweeps round the first time
+  you see it (none of this if your phone or computer is set to reduce
+  motion). Select a column or
   a point, or on a computer rest the pointer on it, to see that month's
   figure with a few facts, then choose **View entries** for the entries
   behind it, **Open plan** (Plan only) or **Ask about this**. The arrow keys
   move between them. Select a name above the chart (**Earned**, **Spent**,
-  **Kept**, **Planned spending** or **Spent so far, adding up**) to hide or
-  show it. On **Spent so far, adding up**, **View entries** lists everything
-  spent from the first month shown to that month.
+  **Kept**, **Planned spending**, **Spent so far** or **Planned so far**) to
+  hide or show it. On **Spent so far** or **Planned so far**, **View
+  entries** lists everything spent from the first month shown to that month.
   Hide money totals
   and the chart goes away, and with a single month there is no chart.
 
