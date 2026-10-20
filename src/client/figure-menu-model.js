@@ -59,9 +59,14 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
   if (ENTRY_FIGURES.includes(figure)) {
     let location;
     if (pathname.startsWith("/entries") && !period) {
-      // An Entries figure: the same list, narrowed to the rows behind it.
+      // An Entries figure: the same list, narrowed to the rows behind it
+      // (a category's slice on Entries: to that category alone).
       const next = new URLSearchParams(search);
       next.set("entry_figure", figure);
+      if (fig === "category" && arg) {
+        next.delete("entry_category");
+        next.append("entry_category", arg);
+      }
       location = { pathname: "/entries", search: `?${next.toString()}` };
     } else {
       const params = buildEntriesFilterSearch({

@@ -391,6 +391,58 @@ test("a transfer with a purpose: every view's figures open entries that add up t
   );
 });
 
+// The Entries page's own spending by category (entries-overview.jsx,
+// design.md "Entries top"): every row and slice is the category's spending
+// in the list's reading, so a transfer with a purpose is Tim's Home spending
+// (amount and entry count), lowers Joyce's Home, and leaves the household's
+// alone; the row's filter lists the transfer, and a slice's View entries
+// (on Entries itself, no period of its own) narrows the list to the
+// category, whose total is the slice to the cent.
+test("Entries spending by category: a transfer with a purpose counts as the view reads it, and each slice opens rows that add up to it", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const created = await api("/api/accounts/create", { name: "Joyce Bank", institution: "DBS", kind: "bank", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: "person-joyce" });
+  assert.equal(created.status, 200, JSON.stringify(created.payload));
+  await createEntry(api, { date: "2026-05-05", description: "HDB loan GIRO", accountName: "Joyce Bank", categoryName: "Home", amountMinor: 90_000, ownerName: "Joyce" });
+  const fromEntryId = await createEntry(api, { date: "2026-05-01", description: "FAST to Joyce", accountName: "UOB Savings", categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor: 45_000 });
+  const toEntryId = await createEntry(api, { date: "2026-05-01", description: "FAST from Tim", accountName: "Joyce Bank", categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor: 45_000, ownerName: "Joyce" });
+  assert.equal((await api("/api/transfers/link", { fromEntryId, toEntryId })).status, 200);
+  const { accounts } = await get(api, "/api/reference-data");
+  const views = ["household", TIM, "person-joyce"];
+  const homeOf = async (viewId, extra = "") => {
+    const { derived } = await openEntries(api, { pathname: "/entries", search: `?view=${viewId}&month=${MAY}${extra}` }, accounts);
+    return { derived, home: derived.expenseBreakdown.find((item) => item.label === "Home") ?? { valueMinor: 0, entryCount: 0 } };
+  };
+  const before = Object.fromEntries(await Promise.all(views.map(async (viewId) => [viewId, (await homeOf(viewId)).home])));
+  assert.equal((await api("/api/transfers/purpose", { entryId: fromEntryId, categoryName: "Home" })).status, 200);
+
+  for (const viewId of views) {
+    const search = `?view=${viewId}&month=${MAY}`;
+    const { derived, home } = await homeOf(viewId);
+    const { page } = await monthLead(api, { viewId, scope: "direct_plus_shared" }, MAY);
+    const monthHome = page.monthPage.categoryShareChart.find((slice) => slice.label === "Home")?.valueMinor ?? 0;
+    assert.equal(home.valueMinor, monthHome, `${viewId}: Entries' Home is the Month's`);
+    if (viewId === "household") {
+      assert.deepEqual(home, before.household, "the household's Home is unchanged");
+    } else if (viewId === TIM) {
+      assert.equal(home.valueMinor, before[TIM].valueMinor + 45_000, "Tim's Home has his $450");
+      assert.equal(home.entryCount, before[TIM].entryCount + 1);
+    } else {
+      assert.equal(home.valueMinor, Math.max(0, before["person-joyce"].valueMinor - 45_000), "Joyce's Home is lowered by it");
+    }
+    // A row's tap: the category filter lists the transfer in Tim's view.
+    const { derived: filtered } = await homeOf(viewId, "&entry_category=Home");
+    assert.equal(filtered.filteredEntries.some((entry) => entry.id === fromEntryId), viewId !== "household");
+    // Every slice opens rows that add up to it.
+    for (const item of derived.expenseBreakdown) {
+      const menu = figureMenu({ fig: "category", period: null, search, pathname: "/entries", arg: item.label });
+      const location = menu.items.find((entry) => entry.action === "entries").location;
+      assert.deepEqual(new URLSearchParams(location.search).getAll("entry_category"), [item.label]);
+      const { model } = await openEntries(api, location, accounts);
+      assert.equal(model.spent.amountMinor, item.valueMinor, `${viewId} slice ${item.label}`);
+    }
+  }
+});
+
 test("the one figure Entries cannot show as it is: a budget line whose refunds are more than its spending reads zero", async (t) => {
   // The plan row's actual never goes below zero (derivePlanRowActuals);
   // its entries add up to the refund, shown as it is (below zero).
