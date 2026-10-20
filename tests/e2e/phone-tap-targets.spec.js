@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { postJson, reseedDemo } from "./helpers";
 
 // U11 (UI audit): on a phone every tappable is at least 44 x 44 px
 // (design.md). A control may be smaller to look at if it carries a hit area,
@@ -17,6 +17,7 @@ import { reseedDemo } from "./helpers";
 
 const PHONE = { width: 390, height: 844 };
 const MIN = 44;
+const GAP = 8;
 
 // Selectors per screen. Each screen needs at least one of its `required`
 // selectors to match, so the check cannot pass by finding nothing.
@@ -58,6 +59,26 @@ const SCREENS = [
     path: "/splits?view=person-tim&month=2026-05",
     required: [".context-block .pill:not(.pill-disabled)", ".split-date-refresh-button"],
     optional: [".split-matches-link", ".panel-splits .dialog-primary", ".search-filter-input", ".summary-chevron", ".checkin-action"]
+  },
+  {
+    // The Edit entry sheet of an expense not on Splits: the Splits row and,
+    // on its own line under it, the quick add ("Add to <group> · Half each").
+    name: "Edit entry sheet",
+    setup: async (page) => {
+      const { entryId } = await postJson(page, "/api/entries/create", {
+        date: "2026-05-24", description: `Tap target quick add ${Date.now()}`, accountName: "UOB One", categoryName: "Groceries",
+        amountMinor: 2550, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      });
+      return `/entries?view=person-tim&month=2026-05&editing_entry=${entryId}`;
+    },
+    required: [".entry-split-quick-action", ".entry-split-action-row .lsd-row"],
+    optional: [],
+    apart: [[".entry-split-action-row .lsd-row", ".entry-split-quick-action"]],
+    // The page behind a sheet does not scroll: the quick add is brought into
+    // the sheet's own scroll view first.
+    prepare: async (page) => {
+      await page.locator(".entry-split-quick-action").evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+    }
   },
   {
     name: "Imports",
@@ -150,7 +171,7 @@ test.describe("phone tap targets", () => {
 
   for (const screen of SCREENS) {
     test(`${screen.name}: every named control reaches ${MIN} x ${MIN} px`, async ({ page }) => {
-      await page.goto(screen.path);
+      await page.goto(screen.setup ? await screen.setup(page) : screen.path);
       await page.locator(screen.ready ?? screen.required.join(", ")).first().waitFor({ state: "visible", timeout: 60_000 });
       await screen.prepare?.(page);
 
@@ -167,6 +188,13 @@ test.describe("phone tap targets", () => {
             failures.push(`${selector} "${result.label}" reaches ${result.width} x ${result.height} [${result.box}]${result.covered ? ` (covered by ${result.coveredBy})` : ""}`);
           }
         }
+      }
+      // Neighbours a screen names keep 8 px clear of each other, so a finger
+      // aimed at one never lands on the other.
+      for (const [first, second] of screen.apart ?? []) {
+        const [a, b] = [await page.locator(first).first().boundingBox(), await page.locator(second).first().boundingBox()];
+        const gap = Math.max(a.x - (b.x + b.width), b.x - (a.x + a.width), a.y - (b.y + b.height), b.y - (a.y + a.height));
+        if (gap < GAP) failures.push(`${first} and ${second} are ${gap.toFixed(1)} px apart`);
       }
       expect(measured).toBeGreaterThan(0);
       expect(failures).toEqual([]);

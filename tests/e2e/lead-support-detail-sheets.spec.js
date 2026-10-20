@@ -192,8 +192,11 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     await expect(lead.locator(".lsd-subtitle")).toHaveText("Groceries");
     await expect(lead.locator(".lsd-chip")).toHaveText(["Sun 24 May", "UOB One", "Tim", "Manual provisional"]);
     // Detail rows in the agreed order, the bank facts folded with a hint.
-    await expect(sheet.locator(".lsd-rows > .lsd-row, .lsd-rows > .lsd-row-group > .lsd-row").locator(".lsd-row-label"))
+    // The Splits row and its quick add share one wrapper (the quick add
+    // sits on its own line under the row on a phone).
+    await expect(sheet.locator(".lsd-rows > .lsd-row, .lsd-rows > .lsd-row-group > .lsd-row, .lsd-rows > .entry-split-action-row > .lsd-row").locator(".lsd-row-label"))
       .toHaveText(["Category", "Owner", "Splits", "Note", "More details"]);
+    await expect(sheet.locator(".entry-split-action-row > *")).toHaveText(["SplitsAdd to splits", /^Add to .+ · Half each$/]);
     await expect(sheet.locator(".lsd-row-more")).toContainText("Date, wallet, time, posted date, type");
     await expect(sheet.locator("[data-row='splits']")).toContainText("Add to splits");
 
@@ -562,14 +565,16 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   // The tappable Support chips (date, wallet, owner) are their own fields on
   // a wide screen: they come after the lead's fields, before the rows
   // (design.md, "Tappable chips").
-  for (let step = 0; step < 16 && order.length < 9; step += 1) {
+  // The Splits quick add sits beside the Splits row on a wide screen and
+  // comes right after it.
+  for (let step = 0; step < 16 && order.length < 10; step += 1) {
     await page.keyboard.press("Tab");
     const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.textContent?.trim().slice(0, 30));
     if (order.at(-1) !== name) order.push(name);
   }
-  expect(order.slice(0, 9)).toEqual([
+  expect(order.slice(0, 10)).toEqual([
     "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
-    "CategoryGroceries", "SplitsAdd to splits", "Note", "Time"
+    "CategoryGroceries", "SplitsAdd to splits", expect.stringMatching(/^Add to .+ · Half each$/), "Note", "Time"
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");
