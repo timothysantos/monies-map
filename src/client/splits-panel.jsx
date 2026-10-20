@@ -419,9 +419,21 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   ]);
 
   // The Ask page's "Edit in form" (?split_action=add-expense) opens the
-  // usual new expense dialog for the open group, once.
+  // usual new expense dialog for the open group, once, when the page (and
+  // so the group) is there. The effect runs on the link and the page's
+  // arrival only: the group and the opener are read from a ref, so a
+  // render that rebuilds them cannot open the dialog again before the
+  // router drops the parameter.
+  const splitAction = searchParams.get("split_action");
+  const isSplitsPageReady = Boolean(view.splitsPage);
+  const addExpenseLinkRef = useRef(null);
+  addExpenseLinkRef.current = () => {
+    if (!isHouseholdView) {
+      openNewExpenseDialog({ activeGroup, view });
+    }
+  };
   useEffect(() => {
-    if (searchParams.get("split_action") !== "add-expense") {
+    if (splitAction !== "add-expense" || !isSplitsPageReady) {
       return;
     }
     setSearchParams((current) => {
@@ -429,10 +441,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       next.delete("split_action");
       return next;
     }, { replace: true });
-    if (!isHouseholdView) {
-      openNewExpenseDialog({ activeGroup, view });
-    }
-  }, [activeGroup, isHouseholdView, openNewExpenseDialog, searchParams, setSearchParams, view]);
+    addExpenseLinkRef.current?.();
+  }, [isSplitsPageReady, setSearchParams, splitAction]);
 
   function scrollBackToSplitCard(splitExpenseId) {
     if (!splitExpenseId || typeof window === "undefined") {

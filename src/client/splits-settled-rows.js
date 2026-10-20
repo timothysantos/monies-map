@@ -214,12 +214,16 @@ export function useSettledSplitRows({ queryClient, fetchRequiredQuery, startOpti
     return search.items.find((candidate) => candidate.kind === kind && candidate.id === id) ?? null;
   }, [search.items, sections]);
 
-  return {
+  // One object per change, never per render: the Splits panel's model (and
+  // so its category options and editor callbacks) is memoised on it, and a
+  // new one each render made the `split_action` link's effect re-run on
+  // every render until React gave up ("Maximum update depth exceeded").
+  return useMemo(() => ({
     sections,
     search,
     loadSection,
     prefetchSection,
     retrySearch: loadSearch,
     findItem
-  };
+  }), [findItem, loadSearch, loadSection, prefetchSection, search, sections]);
 }

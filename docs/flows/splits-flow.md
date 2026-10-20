@@ -160,6 +160,17 @@ unchanged. `tests/splits-settled-lazy.test.mjs` proves the page, every
 section's rows, the facts and every check-in line equal the old full page on
 seeds; `tests/e2e/splits-settled-lazy.spec.js` the browser behaviour.
 
+The Splits URL actions are `split_group`, `split_mode` (`entries` or
+`matches`), `split_search`, `editing_split_expense=<id>` (an open or settled
+split's card) and `split_action=add-expense` (New split expense for the open
+group: Ask's "Edit in form" from the receipt button). The add-expense link
+opens the dialog once the page is there and is then dropped from the URL;
+its effect depends on the link and the page's arrival only, and
+`useSettledSplitRows` returns one object per change, because a value rebuilt
+on every render once re-ran the link's effect until React stopped the page
+("Maximum update depth exceeded"). `tests/e2e/splits-deep-links.spec.js`
+covers every action on a desktop and a 390px phone.
+
 ## Data Flow
 
 Splits data comes from:
