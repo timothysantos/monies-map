@@ -65,6 +65,33 @@ const PAYLOAD_APIS = [
   ["settings-page", "/api/settings-page?view=household"]
 ];
 
+// The Splits page once a settlement covered part of a group: the covered
+// records stay on the server (their section's rows load when it opens), so
+// the page is the open rows plus a summary and the group's counts. Measured
+// after the others, because simplifying covers every open SGD record.
+const SETTLED_SPLITS_PAYLOAD = ["splits-page-settled", "/api/splits-page?view=person-tim&month=2026-05"];
+
+async function settleOneGroup(page) {
+  const post = async (path, data) => {
+    const response = await page.request.post(path, { data });
+    expect(response.ok(), await response.text()).toBeTruthy();
+    return response.json();
+  };
+  const group = await post("/api/splits/groups/create", { name: "Okaeri budget", currency: "SGD", expenseSource: "mixed" });
+  for (const [index, amountMinor] of [10_000, 20_000, 30_000, 40_000, 12_500, 8_000, 6_400, 9_900].entries()) {
+    await post("/api/splits/expenses/create", {
+      groupId: group.groupId, date: `2026-05-${String(index + 2).padStart(2, "0")}`, description: `Budget dinner ${index + 1}`,
+      categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor, splitAmountMinor: amountMinor / 2,
+      currency: "SGD", paymentMethod: "cash", paymentStatus: "recorded"
+    });
+  }
+  await post("/api/splits/checkpoints/create", { viewerPersonId: "person-tim", date: "2026-05-20", currency: "SGD" });
+  await post("/api/splits/expenses/create", {
+    groupId: group.groupId, date: "2026-05-25", description: "Budget taxi", categoryName: "Taxi", payerPersonName: "Tim",
+    amountMinor: 4_500, splitAmountMinor: 2_250, currency: "SGD", paymentMethod: "cash", paymentStatus: "recorded"
+  });
+}
+
 test("page API responses stay within their size budget at demo scale", async ({ page }) => {
   const { readFile, writeFile } = await import("node:fs/promises");
   await reseedDemo(page);
@@ -74,6 +101,13 @@ test("page API responses stay within their size budget at demo scale", async ({ 
     expect(response.ok(), await response.text()).toBeTruthy();
     measured[name] = (await response.body()).length;
   }
+  await settleOneGroup(page);
+  const settledSplits = await page.request.get(SETTLED_SPLITS_PAYLOAD[1]);
+  expect(settledSplits.ok(), await settledSplits.text()).toBeTruthy();
+  const settledBody = await settledSplits.json();
+  // None of the covered records travels with the page.
+  expect(settledBody.splitsPage.activity.filter((item) => item.settlementCheckpointId && !item.isArchived)).toEqual([]);
+  measured[SETTLED_SPLITS_PAYLOAD[0]] = (await settledSplits.body()).length;
   if (process.env.UPDATE_API_PAYLOAD_BUDGET) {
     await writeFile(PAYLOAD_BUDGET_FILE, `${JSON.stringify(measured, null, 2)}\n`);
     console.log(`API payload budget recorded: ${JSON.stringify(measured)}`);
@@ -84,5 +118,5 @@ test("page API responses stay within their size budget at demo scale", async ({ 
     .filter(([name, bytes]) => bytes > Math.round((budget[name] ?? 0) * (1 + PAYLOAD_TOLERANCE)))
     .map(([name, bytes]) => `${name}: ${bytes} bytes, budget ${budget[name]} (+${PAYLOAD_TOLERANCE * 100}%)`);
   expect(over, `Page responses over budget. Send only what the screen reads, or update the budget deliberately:\n${over.join("\n")}`).toEqual([]);
-  expect(Object.keys(budget).sort()).toEqual(PAYLOAD_APIS.map(([name]) => name).sort());
+  expect(Object.keys(budget).sort()).toEqual([...PAYLOAD_APIS, SETTLED_SPLITS_PAYLOAD].map(([name]) => name).sort());
 });

@@ -119,6 +119,24 @@ export async function loadSplitsPage(page, { view = "person-tim", month = "2025-
   throw lastError ?? new Error("GET /api/splits-page failed");
 }
 
+// A settled split expense is not in the Splits page (its section's rows load
+// on demand): the section that holds it, with its rows, or null.
+export async function loadSettledSplitSection(page, { view = "person-tim", recordId }) {
+  const response = await page.request.get(`/api/splits/settled-rows?view=${view}&record=${encodeURIComponent(recordId)}`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const data = await response.json();
+  return data.items.length ? data : null;
+}
+
+// A split record as the Splits screen has it: from the page, or from its
+// settled section when a settlement covers it.
+export async function findSplitRow(page, { view = "person-tim", month = "2025-10", recordId }) {
+  const data = await loadSplitsPage(page, { view, month });
+  const row = data.splitsPage.activity.find((item) => item.id === recordId)
+    ?? (await loadSettledSplitSection(page, { view, recordId }))?.items.find((item) => item.id === recordId);
+  return { row, data };
+}
+
 export async function loadImportsPage(page) {
   let lastError = null;
 

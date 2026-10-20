@@ -86,7 +86,9 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   await expect(page.locator(".split-checkpoint-panel")).toContainText("open");
   const checkpointed = await loadSplitsPage(page, { view: "person-tim", month });
   expect(checkpointed.splitsPage.settlementCheckpoints[0].id).toBe(checkpoint.checkpointId);
-  expect(checkpointed.splitsPage.activity.filter((item) => item.settlementCheckpointId === checkpoint.checkpointId).length).toBeGreaterThan(0);
+  // The covered records stay on the server: the page has the section's numbers.
+  expect(checkpointed.splitsPage.activity.filter((item) => item.settlementCheckpointId === checkpoint.checkpointId)).toHaveLength(0);
+  expect(checkpointed.splitsPage.settledSections.filter((section) => section.checkpointId === checkpoint.checkpointId).reduce((sum, section) => sum + section.entryCount, 0)).toBeGreaterThan(0);
 
   await postJson(page, "/api/splits/expenses/create", {
     date: `${month}-01`,
