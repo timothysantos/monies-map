@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { applyAskSplitFormDraft } from "./ask-split-form-handoff";
 import {
   buildExpenseDraft,
   buildNewExpenseDraft,
@@ -76,9 +77,11 @@ export function useSplitEditState({ categoryOptions, people }) {
     setInlineSplitDraftSnapshot(draft);
   }, [people]);
 
-  const openNewExpenseDialog = useCallback(({ activeGroup, view }) => {
+  // askDraft: what Ask's card drafted ("Edit in form"), laid on the new draft.
+  const openNewExpenseDialog = useCallback(({ activeGroup, view, askDraft = null }) => {
     setFormError("");
-    setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
+    const draft = buildNewExpenseDraft({ activeGroup, categoryOptions, people, view });
+    setExpenseDialog(applyAskSplitFormDraft(draft, askDraft, { activeGroup, categoryOptions, people }));
     setExpenseDialogSnapshot(null);
   }, [categoryOptions, people]);
 

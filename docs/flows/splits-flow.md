@@ -165,6 +165,10 @@ The Splits URL actions are `split_group`, `split_mode` (`entries` or
 split's card) and `split_action=add-expense` (New split expense for the open
 group: Ask's "Edit in form" from the receipt button). The add-expense link
 opens the dialog once the page is there and is then dropped from the URL;
+from Ask the dialog opens filled in with the card's values, which arrive in
+history state (`askSplitDraft`, `src/client/ask-split-form-handoff.js`,
+laid on `buildNewExpenseDraft` by `openNewExpenseDialog`) and leave with
+the dropped parameter; still a new, unsaved draft (docs/flows/ask-flow.md);
 its effect depends on the link and the page's arrival only, and
 `useSettledSplitRows` returns one object per change, because a value rebuilt
 on every render once re-ran the link's effect until React stopped the page
