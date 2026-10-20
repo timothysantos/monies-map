@@ -1,10 +1,12 @@
 import "./summary-body.css";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import {
   CategoryAppearancePopover,
-  SpendingMixChart
+  mixShareText,
+  SpendingMixChart,
+  SpendingMixList
 } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { spendingMixCopy as mixCopy } from "./copy/spending-mix-copy";
@@ -20,7 +22,6 @@ import { rowMotionProps } from "./row-motion";
 import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { EmptyState } from "./ui-states";
-import { DetailRows } from "./ui-components";
 import { useIsMobileLayout } from "./use-viewport";
 
 // Spending Mix: spending by category as a donut, its slices labelled with
@@ -82,7 +83,6 @@ export function SpendingMixSection({
   className = ""
 }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
-  const [showAll, setShowAll] = useState(false);
   const [listShown, setListShown] = useState(readListShown);
   const isMobileLayout = useIsMobileLayout();
   const topCount = isMobileLayout ? 3 : 5;
@@ -96,7 +96,6 @@ export function SpendingMixSection({
   // Hidden categories stay hidden across months and ranges; the reset counts
   // only the ones this data has, so a month without them shows no reset.
   const hiddenCount = donutData.filter((item) => hiddenCategoryIds.has(getDonutItemId(item))).length;
-  const listedData = showAll ? donutData : donutData.slice(0, topCount);
   const size = DONUT_SIZE[`${isMobileLayout ? "phone" : "wide"}${listShown ? "" : "Poster"}`];
 
   function toggleCategoryVisibility(item) {
@@ -142,12 +141,14 @@ export function SpendingMixSection({
           </div>
 
           {listShown ? (
-            <DetailRows className="summary-mix-list" label={messages.summary.spendingMix}>
-              {listedData.map((item, index) => {
+            <SpendingMixList
+              label={messages.summary.spendingMix}
+              items={donutData}
+              topCount={topCount}
+              renderRow={(item, index) => {
                 const category = getCategory(categories, item);
                 const categoryName = category?.name ?? item.label;
                 const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
-                const share = totalMinor ? (item.valueMinor / totalMinor) * 100 : 0;
                 return (
                   <div
                     key={item.key}
@@ -168,7 +169,7 @@ export function SpendingMixSection({
                       <strong className="summary-mix-name">{categoryName}</strong>
                       {isHidden ? <span className="summary-mix-state">{messages.common.hiddenFromChart}</span> : null}
                       <span className="summary-mix-amount"><PrivateMoney>{money(item.valueMinor)}</PrivateMoney></span>
-                      <span className="summary-mix-percent">{share.toFixed(1)}%</span>
+                      <span className="summary-mix-percent">{mixShareText(item.valueMinor, totalMinor)}</span>
                     </button>
                     <button
                       type="button"
@@ -183,14 +184,8 @@ export function SpendingMixSection({
                     </button>
                   </div>
                 );
-              })}
-              {donutData.length > topCount ? (
-                <button type="button" className="lsd-row summary-mix-more" aria-expanded={showAll} onClick={() => setShowAll((current) => !current)}>
-                  {showAll ? mixCopy.showFewer : mixCopy.showAll(donutData.length)}
-                  {showAll ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-                </button>
-              ) : null}
-            </DetailRows>
+              }}
+            />
           ) : null}
         </div>
       ) : (

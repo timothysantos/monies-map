@@ -69,12 +69,14 @@ export function AskDockField({ besideFab, intentProps = undefined, inputRef, qui
         onPaste={(event) => takePhoto(event, event.clipboardData?.files)}
       />
       {/* The photo picker's input is made on the click, so no file input sits
-          on every page. */}
+          on every page. No `title`: the browser draws that tooltip itself,
+          and it could stay on the screen when the field was hidden under a
+          resting pointer (a popover or dialog hides it); the placeholder
+          already says a receipt can go here. */}
       <button
         type="button"
         className="ask-dock-field-attach"
         aria-label={messages.askDock.attach}
-        title={messages.askDock.attach}
         onClick={() => {
           const picker = document.createElement("input");
           picker.type = "file";

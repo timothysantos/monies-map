@@ -135,7 +135,16 @@ figures are the filtered view's totals (`entry-totals.js`, unchanged); the
 model only picks tones (`entryTotalsTones`: income and the difference carry
 their direction, the rest is plain ink) and shows a person's share where it
 differs from the whole. Two Detail rows sit with the lead: "Spending by
-category" toggles the existing breakdown, and, on a phone only, "Filters"
+category" (its value the top three shares, "Travel 43% · Other 23% ·
+Church 10%") opens the breakdown, folded by default and kept open or folded
+on the device (`monies-map:entries-breakdown`); the breakdown is Spending
+Mix's compact donut and lean list (`EntriesBreakdownPanel`, top five or
+three on a phone, then "Show all N"), whose row tap toggles the row's
+category in the `entry_category` filter and whose eye hides the slice; a
+slice's View entries sets `entry_figure=spent` and `entry_category` to its
+category (`figure-menu-model.js`). It reads the filtered entries as the
+view does, so a transfer with a purpose counts under its category in a
+person view. On a phone only, "Filters"
 opens the View and scope sheet (`onOpenMobileContext` in `App.jsx`; the
 row says "All entries" or "N filters on"). The inline "+ Add entry" is gone:
 the round + opens Ask's new entry card and its "Edit in form" opens the

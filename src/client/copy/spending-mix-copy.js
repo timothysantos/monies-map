@@ -12,5 +12,8 @@ export const spendingMixCopy = {
   sliceEntries: (count) => (count === 1 ? "1 entry" : `${count} entries`),
   slicePlan: (spent, planned) => `${spent} of ${planned} planned`,
   sliceMerchants: (names) => `Most at ${names}`,
-  sliceLabel: (name, percent) => `${name}, ${percent} of spending`
+  sliceLabel: (name, percent) => `${name}, ${percent} of spending`,
+  // The Entries list's eye toggle (entries-overview.jsx), pressed while the
+  // category's slice is in the donut.
+  showInChart: (name) => `Show ${name} in the chart`
 };

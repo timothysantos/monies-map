@@ -100,7 +100,7 @@ test("the icon moves only under a mouse or trackpad with motion allowed; the was
 test("the rows share one implementation: each list applies motion-row and loads its styles from its own lazy chunk", () => {
   const rows = {
     "entries-list.jsx": /entry-row-main has-owner-cue motion-row[\s\S]{0,200}rowMotionProps\(category, ownerCue\.style\)/,
-    "entries-overview.jsx": /category-row category-toggle-row motion-row[\s\S]{0,200}rowMotionProps\(/,
+    "entries-overview.jsx": /summary-mix-row entries-mix-row motion-row[\s\S]{0,300}rowMotionProps\(/,
     "spending-mix-section.jsx": /summary-mix-row motion-row[\s\S]{0,200}rowMotionProps\(/,
     "summary-earned-spent.js": /"earned-spent-row motion-row"/,
     "summary-intent-outcome.jsx": /"summary-intent-month motion-row"/,

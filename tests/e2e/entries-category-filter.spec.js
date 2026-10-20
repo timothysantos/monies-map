@@ -163,30 +163,19 @@ test("entries breakdown category rows hide chart slices separately from multi-ca
   await expect(page.locator(".entries-filter").filter({ hasText: "By category" })).toContainText("2 categories");
 
   await page.getByRole("button", { name: "Spending by category" }).click();
-  const foodRow = page.locator(".entries-breakdown-list .category-row").filter({ hasText: "Food & Drinks" });
+  // One lean line per category (SpendingMixList): the row's tap is
+  // the filter, the eye at its end hides the slice.
+  const foodRow = page.locator(".entries-mix-panel .summary-mix-row").filter({ hasText: "Food & Drinks" });
   await expect(foodRow).toBeVisible();
-  const firstBreakdownRowLayout = await page.locator(".entries-breakdown-list .category-row").first().evaluate((row) => {
-    const text = row.querySelector(".category-key > div");
-    const actions = row.querySelector(".category-toggle-actions");
-    const rowBox = row.getBoundingClientRect();
-    const textBox = text?.getBoundingClientRect();
-    const actionsBox = actions?.getBoundingClientRect();
-    return {
-      rowWidth: rowBox.width,
-      textWidth: textBox?.width ?? 0,
-      actionsTop: (actionsBox?.top ?? rowBox.top) - rowBox.top,
-      overflows: row.scrollWidth > row.clientWidth + 1 || row.scrollHeight > row.clientHeight + 1
-    };
-  });
-  expect(firstBreakdownRowLayout.rowWidth).toBeGreaterThanOrEqual(280);
-  expect(firstBreakdownRowLayout.textWidth).toBeGreaterThanOrEqual(160);
-  expect(firstBreakdownRowLayout.actionsTop).toBeGreaterThan(40);
-  expect(firstBreakdownRowLayout.overflows).toBe(false);
-  await foodRow.getByRole("button", { name: "Shown" }).click();
+  expect((await foodRow.boundingBox()).height).toBeLessThanOrEqual(46);
+  await foodRow.getByRole("button", { name: "Show Food & Drinks in the chart" }).click();
   await expect(page.getByRole("button", { name: "Show 1 hidden category" })).toBeVisible();
   expect(new URL(page.url()).searchParams.getAll("entry_category").sort()).toEqual(["Food & Drinks", "Taxi"].sort());
 
-  await foodRow.getByRole("button", { name: "Filtered" }).click();
+  const foodFilter = foodRow.locator(".summary-mix-main");
+  await expect(foodFilter).toHaveAttribute("aria-pressed", "true");
+  await expect(foodFilter).toContainText("Filtered");
+  await foodFilter.click();
   await expect(page.locator(".entry-row").filter({ hasText: foodDescription })).toHaveCount(0);
   await expect(page.locator(".entry-row").filter({ hasText: taxiDescription })).toHaveCount(1);
   expect(new URL(page.url()).searchParams.getAll("entry_category")).toEqual(["Taxi"]);

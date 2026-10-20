@@ -1,0 +1,192 @@
+/* Spending Mix's ranked list and its donut's openable slices
+   (SpendingMixList in category-visuals.jsx, design.md "Summary body" and "Entries top"),
+   shared by Summary's and Month's Spending Mix and the Entries page's
+   spending by category. It ships with those lazy chunks, never
+   public/styles.css. Colours are tokens and the category colours; every
+   tappable is at least 44px. */
+/* The donut, then the list (one column; a page puts them side by side). */
+.summary-mix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.summary-mix-chart {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summary-mix-chart .spending-mix-chart-shell {
+  width: 100%;
+}
+
+.summary-mix-list {
+  min-width: 0;
+}
+
+/* One line per category: a small colour dot (it edits the category, a 44px
+   target), the name, the amount and the share, then the arrow. */
+.summary-mix-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 2px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary-mix-row:last-child {
+  border-bottom: 0;
+}
+
+.summary-mix-row .category-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.summary-mix-row .category-icon svg {
+  display: none;
+}
+
+.summary-mix-row .category-icon::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--category-color, var(--bar-color));
+}
+
+.summary-mix-row .category-icon-button:hover::before,
+.summary-mix-row .category-icon-button:focus-visible::before {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--category-color) 30%, transparent);
+}
+
+.summary-mix-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-mix-main {
+  align-items: center;
+}
+
+.summary-mix-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-mix-amount {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.summary-mix-percent,
+.summary-mix-state {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-mix-percent {
+  min-width: 3.4em;
+  text-align: right;
+}
+
+/* A category hidden from the donut stays listed, dimmed. */
+.summary-mix-row.is-hidden-from-donut {
+  opacity: 0.58;
+}
+
+.summary-mix-arrow,
+.summary-mix-eye {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.summary-mix-arrow:hover,
+.summary-mix-arrow:focus-visible,
+.summary-mix-eye:hover,
+.summary-mix-eye:focus-visible,
+.summary-mix-main:focus-visible {
+  color: var(--accent-strong);
+}
+
+/* Entries' rows (entries-overview.jsx): the row's tap filters the list, so
+   a filtered row's name takes the accent; the entries count shows only
+   where the panel is wide (entries-route.css), the slice's menu says it on
+   a phone. */
+.summary-mix-main[aria-pressed="true"] .summary-mix-name {
+  color: var(--accent-strong);
+}
+
+.summary-mix-count {
+  display: none;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Show all N" / "Show fewer": the last row of the group. */
+.summary-mix-more.lsd-row {
+  justify-content: center;
+  gap: 6px;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.summary-mix-more .summary-mix-more-up {
+  transform: rotate(180deg);
+}
+
+/* A slice is an openable figure: focusable, and lifted a little while it
+   is focused or its menu is open. */
+.donut-slice {
+  cursor: pointer;
+  outline: none;
+}
+
+.has-slice-menus .recharts-pie-sector {
+  pointer-events: none;
+}
+
+.donut-slice:focus-visible .donut-slice-hit,
+.donut-slice[aria-expanded="true"] .donut-slice-hit {
+  stroke: var(--text);
+  stroke-width: 2px;
+}

@@ -1311,13 +1311,15 @@ Where it is used:
   `tests/lead-view.test.mjs`, `tests/simple-metrics-model.test.mjs`,
   `tests/simple-page.test.mjs`, `tests/viewer-preferences.test.mjs`.)
 - Summary body, under the lead (`spending-mix-section.jsx`,
-  `summary-panel.jsx`, `summary-body.css`, in the Spending Mix and Summary
+  `summary-panel.jsx`, `summary-body.css`; the ranked list and the slices'
+  CSS are `SpendingMixList` (`category-visuals.jsx`) and `spending-mix-list.css`, shared with
+  the Entries breakdown; in the Spending Mix and Summary
   chunks; no `styles.css` growth; Spending Mix is a `React.lazy` chunk beside
   the first screen, list, slice menus and words included). The Spending Mix donut labels only the
   slices with room for a label (`SpendingMixChart sliceLabels`, laid out by
   `donut-label-layout.js` in the lazy Recharts chunk; the old percent labels
-  and category badges collided when many categories had thin slices, and
-  Entries and Splits keep those). Biggest slice first, a slice whose ring
+  and category badges collided when many categories had thin slices;
+  Splits keeps those, Entries uses these since 2026-10-20). Biggest slice first, a slice whose ring
   edge is at least 18 px long gets "Name 32.1%" just outside the ring, or
   the name over the share on two lines when one line does not fit, or
   nothing (owner, 2026-10-14: a bare "4.3%" cannot be told apart, so a share
@@ -1430,8 +1432,35 @@ Where it is used:
   old sideways strip showed (a tint only where money has a direction: mint
   income, a mint surplus, a rose deficit; transfers and outflow plain, with
   the person's share as a small line where it differs). Detail: "Spending by
-  category" (opens the existing breakdown, `aria-expanded`) and, on a phone
-  only, "Filters" with "All entries" or "2 filters on" (opens the View and
+  category" with the top three whole shares as its value ("Travel 43% ·
+  Other 23% · Church 10%", shares only, so hidden money keeps it), which
+  opens the breakdown (`aria-expanded`; folded by default, the list of
+  entries being the page's job, and the choice kept on the device in
+  `monies-map:entries-breakdown`, read and written in try/catch, like
+  Spending Mix's "Hide list"). The breakdown (`EntriesBreakdownPanel`,
+  owner 2026-10-20, `docs/audits/entries-donut-compact/`) is Spending Mix
+  made compact: a card with the donut (300 px tall on a wide screen, 260 on
+  a phone) labelled like Spending Mix ("Name 32.1%" only where it fits, no
+  icon bubbles, tiny slices unlabelled, every slice an openable figure whose
+  quick facts and menu name the category; on Entries its View entries
+  narrows this list to that category), and Spending Mix's lean ranked list
+  (`SpendingMixList`) beside it once the card is 700 px wide (under it on a
+  phone): the top five (three on a phone), then "Show all N" / "Show
+  fewer". A row is one 44 px line: a colour dot, the name, "N entries" (wide
+  only; the slice's menu says it on a phone), the amount and the share to
+  one decimal. The row's tap is the old "Filter": it adds or removes the
+  category from the list's category filter (`aria-pressed`, "Filtered"
+  beside the name); a 44 px eye at its end is the old "Shown": it hides or
+  shows the slice ("Show Travel in the chart", `aria-pressed`; a hidden row
+  is dimmed with "Hidden", and "Show N hidden categories" brings them
+  back). Both stay one tap away and the row keeps a single trailing icon,
+  which is less than Spending Mix's dot-edit plus arrow. Open, with the
+  list at its top five, the card is about the donut's height (1,440 px wide, twenty
+  categories: 322 px, was 2,583 px). The figures are the list's own reading
+  (`getExpenseBreakdown` over the filtered entries as the view reads them),
+  so a transfer with a purpose is its sender's spending in that category
+  and lowers the receiver's, as in the list. Detail also has, on a phone
+  "Filters" with "All entries" or "2 filters on" (opens the View and
   scope sheet, which holds the filters; `onOpenMobileContext`). A wide
   screen puts the pills 2 x 2 beside the lead and its row (as Summary) and
   keeps the filter bar on the page; a phone stacks lead, pills, rows. The

@@ -48,7 +48,7 @@
 
 /* A pointer on a slice lifts it: a copy of the slice in its own colour,
    drawn a little larger over the ring from the donut's centre (the clear
-   target that takes the pointer, summary-body.css). A mouse or trackpad
+   target that takes the pointer, spending-mix-list.css). A mouse or trackpad
    only; a touch opens the slice's menu. */
 @media (hover: hover) and (pointer: fine) {
   .donut-slice:hover .donut-slice-hit {

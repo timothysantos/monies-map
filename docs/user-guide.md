@@ -588,7 +588,11 @@ and the month's name opens **Pick a month**.
   are tinted green and a shortfall rose; the rest stay plain. In a person
   view, a shared row counts at the full amount first, with that person's
   share written next to it.
-- **Spending by category** opens the breakdown by category. On a phone,
+- **Spending by category** shows your three biggest categories and their
+  shares; tap it to open a donut and a short list of categories (tap
+  **Show all** for the rest). Tap a category to show only its entries, tap
+  it again to show all; the eye at the end of the line takes it out of the
+  donut. The page remembers whether you left it open. On a phone,
   **Filters** (it says **All entries**, or how many filters are on) opens
   **View and scope**, where the filters are.
 - **Money insights**.

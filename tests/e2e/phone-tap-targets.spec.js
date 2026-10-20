@@ -51,8 +51,14 @@ const SCREENS = [
   {
     name: "Entries",
     path: "/entries?view=person-tim&month=2026-05",
-    required: [".entries-date-refresh-button", ".entries-totals-rows .lsd-row"],
-    optional: [".period-range-segment", ".financial-insight-toggle"]
+    required: [".entries-date-refresh-button", ".entries-totals-rows .lsd-row", ".entries-mix-panel .summary-mix-main", ".entries-mix-panel .summary-mix-eye"],
+    optional: [".period-range-segment", ".financial-insight-toggle", ".entries-mix-panel .summary-mix-more"],
+    // Spending by category is folded by default: open it so its rows (the
+    // filter tap and the eye) are measured too.
+    prepare: async (page) => {
+      await page.locator(".entries-totals [data-row='breakdown']").click();
+      await page.locator(".entries-mix-panel .summary-mix-eye").first().waitFor({ state: "visible", timeout: 30_000 });
+    }
   },
   {
     name: "Splits",
