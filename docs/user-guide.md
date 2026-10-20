@@ -714,12 +714,16 @@ always know you are working on shared money rather than your bank ledger.
   open.
 - **Possible split links**: a reminder when imported bank rows may match
   splits you entered by hand ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
-- **Archived batches**: groups you have already settled.
+- **Archived batches**: groups you have already settled, and earlier
+  settle-ups. Choose a settle-up to open it at the end of the list.
 - **Activity**: the group's open expenses and settle-ups, by date. Each date
   is a quiet divider with how many entries it holds, and that day's rows sit
   together in one white block. Each row says what it was and who paid, with
   the words and amount that are yours ("you lent", "you borrowed") at the
   right.
+- **Settled up on …**: at the end of the list, one folded row for each
+  earlier settle-up, with how many entries it paid off and what they added up
+  to. Tap it to see those entries; a search looks inside it too.
 
 ### What each control does
 
@@ -2158,8 +2162,9 @@ settlement** works out one amount to pay for all of them.
    the top right of the page on a computer, a row on the group card on a
    phone).
 2. The **Simplified settlement** card shows who pays whom and how much. If
-   the groups cancel each other out, nothing needs paying. **View included
-   activity** marks the expenses it covers.
+   the groups cancel each other out, nothing needs paying. The expenses it
+   covers fold into one row at the end of each group's list ("Simplified on
+   …", then "Settled up on …" once paid); **View included activity** opens it.
 3. When the bank transfer appears, choose it in **Match a transfer…** and
    select **Match transfer**.
 4. Already paid, but the transfer is not in the app yet? Select **Mark paid**.

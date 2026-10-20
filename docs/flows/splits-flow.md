@@ -91,8 +91,26 @@ inline in the list (the household view and an archived batch open it
 read-only; the draft, validation and save are unchanged), Create group is
 `SplitGroupCard`, and the simplified settlement and the bank-match review are
 `SplitsCheckpointPanel` and `SplitMatchesList`. View included activity on the
-open simplified settlement scrolls to the first included row (it previously
-passed the click event instead of the checkpoint and did nothing).
+open simplified settlement opens its collapsed section and scrolls to the
+first included row.
+
+The activity list shows only open records (`buildSplitActivitySections`,
+`splits-settled-sections.js`, called by `buildSplitsPanelModel`). Records a
+settlement checkpoint covers (`partitionActivityBySettlement`,
+`split-open-period.ts`: any status but `reopened` or `voided`, the same rule
+as the chip and the balance) sit in one collapsed section per checkpoint at
+the end: "Settled up on 27 Aug · 287 entries · $28,823.06" (expense totals of
+this group's covered records; "Simplified on <date>" while an open or partly
+matched checkpoint is not marked paid). The section's rows render only when it
+is open; which sections are open is `openSettlementIds` in `SplitsPanel`
+(reset with the view). A search narrows both parts and opens every section
+with a match; the section holding the open inline card is open too. Rows
+inside keep the settled behaviour above (read-only card, reason and Undo on
+top). Archived batches (`splits-archive-dialog.jsx`) lists each settlement
+above the closed batches; choosing one closes the sheet, opens the section and
+scrolls to it. The page payload is unchanged: the settled rows still arrive
+with the page, because the Just for fun lines, the search and the read-only
+card need them (`docs/audits/splits-settled-collapsed/README.md`).
 
 ## Data Flow
 

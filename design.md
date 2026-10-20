@@ -164,6 +164,23 @@ figure sit at the row's right in their money tone as text only. An open inline
 split card fills its group as the row opened up. Archived batches is a dashed
 outline row.
 
+The list shows only open records. What a settlement checkpoint covers (the
+open period's rule, `partitionActivityBySettlement` in
+`src/domain/split-open-period.ts`) sits in one collapsed section per
+settlement at the end of the list (`splits-settled-sections.js`,
+`SplitSettledSection`): a dashed outline row like Archived batches reading
+"Settled up on 27 Aug · 287 entries · $28,823.06" ("Simplified on …" while the
+payment is not made; the year only when it is not this year; the amount is
+dots while money is hidden). The figure is not openable: it adds split
+expense totals, which no Entries list totals to the cent (cash splits have no
+entry), so it has no View entries. Its rows are drawn only while it is open.
+A search opens every section it found something in; an open inline card and
+View included activity open theirs. The Archived batches sheet lists each
+settlement above the closed batches ("Settled up" / "Simplified, not paid
+yet", who paid whom for every group, this group's entry count); choosing it
+closes the sheet and opens the section in place, so there is one place to
+find everything settled without a second copy of the rows.
+
 The Splits dialogs and panels use the same blocks (no behaviour change):
 Record settlement (`split-settlement-card.jsx`, in the phone sheet, the wide
 dialog and inline in the list, sharing the split expense card's layout:

@@ -1778,7 +1778,14 @@ Every Splits figure for a group reads this one set
   settle-up" (a group never settled: "in this group"), so its total is the
   chip's figure or a stated slice of it;
 - Ask's group balances (`get_split_balances`, who owes whom) are open
-  balances already.
+  balances already;
+- the Splits activity list shows only the open set. The records a settlement
+  checkpoint covers sit in one collapsed section per checkpoint at the end of
+  the list (`partitionActivityBySettlement`), headed "Settled up on 27 Aug ·
+  287 entries · $28,823.06": this group's covered records and their expense
+  total in the group's currency ("Simplified on <date>" while an `open` or
+  `partially_matched` checkpoint is not marked paid). A closed batch's
+  records stay in Archived batches, which lists the settlements too.
 
 The Just for fun lines about a group (the trip in numbers, what shared costs
 add up to, the busiest day and the rest) are deliberately about the whole
