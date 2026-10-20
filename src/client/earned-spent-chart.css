@@ -2,15 +2,17 @@
    (earned-spent-chart.js). Colours are tokens only: the columns and the
    line take the money tones (Earned and Kept mint, Spent rose, Planned
    spending sky), as the savings bar does, so every colour preset and dark
-   mode reads. Spent so far, adding up is not a month's money but a running
-   total, so it is the page's ink, dashed, with its own axis labels in ink on
-   the right. Labels are the page's ink tokens. */
+   mode reads. The two running totals on the right axis are dashed in the
+   same tones' inks, Spent so far rose and Planned so far sky, each with its
+   own dash so they part without colour too. Labels are the page's ink
+   tokens. */
 .earned-spent-chart {
   --ec-earned: color-mix(in srgb, var(--pastel-mint-ink) 78%, var(--paper));
   --ec-spent: color-mix(in srgb, var(--pastel-rose-ink) 78%, var(--paper));
   --ec-kept: var(--pastel-mint-ink);
   --ec-plan: var(--pastel-sky-ink);
-  --ec-running: var(--text);
+  --ec-spent-so-far: var(--pastel-rose-ink);
+  --ec-planned-so-far: var(--pastel-sky-ink);
   display: grid;
   align-content: start;
   gap: 8px;
@@ -82,9 +84,13 @@
   border-radius: 2px;
 }
 
-/* The running total's swatch is dashed like its line. */
-[data-series="running"] .ec-swatch.is-line {
+/* The running totals' swatches are dashed like their lines. */
+[data-series="spentSoFar"] .ec-swatch.is-line {
   background: repeating-linear-gradient(90deg, var(--ec-colour) 0 4px, transparent 4px 7px);
+}
+
+[data-series="plannedSoFar"] .ec-swatch.is-line {
+  background: repeating-linear-gradient(90deg, var(--ec-colour) 0 2px, transparent 2px 4px);
 }
 
 .ec-chip.is-off .ec-swatch {
@@ -96,7 +102,8 @@
 [data-series="spent"] { --ec-colour: var(--ec-spent); }
 [data-series="kept"] { --ec-colour: var(--ec-kept); }
 [data-series="plan"] { --ec-colour: var(--ec-plan); }
-[data-series="running"] { --ec-colour: var(--ec-running); }
+[data-series="spentSoFar"] { --ec-colour: var(--ec-spent-so-far); }
+[data-series="plannedSoFar"] { --ec-colour: var(--ec-planned-so-far); }
 
 /* The y axis stays put; the plot beside it scrolls sideways only when more
    than twelve months do not fit. */
@@ -165,9 +172,17 @@
 .ec-line.is-kept { stroke: var(--ec-kept); }
 .ec-line.is-plan { stroke: var(--ec-plan); }
 .ec-line.is-running {
-  stroke: var(--ec-running);
   stroke-width: 2;
+}
+
+.ec-line.is-spentSoFar {
+  stroke: var(--ec-spent-so-far);
   stroke-dasharray: 6 4;
+}
+
+.ec-line.is-plannedSoFar {
+  stroke: var(--ec-planned-so-far);
+  stroke-dasharray: 2 4;
 }
 
 .ec-dot {
@@ -177,8 +192,10 @@
 
 .ec-dot.is-kept { stroke: var(--ec-kept); }
 .ec-dot.is-plan { stroke: var(--ec-plan); }
-.ec-dot.is-running { stroke: var(--ec-running); }
-.ec-axis-label.is-running { fill: var(--ec-running); }
+.ec-dot.is-spentSoFar { stroke: var(--ec-spent-so-far); }
+.ec-dot.is-plannedSoFar { stroke: var(--ec-planned-so-far); }
+.ec-dot.is-spentSoFar,
+.ec-dot.is-plannedSoFar { stroke-width: 2; }
 .ec-dot.is-negative { stroke: var(--pastel-rose-ink); }
 
 /* A column or point is an openable figure: a clear target over it takes the
@@ -210,12 +227,44 @@
   border-radius: 8px;
 }
 
-/* First view: the columns grow from the baseline and the line draws on.
-   The shapes wait at their start while the chart is off screen
-   (data-chart-motion="armed") and play once it is seen ("playing"). Reduced
-   motion never arms them (the component) and the media query is the second
-   guard. */
+/* A pointer on a column widens it a little and dims the other columns, so
+   the month being read stands out (a mouse or trackpad only; a touch opens
+   the menu). The dimming is opacity and the widening a transform from the
+   column's own centre, so nothing moves the layout. */
+@media (hover: hover) and (pointer: fine) {
+  .ec-plot:has(> .ec-point.is-bar:hover) .ec-point.is-bar:not(:hover) .ec-bar {
+    opacity: 0.55;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-chart-motion="done"] .ec-point.is-bar:hover .ec-bar {
+    transform: scaleX(1.18);
+  }
+
+  [data-chart-motion="done"] .ec-point.is-line:hover .ec-dot {
+    transform: scale(1.3);
+  }
+}
+
+.ec-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* First view: the columns grow from the baseline, the solid lines draw on,
+   the dashed running totals are revealed left to right (a dash cannot draw
+   on) and the points pop in, one month after another. The shapes wait at
+   their start while the chart is off screen (data-chart-motion="armed") and
+   play once it is seen ("playing"). Reduced motion never arms them (the
+   component) and the media query is the second guard. Transforms, opacity
+   and the clip only: the chart's size never changes. */
 @media (prefers-reduced-motion: no-preference) {
+  .ec-bar,
+  .ec-dot {
+    transition: opacity 160ms ease-out, transform 180ms ease-out;
+  }
+
   [data-chart-motion="armed"] .ec-bar {
     transform: scaleY(0);
   }
@@ -229,13 +278,12 @@
     stroke-dashoffset: 1;
   }
 
-  /* The dashed running total fades in rather than drawing on. */
   [data-chart-motion="armed"] .ec-line.is-running {
-    opacity: 0;
+    clip-path: inset(-8px 100% -8px -8px);
   }
 
   [data-chart-motion="playing"] .ec-line.is-running {
-    animation: ec-pop 500ms ease-out 300ms both;
+    animation: ec-reveal 800ms ease-out 250ms both;
   }
 
   [data-chart-motion="armed"] .ec-dot {
@@ -252,7 +300,7 @@
   }
 
   [data-chart-motion="playing"] .ec-dot {
-    animation: ec-pop 300ms ease-out both;
+    animation: ec-pop 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
     animation-delay: calc(450ms + var(--ec-i, 0) * 30ms);
   }
 }
@@ -267,7 +315,12 @@
   to { stroke-dashoffset: 0; }
 }
 
+@keyframes ec-reveal {
+  from { clip-path: inset(-8px 100% -8px -8px); }
+  to { clip-path: inset(-8px -8px -8px -8px); }
+}
+
 @keyframes ec-pop {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
 }

@@ -36,7 +36,8 @@ const month = (key, over = {}) => ({
   note: "",
   ...over
 });
-const FOUR = [month("2026-01"), month("2026-02"), month("2026-03", { estimatedExpensesMinor: 0 }), month("2026-04")];
+// March has no plan at all (no plan rows, so no savings target either).
+const FOUR = [month("2026-01"), month("2026-02"), month("2026-03", { estimatedExpensesMinor: 0, savingsGoalMinor: 0 }), month("2026-04")];
 
 // A browser stand-in: money shown or hidden, reduced motion on or off.
 function render(props, { visible = true, reducedMotion = false } = {}) {
@@ -74,21 +75,28 @@ test("Simple draws two columns and a Kept point per month, each an openable figu
   assert.doesNotMatch(html, /Planned spending/);
 });
 
-test("Plan draws spending so far, adding up, on its own axis, and breaks only the planned line where a month has no plan", () => {
+test("Plan draws Spent so far and Planned so far on their own axis, and breaks only the planned line where a month has no plan", () => {
   const html = render({ mode: "plan", page: { months: FOUR } });
   assert.match(html, /Planned spending/);
-  assert.match(html, /Spent so far, adding up/);
+  assert.match(html, />Spent so far</);
+  assert.match(html, />Planned so far</);
+  assert.doesNotMatch(html, /adding up/);
   assert.doesNotMatch(html, /Actual spending/);
   assert.doesNotMatch(html, /aria-label="[^"]* kept /);
-  // March has no plan: three planned points in two runs; the running total
-  // has all four, adding up month by month.
-  assert.equal(count(html, /class="ec-point is-line"/g), 7);
+  // March has no plan: three planned points in two runs; each running total
+  // has all four, adding up month by month (each month's spending, and its
+  // plan less the savings target: $3,000 less $1,000).
+  assert.equal(count(html, /class="ec-point is-line"/g), 11);
   assert.equal(count(html, /class="ec-line is-plan"/g), 2);
-  assert.equal(count(html, /class="ec-line is-running"/g), 1);
-  assert.match(html, /aria-label="Jan 2026 spent so far, adding up \$2,500\.00"/);
-  assert.match(html, /aria-label="Apr 2026 spent so far, adding up \$10,000\.00"/);
-  assert.match(html, /data-ec-series="running"[^>]*data-fig="spent" data-fig-period="2026-01:2026-04"/);
-  // Its axis is on the right; the left axis stays the columns' ($5k top, not $10k).
+  assert.equal(count(html, /class="ec-line is-spentSoFar is-running"/g), 1);
+  assert.equal(count(html, /class="ec-line is-plannedSoFar is-running"/g), 1);
+  assert.match(html, /aria-label="Jan 2026 spent so far \$2,500\.00"/);
+  assert.match(html, /aria-label="Apr 2026 spent so far \$10,000\.00"/);
+  assert.match(html, /aria-label="Mar 2026 planned so far \$4,000\.00"/);
+  assert.match(html, /aria-label="Apr 2026 planned so far \$6,000\.00"/);
+  assert.match(html, /data-ec-series="spentSoFar"[^>]*data-fig="spending" data-fig-period="2026-01:2026-04"/);
+  assert.match(html, /data-ec-series="plannedSoFar"[^>]*data-fig="spending" data-fig-period="2026-01:2026-04"/);
+  // Their axis is on the right; the left axis stays the columns' ($5k top, not $10k).
   assert.equal(count(html, /class="ec-axis is-right"/g), 1);
   assert.match(html, /class="ec-axis is-right"[\s\S]*>\$10k</);
   assert.doesNotMatch(html.split('class="ec-axis is-right"')[0], />\$10k</);
@@ -131,6 +139,32 @@ test("the chart is its own lazy chunk: only the panel imports it, and only dynam
 test("the chart's styles use tokens: no raw colours, animation only where motion is allowed", () => {
   const css = readFileSync(path.resolve(import.meta.dirname, "../src/client/earned-spent-chart.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(/i);
-  const outside = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}\n/, "");
-  assert.doesNotMatch(outside.replace(/@keyframes[\s\S]*?\n\}\n/g, ""), /animation\s*:/);
+  const outside = css.replace(/@media[^{]*\(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}\n/g, "");
+  assert.doesNotMatch(outside.replace(/@keyframes[\s\S]*?\n\}\n/g, ""), /animation\s*:|transition\s*:|[^-]transform\s*:/);
+  // The draw-on, the reveal and the pop change transforms, opacity, the dash
+  // and the clip only: nothing that moves the layout.
+  for (const [, body] of css.matchAll(/@keyframes [\w-]+ \{([\s\S]*?)\n\}/g)) {
+    for (const [, property] of body.matchAll(/([\w-]+)\s*:/g)) {
+      assert.ok(["transform", "opacity", "stroke-dashoffset", "clip-path"].includes(property), `keyframes change ${property}`);
+    }
+  }
+  // A pointer on a column widens it only once the chart has played.
+  assert.match(css, /@media \(hover: hover\) and \(pointer: fine\) and \(prefers-reduced-motion: no-preference\) \{\s*\[data-chart-motion="done"\] \.ec-point\.is-bar:hover \.ec-bar \{\s*transform: scaleX/);
+});
+
+test("the donut sweeps in only where motion is allowed, clips only the ring, and leaves no clip at rest", () => {
+  const css = readFileSync(path.resolve(import.meta.dirname, "../src/client/donut-motion.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(/i);
+  const outside = css.replace(/@media[^{]*\(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}\n/g, "");
+  assert.doesNotMatch(outside, /animation\s*:|transition\s*:|[^-]transform\s*:|clip-path|mask/);
+  // The clip is only on the ring's own layer while armed or playing, never
+  // on the labels' layer that takes the pointer: a mask or clip there would
+  // keep a pointer or a tap from reaching a slice while it plays.
+  const clipped = [...css.matchAll(/([^{}]*)\{\s*clip-path/g)].map(([, selector]) => selector.trim()).filter((selector) => !/^\d|%$/.test(selector));
+  assert.deepEqual(clipped, ['[data-donut-motion="armed"] .recharts-pie']);
+  assert.match(css, /\[data-donut-motion="playing"\] \.recharts-pie \{\s*animation: donut-sweep /);
+  assert.doesNotMatch(css, /mask/);
+  const chart = readFileSync(path.resolve(import.meta.dirname, "../src/client/spending-mix-recharts.jsx"), "utf8");
+  assert.match(chart, /import "\.\/donut-motion\.css"/);
+  assert.match(chart, /data-donut-motion=\{motion\}/);
 });

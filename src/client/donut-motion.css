@@ -1,0 +1,71 @@
+/* The Spending Mix donut's motion (spending-mix-recharts.jsx, design.md
+   "Motion"), in the donut's lazy chunk, never in public/styles.css.
+   First view: the ring sweeps in clockwise from the top, so the slices
+   arrive one after another, then the labels and the total fade in. The
+   sweep is a clip on the ring's own layer (.recharts-pie): a wedge from the
+   ring's centre whose edge turns a full circle, an eighth of a turn per
+   keyframe (the wedge's corners sit well outside the ring, so the edge seen
+   on the ring is a turning ray). It never touches the labels' layer, which
+   holds the slices' clear targets, so a pointer or a tap reaches a slice
+   while it plays, and it is gone once the sweep ends. Only the clip,
+   opacity and transforms change: the chart's size never does. Reduced
+   motion never arms it (the component) and the media query is the second
+   guard. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-donut-motion="armed"] .recharts-pie {
+    clip-path: polygon(50% 50%, 50% -30%, 50% -30%) fill-box;
+  }
+
+  [data-donut-motion="playing"] .recharts-pie {
+    animation: donut-sweep 720ms linear both;
+  }
+
+  [data-donut-motion="armed"] :is(.recharts-surface > g:not(:has(> .recharts-pie)), .donut-center) {
+    opacity: 0;
+  }
+
+  [data-donut-motion="playing"] :is(.recharts-surface > g:not(:has(> .recharts-pie)), .donut-center) {
+    animation: donut-fade 260ms ease-out 620ms both;
+  }
+
+  @keyframes donut-sweep {
+    0% { clip-path: polygon(50% 50%, 50% -30%, 50% -30%, 50% -30%, 50% -30%, 50% -30%, 50% -30%, 50% -30%, 50% -30%, 50% -30%) fill-box; }
+    12.5% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%, 106.6% -6.6%) fill-box; }
+    25% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 130% 50%, 130% 50%, 130% 50%, 130% 50%, 130% 50%, 130% 50%) fill-box; }
+    37.5% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 106.6% 106.6%, 106.6% 106.6%, 106.6% 106.6%, 106.6% 106.6%, 106.6% 106.6%) fill-box; }
+    50% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 50% 130%, 50% 130%, 50% 130%, 50% 130%, 50% 130%) fill-box; }
+    62.5% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 50% 130%, -6.6% 106.6%, -6.6% 106.6%, -6.6% 106.6%, -6.6% 106.6%) fill-box; }
+    75% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 50% 130%, -6.6% 106.6%, -30% 50%, -30% 50%, -30% 50%) fill-box; }
+    87.5% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 50% 130%, -6.6% 106.6%, -30% 50%, -6.6% -6.6%, -6.6% -6.6%) fill-box; }
+    100% { clip-path: polygon(50% 50%, 50% -30%, 106.6% -6.6%, 130% 50%, 106.6% 106.6%, 50% 130%, -6.6% 106.6%, -30% 50%, -6.6% -6.6%, 50% -30%) fill-box; }
+  }
+
+  @keyframes donut-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* A pointer on a slice lifts it: a copy of the slice in its own colour,
+   drawn a little larger over the ring from the donut's centre (the clear
+   target that takes the pointer, summary-body.css). A mouse or trackpad
+   only; a touch opens the slice's menu. */
+@media (hover: hover) and (pointer: fine) {
+  .donut-slice:hover .donut-slice-hit {
+    fill: var(--slice-colour, transparent);
+    stroke: var(--text);
+    stroke-width: 1px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .donut-slice-hit {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    transition: transform 180ms ease-out;
+  }
+
+  [data-donut-motion="done"] .donut-slice:hover .donut-slice-hit {
+    transform: scale(1.045);
+  }
+}

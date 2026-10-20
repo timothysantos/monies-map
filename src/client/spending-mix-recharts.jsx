@@ -1,4 +1,6 @@
-import { useMemo, useRef } from "react";
+import "./donut-motion.css";
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Sector } from "recharts";
 
 import { spendingMixCopy } from "./copy/spending-mix-copy";
@@ -32,8 +34,14 @@ export default function SpendingMixRecharts({
   const { areTotalsVisible } = useMoneyPrivacy();
   // Spending Mix (sliceLabels): every slice is an openable figure.
   const renderSlice = useOpenableSlices(sliceLabels, { shareTotal: shareTotalMinor || total, hidden: !areTotalsVisible, sliceFacts });
+  const { ref: motionRef, motion } = useFirstViewMotion();
   return (
-    <div className={`spending-mix-chart ${compact ? "is-compact" : ""} ${renderSlice ? "has-slice-menus" : ""}`} onKeyDown={sliceLabels ? moveBetweenSlices : undefined}>
+    <div
+      ref={motionRef}
+      className={`spending-mix-chart ${compact ? "is-compact" : ""} ${renderSlice ? "has-slice-menus" : ""}`}
+      data-donut-motion={motion}
+      onKeyDown={sliceLabels ? moveBetweenSlices : undefined}
+    >
       <ResponsiveContainer width="100%" height={resolvedHeight}>
         <PieChart accessibilityLayer={!renderSlice}>
           <Pie
@@ -66,6 +74,46 @@ export default function SpendingMixRecharts({
       </div>
     </div>
   );
+}
+
+// The donut's first view (donut-motion.css): the ring sweeps in clockwise
+// from the top, so the slices arrive one after another, then the labels and
+// the total fade in. The ring waits hidden ("armed") until at least half of
+// it is on screen, plays once ("playing"), then rests ("done") with no mask
+// left on it. Nothing animates for reduced motion ("off") or on the server.
+// The state lives on the element, not in React: a re-render would hand
+// Recharts new label renderers and replace the slices under the pointer.
+const prefersReducedMotion = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const initialMotion = () => (typeof window === "undefined" || prefersReducedMotion() ? "off" : "armed");
+
+function useFirstViewMotion() {
+  const ref = useRef(null);
+  const [motion] = useState(initialMotion);
+  useEffect(() => {
+    const element = ref.current;
+    if (motion !== "armed" || !element) return undefined;
+    let timer = 0;
+    const play = () => {
+      element.dataset.donutMotion = "playing";
+      timer = window.setTimeout(() => { element.dataset.donutMotion = "done"; }, 1100);
+    };
+    if (typeof IntersectionObserver === "undefined") {
+      element.dataset.donutMotion = "done";
+      return undefined;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        play();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [motion]);
+  return { ref, motion };
 }
 
 // Slice labels (donut-label-layout.js): laid out once per chart size, the
@@ -219,6 +267,7 @@ function useOpenableSlices(enabled, { shareTotal, hidden, sliceFacts }) {
       return (
         <g
           className="donut-slice"
+          style={{ "--slice-colour": paletteColour(payload?.color) }}
           data-slice={name}
           data-fig="category"
           data-fig-arg={name}
