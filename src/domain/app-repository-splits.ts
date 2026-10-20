@@ -111,12 +111,16 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
 //   outside-settled-sections: everything the Splits page sends
 //   settled-section: one checkpoint's records in one group (the lazy rows)
 //   settled-in-group: every settled-section record of one group (search)
-//   unlinked: records with no ledger link (bank-match suggestions)
+//   awaiting-match: open records with no ledger link, the only ones the
+//     bank-match suggestions are for. A record a settle-up covers (an active
+//     checkpoint, or a closed batch: the open period's isCoveredBySettleUp)
+//     is settled and locked, so it is never suggested a bank row; reopening
+//     or voiding the checkpoint (or reopening the batch) brings it back.
 export type SplitRecordScope =
   | { kind: "outside-settled-sections" }
   | { kind: "settled-section"; checkpointId: string; groupId: string }
   | { kind: "settled-in-group"; groupId: string }
-  | { kind: "unlinked" };
+  | { kind: "awaiting-match" };
 
 // The most rows one settled load returns; a section beyond it is reported as
 // truncated (production's largest is 287).
@@ -136,8 +140,12 @@ function splitRecordScopeSql(table: "split_expenses" | "split_settlements", scop
         WHERE covering.household_id = ? AND covering.status NOT IN ('reopened', 'voided')
           AND checkpoint_items.record_kind = '${recordKind}'${checkpointFilter}
       )`;
-  if (scope.kind === "unlinked") {
-    return { sql: ` AND ${table}.linked_transaction_id IS NULL`, limit: "", binds: [] };
+  if (scope.kind === "awaiting-match") {
+    return {
+      sql: ` AND ${table}.linked_transaction_id IS NULL AND split_batches.closed_on IS NULL AND NOT ${covered("")}`,
+      limit: "",
+      binds: [DEFAULT_HOUSEHOLD_ID]
+    };
   }
   if (scope.kind === "outside-settled-sections") {
     return { sql: ` AND (split_batches.closed_on IS NOT NULL OR NOT ${covered("")})`, limit: "", binds: [DEFAULT_HOUSEHOLD_ID] };
@@ -668,12 +676,27 @@ const SPLIT_MATCH_MAX_WINDOWS = 40;
 
 // Merges the unlinked records' dates into the fewest date ranges that cover
 // every possible candidate. Past a cap, one range spans them all.
+function shiftIsoDate(date: string, days: number) {
+  const moved = new Date(`${date}T00:00:00Z`);
+  moved.setUTCDate(moved.getUTCDate() + days);
+  return moved.toISOString().slice(0, 10);
+}
+
+// The imported rows within one record's own date window, in the query's
+// order. Every rule in split-matching.ts drops a row further away, so the
+// result is the same, but a record never tokenises the descriptions of rows
+// that only another record's window brought in.
+function rowsNearDate<T extends { transaction_date: string }>(rows: T[], date: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return rows;
+  }
+  const from = shiftIsoDate(date, -SPLIT_MATCH_WINDOW_DAYS);
+  const to = shiftIsoDate(date, SPLIT_MATCH_WINDOW_DAYS);
+  return rows.filter((row) => row.transaction_date >= from && row.transaction_date <= to);
+}
+
 export function buildSplitMatchDateWindows(dates: string[]): { from: string; to: string }[] {
-  const shift = (date: string, days: number) => {
-    const moved = new Date(`${date}T00:00:00Z`);
-    moved.setUTCDate(moved.getUTCDate() + days);
-    return moved.toISOString().slice(0, 10);
-  };
+  const shift = shiftIsoDate;
   const sorted = Array.from(new Set(dates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)))).sort();
   const windows: { from: string; to: string }[] = [];
   for (const date of sorted) {
@@ -696,18 +719,19 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   return (await loadSplitMatchCandidatesWithRecords(db, month)).matches;
 }
 
-// The bank-match suggestions and the unlinked records they were found for
-// (only an unlinked record can be suggested a row, so only those are read).
-// The Splits page checks a suggestion's record against the person view with
-// these records, because a settled one is not in the page's own rows.
+// The bank-match suggestions and the records they were found for: the open,
+// unlinked ones (scope "awaiting-match"). A settled record is locked and sits
+// in a collapsed section or the archive, so it is never offered a bank row,
+// and its date never widens the imported rows read. The Splits page checks a
+// suggestion's record against the person view with these records.
 export async function loadSplitMatchCandidatesWithRecords(db: D1Database, month = getCurrentMonthKey()): Promise<{
   matches: SplitMatchCandidateDto[];
   expenses: SplitExpenseDto[];
   settlements: SplitSettlementDto[];
 }> {
   const [expenses, settlements] = await Promise.all([
-    loadSplitExpenses(db, month, { kind: "unlinked" }),
-    loadSplitSettlements(db, month, { kind: "unlinked" })
+    loadSplitExpenses(db, month, { kind: "awaiting-match" }),
+    loadSplitSettlements(db, month, { kind: "awaiting-match" })
   ]);
   return { matches: await buildSplitMatchCandidates(db, expenses, settlements), expenses, settlements };
 }
@@ -724,7 +748,9 @@ async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseD
     return [];
   }
   // A candidate lies within a week of an unlinked record's date
-  // (split-matching.ts), so only those date windows are read.
+  // (split-matching.ts), so only those date windows are read: one query,
+  // each window a range on idx_transactions_household_date (a multi-index
+  // OR), with the open records' dates only.
   const windows = buildSplitMatchDateWindows(unlinkedDates);
   if (!windows.length) {
     return [];
@@ -751,7 +777,9 @@ async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseD
         -- (linkSplitExpenseMatch), so it is never suggested.
         AND NOT EXISTS (SELECT 1 FROM split_expenses WHERE split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL)
         AND NOT EXISTS (SELECT 1 FROM split_settlements WHERE split_settlements.linked_transaction_id = transactions.id AND split_settlements.deleted_at IS NULL)
-        AND NOT EXISTS (SELECT 1 FROM split_settlement_checkpoint_matches WHERE split_settlement_checkpoint_matches.transaction_id = transactions.id)
+        -- Built once (the checkpoint matches have no transaction_id index,
+        -- so a correlated probe would scan them for every row).
+        AND transactions.id NOT IN (SELECT split_settlement_checkpoint_matches.transaction_id FROM split_settlement_checkpoint_matches)
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, ...windows.flatMap((window) => [window.from, window.to]))
@@ -769,7 +797,7 @@ async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseD
   const matches: SplitMatchCandidateDto[] = [];
 
   for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
-    const candidate = findBestSplitExpenseMatch(expense, transactionRows.results);
+    const candidate = findBestSplitExpenseMatch(expense, rowsNearDate(transactionRows.results, expense.date));
 
     if (!candidate) {
       continue;
@@ -804,8 +832,9 @@ async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseD
   }
 
   for (const settlement of settlements.filter((item) => !item.linkedTransactionId)) {
-    const sameCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(settlement.currency));
-    const crossCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) !== normalizeSplitCurrency(settlement.currency));
+    const nearRows = rowsNearDate(transactionRows.results, settlement.date);
+    const sameCurrencyRows = nearRows.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(settlement.currency));
+    const crossCurrencyRows = nearRows.filter((row) => normalizeSplitCurrency(row.currency) !== normalizeSplitCurrency(settlement.currency));
     const candidate = findBestSplitSettlementLedgerCandidate(
       settlement,
       sameCurrencyRows

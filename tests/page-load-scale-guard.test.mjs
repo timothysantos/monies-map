@@ -16,6 +16,15 @@ import worker from "../src/index.ts";
 import { countingDatabase } from "./support/d1-counting.mjs";
 import { createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
 import { seedSettledSplitHistory } from "./support/settled-split-history.mjs";
+import {
+  buildLargeHousehold,
+  DIAGNOSTIC_BODY_BYTES,
+  DIAGNOSTIC_COUNT,
+  IMPORT_COUNT,
+  PREVIEW_ROW_BYTES,
+  PREVIEW_ROWS_PER_IMPORT,
+  TRANSACTION_COUNT
+} from "./support/large-household.mjs";
 
 let template;
 test.before(async () => {
@@ -24,14 +33,6 @@ test.before(async () => {
 test.after(async () => {
   await template?.dispose();
 });
-
-const TRANSACTION_COUNT = 10_000;
-const IMPORT_COUNT = 60;
-const PREVIEW_ROWS_PER_IMPORT = 40;
-const PREVIEW_ROW_BYTES = 4_000;
-const DIAGNOSTIC_COUNT = 200;
-// Writes cap a stored body at 20,000 characters (app-repository-error-diagnostics.ts).
-const DIAGNOSTIC_BODY_BYTES = 20_000;
 
 // Rows and bytes a page may read: the fixture's heavy tables hold ~50 MB, so
 // any bound far below that proves they are not read.
@@ -44,38 +45,6 @@ const PAGES = [
 // A handler that does a per-row JS loop or per-import query shows up as node
 // CPU long before it shows up in production; this is a catastrophe bound.
 const MAX_MEDIAN_NODE_CPU_MS = 600;
-
-async function buildLargeHousehold(db) {
-  const accountCount = (await db.prepare("SELECT COUNT(*) AS n FROM accounts").first()).n;
-  const categoryId = (await db.prepare("SELECT id FROM categories ORDER BY id LIMIT 1").first()).id;
-  const heavy = (bytes) => `substr(replace(hex(zeroblob(${Math.ceil(bytes / 2)})), '0', 'x'), 1, ${bytes})`;
-  await db.prepare(`
-    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${IMPORT_COUNT})
-    INSERT INTO imports (id, household_id, source_type, source_label, parser_key, imported_at, status)
-    SELECT 'scale-import-' || i, 'household-1', CASE WHEN i % 2 = 0 THEN 'pdf' ELSE 'csv' END, 'Scale statement ' || i, 'generic_csv',
-      strftime('%Y-%m-%dT%H:%M:%SZ', '2026-01-01', '+' || i || ' hours'), 'completed' FROM n
-  `).run();
-  await db.prepare(`
-    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${TRANSACTION_COUNT})
-    INSERT INTO transactions (id, household_id, import_id, account_id, transaction_date, post_date, description, amount_minor, currency, entry_type, category_id)
-    SELECT 'scale-txn-' || i, 'household-1', 'scale-import-' || (1 + i % ${IMPORT_COUNT}),
-      a.id,
-      date('2025-01-01', '+' || (i % 600) || ' days'), date('2025-01-01', '+' || ((i % 600) + 1) || ' days'),
-      'SCALE MERCHANT ' || (i % 97) || ' SINGAPORE SG', 100 + (i % 9000), 'SGD', 'expense', '${categoryId}'
-    FROM n JOIN (SELECT id, row_number() OVER (ORDER BY id) - 1 AS rn FROM accounts) a ON a.rn = n.i % ${accountCount}
-  `).run();
-  await db.prepare(`
-    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${IMPORT_COUNT * PREVIEW_ROWS_PER_IMPORT})
-    INSERT INTO import_rows (id, import_id, row_index, raw_row_json, status)
-    SELECT 'scale-row-' || i, 'scale-import-' || (1 + i % ${IMPORT_COUNT}), i, ${heavy(PREVIEW_ROW_BYTES)}, 'imported' FROM n
-  `).run();
-  await db.prepare(`
-    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${DIAGNOSTIC_COUNT})
-    INSERT INTO app_error_diagnostics (id, household_id, source, action, error_message, response_excerpt, response_body, created_at)
-    SELECT 'scale-diag-' || i, 'household-1', 'api', 'GET /api/imports-page', 'Scale failure ' || i, substr(${heavy(2000)}, 1, 2000), ${heavy(DIAGNOSTIC_BODY_BYTES)},
-      strftime('%Y-%m-%d %H:%M:%S', '2026-01-01', '+' || i || ' minutes') FROM n
-  `).run();
-}
 
 test("a 10k-transaction household with heavy stored previews and diagnostics keeps page loads bounded", async (t) => {
   const { db } = await openSeededDatabase(t, template);
@@ -151,7 +120,7 @@ test("the Splits page never sends settled rows; a settled section's rows are one
       const body = await call(path);
       const used = process.cpuUsage(before);
       samples.push((used.user + used.system) / 1000);
-      measured = { body, ...counting.summary() };
+      measured = { body, ...counting.summary(), calls: [...counting.calls] };
     }
     samples.sort((left, right) => left - right);
     return { ...measured, medianMs: samples[2] };
@@ -161,6 +130,11 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   const dto = JSON.parse(page.body).splitsPage;
   const rows = await measure(`/api/splits/settled-rows?view=person-tim&checkpoint=${history.checkpointId}&group=${history.bigGroupId}`);
   console.log(`# splits-page: ${page.statements} round trips, ${page.rowsRead} rows read, ${page.body.length} response bytes, ${page.medianMs.toFixed(0)} ms node CPU`);
+  // The bank-match suggestion scan: the records it reads (open and unlinked
+  // only) and the imported rows in their date windows.
+  const scanRecords = page.calls.filter((call) => /FROM split_(expenses|settlements)\b.*linked_transaction_id IS NULL AND split_batches\.closed_on IS NULL/.test(call.sql));
+  const scanRows = page.calls.filter((call) => /FROM transactions INNER JOIN imports .*split_settlement_checkpoint_matches/.test(call.sql));
+  console.log(`# match scan: ${scanRecords.reduce((sum, call) => sum + call.rows, 0)} records, ${scanRows.reduce((sum, call) => sum + call.rows, 0)} imported rows (${scanRows.reduce((sum, call) => sum + call.rowsRead, 0)} read, ${scanRows.reduce((sum, call) => sum + call.bytes, 0)} B)`);
   console.log(`# settled-rows (287 rows): ${rows.statements} round trips, ${rows.rowsRead} rows read, ${rows.body.length} response bytes, ${rows.medianMs.toFixed(0)} ms node CPU`);
 
   assert.equal(dto.activity.filter((item) => item.settlementCheckpointId && !item.isArchived).length, 0, "no settled row in the page");
@@ -168,6 +142,17 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   assert.equal(dto.settledSections.reduce((sum, section) => sum + section.entryCount, 0), history.coveredTotal);
   assert.ok(page.body.length <= 30_000, `splits-page: ${page.body.length} response bytes (max 30,000; ~342,500 before)`);
   assert.ok(page.statements <= 24, `splits-page: ${page.statements} round trips (max 24)`);
+  // A settled record is never suggested a bank row, so the scan neither
+  // reads the 352 settled records nor the imported rows around their dates
+  // (before: 181 records and 4,999 rows, 20,220 read, 1.08 MB; ~2.1 s of a
+  // 2.3 s handler). The fixture has 5 open unlinked records plus the demo's.
+  assert.equal(scanRecords.length, 2, "the scan reads open expenses and open settle-ups, one query each");
+  assert.equal(scanRows.length, 1, "one candidate query");
+  assert.ok(scanRecords.reduce((sum, call) => sum + call.rows, 0) <= 20, "the scan reads open records only");
+  assert.ok(scanRows[0].rows <= 2_000, `match scan: ${scanRows[0].rows} imported rows (max 2,000; 4,999 before)`);
+  assert.ok(scanRows[0].rowsRead <= 8_000, `match scan: ${scanRows[0].rowsRead} rows read (max 8,000; 20,220 before)`);
+  assert.ok(page.rowsRead <= 110_000, `splits-page: ${page.rowsRead} rows read (max 110,000)`);
+  assert.ok(page.medianMs <= MAX_MEDIAN_NODE_CPU_MS, `splits-page: median node CPU ${page.medianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS}; ~2,300 before)`);
   assert.equal(JSON.parse(rows.body).items.length, 287);
   assert.ok(rows.statements <= 8, `settled-rows: ${rows.statements} round trips (max 8)`);
   assert.ok(rows.medianMs <= MAX_MEDIAN_NODE_CPU_MS, `settled-rows: ${rows.medianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);

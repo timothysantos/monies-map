@@ -28,8 +28,9 @@ export function buildSplitsPage(
   activityHistory: SplitActivityHistoryDto[] = [],
   // The Splits page reads only the records outside settled sections
   // (pages/splits-page.ts). `matchRecords` are the unlinked records the
-  // bank-match suggestions were found for, settled or not, so a suggestion
-  // is checked against the person view as before; `settledGroups` are the
+  // bank-match suggestions were found for (open records only: a settled one
+  // is never suggested a bank row), so a suggestion is checked against the
+  // person view as before; `settledGroups` are the
   // groups a settled section holds, so a group whose records are all settled
   // keeps its tile.
   options: {
