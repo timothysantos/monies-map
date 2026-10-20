@@ -9,6 +9,22 @@ import { messages } from "./copy/en-SG";
 import { filterSplitActivityForSearch } from "./split-search";
 import { groupSplitActivityByDate } from "./split-helpers";
 
+// The section's and its archive row's words. They live here, with the lazy
+// Splits route, not in the first screen's copy file.
+const settledCopy = {
+  settledOn: (day) => `Settled up on ${day}`,
+  simplifiedOn: (day) => `Simplified on ${day}`,
+  settledTitle: "Settled up",
+  simplifiedTitle: "Simplified, not paid yet",
+  you: "You",
+  youObject: "you",
+  payment: ({ from, to, amount, isPaid }) => `${from} ${isPaid ? "paid" : from === "You" ? "pay" : "pays"} ${to} ${amount} for every group`,
+  evenedOut: "Nothing to pay: the groups evened out",
+  noArchive: "No settled batches yet",
+  settledBatches: (count) => `${count} settled ${count === 1 ? "batch" : "batches"}`,
+  earlierSettleUps: (count) => `${count} earlier ${count === 1 ? "settle-up" : "settle-ups"}`
+};
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const HIDDEN_MONEY = "••••";
 
@@ -43,7 +59,7 @@ function settlementDay(isoDate, today) {
 
 function settledTitle(section, today) {
   const day = settlementDay(section.settlementDate, today);
-  return section.isPaid ? messages.splits.settledSection.settledOn(day) : messages.splits.settledSection.simplifiedOn(day);
+  return section.isPaid ? settledCopy.settledOn(day) : settledCopy.simplifiedOn(day);
 }
 
 function sectionMoney(amountMinor, currency, areTotalsVisible) {
@@ -64,7 +80,7 @@ export function settledSectionHeading(section, { today, areTotalsVisible }) {
  * came to (for every group it covered) and this group's entry count.
  */
 export function settledSectionArchiveSummary(section, checkpoints, { viewId, areTotalsVisible }) {
-  const copy = messages.splits.settledSection;
+  const copy = settledCopy;
   const checkpoint = checkpoints.find((candidate) => candidate.id === section.checkpointId);
   const amount = sectionMoney(checkpoint?.amountMinor ?? 0, checkpoint?.currency ?? section.currency, areTotalsVisible);
   let subtitle = copy.evenedOut;
@@ -83,7 +99,7 @@ export function settledSectionArchiveSummary(section, checkpoints, { viewId, are
 
 /** The Archived batches row's small line. */
 export function archiveTriggerSummary(batchCount, settlementCount) {
-  const copy = messages.splits.settledSection;
+  const copy = settledCopy;
   if (!batchCount && !settlementCount) {
     return copy.noArchive;
   }
