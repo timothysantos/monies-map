@@ -211,7 +211,9 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await expect(viewSplitButton).toBeVisible({ timeout: 30_000 });
 
   const splitsPageReady = page.waitForResponse((response) => response.url().includes("/api/splits-page") && response.ok());
+  // The Splits row opens its menu; View split opens the split on Splits.
   await viewSplitButton.click();
+  await page.getByRole("menu", { name: "Splits" }).getByRole("menuitem", { name: "View split" }).click();
   await splitsPageReady;
 
   await expect(page).toHaveURL(/\/splits\?/);

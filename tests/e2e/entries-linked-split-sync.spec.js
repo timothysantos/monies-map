@@ -46,7 +46,9 @@ test("deleting a linked split from Entries shows the entry as unshared, and it c
   await row.locator(".entry-row-main").click();
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
-  await editor.getByRole("button", { name: "Delete split" }).click();
+  // Remove from Splits lives in the Splits row's menu.
+  await editor.locator("[data-row='splits']").click();
+  await page.getByRole("menu", { name: "Splits" }).getByRole("menuitem", { name: "Remove from Splits" }).click();
   const dialog = page.locator(".entry-delete-dialog");
   await expect(dialog).toBeVisible();
   const deleted = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/delete") && response.ok());
@@ -56,7 +58,7 @@ test("deleting a linked split from Entries shows the entry as unshared, and it c
 
   // The editor offers "Add to splits" again and the row counts the full amount.
   await expect(editor.getByRole("button", { name: "Add to splits" })).toBeVisible();
-  await expect(editor.getByRole("button", { name: "View split" })).toHaveCount(0);
+  await expect(editor.locator("[data-row='splits']")).not.toContainText("View split");
   await editor.getByRole("button", { name: "Cancel editing entry" }).click();
   const savedRow = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(savedRow).toContainText("$60.00");
