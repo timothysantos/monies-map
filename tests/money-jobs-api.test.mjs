@@ -61,6 +61,13 @@ test("the Summary's planned investments are the range's Investments plan rows, a
   for (const month of summary.summaryPage.months) {
     assert.equal("plannedInvestMinor" in month, false, `${month.month} carries no per-month investment goal`);
   }
+  // The page sends the goal month by month beside the rows, for the month
+  // chart's Planned so far: only the months that plan some, adding up to the card.
+  assert.deepEqual(summary.summaryPage.plannedInvestByMonth, [
+    { month: "2025-10", plannedInvestMinor: 45_000 },
+    { month: "2026-05", plannedInvestMinor: 150_000 }
+  ]);
+  assert.equal("plannedInvestByMonth" in before.summaryPage, false, "left out when no month plans investing");
 
   // The Month page sends the same rows and slice; the client sums them alike.
   const may = await get(api, "/api/month-page?view=person-tim&month=2026-05&scope=direct_plus_shared");

@@ -1251,6 +1251,11 @@ export interface SummaryPageDto {
   // moved (left out when nothing did): "Earned vs spent by month" counts a
   // month's invested and kept as the Month lead does.
   investmentMovesByMonth?: Array<InvestmentMovesDto & { month: string }>;
+  // Each month's Investments plan rows (the "Planned investments" card, month
+  // by month), only for the months that plan some (left out when none does):
+  // the month chart's Planned so far counts the spending plan as the lead
+  // does. The month rows themselves never carry it.
+  plannedInvestByMonth?: Array<{ month: string; plannedInvestMinor: number }>;
   notes: string[];
 }
 

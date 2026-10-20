@@ -6,7 +6,7 @@
 export const earnedSpentChartCopy = {
   chartLabel: {
     simple: "Earned, spent and kept, month by month",
-    plan: "Earned, spent and planned spending month by month, and spending so far, adding up"
+    plan: "Earned, spent and planned spending month by month, and what was spent and planned so far"
   },
   legendLabel: "Show or hide in the chart",
   series: {
@@ -14,7 +14,8 @@ export const earnedSpentChartCopy = {
     spent: "Spent",
     kept: "Kept",
     plan: "Planned spending",
-    running: "Spent so far, adding up"
+    spentSoFar: "Spent so far",
+    plannedSoFar: "Planned so far"
   },
   // What a column or point is called for assistive tech and the quick
   // facts' first line: "Oct 2026 earned $113.30".
@@ -24,7 +25,8 @@ export const earnedSpentChartCopy = {
     kept: "kept",
     overspent: "overspent",
     plan: "planned spending",
-    running: "spent so far, adding up"
+    spentSoFar: "spent so far",
+    plannedSoFar: "planned so far"
   },
   pointLabel: (monthLabel, word, amount) => `${monthLabel} ${word} ${amount}`,
   // The quick facts under a menu's title, one per line (figure-menu.js).
@@ -34,9 +36,12 @@ export const earnedSpentChartCopy = {
   overspentAmount: (amount) => `${amount} overspent`,
   earnedAndSpent: (earned, spent) => `Earned ${earned}, spent ${spent}`,
   planned: (amount) => `${amount} planned`,
-  // A running point: the spending from the first month shown to its own.
-  spentFromTo: (amount, from, to) => `${amount} spent from ${from} to ${to}`,
-  spentIn: (amount, month) => `${amount} spent in ${month}`,
+  // A running point: what was spent or planned from the first month shown
+  // to its own ("$3,600.00 spent from Jan 2026 to Feb 2026").
+  spentWord: "spent",
+  plannedWord: "planned",
+  soFarFromTo: (amount, word, from, to) => `${amount} ${word} from ${from} to ${to}`,
+  soFarIn: (amount, word, month) => `${amount} ${word} in ${month}`,
   spentAmount: (amount) => `${amount} spent`,
   underPlan: (amount) => `${amount} under plan`,
   overPlan: (amount) => `${amount} over plan`,

@@ -1,3 +1,4 @@
+import { isInvestmentsCategoryName, isSavingsCategoryName } from "../domain/money-jobs";
 import { earnedSpentChartCopy as copy } from "./copy/earned-spent-chart-copy";
 import { formatMonthLabel, money } from "./formatters";
 import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
@@ -9,12 +10,18 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 //   buildEarnedSpentMonths (the list's rows). Kept can be below zero.
 // - Plan: Earned and Spent columns as the Intent vs Outcome cards count them
 //   (the Summary month row's actual income and real expenses) and a Planned
-//   spending line (the month's estimated expenses, the figure the Plan lead
-//   measures spend against). A month with no plan has no point there: the
-//   line breaks, it is never drawn through zero. And Spent so far, adding up:
-//   a running total of Spent from the first month shown, on its own axis on
-//   the right (it soon dwarfs any one month, and the columns keep their
-//   height). The line once drawn here repeated each Spent column (087b4637).
+//   spending line (the month's estimated expenses). A month with no plan has
+//   no point there: the line breaks, it is never drawn through zero. And two
+//   running totals on their own axis on the right (they soon dwarf any one
+//   month, and the columns keep their height): Spent so far and Planned so
+//   far, added up from the first month shown. They count as the Plan lead
+//   does (splitMoneyUse, money-jobs.ts): money filed under Investments or
+//   Savings was moved, not spent, and the savings target and the Investments
+//   plan rows are not spending plan. So the gap between them in the last
+//   month shown is the lead's under or over plan for the range, and the gap
+//   in any month is how far ahead of or behind the plan the household was by
+//   then. (One running Spent line on its own said nothing about the plan;
+//   the line before that repeated each Spent column, 087b4637.)
 // Months run oldest to newest, left to right (the list runs newest first).
 // Pure: the component draws what this returns.
 
@@ -30,7 +37,8 @@ export function chartSeries(mode) {
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
       { key: "spent", kind: "bar", label: words.spent, tone: "short" },
       { key: "plan", kind: "line", label: words.plan, tone: "plan" },
-      { key: "running", kind: "line", axis: "right", label: words.running, tone: "neutral" }
+      { key: "spentSoFar", kind: "line", axis: "right", label: words.spentSoFar, tone: "short" },
+      { key: "plannedSoFar", kind: "line", axis: "right", label: words.plannedSoFar, tone: "plan" }
     ]
     : [
       { key: "earned", kind: "bar", label: words.earned, tone: "in" },
@@ -42,40 +50,72 @@ export function chartSeries(mode) {
 /**
  * One entry per month, oldest first: earnedMinor, spentMinor and lineMinor
  * (Kept in Simple, Planned spending in Plan; null where there is no plan),
- * plus runningMinor in Plan: Spent added up from the first month shown.
+ * plus in Plan spentSoFarMinor and plannedSoFarMinor: the lead's spending
+ * and spending plan added up from the first month shown.
+ * `plannedInvestByMonth` is the Summary page's: each month's Investments
+ * plan rows, sent only for the months that have one.
  */
-export function buildChartMonths({ mode, months = [], categoryShareByMonth = [], investmentMovesByMonth = [] }) {
+export function buildChartMonths({ mode, months = [], categoryShareByMonth = [], investmentMovesByMonth = [], plannedInvestByMonth = [] }) {
   if (mode === "simple") {
     return buildEarnedSpentMonths(months, categoryShareByMonth, investmentMovesByMonth)
       .reverse()
       .map((row) => ({ month: row.month, earnedMinor: row.earnedMinor, spentMinor: row.spentMinor, lineMinor: row.keptMinor }));
   }
-  let runningMinor = 0;
+  const shareByMonth = new Map(categoryShareByMonth.map((entry) => [entry.month, entry.data ?? []]));
+  const investPlanByMonth = new Map(plannedInvestByMonth.map((entry) => [entry.month, entry.plannedInvestMinor ?? 0]));
+  let spentSoFarMinor = 0;
+  let plannedSoFarMinor = 0;
   return [...months]
     .sort((left, right) => left.month.localeCompare(right.month))
     .map((row) => {
-      runningMinor += row.realExpensesMinor;
+      const job = spendJobOfMonth(row, shareByMonth.get(row.month) ?? [], investPlanByMonth.get(row.month) ?? 0);
+      spentSoFarMinor += job.spendingMinor;
+      plannedSoFarMinor += job.spendPlanMinor;
       return {
         month: row.month,
         earnedMinor: row.actualIncomeMinor,
         spentMinor: row.realExpensesMinor,
         // As the Intent vs Outcome card reads it: no planned spend is no plan.
         lineMinor: row.estimatedExpensesMinor > 0 ? row.estimatedExpensesMinor : null,
-        runningMinor
+        spentSoFarMinor,
+        plannedSoFarMinor
       };
     });
 }
 
+// A month's spending and spending plan as the lead counts them
+// (splitMoneyUse): the money filed under Investments and Savings comes out
+// of the spending, the savings target and the Investments plan rows out of
+// the plan. Not clamped at zero per month, so the months add up to exactly
+// the range's figures, which is what the lead splits.
+function spendJobOfMonth(row, categoryShare, plannedInvestMinor) {
+  let movedMinor = 0;
+  for (const slice of categoryShare) {
+    if (isInvestmentsCategoryName(slice.label) || isSavingsCategoryName(slice.label)) movedMinor += slice.valueMinor;
+  }
+  return {
+    spendingMinor: row.realExpensesMinor - movedMinor,
+    spendPlanMinor: row.estimatedExpensesMinor - (row.savingsGoalMinor ?? 0) - plannedInvestMinor
+  };
+}
+
 /**
  * The chart's scales: the left one of every month figure (so hiding a series
- * never rescales the rest), and in Plan a right one for the running total
- * alone (null in Simple).
- * @param {Array<{ earnedMinor: number, spentMinor: number, lineMinor: number | null, runningMinor?: number }>} rows
+ * never rescales the rest), and in Plan a right one for both running totals
+ * (null in Simple), so the gap between them reads off one axis.
+ * @param {Array<{ earnedMinor: number, spentMinor: number, lineMinor: number | null, spentSoFarMinor?: number, plannedSoFarMinor?: number }>} rows
  */
 export function chartScales(rows) {
   const left = niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor]));
-  const hasRunning = rows.some((row) => Number.isFinite(row.runningMinor));
-  return { left, right: hasRunning ? niceScale(rows.map((row) => row.runningMinor)) : null };
+  const hasRunning = rows.some((row) => Number.isFinite(row.spentSoFarMinor));
+  return { left, right: hasRunning ? niceScale(rows.flatMap((row) => [row.spentSoFarMinor, row.plannedSoFarMinor])) : null };
+}
+
+/** A line's value in a month: Kept or Planned spending, or a running total; null where it has no point. */
+export function lineValue(row, key) {
+  if (key === "spentSoFar") return row.spentSoFarMinor ?? null;
+  if (key === "plannedSoFar") return row.plannedSoFarMinor ?? null;
+  return row.lineMinor;
 }
 
 /** Hides or shows a series; the last one showing stays (an empty chart says nothing). */
@@ -182,7 +222,7 @@ export function chartGeometry({ width, monthCount, barCount, height = 232, right
  * View entries lists that month's rows behind the figure.
  * @param {"plan" | "simple"} mode
  * @param {{ key: string }} series
- * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null, runningMinor?: number }} row
+ * @param {{ month: string, earnedMinor: number, spentMinor: number, lineMinor: number | null, spentSoFarMinor?: number, plannedSoFarMinor?: number }} row
  * @param {string} [firstMonth] the first month shown (where the running total starts)
  */
 export function pointFigure(mode, series, row, firstMonth = "") {
@@ -224,19 +264,30 @@ export function pointFigure(mode, series, row, firstMonth = "") {
       note: [copy.planned(money(planned)), copy.spentAmount(spent)]
     };
   }
-  if (series.key === "running") {
-    // Its figure is the spending from the first month shown to this one, so
-    // View entries over that period totals the running figure.
+  if (series.key === "spentSoFar" || series.key === "plannedSoFar") {
+    // A running point's figure is the spending from the first month shown to
+    // this one (the lead's `spending`), so View entries over that period
+    // totals Spent so far; Open plan opens this month's plan. The quick
+    // facts give both totals and the gap between them.
     const from = firstMonth || row.month;
     const fromLabel = formatMonthLabel(from);
-    const total = money(row.runningMinor);
+    const isSpent = series.key === "spentSoFar";
+    const spentTotal = money(row.spentSoFarMinor);
+    const plannedTotal = money(row.plannedSoFarMinor);
+    const gap = row.plannedSoFarMinor - row.spentSoFarMinor;
+    const span = (amount, word) => (from === row.month ? copy.soFarIn(amount, word, monthLabel) : copy.soFarFromTo(amount, word, fromLabel, monthLabel));
+    const gapLine = gap === 0 ? copy.onPlan : gap < 0 ? copy.overPlan(money(-gap)) : copy.underPlan(money(gap));
     return {
       ...base,
       period: `${from}:${row.month}`,
-      fig: "spent",
-      name: copy.series.running,
-      label: labelled(copy.seriesWord.running, row.runningMinor),
-      note: [from === row.month ? copy.spentIn(total, monthLabel) : copy.spentFromTo(total, fromLabel, monthLabel)]
+      fig: "spending",
+      plan: "",
+      ask: gap < 0 ? "spentOverPlan" : "plan",
+      name: copy.series[series.key],
+      label: labelled(copy.seriesWord[series.key], isSpent ? row.spentSoFarMinor : row.plannedSoFarMinor),
+      note: isSpent
+        ? [span(spentTotal, copy.spentWord), copy.planned(plannedTotal), gapLine]
+        : [span(plannedTotal, copy.plannedWord), copy.spentAmount(spentTotal), gapLine]
     };
   }
   // Spent.

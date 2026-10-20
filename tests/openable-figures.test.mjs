@@ -26,6 +26,7 @@ import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildMonthMetricCards } from "../src/client/month-helpers.js";
 import { buildIntentMonthCard } from "../src/client/summary-intent-outcome-model.js";
 import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model.js";
+import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
 import { MONEY_FIGURES } from "../src/domain/money-figures.ts";
@@ -256,6 +257,45 @@ test("Intent vs Outcome and Earned vs spent by month: each month's figures open 
   const { lead } = await monthLead(api, view, MAY);
   const may = rows.find((item) => item.month === MAY);
   assert.deepEqual([may.investedMinor, may.keptMinor, may.spentMinor], [lead.figures.invested, lead.figures.kept, lead.figures.spending]);
+});
+
+test("the month chart's Spent so far and Planned so far: each point opens the spending so far, and the last gap is the Summary lead's", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  await seed(api);
+  const { accounts } = await get(api, "/api/reference-data");
+  for (const view of VIEWS.slice(0, 2)) {
+    const { summaryPage, lead } = await summaryLead(api, view, START, MAY);
+    const rows = buildChartMonths({ mode: "plan", ...summaryPage });
+    const [spentSoFar, plannedSoFar] = chartSeries("plan").slice(3);
+    for (const row of rows) {
+      for (const series of [spentSoFar, plannedSoFar]) {
+        const figure = pointFigure("plan", series, row, rows[0].month);
+        const [startMonth, endMonth] = figure.period.split(":");
+        const search = viewSearch(view, endMonth, `&summary_start=${startMonth}&summary_end=${endMonth}`);
+        const { model } = await viewEntries(api, accounts, figure.fig, { search, period: { startMonth, endMonth } });
+        assert.equal(model.spent.amountMinor, row.spentSoFarMinor, `${view.viewId} ${series.key} ${row.month}`);
+        // Open plan opens that month's plan.
+        const plan = figureMenu({ fig: figure.fig, plan: figure.plan, period: { startMonth, endMonth }, search }).items.find((item) => item.action === "plan");
+        assert.match(plan.location.search, new RegExp(`month=${endMonth}`));
+      }
+    }
+    // The gap in the last month is the lead's over or under plan for the range.
+    const last = rows.at(-1);
+    assert.equal(last.spentSoFarMinor, lead.figures.spending);
+    assert.equal(last.plannedSoFarMinor, lead.figures.spendPlan);
+    assert.equal(Math.abs(last.plannedSoFarMinor - last.spentSoFarMinor), lead.headroom.amountMinor);
+    assert.equal(last.plannedSoFarMinor - last.spentSoFarMinor < 0, lead.headroom.isOver);
+  }
+  // Tim's May plans iFAST under Investments: the page sends it month by month,
+  // and without it the planned total would be that much over the lead's.
+  const { summaryPage, lead } = await summaryLead(api, VIEWS[1], START, MAY);
+  assert.deepEqual(summaryPage.plannedInvestByMonth, [{ month: MAY, plannedInvestMinor: 150_000 }]);
+  const { plannedInvestByMonth: _sent, ...withoutPlan } = summaryPage;
+  assert.equal(buildChartMonths({ mode: "plan", ...withoutPlan }).at(-1).plannedSoFarMinor - lead.figures.spendPlan, 150_000);
+  // And the money filed under Investments and Savings is not spending: the
+  // Spent columns added up are more than Spent so far.
+  const rows = buildChartMonths({ mode: "plan", ...summaryPage });
+  assert.ok(rows.reduce((total, row) => total + row.spentMinor, 0) > rows.at(-1).spentSoFarMinor);
 });
 
 test("Month plan rows' actuals, Spending Mix and Top spending open exactly their entries", async (t) => {

@@ -21,7 +21,8 @@ import type {
 
 // A month's planned totals from its current plan rows, with the investment
 // goal (money-jobs.ts) beside them. The goal is summed into the Summary's
-// "Planned investments" card and never sent per month.
+// "Planned investments" card; the month rows never carry it, and the page
+// sends it month by month only as `plannedInvestByMonth` (the month chart).
 export type PlannedSummaryMonth = SummaryMonthDto & { plannedInvestMinor?: number };
 
 export function buildSummaryPage(
@@ -66,10 +67,11 @@ export function buildSummaryPage(
   const realizedSavingsMinor = sumMinor(months, "realizedSavingsMinor");
   // The investment goal comes from the plan rows of the range's months (the
   // stored month totals have no field for it).
-  const plannedInvestTotalMinor = rangeMonths.reduce(
-    (sum, month) => sum + (plannedFallbackMonthByKey.get(month)?.plannedInvestMinor ?? 0),
-    0
-  );
+  const plannedInvestByMonth = rangeMonths.flatMap((month) => {
+    const plannedInvestMinor = plannedFallbackMonthByKey.get(month)?.plannedInvestMinor ?? 0;
+    return plannedInvestMinor ? [{ month, plannedInvestMinor }] : [];
+  });
+  const plannedInvestTotalMinor = plannedInvestByMonth.reduce((sum, month) => sum + month.plannedInvestMinor, 0);
   const metricCards: MetricCardDto[] = [
     {
       label: "Planned income",
@@ -119,6 +121,7 @@ export function buildSummaryPage(
     categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
     ...(investmentMoves ? { investmentMoves } : {}),
     ...(investmentMovesByMonth.length ? { investmentMovesByMonth } : {}),
+    ...(plannedInvestByMonth.length ? { plannedInvestByMonth } : {}),
     notes:
       personId === "household"
         ? [

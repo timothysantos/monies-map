@@ -7,6 +7,7 @@ import {
   chartScales,
   chartSeries,
   compactMoney,
+  lineValue,
   pointFigure,
   toggleSeries
 } from "./earned-spent-chart-model";
@@ -15,9 +16,10 @@ import { formatMonthLabel } from "./formatters";
 // The column + line chart at the top of Summary's month-by-month card (the
 // Simple view's "Earned vs spent by month", the Plan view's Intent vs
 // Outcome; design.md "Plan or Simple"). Simple: Earned and Spent columns and
-// a Kept line. Plan: Earned and Spent columns, a Planned spending line and
-// Spent so far, adding up: a dashed ink running total on its own axis on the
-// right (it would flatten the columns on theirs).
+// a Kept line. Plan: Earned and Spent columns, a Planned spending line, and
+// Spent so far and Planned so far: two dashed running totals on their own
+// axis on the right (they would flatten the columns on theirs), whose gap is
+// how far ahead of or behind the plan the household is by each month.
 // It shows only for a range of two or more months (a single column says
 // nothing the card does not), and with money hidden it draws nothing: no
 // columns, no line, no axis, because their sizes and the line's side of zero
@@ -33,8 +35,9 @@ import { formatMonthLabel } from "./formatters";
 // and Ask about this. The arrow keys move between points (Left and Right
 // along a series, Up and Down between series, Home and End to the ends). The
 // legend chips show or hide a series. On first view the columns grow from
-// the baseline and the line draws on, unless the person asks for reduced
-// motion.
+// the baseline, the lines draw on and the points pop in, unless the person
+// asks for reduced motion (earned-spent-chart.css); a pointer on a column
+// widens it a little and dims the others.
 //
 // It is written with createElement, not JSX, imports no money-privacy and
 // does not import React: the page hands React in (createEarnedSpentChart),
@@ -129,7 +132,7 @@ function EarnedSpentChartBody({ mode, rows }) {
   const bars = visible.filter((item) => item.kind === "bar");
   const lines = visible.filter((item) => item.kind === "line");
   // The left scale is of every month figure, so hiding one never rescales
-  // the rest; the running total has the right one to itself.
+  // the rest; the two running totals share the right one.
   const scales = R.useMemo(() => chartScales(rows), [rows]);
   const scale = scales.left;
   const rightScale = lines.some((line) => line.axis === "right") ? scales.right : null;
@@ -243,11 +246,12 @@ function EarnedSpentChartBody({ mode, rows }) {
     );
   });
 
-  // A dashed line keeps its dashes in pixels: it fades in instead of drawing
-  // on (the draw-on uses a one-unit path length and dash).
+  // A dashed line keeps its dashes in pixels, so it is revealed left to
+  // right by a clip instead (the solid ones draw on with a one-unit path
+  // length and dash).
   const linePaths = lines.flatMap((line) => lineSegments(rows, geometry, yFor(line), line.key).map((segment) => h("path", {
     key: `line-${line.key}-${segment.start}`,
-    className: `ec-line is-${line.key}`,
+    className: `ec-line is-${line.key}${line.axis === "right" ? " is-running" : ""}`,
     d: segment.d,
     pathLength: line.axis === "right" ? undefined : 1,
     fill: "none"
@@ -326,7 +330,7 @@ function EarnedSpentChartBody({ mode, rows }) {
       rightScale ? h(
         "svg",
         { className: "ec-axis is-right", width: geometry.rightAxisWidth, height, "aria-hidden": "true" },
-        rightScale.ticks.map((tick) => h("text", { key: tick, className: "ec-axis-label is-running", x: 6, y: yRight(tick) + 3.5, textAnchor: "start" }, compactMoney(tick)))
+        rightScale.ticks.map((tick) => h("text", { key: tick, className: "ec-axis-label is-right", x: 6, y: yRight(tick) + 3.5, textAnchor: "start" }, compactMoney(tick)))
       ) : null
     )
   );
@@ -365,11 +369,6 @@ function PointGroup({ point, mode, firstMonth, isTab, onFocus, onBlur, onHoverOp
 
 // Runs of months that have a point, each its own path, so a month without
 // one (no plan) breaks the line instead of being drawn through zero.
-function lineValue(row, key) {
-  if (key === "running") return row.runningMinor ?? null;
-  return row.lineMinor;
-}
-
 function lineSegments(rows, geometry, yOf, key) {
   const segments = [];
   let current = null;
