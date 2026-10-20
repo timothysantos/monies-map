@@ -84,14 +84,40 @@ export function partitionActivityBySettlement<T extends SettledSectionItem>(
     return {
       checkpointId,
       settlementDate: checkpoint?.settlementDate ?? latestItemDate,
-      isPaid: !checkpoint || ["matched", "internally_offset"].includes(checkpoint.status) || Boolean(checkpoint.settledAt),
+      isPaid: isSettlementPaid(checkpoint),
       items,
       entryCount: items.length,
       spendMinor: items.reduce((sum, item) => sum + (item.kind === "expense" ? item.totalAmountMinor : 0), 0)
     };
   });
-  sections.sort((left, right) => right.settlementDate.localeCompare(left.settlementDate) || left.checkpointId.localeCompare(right.checkpointId));
+  sections.sort(compareSettledSections);
   return { open, sections };
+}
+
+// Paid once the bank payment is matched, the balances cancelled out, or the
+// payment was marked paid (a section whose checkpoint is unknown reads paid).
+export function isSettlementPaid(checkpoint: Pick<SettledSectionCheckpoint, "status" | "settledAt"> | undefined) {
+  return !checkpoint || ["matched", "internally_offset"].includes(checkpoint.status) || Boolean(checkpoint.settledAt);
+}
+
+// Newest settlement first.
+export function compareSettledSections(left: { settlementDate: string; checkpointId: string }, right: { settlementDate: string; checkpointId: string }) {
+  return right.settlementDate.localeCompare(left.settlementDate) || left.checkpointId.localeCompare(right.checkpointId);
+}
+
+/**
+ * A settled section without its rows: what the Splits page sends for each
+ * settlement and group (the rows load when the section is opened). The same
+ * numbers partitionActivityBySettlement gives the section with its rows.
+ */
+export interface SettledSectionSummary {
+  checkpointId: string;
+  groupId: string;
+  settlementDate: string;
+  isPaid: boolean;
+  entryCount: number;
+  spendMinor: number;
+  currency: string;
 }
 
 /**

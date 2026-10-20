@@ -15,6 +15,7 @@ import test from "node:test";
 import worker from "../src/index.ts";
 import { countingDatabase } from "./support/d1-counting.mjs";
 import { createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
+import { seedSettledSplitHistory } from "./support/settled-split-history.mjs";
 
 let template;
 test.before(async () => {
@@ -120,4 +121,52 @@ test("a 10k-transaction household with heavy stored previews and diagnostics kee
     assert.ok(measured.responseBytes <= page.maxResponseBytes, `${page.name}: ${measured.responseBytes} response bytes (max ${page.maxResponseBytes})`);
     assert.ok(cpuMedianMs <= MAX_MEDIAN_NODE_CPU_MS, `${page.name}: median node CPU ${cpuMedianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);
   }
+});
+
+// The Splits page on the same 10k household plus production's settled
+// history (352 records one settlement covered, 287 in one group): the page
+// must never send a settled row (they are ~1 kB each and load when a section
+// opens), its settled part is a few summaries and counts, and the lazy rows
+// of the largest section stay a bounded, quick read.
+test("the Splits page never sends settled rows; a settled section's rows are one bounded read", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  const history = await seedSettledSplitHistory(db);
+  const counting = countingDatabase(db);
+  const env = { DB: counting.db, ...template.config.vars };
+  const call = async (path) => {
+    const response = await worker.fetch(new Request(`http://127.0.0.1${path}`), env);
+    const body = await response.text();
+    assert.equal(response.status, 200, `${path}: ${body.slice(0, 200)}`);
+    return body;
+  };
+  const measure = async (path) => {
+    await call(path);
+    const samples = [];
+    let measured;
+    for (let run = 0; run < 5; run += 1) {
+      counting.reset();
+      const startedAt = performance.now();
+      const body = await call(path);
+      samples.push(performance.now() - startedAt);
+      measured = { body, ...counting.summary() };
+    }
+    samples.sort((left, right) => left - right);
+    return { ...measured, medianMs: samples[2] };
+  };
+
+  const page = await measure("/api/splits-page?view=person-tim&month=2025-10");
+  const dto = JSON.parse(page.body).splitsPage;
+  const rows = await measure(`/api/splits/settled-rows?view=person-tim&checkpoint=${history.checkpointId}&group=${history.bigGroupId}`);
+  console.log(`# splits-page: ${page.statements} round trips, ${page.rowsRead} rows read, ${page.body.length} response bytes, ${page.medianMs.toFixed(0)} ms handler (node, local D1)`);
+  console.log(`# settled-rows (287 rows): ${rows.statements} round trips, ${rows.rowsRead} rows read, ${rows.body.length} response bytes, ${rows.medianMs.toFixed(0)} ms handler (node, local D1)`);
+
+  assert.equal(dto.activity.filter((item) => item.settlementCheckpointId && !item.isArchived).length, 0, "no settled row in the page");
+  assert.ok(dto.settlementCheckpoints.every((checkpoint) => !checkpoint.includedRecordIds), "no covered record ids in the page");
+  assert.equal(dto.settledSections.reduce((sum, section) => sum + section.entryCount, 0), history.coveredTotal);
+  assert.ok(page.body.length <= 30_000, `splits-page: ${page.body.length} response bytes (max 30,000; ~342,500 before)`);
+  assert.ok(page.statements <= 24, `splits-page: ${page.statements} round trips (max 24)`);
+  assert.equal(JSON.parse(rows.body).items.length, 287);
+  assert.ok(rows.statements <= 8, `settled-rows: ${rows.statements} round trips (max 8)`);
+  assert.ok(rows.medianMs <= MAX_MEDIAN_NODE_CPU_MS, `settled-rows: ${rows.medianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);
 });
