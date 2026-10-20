@@ -265,7 +265,25 @@ for (const device of [
         // tiniest is a sliver, reached by keyboard below).
         const bills = panel(page).locator('.donut-slice[data-slice="Bills"]');
         await expect(bills.locator(".donut-slice-label")).toHaveCount(0);
-        await bills.locator(".donut-slice-hit").tap();
+        await bills.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+        // A point well inside the thin wedge (its box's centre can fall on
+        // a neighbour): the one in its box farthest from any other slice.
+        const point = await bills.locator(".donut-slice-hit").evaluate((hit) => {
+          const rect = hit.getBoundingClientRect();
+          const owns = (x, y) => document.elementFromPoint(x, y)?.closest(".donut-slice") === hit.closest(".donut-slice");
+          let best = null;
+          for (let y = rect.top; y <= rect.bottom; y += 1) {
+            for (let x = rect.left; x <= rect.right; x += 1) {
+              if (!owns(x, y)) continue;
+              let margin = 0;
+              while (margin < 6 && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) => owns(x + dx * (margin + 1), y + dy * (margin + 1)))) margin += 1;
+              if (!best || margin > best.margin) best = { x, y, margin };
+            }
+          }
+          return best;
+        });
+        expect(point, "Bills can be reached").toBeTruthy();
+        await page.touchscreen.tap(point.x, point.y);
         await expect(menu.locator(".figure-menu-title")).toHaveText("Bills");
         await page.keyboard.press("Escape");
         await expect(menu).toHaveCount(0);
