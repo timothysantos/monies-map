@@ -27,7 +27,8 @@ export function ShellRouteTabs({
   askInProgress = false,
   className = "",
   showPhoneOnly = false,
-  includeOverflow = true
+  includeOverflow = true,
+  ariaLabel = messages.tabs.ariaLabel
 }) {
   const titleFor = (tab) => (
     tab.id === "settings" && pendingCategorySuggestionCount
@@ -70,7 +71,7 @@ export function ShellRouteTabs({
   return (
     <nav
       className={`tab-strip ${className}`.trim()}
-      aria-label={messages.tabs.ariaLabel}
+      aria-label={ariaLabel}
       style={/** @type {import("react").CSSProperties} */ ({ "--primary-tab-count": primaryTabs.length })}
     >
       {primaryTabs.map((tab) => renderTabLink(tab, tab.phoneOnly && !showPhoneOnly ? "tab tab-phone-only" : "tab"))}

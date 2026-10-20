@@ -73,7 +73,11 @@ export const messages = {
     imports: "Imports",
     settings: "Settings",
     faq: "FAQ",
-    ariaLabel: "Dashboard sections"
+    ariaLabel: "Dashboard sections",
+    // The copy of the page links that floats at the bottom of a long
+    // desktop page: its own landmark name, so a screen reader never lists
+    // two navigations with one name.
+    keptInViewAriaLabel: "Dashboard sections, kept in view"
   },
   // Other pages' wording the app shell shows on every page.
   shell: {

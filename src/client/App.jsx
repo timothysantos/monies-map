@@ -2821,6 +2821,7 @@ export function App() {
   const desktopFloatingTabs = desktopContextVisible ? (
     <ShellRouteTabs
       className="desktop-floating-tabs"
+      ariaLabel={messages.tabs.keptInViewAriaLabel}
       primaryTabs={primaryRouteTabs}
       secondaryTabs={[]}
       selectedTabId={selectedTabId}
