@@ -54,6 +54,12 @@ export function CategoryPickerHost({
     openerRef.current = document.activeElement;
   }
   wasOpen.current = open;
+  // A list opened inside a dialog or sheet (focus is trapped there, so what
+  // had focus is inside it): that dialog blocks wheel and touch scrolling
+  // outside itself, and the popover is drawn outside it, so the popover
+  // takes the scroll lock while it is open (category-popover-content.jsx).
+  const insideDialog = Boolean(open && [anchorRef?.current, returnFocusRef?.current, openerRef.current]
+    .some((element) => element?.closest?.('[role="dialog"], [aria-modal="true"]')));
   // An open list blocks optional route work, like every picker.
   useRouteWorkBusy(open);
   const close = () => onOpenChange(false);
@@ -114,6 +120,7 @@ export function CategoryPickerHost({
         <Suspense fallback={null}>
           <CategoryPopoverContent
             restoreFocus={restoreFocus}
+            insideDialog={insideDialog}
             options={options}
             value={value}
             multiple={multiple}
