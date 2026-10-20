@@ -1,13 +1,13 @@
-import { messages } from "./copy/en-SG";
+import { splitActivityMatchesSearch } from "../domain/search-text";
 import {
   moneySearchText,
   textMatchesSearch,
   uniqueSearchSuggestions
 } from "./search-filter";
 
-export function splitActivityMatchesSearch(item, query) {
-  return textMatchesSearch(buildSplitActivitySearchText(item), query);
-}
+// A split row's search text is the domain's (search-text.ts), shared with
+// the Worker's search inside settled sections.
+export { splitActivityMatchesSearch };
 
 export function splitMatchMatchesSearch(match, query) {
   return textMatchesSearch(buildSplitMatchSearchText(match), query);
@@ -43,30 +43,6 @@ export function getSplitSearchSuggestions(activity, matches = [], query = "", li
       match.confidenceLabel
     ])
   ], query, limit);
-}
-
-function buildSplitActivitySearchText(item) {
-  return [
-    item.kind,
-    item.date,
-    item.description,
-    item.note,
-    item.categoryName,
-    item.groupName,
-    item.paidByPersonName,
-    item.fromPersonName,
-    item.toPersonName,
-    item.viewerDirectionLabel,
-    item.linkedTransactionDescription,
-    item.linkedTransactionNote,
-    item.linkedTransactionCategoryName,
-    item.matched ? messages.splits.linked : messages.splits.manual,
-    moneySearchText(item.totalAmountMinor, item.amountMinor, item.viewerAmountMinor),
-    ...(item.shares ?? []).flatMap((share) => [
-      share.personName,
-      moneySearchText(share.amountMinor)
-    ])
-  ].filter(Boolean).join(" ");
 }
 
 function buildSplitMatchSearchText(match) {

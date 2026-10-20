@@ -552,15 +552,19 @@ test("a settle-up edit or delete that fails part way changes nothing", async (t)
   assertSameDatabase(await dumpDatabase(db), before);
 });
 
-test("the Splits page marks settled records so the editor can explain the lock", async (t) => {
+test("a settled record's rows mark it settled so the editor can explain the lock", async (t) => {
   const { api } = await openSeededDatabase(t, template);
   const splitExpenseId = await createSplitExpense(api, { description: "Marked settled", amountMinor: 2_000 });
   const checkpoint = await simplify(api);
 
+  // The page holds only its section's numbers; the rows load on demand.
   const splitsPage = await api(`/api/splits-page?view=person-tim&month=${MONTH}`);
-
   assert.equal(splitsPage.status, 200);
-  const row = splitsPage.payload.splitsPage.activity.find((item) => item.id === splitExpenseId);
+  assert.equal(splitsPage.payload.splitsPage.activity.some((item) => item.id === splitExpenseId), false);
+  const section = await api(`/api/splits/settled-rows?view=person-tim&record=${splitExpenseId}`);
+  assert.equal(section.status, 200);
+  assert.equal(section.payload.checkpointId, checkpoint.checkpointId);
+  const row = section.payload.items.find((item) => item.id === splitExpenseId);
   assert.equal(row.settlementCheckpointId, checkpoint.checkpointId);
   assert.equal(row.settlementStatus, "settled");
 });

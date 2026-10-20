@@ -24,6 +24,7 @@ import { buildCategoryGuess, readCategoryGuessRequest } from "./domain/pages/cat
 import { buildCardSuggestion,CardSuggestionEntryNotFound, readCardSuggestionRequest } from "./domain/pages/card-suggestion";
 import { buildSplitSuggestionDto,readSplitSuggestionRequest, SplitSuggestionEntryNotFound } from "./domain/pages/split-suggestion";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
+import { buildSettledRowsDto, buildSettledSearchDto } from "./domain/pages/splits-settled";
 import { buildTransferDraftCandidatesDto, readTransferDraftQuery } from "./domain/pages/transfer-draft-candidates";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
@@ -501,6 +502,33 @@ export default {
         ),
         timing
       );
+    }
+
+    // A settled section's rows, loaded when it is opened, and the Splits
+    // search inside settled sections (pages/splits-settled.ts).
+    if (url.pathname === "/api/splits/settled-rows" && request.method === "GET") {
+      const params = readSplitsSettledParams(url, ["checkpoint", "group", "record"]);
+      if (!params || !(params.record || (params.checkpoint && params.group))) {
+        return json({ ok: false, error: "Invalid settled rows request" }, 400);
+      }
+      return apiPageResponse("Settled split rows", request, url, async () => {
+        const rows = await buildSettledRowsDto(env.DB, {
+          viewId: params.view,
+          checkpointId: params.checkpoint,
+          groupId: params.group,
+          recordId: params.record
+        });
+        return rows ?? { viewId: params.view, checkpointId: params.checkpoint ?? "", groupId: params.group ?? "", items: [], truncated: false };
+      }, timing);
+    }
+
+    if (url.pathname === "/api/splits/settled-search" && request.method === "GET") {
+      const params = readSplitsSettledParams(url, ["group", "q"]);
+      if (!params || !params.group) {
+        return json({ ok: false, error: "Invalid settled search request" }, 400);
+      }
+      return apiPageResponse("Settled split search", request, url, () =>
+        buildSettledSearchDto(env.DB, { viewId: params.view, groupId: params.group ?? "", query: params.q ?? "" }), timing);
     }
 
     if (url.pathname === "/api/imports-page") {
@@ -2719,6 +2747,22 @@ function parseShortcutOwnershipType(value?: string | null): "direct" | "shared" 
 }
 
 type RequestTiming = { requestStartedAt: number; initMs: number; initCold: boolean };
+
+// The view and the named string parameters of a settled-rows or settled
+// search request, each at most 200 characters; null when one is longer.
+function readSplitsSettledParams(url: URL, names: string[]) {
+  const params: Record<string, string | undefined> & { view: string } = { view: url.searchParams.get("view") ?? "household" };
+  for (const name of ["view", ...names]) {
+    const value = url.searchParams.get(name);
+    if (value !== null && value.length > 200) {
+      return null;
+    }
+    if (value !== null && name !== "view") {
+      params[name] = value;
+    }
+  }
+  return params;
+}
 
 async function apiPageResponse<T>(
   label: string,

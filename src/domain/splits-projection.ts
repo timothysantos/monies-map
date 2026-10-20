@@ -25,17 +25,23 @@ export function buildSplitsPage(
   selectedMonth: string,
   personNameById: Record<string, string>,
   settlementCheckpoints: SplitSettlementCheckpointDto[] = [],
-  activityHistory: SplitActivityHistoryDto[] = []
+  activityHistory: SplitActivityHistoryDto[] = [],
+  // The Splits page reads only the records outside settled sections
+  // (pages/splits-page.ts). `matchRecords` are the unlinked records the
+  // bank-match suggestions were found for, settled or not, so a suggestion
+  // is checked against the person view as before; `settledGroups` are the
+  // groups a settled section holds, so a group whose records are all settled
+  // keeps its tile.
+  options: {
+    matchRecords?: { expenses: SplitExpenseDto[]; settlements: SplitSettlementDto[] };
+    settledGroups?: Array<{ id: string; name: string; currency: string }>;
+  } = {}
 ) {
   const visibleExpenses = splitExpenses.filter((expense) => splitExpenseMatchesView(expense, viewId));
   const visibleSettlements = splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId));
-  const checkpointByRecordId = new Map(
-    settlementCheckpoints
-      .filter((checkpoint) => !["reopened", "voided"].includes(checkpoint.status))
-      .flatMap((checkpoint) => (checkpoint.includedRecordIds ?? []).map((recordId) => [recordId, checkpoint] as const))
-  );
-  const checkpointedExpenses = visibleExpenses.map((expense) => ({ ...expense, settlementCheckpoint: checkpointByRecordId.get(expense.id) }));
-  const checkpointedSettlements = visibleSettlements.map((settlement) => ({ ...settlement, settlementCheckpoint: checkpointByRecordId.get(settlement.id) }));
+  const { checkpointedExpenses, checkpointedSettlements } = attachSettlementCheckpoints(visibleExpenses, visibleSettlements, settlementCheckpoints);
+  const matchExpenses = options.matchRecords ? options.matchRecords.expenses.filter((expense) => splitExpenseMatchesView(expense, viewId)) : visibleExpenses;
+  const matchSettlements = options.matchRecords ? options.matchRecords.settlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId)) : visibleSettlements;
   const openExpenses = checkpointedExpenses.filter((expense) => !expense.batchClosedAt && !expense.settlementCheckpoint);
   const openSettlements = checkpointedSettlements.filter((settlement) => !settlement.batchClosedAt && !settlement.settlementCheckpoint);
   const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number; currency: string; expenseSource: SplitGroupDto["expenseSource"] }>();
@@ -99,6 +105,22 @@ export function buildSplitsPage(
     groupMap.set(groupId, current);
   }
 
+  for (const group of options.settledGroups ?? []) {
+    if (!groupMap.has(group.id)) {
+      groupMap.set(group.id, {
+        id: group.id,
+        name: group.name,
+        iconKey: "receipt",
+        sortOrder: Number.MAX_SAFE_INTEGER,
+        balanceMinor: 0,
+        entryCount: 0,
+        pendingMatchCount: 0,
+        currency: group.currency,
+        expenseSource: "mixed"
+      });
+    }
+  }
+
   for (const expense of openExpenses) {
     const groupId = expense.groupId ?? "split-group-none";
     const current = groupMap.get(groupId);
@@ -119,7 +141,7 @@ export function buildSplitsPage(
     current.entryCount += 1;
   }
 
-  for (const match of splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId))) {
+  for (const match of splitMatches.filter((item) => splitMatchMatchesView(item, matchExpenses, matchSettlements, viewId))) {
     const current = groupMap.get(match.groupId) ?? {
       id: match.groupId,
       name: match.groupName,
@@ -175,10 +197,48 @@ export function buildSplitsPage(
     month: selectedMonth,
     groups: groups.map((group) => ({ ...group, isDefault: group.id === defaultGroupId })),
     activity,
-    matches: splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId)),
+    matches: splitMatches.filter((item) => splitMatchMatchesView(item, matchExpenses, matchSettlements, viewId)),
     settlementCheckpoints,
     activityHistory
   };
+}
+
+// Marks each record with the active settlement checkpoint that covers it
+// (a reopened or voided one covers nothing).
+function attachSettlementCheckpoints(
+  expenses: SplitExpenseDto[],
+  settlements: SplitSettlementDto[],
+  settlementCheckpoints: SplitSettlementCheckpointDto[]
+) {
+  const checkpointByRecordId = new Map(
+    settlementCheckpoints
+      .filter((checkpoint) => !["reopened", "voided"].includes(checkpoint.status))
+      .flatMap((checkpoint) => (checkpoint.includedRecordIds ?? []).map((recordId) => [recordId, checkpoint] as const))
+  );
+  return {
+    checkpointedExpenses: expenses.map((expense) => ({ ...expense, settlementCheckpoint: checkpointByRecordId.get(expense.id) })),
+    checkpointedSettlements: settlements.map((settlement) => ({ ...settlement, settlementCheckpoint: checkpointByRecordId.get(settlement.id) }))
+  };
+}
+
+/**
+ * The activity rows of some split records for one view, exactly as the
+ * Splits page builds them (the lazy settled-section rows and the settled
+ * search use it, so a row reads the same wherever it loads). Newest first.
+ */
+export function buildSplitActivityForView(
+  viewId: string,
+  splitExpenses: SplitExpenseDto[],
+  splitSettlements: SplitSettlementDto[],
+  settlementCheckpoints: SplitSettlementCheckpointDto[],
+  personNameById: Record<string, string>
+): SplitActivityDto[] {
+  const { checkpointedExpenses, checkpointedSettlements } = attachSettlementCheckpoints(
+    splitExpenses.filter((expense) => splitExpenseMatchesView(expense, viewId)),
+    splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId)),
+    settlementCheckpoints
+  );
+  return buildSplitActivity(viewId, checkpointedExpenses, checkpointedSettlements, personNameById);
 }
 
 function splitExpenseMatchesView(expense: SplitExpenseDto, viewId: string) {

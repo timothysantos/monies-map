@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { findSplitRow, loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 // A split record in a simplified settlement keeps its settled facts. Its row
 // opens the split card read-only (View split): the reason and an "Undo
@@ -49,12 +49,10 @@ async function createSettledSplits(page, stamp) {
   };
 }
 
+// A settled split is in its section's rows, not the page (findSplitRow).
 async function splitRow(page, splitExpenseId) {
-  const data = await loadSplitsPage(page, { view: "person-tim", month });
-  return {
-    row: data.splitsPage.activity.find((item) => item.id === splitExpenseId),
-    checkpoints: data.splitsPage.settlementCheckpoints
-  };
+  const { row, data } = await findSplitRow(page, { view: "person-tim", month, recordId: splitExpenseId });
+  return { row, checkpoints: data.splitsPage.settlementCheckpoints };
 }
 
 function isLockResponse(response, path) {

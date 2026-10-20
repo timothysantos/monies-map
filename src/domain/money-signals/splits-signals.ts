@@ -7,7 +7,8 @@
 import { addMonths, amountLine, approxMoney, daysBetween, joinWithAnd, monthYear, phrase, shortDay, sortedLine, sum, textLine, tidyName, timesWord, weekdayIndex, weekdayNameOf, type CopyCatalogue, type FormatMoney } from "./format";
 import { calmLinesFor } from "./calm-lines";
 import type { TriviaRotation } from "./rotation";
-import { isCoveredBySettleUp, isOpenExpense } from "../split-open-period";
+import { isOpenExpense } from "../split-open-period";
+import { buildGroupFactsFromActivity, factsCostName, type SplitGroupFacts } from "../split-group-facts";
 import { triviaSignal } from "./shared-signals";
 import type { Audience, MoneySignal } from "./types";
 
@@ -273,9 +274,14 @@ export interface SplitsSignalInput {
   viewLabel: string;
   people: Array<{ id: string; name: string }>;
   group: { id: string; name: string; balanceMinor: number; currency?: string } | null;
-  // All of the group's activity, settled or not. Figures about "now" read the
-  // open period from it; the Just for fun lines read it all and say so.
+  // The group's activity the page holds: the open records (and closed
+  // batches). Figures about "now" read the open period from it.
   activity: SplitsSignalActivity[];
+  // The whole group, settled or not, as counts (split-group-facts.ts): the
+  // Splits page sends them for a group whose settled records it does not
+  // send. Without them they are counted from `activity`, which is then all
+  // of the group.
+  facts?: SplitGroupFacts;
   pendingMatchCount: number;
   // The household's settlements, for one waiting on its bank payment.
   settlementCheckpoints?: Array<{
@@ -324,13 +330,29 @@ function groupIn(group: NonNullable<SplitsSignalInput["group"]>, input?: SplitsS
   return `${base}${input ? wholeGroupScope(input) : ""}`;
 }
 
+const factsCache = new WeakMap<SplitsSignalInput, SplitGroupFacts>();
+
+// The whole group's facts: the page's, or counted from the activity.
+function factsOf(input: SplitsSignalInput) {
+  if (input.facts) {
+    return input.facts;
+  }
+  let facts = factsCache.get(input);
+  if (!facts) {
+    facts = buildGroupFactsFromActivity(input.activity, input.group?.currency);
+    factsCache.set(input, facts);
+  }
+  return facts;
+}
+
 // What a whole-group line adds once part of the group is settled: it counts
 // everything since the first cost, so it never reads as the open period.
 function wholeGroupScope(input: SplitsSignalInput) {
-  if (!input.activity.some(isCoveredBySettleUp)) {
+  const facts = factsOf(input);
+  if (!facts.hasCovered) {
     return "";
   }
-  const first = input.activity.filter((item) => item.kind === "expense").map((item) => item.date).sort()[0];
+  const first = facts.firstExpenseDate;
   // The year only when it is not this year, so "since 3 Oct 2025" is never
   // read as last month.
   const year = first && first.slice(0, 4) !== input.today.slice(0, 4) ? ` ${first.slice(0, 4)}` : "";
@@ -338,36 +360,9 @@ function wholeGroupScope(input: SplitsSignalInput) {
   return since ? ` (settled or not, since ${since})` : " (settled or not)";
 }
 
-// "the {name}": a description that already starts with "The" drops it.
-function costName(item: SplitsSignalActivity) {
-  return tidyName(item.description).replace(/^the\s+/i, "");
-}
-
-// The group's expenses, and the ones in its own currency (the only ones
-// money is added up over).
+// The group's expenses (above zero), as the open-period line counts them.
 function groupExpenses(input: SplitsSignalInput) {
   return input.activity.filter((item) => item.kind === "expense" && item.totalAmountMinor > 0);
-}
-
-function inGroupCurrency(input: SplitsSignalInput, items: SplitsSignalActivity[]) {
-  const currency = input.group?.currency;
-  return items.filter((item) => !currency || !item.currency || item.currency === currency);
-}
-
-function uniqueTop<K>(counts: Map<K, number>): [K, number] | null {
-  const sorted = [...counts.entries()].sort((left, right) => right[1] - left[1]);
-  return sorted[0] && (!sorted[1] || sorted[1][1] !== sorted[0][1]) ? sorted[0] : null;
-}
-
-function countBy<T, K>(items: T[], keyOf: (item: T) => K | undefined) {
-  const counts = new Map<K, number>();
-  for (const item of items) {
-    const key = keyOf(item);
-    if (key !== undefined && key !== "") {
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-  }
-  return counts;
 }
 
 // Quick fix: the group's open balance, from the view's side.
@@ -486,7 +481,7 @@ export function shareOfCostsSignal(input: SplitsSignalInput): MoneySignal | null
   const expenses = groupExpenses(input).filter(isOpenExpense);
   const since = `${addMonths(input.today.slice(0, 7), -3)}${input.today.slice(7, 10)}`;
   const recent = expenses.filter((item) => item.date >= since);
-  const wholeOpenPeriod = input.activity.some(isCoveredBySettleUp) ? "since the last settle-up" : "in this group";
+  const wholeOpenPeriod = factsOf(input).hasCovered ? "since the last settle-up" : "in this group";
   const [counted, period] = recent.length >= 2 ? [recent, "over the last 3 months"] : [expenses, wholeOpenPeriod];
   const totalMinor = sum(counted.map((item) => item.totalAmountMinor));
   const paidMinor = sum(counted.filter((item) => item.paidByPersonName === input.viewLabel).map((item) => item.totalAmountMinor));
@@ -510,200 +505,180 @@ export function shareOfCostsSignal(input: SplitsSignalInput): MoneySignal | null
 
 // Just for fun: the group (or trip) in numbers.
 export function groupInNumbersTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = inGroupCurrency(input, groupExpenses(input));
-  if (!input.group || expenses.length < 2) {
+  const facts = factsOf(input);
+  if (!input.group || facts.inCurrencyCount < 2 || !facts.priciest) {
     return null;
   }
-  const priciest = [...expenses].sort((left, right) => right.totalAmountMinor - left.totalAmountMinor || left.date.localeCompare(right.date))[0];
   return triviaSignal("in-numbers", input.group.id, isTrip(input.group) ? SPLITS_COPY.tripInNumbers : SPLITS_COPY.groupInNumbers, {
     scope: wholeGroupScope(input),
-    count: groupExpenses(input).length,
-    name: costName(priciest) || "shared cost",
-    amount: input.formatMoney(priciest.totalAmountMinor)
+    count: facts.expenseCount,
+    name: factsCostName(facts.priciest.description) || "shared cost",
+    amount: input.formatMoney(facts.priciest.amountMinor)
   });
 }
 
 // Just for fun, person views only: how many of the costs this person paid
 // for. The household view never compares partners.
 export function payerTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = inGroupCurrency(input, groupExpenses(input));
-  const paid = expenses.filter((item) => item.paidByPersonName === input.viewLabel);
-  if (input.audience !== "person" || !input.group || expenses.length < 2 || !paid.length) {
+  const facts = factsOf(input);
+  const paid = facts.payers.find((payer) => payer.name === input.viewLabel);
+  if (input.audience !== "person" || !input.group || facts.inCurrencyCount < 2 || !paid?.count) {
     return null;
   }
   return triviaSignal("payer", input.group.id, SPLITS_COPY.payerCount, {
-    count: paid.length,
-    total: expenses.length,
-    amount: input.formatMoney(sum(paid.map((item) => item.totalAmountMinor))),
+    count: paid.count,
+    total: facts.inCurrencyCount,
+    amount: input.formatMoney(paid.amountMinor),
     groupIn: groupIn(input.group, input)
   });
 }
 
 // Just for fun: the date with the most shared costs (no tie).
 export function busiestDayTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const top = uniqueTop(countBy(groupExpenses(input), (item) => item.date));
-  if (!input.group || !top || top[1] < 2) {
+  const top = factsOf(input).busiestDay;
+  if (!input.group || !top || top.count < 2) {
     return null;
   }
-  return triviaSignal("busiest-day", top[0], SPLITS_COPY.busiestDay, { day: shortDay(top[0]), count: top[1], groupIn: groupIn(input.group, input) });
+  return triviaSignal("busiest-day", top.date, SPLITS_COPY.busiestDay, { day: shortDay(top.date), count: top.count, groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the weekday with the most shared costs (no tie).
 export function weekdayMostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = groupExpenses(input);
-  const top = uniqueTop(countBy(expenses, (item) => weekdayIndex(item.date)));
-  if (!input.group || !top || expenses.length < 3 || top[0] < 0) {
+  const facts = factsOf(input);
+  const top = facts.weekdayTop;
+  if (!input.group || !top || facts.expenseCount < 3 || top.index < 0) {
     return null;
   }
-  return triviaSignal("weekday-most", String(top[0]), SPLITS_COPY.weekdayMost, { weekday: weekdayNameOf(top[0]), groupIn: groupIn(input.group, input) });
+  return triviaSignal("weekday-most", String(top.index), SPLITS_COPY.weekdayMost, { weekday: weekdayNameOf(top.index), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the month with the most shared costs (no tie).
 export function busiestMonthTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const counts = countBy(groupExpenses(input), (item) => item.date.slice(0, 7));
-  const top = uniqueTop(counts);
-  if (!input.group || !top || counts.size < 2) {
+  const facts = factsOf(input);
+  const top = facts.busiestMonth;
+  if (!input.group || !top || facts.monthCount < 2) {
     return null;
   }
-  return triviaSignal("busiest-month", top[0], SPLITS_COPY.busiestMonth, { month: monthYear(top[0]), count: top[1], groupIn: groupIn(input.group, input) });
+  return triviaSignal("busiest-month", top.month, SPLITS_COPY.busiestMonth, { month: monthYear(top.month), count: top.count, groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: what the shared costs add up to.
 export function sharedTotalTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = inGroupCurrency(input, groupExpenses(input));
-  if (!input.group || expenses.length < 2) {
+  const facts = factsOf(input);
+  if (!input.group || facts.inCurrencyCount < 2) {
     return null;
   }
-  return triviaSignal("total", input.group.id, SPLITS_COPY.sharedTotal, { amount: input.formatMoney(sum(expenses.map((item) => item.totalAmountMinor))), groupIn: groupIn(input.group, input) });
+  return triviaSignal("total", input.group.id, SPLITS_COPY.sharedTotal, { amount: input.formatMoney(facts.inCurrencyTotalMinor), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the average shared cost.
 export function averageCostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = inGroupCurrency(input, groupExpenses(input));
-  if (!input.group || expenses.length < 3) {
+  const facts = factsOf(input);
+  if (!input.group || facts.inCurrencyCount < 3) {
     return null;
   }
   return triviaSignal("average-cost", input.group.id, SPLITS_COPY.averageCost, {
-    amount: approxMoney(input.formatMoney, sum(expenses.map((item) => item.totalAmountMinor)) / expenses.length),
+    amount: approxMoney(input.formatMoney, facts.inCurrencyTotalMinor / facts.inCurrencyCount),
     groupIn: groupIn(input.group, input)
   });
 }
 
 // Just for fun: the smallest shared cost with a readable name.
 export function smallestCostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = inGroupCurrency(input, groupExpenses(input)).filter(costName);
-  const smallest = [...expenses].sort((left, right) => left.totalAmountMinor - right.totalAmountMinor || left.date.localeCompare(right.date))[0];
-  if (!input.group || !smallest || expenses.length < 3) {
+  const facts = factsOf(input);
+  const smallest = facts.smallestNamed;
+  if (!input.group || !smallest || facts.namedInCurrencyCount < 3) {
     return null;
   }
-  return triviaSignal("smallest-cost", `${smallest.date}:${smallest.totalAmountMinor}`, SPLITS_COPY.smallestCost, { name: costName(smallest), amount: input.formatMoney(smallest.totalAmountMinor), groupIn: groupIn(input.group, input) });
-}
-
-function byDate(items: SplitsSignalActivity[]) {
-  return [...items].sort((left, right) => left.date.localeCompare(right.date));
+  return triviaSignal("smallest-cost", `${smallest.date}:${smallest.amountMinor}`, SPLITS_COPY.smallestCost, { name: factsCostName(smallest.description), amount: input.formatMoney(smallest.amountMinor), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the group's first expense, or its first day when several
 // share that date (so "first" is always true).
 export function firstCostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = byDate(groupExpenses(input));
-  const first = expenses[0];
-  if (!input.group || !first || expenses.length < 2) {
+  const facts = factsOf(input);
+  const first = facts.firstDay;
+  if (!input.group || !first || facts.expenseCount < 2) {
     return null;
   }
-  const sameDay = expenses.filter((item) => item.date === first.date).length;
-  if (sameDay > 1) {
-    return triviaSignal("first-cost", first.date, SPLITS_COPY.firstDay, { day: shortDay(first.date), count: sameDay, groupIn: groupIn(input.group, input) });
+  if (first.count > 1) {
+    return triviaSignal("first-cost", first.date, SPLITS_COPY.firstDay, { day: shortDay(first.date), count: first.count, groupIn: groupIn(input.group, input) });
   }
-  return costName(first) ? triviaSignal("first-cost", first.date, SPLITS_COPY.firstCost, { name: costName(first), day: shortDay(first.date), groupIn: groupIn(input.group, input) }) : null;
+  const name = factsCostName(first.description);
+  return name ? triviaSignal("first-cost", first.date, SPLITS_COPY.firstCost, { name, day: shortDay(first.date), groupIn: groupIn(input.group, input) }) : null;
 }
 
 // Just for fun: the date with the most money in shared costs (no tie).
 export function priciestDayTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const totals = new Map<string, number>();
-  for (const item of inGroupCurrency(input, groupExpenses(input))) {
-    totals.set(item.date, (totals.get(item.date) ?? 0) + item.totalAmountMinor);
-  }
-  const top = uniqueTop(totals);
-  if (!input.group || !top || totals.size < 2) {
+  const facts = factsOf(input);
+  const top = facts.priciestDay;
+  if (!input.group || !top || facts.inCurrencyDayCount < 2) {
     return null;
   }
-  return triviaSignal("priciest-day", top[0], SPLITS_COPY.priciestDay, { day: shortDay(top[0]), amount: input.formatMoney(top[1]), groupIn: groupIn(input.group, input) });
+  return triviaSignal("priciest-day", top.date, SPLITS_COPY.priciestDay, { day: shortDay(top.date), amount: input.formatMoney(top.amountMinor), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the group's latest expense (alone on its date).
 export function latestCostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const expenses = byDate(inGroupCurrency(input, groupExpenses(input))).reverse();
-  const [latest, before] = expenses;
-  if (!input.group || !latest || !before || latest.date === before.date || !costName(latest)) {
+  const latest = factsOf(input).latest;
+  const name = factsCostName(latest?.description);
+  if (!input.group || !latest || !name) {
     return null;
   }
-  return triviaSignal("latest-cost", latest.date, SPLITS_COPY.latestCost, { name: costName(latest), amount: input.formatMoney(latest.totalAmountMinor), day: shortDay(latest.date), groupIn: groupIn(input.group, input) });
+  return triviaSignal("latest-cost", latest.date, SPLITS_COPY.latestCost, { name, amount: input.formatMoney(latest.amountMinor), day: shortDay(latest.date), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the cost entered most often (twice or more, no tie).
 export function repeatedCostTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const top = uniqueTop(countBy(groupExpenses(input), (item) => costName(item) || undefined));
-  if (!input.group || !top || top[1] < 2) {
+  const top = factsOf(input).repeated;
+  if (!input.group || !top || top.count < 2) {
     return null;
   }
-  return triviaSignal("repeated-cost", top[0], SPLITS_COPY.repeatedCost, { name: top[0], times: timesWord(top[1]), groupIn: groupIn(input.group, input) });
+  return triviaSignal("repeated-cost", top.name, SPLITS_COPY.repeatedCost, { name: top.name, times: timesWord(top.count), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: the days from the first shared cost to the last.
 export function costSpanTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const dates = [...new Set(groupExpenses(input).map((item) => item.date))].sort();
-  if (!input.group || dates.length < 2) {
+  const span = factsOf(input).span;
+  if (!input.group || !span) {
     return null;
   }
   return triviaSignal("span", input.group.id, SPLITS_COPY.costSpan, {
-    count: daysBetween(dates[0], dates.at(-1)!) + 1,
-    first: shortDay(dates[0]),
-    last: shortDay(dates.at(-1)!),
+    count: daysBetween(span.first, span.last) + 1,
+    first: shortDay(span.first),
+    last: shortDay(span.last),
     groupIn: groupIn(input.group, input)
   });
 }
 
 // Just for fun: the currencies the shared costs came in (two or more).
 export function currenciesTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const currencies = [...new Set(groupExpenses(input).map((item) => item.currency).filter((currency): currency is string => Boolean(currency)))].sort();
+  const currencies = factsOf(input).currencies;
   if (!input.group || currencies.length < 2) {
     return null;
   }
   return triviaSignal("currencies", input.group.id, SPLITS_COPY.currencies, { count: currencies.length, list: joinWithAnd(currencies), groupIn: groupIn(input.group, input) });
 }
 
-function categoryTotals(input: SplitsSignalInput) {
-  const totals = new Map<string, number>();
-  for (const item of inGroupCurrency(input, groupExpenses(input))) {
-    const category = String(item.categoryName ?? "").trim();
-    if (category && !/^(other|uncategori[sz]ed)$/i.test(category)) {
-      totals.set(category, (totals.get(category) ?? 0) + item.totalAmountMinor);
-    }
-  }
-  return totals;
-}
-
 // Just for fun: the group's biggest category (no tie, two or more).
 export function topCategoryTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const totals = categoryTotals(input);
-  const top = uniqueTop(totals);
-  if (!input.group || !top || totals.size < 2) {
+  const facts = factsOf(input);
+  const top = facts.topCategory;
+  if (!input.group || !top || facts.categoryCount < 2) {
     return null;
   }
-  return triviaSignal("top-category", top[0], SPLITS_COPY.topCategory, { category: top[0], amount: input.formatMoney(top[1]), groupIn: groupIn(input.group, input) });
+  return triviaSignal("top-category", top.name, SPLITS_COPY.topCategory, { category: top.name, amount: input.formatMoney(top.amountMinor), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: how many categories the shared costs spread across.
 export function categoriesCountTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const count = categoryTotals(input).size;
+  const count = factsOf(input).categoryCount;
   return input.group && count >= 2 ? triviaSignal("categories", input.group.id, SPLITS_COPY.categoriesCount, { count, groupIn: groupIn(input.group, input) }) : null;
 }
 
 // Just for fun: how the shared costs were paid (two or more ways).
 export function paymentMixTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const counts = [...countBy(groupExpenses(input), (item) => PAYMENT_WAYS[item.paymentMethod ?? ""] ? item.paymentMethod : undefined).entries()]
-    .sort((left, right) => right[1] - left[1] || String(left[0]).localeCompare(String(right[0])));
+  const counts = factsOf(input).paymentMix;
   if (!input.group || counts.length < 2) {
     return null;
   }
@@ -713,22 +688,18 @@ export function paymentMixTrivia(input: SplitsSignalInput): MoneySignal | null {
   });
 }
 
-function settlements(input: SplitsSignalInput) {
-  return input.activity.filter((item) => item.kind === "settlement" && item.totalAmountMinor > 0);
-}
-
 // Just for fun: the largest settle-up.
 export function largestSettlementTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const largest = [...inGroupCurrency(input, settlements(input))].sort((left, right) => right.totalAmountMinor - left.totalAmountMinor || left.date.localeCompare(right.date))[0];
+  const largest = factsOf(input).largestSettlement;
   if (!input.group || !largest) {
     return null;
   }
-  return triviaSignal("largest-settlement", largest.date, SPLITS_COPY.largestSettlement, { amount: input.formatMoney(largest.totalAmountMinor), day: shortDay(largest.date), groupIn: groupIn(input.group, input) });
+  return triviaSignal("largest-settlement", largest.date, SPLITS_COPY.largestSettlement, { amount: input.formatMoney(largest.amountMinor), day: shortDay(largest.date), groupIn: groupIn(input.group, input) });
 }
 
 // Just for fun: how many settle-ups there have been (two or more).
 export function settleCountTrivia(input: SplitsSignalInput): MoneySignal | null {
-  const count = settlements(input).length;
+  const count = factsOf(input).settlementCount;
   return input.group && count >= 2 ? triviaSignal("settle-count", input.group.id, SPLITS_COPY.settleCount, { count, groupIn: groupIn(input.group, input) }) : null;
 }
 

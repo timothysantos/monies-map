@@ -3,7 +3,7 @@
 // 287 entries · $28,823.06"). Which records a settlement covers is the open
 // period's own rule (partitionActivityBySettlement, split-open-period.ts),
 // so the list, the chip and the balance can never disagree.
-import { partitionActivityBySettlement } from "../domain/split-open-period";
+import { compareSettledSections, partitionActivityBySettlement } from "../domain/split-open-period";
 import { formatCurrencyMinor } from "../domain/split-currency";
 import { messages } from "./copy/en-SG";
 import { filterSplitActivityForSearch } from "./split-search";
@@ -28,22 +28,55 @@ const settledCopy = {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const HIDDEN_MONEY = "••••";
 
+function withDateGroups(section, extra) {
+  return { ...section, ...extra, groups: groupSplitActivityByDate(section.items) };
+}
+
 /**
- * `activity` is the open group's activity outside closed batches; the search
- * narrows both parts, so a settled record that matches stays findable in its
- * section (which the page then shows opened).
+ * `activity` is the open group's activity outside closed batches: the page
+ * holds only the open records. Each settled section comes as a summary
+ * (`summaries`, from the page) whose rows arrive when it is opened
+ * (`sectionRows(checkpointId)`: `{ status, items }`, splits-settled-rows.js).
+ * A search narrows both parts: the open records here, the settled ones on
+ * the server (`searchResults`, the same rule), so a settled record that
+ * matches stays findable in its section, which the page shows opened with
+ * the matches' own count and total.
  */
-export function buildSplitActivitySections({ activity, checkpoints = [], searchQuery = "" }) {
+export function buildSplitActivitySections({
+  activity,
+  summaries = [],
+  checkpoints = [],
+  searchQuery = "",
+  sectionRows = (_checkpointId) => null,
+  searchResults = []
+}) {
   const shown = filterSplitActivityForSearch(activity, searchQuery);
-  const { open, sections } = partitionActivityBySettlement(shown, checkpoints);
+  // The page's own records are outside every section; a covered one that is
+  // here anyway (an older page) still gets its section.
+  const { open, sections: heldSections } = partitionActivityBySettlement(shown, checkpoints);
+  let settledSections;
+  if (searchQuery.trim()) {
+    const matches = filterSplitActivityForSearch(searchResults, searchQuery);
+    const { sections } = partitionActivityBySettlement([...heldSections.flatMap((section) => section.items), ...matches], checkpoints);
+    settledSections = sections.map((section) => withDateGroups(section, {
+      groupId: section.items[0]?.groupId,
+      currency: section.items[0]?.currency ?? "SGD",
+      status: "ready"
+    }));
+  } else {
+    const summarised = summaries.map((summary) => {
+      const rows = sectionRows(summary.checkpointId);
+      return withDateGroups({ ...summary, items: rows?.items ?? [] }, { status: rows?.status ?? "idle", truncated: Boolean(rows?.truncated) });
+    });
+    const held = heldSections
+      .filter((section) => !summaries.some((summary) => summary.checkpointId === section.checkpointId))
+      .map((section) => withDateGroups(section, { currency: section.items[0]?.currency ?? "SGD", status: "ready" }));
+    settledSections = [...summarised, ...held].sort(compareSettledSections);
+  }
   return {
     shownActivity: shown,
     groupedOpenActivity: groupSplitActivityByDate(open),
-    settledSections: sections.map((section) => ({
-      ...section,
-      currency: section.items[0]?.currency ?? "SGD",
-      groups: groupSplitActivityByDate(section.items)
-    }))
+    settledSections
   };
 }
 

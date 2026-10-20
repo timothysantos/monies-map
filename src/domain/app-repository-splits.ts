@@ -44,7 +44,7 @@ async function assertSplitGroupCurrency(db: D1Database, groupId: string | null |
   return groupCurrency;
 }
 
-function paymentMethodForLinkedAccount(
+export function paymentMethodForLinkedAccount(
   accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment" | null | undefined,
   fallback: SplitExpenseDto["paymentMethod"]
 ): SplitExpenseDto["paymentMethod"] {
@@ -102,7 +102,60 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
   }));
 }
 
-export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthKey()): Promise<SplitExpenseDto[]> {
+// Which split records a load reads (docs/flows/splits-flow.md, "Settled
+// sections load on demand"). A record is in a settled section when an
+// active settlement checkpoint (not reopened or voided) covers it and its
+// batch is not closed: the open period's own rule
+// (partitionActivityBySettlement, split-open-period.ts). A closed batch's
+// records stay with the page (the archive sheet shows them).
+//   outside-settled-sections: everything the Splits page sends
+//   settled-section: one checkpoint's records in one group (the lazy rows)
+//   settled-in-group: every settled-section record of one group (search)
+//   unlinked: records with no ledger link (bank-match suggestions)
+export type SplitRecordScope =
+  | { kind: "outside-settled-sections" }
+  | { kind: "settled-section"; checkpointId: string; groupId: string }
+  | { kind: "settled-in-group"; groupId: string }
+  | { kind: "unlinked" };
+
+// The most rows one settled load returns; a section beyond it is reported as
+// truncated (production's largest is 287).
+export const SPLIT_SETTLED_LOAD_LIMIT = 2000;
+
+function splitRecordScopeSql(table: "split_expenses" | "split_settlements", scope: SplitRecordScope | undefined) {
+  if (!scope) {
+    return { sql: "", limit: "", binds: [] as string[] };
+  }
+  const recordKind = table === "split_expenses" ? "expense" : "settlement";
+  // A non-correlated IN list: SQLite builds it once from the checkpoint's
+  // own index instead of probing the items table per row.
+  const covered = (checkpointFilter: string) => `${table}.id IN (
+        SELECT checkpoint_items.record_id
+        FROM split_settlement_checkpoint_items AS checkpoint_items
+        INNER JOIN split_settlement_checkpoints AS covering ON covering.id = checkpoint_items.checkpoint_id
+        WHERE covering.household_id = ? AND covering.status NOT IN ('reopened', 'voided')
+          AND checkpoint_items.record_kind = '${recordKind}'${checkpointFilter}
+      )`;
+  if (scope.kind === "unlinked") {
+    return { sql: ` AND ${table}.linked_transaction_id IS NULL`, limit: "", binds: [] };
+  }
+  if (scope.kind === "outside-settled-sections") {
+    return { sql: ` AND (split_batches.closed_on IS NOT NULL OR NOT ${covered("")})`, limit: "", binds: [DEFAULT_HOUSEHOLD_ID] };
+  }
+  const groupSql = ` AND COALESCE(${table}.split_group_id, 'split-group-none') = ?`;
+  const limit = ` LIMIT ${SPLIT_SETTLED_LOAD_LIMIT}`;
+  if (scope.kind === "settled-section") {
+    return {
+      sql: ` AND split_batches.closed_on IS NULL AND ${covered(" AND covering.id = ?")}${groupSql}`,
+      limit,
+      binds: [DEFAULT_HOUSEHOLD_ID, scope.checkpointId, scope.groupId]
+    };
+  }
+  return { sql: ` AND split_batches.closed_on IS NULL AND ${covered("")}${groupSql}`, limit, binds: [DEFAULT_HOUSEHOLD_ID, scope.groupId] };
+}
+
+export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthKey(), scope?: SplitRecordScope): Promise<SplitExpenseDto[]> {
+  const scoped = splitRecordScopeSql("split_expenses", scope);
   const expenses = await db
     .prepare(`
       SELECT
@@ -137,10 +190,10 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
       LEFT JOIN accounts AS linked_accounts ON linked_accounts.id = transactions.account_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
-      WHERE split_expenses.household_id = ? AND split_expenses.deleted_at IS NULL
-      ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
+      WHERE split_expenses.household_id = ? AND split_expenses.deleted_at IS NULL${scoped.sql}
+      ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC${scoped.limit}
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...scoped.binds)
     .all<{
       id: string;
       split_group_id: string | null;
@@ -178,10 +231,11 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       FROM split_expense_shares
       INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
       INNER JOIN people ON people.id = split_expense_shares.person_id
-      WHERE split_expenses.household_id = ?
+      ${scope ? "LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id" : ""}
+      WHERE split_expenses.household_id = ?${scope ? ` AND split_expenses.deleted_at IS NULL${scoped.sql}` : ""}
       ORDER BY split_expense_shares.created_at
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...scoped.binds)
     .all<{
       split_expense_id: string;
       person_id: string;
@@ -228,7 +282,8 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
   }));
 }
 
-export async function loadSplitSettlements(db: D1Database, month = getCurrentMonthKey()): Promise<SplitSettlementDto[]> {
+export async function loadSplitSettlements(db: D1Database, month = getCurrentMonthKey(), scope?: SplitRecordScope): Promise<SplitSettlementDto[]> {
+  const scoped = splitRecordScopeSql("split_settlements", scope);
   const settlements = await db
     .prepare(`
       SELECT
@@ -262,10 +317,10 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       LEFT JOIN transactions ON transactions.id = split_settlements.linked_transaction_id
       LEFT JOIN accounts AS linked_accounts ON linked_accounts.id = transactions.account_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
-      WHERE split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
-      ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
+      WHERE split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL${scoped.sql}
+      ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC${scoped.limit}
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...scoped.binds)
     .all<{
       id: string;
       split_group_id: string | null;
@@ -638,10 +693,26 @@ export function buildSplitMatchDateWindows(dates: string[]): { from: string; to:
 }
 
 export async function loadSplitMatchCandidates(db: D1Database, month = getCurrentMonthKey()): Promise<SplitMatchCandidateDto[]> {
+  return (await loadSplitMatchCandidatesWithRecords(db, month)).matches;
+}
+
+// The bank-match suggestions and the unlinked records they were found for
+// (only an unlinked record can be suggested a row, so only those are read).
+// The Splits page checks a suggestion's record against the person view with
+// these records, because a settled one is not in the page's own rows.
+export async function loadSplitMatchCandidatesWithRecords(db: D1Database, month = getCurrentMonthKey()): Promise<{
+  matches: SplitMatchCandidateDto[];
+  expenses: SplitExpenseDto[];
+  settlements: SplitSettlementDto[];
+}> {
   const [expenses, settlements] = await Promise.all([
-    loadSplitExpenses(db, month),
-    loadSplitSettlements(db, month)
+    loadSplitExpenses(db, month, { kind: "unlinked" }),
+    loadSplitSettlements(db, month, { kind: "unlinked" })
   ]);
+  return { matches: await buildSplitMatchCandidates(db, expenses, settlements), expenses, settlements };
+}
+
+async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseDto[], settlements: SplitSettlementDto[]): Promise<SplitMatchCandidateDto[]> {
   const unlinkedDates = [
     ...expenses.filter((item) => !item.linkedTransactionId).map((item) => item.date),
     ...settlements.filter((item) => !item.linkedTransactionId).map((item) => item.date)
