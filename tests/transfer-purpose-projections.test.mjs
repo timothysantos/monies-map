@@ -314,3 +314,18 @@ test("invariant 3: money moved into an investment account keeps its own rule and
   await api("/api/transfers/link", { fromEntryId: outId, toEntryId: inId });
   assert.equal((await api("/api/transfers/purpose", { entryId: outId, categoryName: "Home" })).payload.error, "Money moved into or out of investments keeps its own rule.");
 });
+
+test("the schema check adds the purpose columns to a database that predates them, and every page still loads", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  for (const column of ["transfer_purpose_category_id", "transfer_purpose_person_id", "transfer_purpose_source"]) {
+    await db.exec(`ALTER TABLE transactions DROP COLUMN ${column}`);
+  }
+  const columns = async () => (await rows(db, "PRAGMA table_info(transactions)")).map((column) => column.name).filter((name) => name.startsWith("transfer_purpose"));
+  assert.deepEqual(await columns(), []);
+
+  for (const pathname of ["/api/entries-page?view=household&month=2026-10", "/api/month-page?view=person-tim&month=2026-10", "/api/summary-page?view=person-joyce&month=2026-10"]) {
+    assert.equal((await api(pathname)).status, 200, pathname);
+  }
+  assert.deepEqual(await columns(), ["transfer_purpose_category_id", "transfer_purpose_person_id", "transfer_purpose_source"]);
+  assert.deepEqual(await rows(db, "SELECT COUNT(*) AS count FROM transactions WHERE transfer_purpose_category_id IS NOT NULL OR transfer_purpose_person_id IS NOT NULL OR transfer_purpose_source IS NOT NULL"), [{ count: 0 }]);
+});

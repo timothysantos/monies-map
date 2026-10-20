@@ -14,8 +14,8 @@ const schemaInitializationByDatabase = new WeakMap<D1Database, Promise<void>>();
 // The production and demo migration for transfer purposes runs these same
 // statements (docs/proposals/transfer-purpose.md, "Storage and migration").
 export const TRANSFER_PURPOSE_COLUMN_STATEMENTS = [
-  "ALTER TABLE transactions ADD COLUMN transfer_purpose_category_id TEXT REFERENCES categories(id)",
-  "ALTER TABLE transactions ADD COLUMN transfer_purpose_person_id TEXT REFERENCES people(id)",
+  "ALTER TABLE transactions ADD COLUMN transfer_purpose_category_id TEXT",
+  "ALTER TABLE transactions ADD COLUMN transfer_purpose_person_id TEXT",
   "ALTER TABLE transactions ADD COLUMN transfer_purpose_source TEXT"
 ] as const;
 
@@ -399,8 +399,10 @@ async function ensureDemoSchemaOnce(rawDb: D1Database) {
 
   // A transfer's purpose (DOMAIN.md "Transfer Purpose"): nullable and
   // additive, read from the column list above, so no extra round trip.
-  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transfer_purpose_category_id")) {
-    for (const statement of TRANSFER_PURPOSE_COLUMN_STATEMENTS) {
+  // Each column on its own, so a half-applied migration is finished.
+  for (const statement of TRANSFER_PURPOSE_COLUMN_STATEMENTS) {
+    const column = statement.split(" ADD COLUMN ")[1].split(" ")[0];
+    if (transactionColumns.results.length > 0 && !transactionColumns.results.some((existing) => existing.name === column)) {
       await db.prepare(statement).run();
     }
   }
