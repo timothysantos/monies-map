@@ -209,12 +209,12 @@ test.describe("Entries totals on a phone", () => {
 
     const breakdown = rows.getByRole("button", { name: "Spending by category" });
     await expect(breakdown).toHaveAttribute("aria-expanded", "false");
-    await expect(page.locator(".entries-breakdown-panel")).toHaveCount(0);
+    await expect(page.locator(".entries-mix-panel")).toHaveCount(0);
     await breakdown.click();
     await expect(breakdown).toHaveAttribute("aria-expanded", "true");
-    await expect(page.locator(".entries-breakdown-panel")).toBeVisible();
+    await expect(page.locator(".entries-mix-panel")).toBeVisible();
     await breakdown.click();
-    await expect(page.locator(".entries-breakdown-panel")).toHaveCount(0);
+    await expect(page.locator(".entries-mix-panel")).toHaveCount(0);
 
     await rows.getByRole("button", { name: /^Filters/ }).click();
     const sheet = page.getByRole("dialog", { name: "View and scope" });

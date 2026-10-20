@@ -30,7 +30,7 @@ import { EntriesAskChip, EntriesFigureChip } from "./entries-ask-chip";
 import { figureCopy } from "./copy/figure-copy";
 import { splitShareCopy } from "./copy/split-share-copy";
 import { EntriesDateGroups } from "./entries-list";
-import { EntriesBreakdownPanel, EntriesTotals } from "./entries-overview";
+import { describeTopShares, EntriesBreakdownPanel, EntriesTotals, useEntriesBreakdownShown } from "./entries-overview";
 import { buildEntriesIslandContext } from "./entries-island-context";
 import { buildEntriesTotalsModel, describeEntryFilters } from "./entries-totals-model";
 import { EntriesFilterStack } from "./entries-filter-stack";
@@ -120,7 +120,7 @@ export function EntriesPanel({
   const navigate = useNavigate();
   // Filter setters build on the URL as it is now (use-live-search-params.js).
   const [searchParams, setSearchParams] = useLiveSearchParams();
-  const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
+  const [showExpenseBreakdown, toggleExpenseBreakdown] = useEntriesBreakdownShown();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const useMobileEntrySheet = useIsMobileLayout();
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
@@ -313,7 +313,6 @@ export function EntriesPanel({
   }, [showEntryComposer]);
 
   useEffect(() => {
-    setShowExpenseBreakdown(false);
     setShowMobileFilters(false);
   }, [entryView]);
 
@@ -548,6 +547,7 @@ export function EntriesPanel({
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id, investmentAccountIds]
   );
+  const breakdownSummary = useMemo(() => describeTopShares(expenseBreakdown), [expenseBreakdown]);
   const totalsModel = useMemo(
     () => buildEntriesTotalsModel({
       entryTotals,
@@ -1268,7 +1268,8 @@ export function EntriesPanel({
           <EntriesTotals
             model={totalsModel}
             showExpenseBreakdown={showExpenseBreakdown}
-            onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
+            onToggleExpenseBreakdown={toggleExpenseBreakdown}
+            breakdownSummary={breakdownSummary}
             // The phone's filters live in the View and scope sheet; a wide
             // screen has the filter bar on the page.
             filtersValue={describeEntryFilters(activeEntryFilterCount)}

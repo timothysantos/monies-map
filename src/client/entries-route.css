@@ -247,12 +247,32 @@
   margin-top: 2px;
 }
 
-.category-toggle-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
+/* Spending by category (entries-overview.jsx EntriesBreakdownPanel,
+   design.md "Entries top"): a card with the donut and Spending Mix's lean
+   list (spending-mix-list.css). On a wide panel the list sits beside the
+   donut, so with the top five showing the card is no taller than the donut;
+   on a phone the list is under it. */
+.entries-mix-panel {
+  container-type: inline-size;
+  min-width: 0;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+}
+
+@container (min-width: 700px) {
+  .entries-mix.summary-mix {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
+  }
+
+  .entries-mix .summary-mix-count {
+    display: inline;
+  }
 }
 
 .entries-page-loading {
@@ -426,12 +446,6 @@
   .entries-totals-pills {
     order: 0;
     align-content: stretch;
-  }
-}
-
-@media (min-width: 961px) {
-  .entries-breakdown-list .category-toggle-actions {
-    justify-content: flex-start;
   }
 }
 
@@ -616,17 +630,6 @@
   .entry-row.is-inline-editing:first-child {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-  }
-
-  .entries-breakdown-list .category-toggle-actions {
-    justify-content: flex-start;
-    gap: 6px;
-  }
-
-  .entries-breakdown-list .chart-toggle-action,
-  .entries-breakdown-list .filter-toggle-action {
-    padding: 5px 8px;
-    font-size: 0.74rem;
   }
 
   .entry-row-amount p {
