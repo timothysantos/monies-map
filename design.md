@@ -99,7 +99,9 @@ Group tiles carry no money tone (the Splits orange).
 An expense editor shows the normal **Add to splits** row with a compact
 one-tap shortcut for the viewer's last real split group: beside the row on a
 wide screen, on its own 44 px line under it on a phone (beside it, it cut the
-row's own words to "Add to s…"). The shortcut names the group and its even
+row's own words to "Add to s…"), 8 px clear of the row so the two targets
+never crowd. Tab reaches it right after the row, as the eye reads them
+(`phone-tap-targets.spec.js`, `lead-support-detail-sheets.spec.js`). The shortcut names the group and its even
 default in plain words (for example, "Add to Okaeri · Half each"; an even
 split is "half each" wherever the app names it, never "50/50"). Its words
 and the share hint live in `copy/split-share-copy.js`. It
@@ -1380,7 +1382,11 @@ Where it is used:
   sent. Delete entry, Cancel and Save are in the bottom bar, one row with
   one destructive action. Removing the entry from Splits is in its Splits
   row's menu (View split, Remove from Splits; `EntrySplitsMenuRow`, a Radix
-  popover rendered in place so the phone sheet's focus trap keeps it).
+  popover rendered in place so the phone sheet's focus trap keeps it). Its
+  confirmation uses the menu's words: "Remove from Splits?", "The entry
+  stays in Entries. Only its split on Splits is removed." and a **Remove**
+  button (the full words wrapped to two lines at 320 px;
+  `docs/audits/remove-from-splits/`).
 - The Entries top (`entries-overview.jsx` `EntriesTotals`,
   `entries-totals-model.js`, its CSS in `entries-route.css`, in the lazy
   Entries route). Lead: "Spent · Aug 2026", the filtered view's gross spend

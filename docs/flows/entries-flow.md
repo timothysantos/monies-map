@@ -102,7 +102,7 @@ sheet's bottom bar is one row: Delete entry (its one destructive action),
 Cancel or Close, and Save. Once the entry is on Splits its Splits row
 ("View split ›", named "Splits: View split or Remove from Splits") opens a
 small menu: View split, and Remove from Splits, which asks with the
-"Delete split?" dialog, removes only the split and keeps the entry; a
+"Remove from Splits?" dialog (button **Remove**), removes only the split and keeps the entry; a
 refusal shows in that dialog (`entries-split-row-menu.spec.js`). Add to splits presents its groups as a list, then
 0%, 50% and 100% share choices and an explicit confirmation. On a phone,
 choosing the group closes that list and shows the share choices in the edit

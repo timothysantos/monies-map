@@ -12,8 +12,8 @@ Every destructive user action must require an app-native confirmation before it 
 | --- | --- | --- |
 | Entries inline editor: Delete entry | `/api/entries/delete` | Confirmed by `EntriesDeleteConfirmationDialog`. |
 | Entries mobile edit sheet: Delete entry | `/api/entries/delete` | Confirmed by `EntriesDeleteConfirmationDialog`. |
-| Entries inline editor: Delete split created from entry | `/api/splits/expenses/delete` | Confirmed by `EntriesDeleteConfirmationDialog`; linked ledger entry stays intact. |
-| Entries mobile edit sheet: Delete split created from entry | `/api/splits/expenses/delete` | Confirmed by `EntriesDeleteConfirmationDialog`; linked ledger entry stays intact. |
+| Entries inline editor: Remove from Splits (Splits row menu) | `/api/splits/expenses/delete` | Confirmed by `EntriesDeleteConfirmationDialog` ("Remove from Splits?", button Remove); the entry stays. |
+| Entries mobile edit sheet: Remove from Splits (Splits row menu) | `/api/splits/expenses/delete` | Confirmed by `EntriesDeleteConfirmationDialog` ("Remove from Splits?", button Remove); the entry stays. |
 | Splits page: Delete split expense row | `/api/splits/expenses/delete` | Confirmed by `SplitDeleteDialog`. |
 | Splits page: Delete settlement row | `/api/splits/settlements/delete` | Confirmed by `SplitDeleteDialog`. |
 | Month page: Delete planning income row | `/api/month-plan/delete` | Confirmed by `DeleteRowButton` (a popover; a bottom sheet on a phone). |
