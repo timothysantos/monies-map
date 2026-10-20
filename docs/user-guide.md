@@ -98,7 +98,7 @@ Settings → People (the demo uses Ethan and Serene).
   sign-in (or the first person), and the Household button is greyed out there,
   because "you owe" only makes sense for one person.
 
-![A person view shows that person's figures and the scope choice under the heading](/faq/guide/desktop/thumbs/summary-person.webp)
+![A person view shows that person's figures and the scope choice beside the heading](/faq/guide/desktop/thumbs/summary-person.webp)
 
 ![In the Household view, Month says the combined plan is read-only](/faq/guide/desktop/thumbs/month-household.webp)
 
@@ -315,7 +315,9 @@ over plan.
 - **Income** and **Saved**: the income that came in, with the planned income
   under it, and what you kept (the same as the green part of the bar, so
   money you filed under **Savings** counts as saved), with your savings
-  target under it.
+  target under it. On a computer they sit inside the Spent card, under
+  **Where your money goes**; on a wide screen those two are on the right of
+  the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
 - **Spending Mix**: a donut of spending by category over the whole range,

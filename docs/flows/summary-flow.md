@@ -27,8 +27,8 @@ The route may include view, scope and range parameters (`summary_focus`, the
 old Spending Mix month chip, is ignored). `App.jsx` reads
 the URL and keeps the selected Summary view in sync with browser location. In a
 person view the scope control sets `scope`: on desktop and tablet the compact
-`Direct` / `Shared` / `Both` switch above the Income and Saved support cards
-(what each counts is its tooltip), on a phone the scope section of the
+`Direct` / `Shared` / `Both` switch in the title row after "Viewing • name",
+above the full-width lead (what each counts is its tooltip), on a phone the scope section of the
 floating View and scope bar's dialog, with a line saying what the scope
 counts (the desktop switch is not rendered there). Both show the scope of the
 Summary request whose figures are on screen. On a phone the bar also switches
@@ -53,10 +53,14 @@ Summary data comes from:
 - `GET /api/summary-account-pills`
 
 The page uses the summary page DTO for range metrics, category share, and
-month cards. The range metrics show as one lead card and two pills
-(`summary-lead.jsx`, design.md "Lead · Support · Detail"): spend against
+month cards. The range metrics show as one lead card (`summary-lead.jsx`,
+design.md "Lead · Support · Detail" and "Summary lead"): spend against
 plan with a bar, the percent of plan and how far under or over, then Income
-(with planned income) and Saved (with the savings target). They read the
+(with planned income) and Saved (with the savings target). Wider than a
+phone the card takes the full width and Income and Saved are its stat
+strip beside the money jobs (two columns from a 960 px card,
+`tests/e2e/summary-plan-layout.spec.js`); a phone shows them as two pills
+under the card. They read the
 DTO's six metric cards (`buildSummaryLeadModel`), so the figures are the
 cards' own; `tests/e2e/lead-support-detail.spec.js` compares them with the
 API on a phone and a desktop. The savings bar's invested also reads the

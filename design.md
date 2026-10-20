@@ -889,16 +889,41 @@ Where it is used:
   range", the range's spending "of" its spend plan, then one text line
   (no bar) with the percent of plan and how far under (mint) or over (rose)
   plan, then the savings bar and the money jobs (below); Income and
-  Saved pills with planned income and the savings target. The figures are
+  Saved with planned income and the savings target. The figures are
   the Summary DTO's own metric cards (one card was added, "Planned
   investments") and its category share, through one split
   (`splitMoneyUse`, "Money jobs" below): the spend leaves out money filed
   under Investments or Savings, the plan leaves out the savings target and
   the Investments plan rows, so the "under / over plan" line always agrees
   with the spend job, and Saved is the bar's kept (realized savings plus
-  money moved to Savings). The tones follow (`spendTone`, `signTone`). Phone
-  stacks the pills under the lead; desktop and tablet put them in a column
-  on its right. The group is `SpendLeadGroup` (`ui/spend-lead-group.jsx`,
+  money moved to Savings). The tones follow (`spendTone`, `signTone`).
+  Summary lead layout (owner decision, 2026-10-20: the Plan view wasted
+  space beside two tall, mostly empty Income and Saved cards that repeated
+  the lead; before/after in `docs/audits/summary-plan-layout/`). Wider than
+  a phone the lead card takes the Summary's full width under the title row
+  (`.summary-head` is a column: the title, "Viewing • Tim" and the scope
+  switch on one row, then the lead), and Income and Saved are the card's
+  stat strip, the Month lead's (`SpendLeadGroup` `inline`, `LeadColumn`:
+  label, figure in its money tone as text, "plan $x" / "target $x"; the
+  same `data-fig` and menus the cards had), two equal cells. The money jobs
+  and the strip share `.lead-aside`, which is no box of its own
+  (`display: contents`) until the card is at least 960 px wide (a container
+  query on the group, about a 1,200 px window; the page is capped at
+  1,164 px, so the card is 1,122 px at 1,280, 1,440 and 1,920): then the
+  card is two columns, the eyebrow, headline, progress line, bar, legend
+  and sentence on the left, and on the right, after a hairline, the money
+  jobs line level with the eyebrow (the Plan | Simple switch at its end,
+  above the line's reach), the jobs as the person left them, and the strip,
+  whose cells drop their bottom padding as the card's padding ends it. The
+  left column's last row takes any extra height. At 1,440 px the card went
+  from 383 to 276 px on the showcase demo and from 331 to 243 px on the
+  test seed (`tests/e2e/summary-plan-layout.spec.js` holds it under 75%).
+  Below 960 px it stacks as before with the strip under the money jobs. A
+  phone keeps the old layout: the stacked lead and Income and Saved as
+  soft-tint pills under it (`.summary-support-pill`), with the floating View
+  and scope bar. Simple shares the title row and the full-width card; its
+  lead is unchanged. The loading skeleton's Summary lead is 250 px on a
+  desktop to match (`ui/states.css`). The group is `SpendLeadGroup` (`ui/spend-lead-group.jsx`,
   re-exported by `ui-components.jsx` so the Month top shares its chunk and
   the first screen keeps its file count); its CSS is `summary-lead.css`
   (it sits in `.panel-head`, whose `span` rule mutes spans, so its money
@@ -917,7 +942,7 @@ Where it is used:
   colour only, at least 56 px tall, at most 270 px for the whole card on an iPhone 13
   with the savings bar and its legend (the card's gaps follow "Lead rhythm"
   below; it was 215 px before the owner asked for room between the groups),
-  the same row on desktop; the Summary top keeps its pills). Income is the month's own
+  the same row on desktop; Summary uses the same strip wider than a phone). Income is the month's own
   Summary rollup (`summaryPage.months[0]`, already on the Month page);
   spend, plan and savings target start from the Month metric cards and go
   through the split with the month's plan rows and category share, Saved
@@ -1015,7 +1040,9 @@ Where it is used:
   (eyebrow, figure, progress line, 4 px apart), the bar (track, 4 px, plan
   bar, 8 px, legend), the sentence with its money jobs line (4 px apart) and
   the stat strip; a group gap separates them (a card's padding is 16 px on
-  desktop, 12 px by 16 px on a phone). Every text role has a line-height
+  desktop, 12 px by 16 px on a phone). In the wide two-column Summary card
+  the money jobs and the strip are the right column, still a group gap
+  apart, and its money jobs line is level with the eyebrow. Every text role has a line-height
   (eyebrow 1.3, figure 1.15, progress line, legend and sentence 1.35, money
   jobs line 1.4, stat label, figure and plan line 1.25 to 1.3), so no line
   is glued to the next, and the legend wraps in rows a 4 px gap apart with
@@ -2101,18 +2128,16 @@ scope control:
   Month shows the scope pills in its header, and Entries its scope switch; both
   are a grey track with a raised white selection ("Desktop Chrome"). Summary shows
   `SummaryScopeSwitch`: a compact one-click `Direct` / `Shared` / `Both`
-  switch (`messages.summary.scopeSwitchLabel`) in the empty space under the
-  `Summary` title, with `aria-pressed` on the active option and what each
-  scope counts (`messages.views.scopeHint`) as that option's `title`
-  tooltip; there is no visible explanation row. It must not change the
-  header: `.summary-scope-switch` takes its own row in the title column with
-  `contain: inline-size` (no content width) and a -12px margin that cancels
-  the title row's 12px flex gap, so the title column is exactly as wide as
-  without it, and the row fits beside the Summary lead, so the
-  header is exactly as tall. Where the header stacks (960 px and below) the
-  switch joins the title row instead, again adding no height.
-  `tests/e2e/summary-workflow.spec.js` measures the header, the cards and the
-  check-in with and without the switch at 1,440 and 1,920 px.
+  switch (`messages.summary.scopeSwitchLabel`) in the title row, after
+  "Viewing • Tim", in Plan and Simple alike, with `aria-pressed` on the
+  active option and what each scope counts (`messages.views.scopeHint`) as
+  that option's `title` tooltip; there is no visible explanation row. The
+  title row sits above the full-width Summary lead ("Summary lead" under
+  "Where it is used"); the switch never wraps (`flex-wrap: nowrap`) and
+  is centred on the title's line. `tests/e2e/summary-workflow.spec.js` and
+  `tests/e2e/summary-plan-layout.spec.js` check it is in that row, whole,
+  at 1,280, 1,440 and 1,920 px. (Until 2026-10-20 it sat in the Plan view's
+  right column above the Income and Saved cards.)
 - Phone (`useIsMobileLayout()`): Summary, Month and Entries show the floating
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
   not render its switch at all. The bar's sheet holds the view and the scope
