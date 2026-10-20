@@ -763,7 +763,10 @@ group** share the last line. The round
 receipt button opens a new entry card on [Ask](#ask), already set to share
 with the other person in the group you are looking at. **+ Add expense**
 (and **Edit in form** on Ask) opens the new expense as a card in a sheet,
-with **Save expense** at the bottom.
+with **Save expense** at the bottom. From Ask the card arrives filled in
+with what you had written there (what it was, the amount, the date, who
+paid, the shares, the category and the note); nothing is saved until you
+tap **Save expense**, and **Cancel** throws it away.
 
 ![Splits on a phone](/faq/guide/phone/thumbs/phone-splits.webp)
 
@@ -835,7 +838,8 @@ that both fit.
   your wallets (From and To) or to money coming in.
 - **Share with … on Splits**: the switch on the card shares the expense with
   the other person, as **Add to Splits** does on Entries.
-- **Edit in form**: open the same entry in the usual form instead.
+- **Edit in form**: open the same entry in the usual form instead, filled
+  in with what the card has (from the receipt button: New split expense).
 - **‹ Entries** (or **‹ Splits**) at the top left: after the round **+**
   or the receipt button opened Ask, go back to the page exactly as you
   left it: the same month, filters and place in the list. Your phone's

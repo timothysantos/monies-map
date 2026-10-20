@@ -86,7 +86,25 @@ editor (`Open this entry`: `/entries?editing_entry=<id>` in the entry's month),
 Splits (`Back to Splits`, `‹ Splits`, `Open on Splits`:
 `/splits?editing_split_expense=<id>`), and the old forms (`Edit in form`: the
 Entries composer through `?action=add-expense&source=ask` with the card's
-values, or the Splits expense dialog through `?split_action=add-expense`).
+values, or the Splits expense dialog through `?split_action=add-expense`,
+filled in with the card's values: `buildAskSplitFormDraft` in
+`src/client/ask-split-form-handoff.js` carries them in history state
+(`askSplitDraft`), never the URL, so no amount or text is put in the link;
+the card's group from `resolveShareGroupId` is the link's `split_group`).
+The split form gets what the card shows, read as the card's Save reads it:
+what it was, the amount, the wallet's currency, the date, the category, the
+note, who paid (the card's person; for a Shared card the wallet's owner, as
+Add to Splits does), the shares (50 / 50, or a Shared card's stated share
+for the first person with the rest for the other) and how it was paid (the
+wallet's kind: card, bank, cash, other). Splits checks the hand-off
+(`readAskSplitFormDraft`) and keeps the form's own default for anything it
+cannot show (a person, category or way of paying the group does not
+allow). The form is a new, unsaved draft: Save checks it as a form filled
+by hand, Cancel discards it, and dropping `split_action` (a replace) drops
+the hand-off, so a reload does not reopen it. A receipt image is not
+carried (Ask never keeps one, and the form has no attachment). Covered by
+`tests/ask-split-form-handoff.test.mjs` and
+`tests/e2e/ask-split-edit-in-form.spec.js` (desktop and a 390px phone).
 `source=ask` keeps the Apple Pay Shortcut's "Shortcut did not pass …"
 warnings off a card opened by hand: a blank card is not a Shortcut that
 lost its Amount variable (`tests/e2e/entry-form-shortcut-warning.spec.js`).
