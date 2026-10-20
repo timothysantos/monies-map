@@ -292,7 +292,7 @@ for (const device of [
     test("hidden money: no amounts in the row or the panel, the shares stay", async ({ page }) => {
       await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "false"));
       await openBreakdown(page);
-      await expect(breakdownRow(page).locator(".lsd-row-text")).toHaveText(/^Travel \d+% · /);
+      await expect(breakdownRow(page).locator(".lsd-row-text")).toHaveText(/^Travel \d+%\s·\s/);
       expect(await panel(page).textContent()).not.toMatch(/\$\s?\d/);
       await expect(rows(page).first().locator(".summary-mix-percent")).toHaveText(share(SPEND[0][1]));
       const tiny = SPEND.at(-1)[0];

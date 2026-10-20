@@ -247,6 +247,31 @@
   margin-top: 2px;
 }
 
+/* The "Spending by category" row's value: the top shares as whole pieces
+   on one line. A piece that does not fit wraps into the hidden second line,
+   so it drops out whole instead of being cut; only a first piece too long
+   for the row on its own ends in an ellipsis. */
+.lsd-row-text.entries-breakdown-shares {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+  max-height: 1.4em;
+  line-height: 1.4;
+}
+
+.entries-breakdown-shares > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.entries-breakdown-shares > span:first-child {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Spending by category (entries-overview.jsx EntriesBreakdownPanel,
    design.md "Entries top"): a card with the donut and Spending Mix's lean
    list (spending-mix-list.css). On a wide panel the list sits beside the

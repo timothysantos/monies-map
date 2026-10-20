@@ -36,7 +36,7 @@ export function EntriesTotals({
   model,
   showExpenseBreakdown,
   onToggleExpenseBreakdown,
-  breakdownSummary = "",
+  breakdownSummary = [],
   filtersValue = "",
   onOpenFilters = undefined
 }) {
@@ -60,7 +60,7 @@ export function EntriesTotals({
             // Folded, it says the top three shares ("Travel 39% · Other
             // 21% · Church 9%"); without spending the empty node keeps the
             // row's chevron.
-            value={<span className="lsd-row-text">{breakdownSummary}</span>}
+            value={<TopShares parts={breakdownSummary} />}
             data-row="breakdown"
             aria-expanded={showExpenseBreakdown}
             onClick={onToggleExpenseBreakdown}
@@ -254,17 +254,31 @@ export function useEntriesBreakdownShown() {
   return [shown, toggle];
 }
 
-// The folded row's value: the three biggest categories and their whole
-// shares of the list's spending ("Travel 39% · Other 21% · Church 9%").
-// Shares only, so it stays when money is hidden.
+// The folded row's value, piece by piece: the three biggest categories and
+// their whole shares of the list's spending ("Travel 39%", "Other 21%",
+// "Church 9%"). Shares only, so it stays when money is hidden.
 export function describeTopShares(expenseBreakdown, count = 3) {
   const totalMinor = sumDonutValueMinor(expenseBreakdown);
   if (!totalMinor) {
-    return "";
+    return [];
   }
   return expenseBreakdown
     .slice(0, count)
-    .map((item) => `${item.label} ${Math.round((item.valueMinor / totalMinor) * 100)}%`)
-    .join(" · ");
+    .map((item) => `${item.label} ${Math.round((item.valueMinor / totalMinor) * 100)}%`);
+}
+
+// The shares as whole pieces on one line: a piece that does not fit drops
+// out whole (the line wraps into a one-line box), so no name is cut in half.
+const NBSP = String.fromCharCode(160);
+
+function TopShares({ parts }) {
+  return (
+    <span className="lsd-row-text entries-breakdown-shares">
+      {parts.map((part, index) => (
+        // A no-break space keeps the dot with the name after it.
+        <span key={part}>{index ? `${NBSP}·${NBSP}${part}` : part}</span>
+      ))}
+    </span>
+  );
 }
 
