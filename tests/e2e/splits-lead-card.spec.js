@@ -260,11 +260,14 @@ test("the simplified settlement is a lead, Detail rows and Mark paid; View inclu
   // The old "Settlement status" cream panel layout is gone; its hints stay.
   await expect(panel.locator(".split-checkpoint-completion-actions small")).toHaveText("Moves this repayment out of the active view. It remains awaiting a bank transfer match.");
 
-  // View included activity brings an included row into view (it did nothing before).
+  // View included activity opens the settlement's collapsed section at the
+  // end of the list and brings an included row into view.
   const included = page.locator(".split-activity-card.is-settlement-included").first();
-  await expect(included).toBeVisible();
-  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "instant" }));
+  await expect(included).toHaveCount(0);
+  await expect(page.locator(".split-settled-section-toggle").first()).toHaveAttribute("aria-expanded", "false");
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await panel.getByRole("button", { name: "View included activity" }).click();
+  await expect(page.locator(".split-settled-section-toggle").first()).toHaveAttribute("aria-expanded", "true");
   await expect(included).toBeInViewport();
 });
 
