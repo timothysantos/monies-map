@@ -4,7 +4,7 @@ import { ChevronDown, Receipt, SearchX } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { todayInAppTimeZone } from "./app-dates";
 import { useMoneyPrivacy } from "./money-privacy";
-import { EmptyState } from "./ui-states";
+import { EmptyState, InlineError } from "./ui-states";
 import { SplitActivityGroups } from "./splits-activity";
 import { settledSectionHeading } from "./splits-settled-sections";
 
@@ -12,11 +12,41 @@ function draftIsIn(groups, draft) {
   return Boolean(draft) && groups.some((group) => group.items.some((item) => item.kind === draft.kind && item.id === draft.id));
 }
 
-// What one settlement covered, collapsed at the end of the list. Its rows are
-// drawn only while it is open (a settlement can cover hundreds of them).
-function SplitSettledSection({ section, isOpen, onToggle, children }) {
+// While settled rows load: the spinner and the app's own "Loading...".
+function SettledRowsLoading() {
+  return (
+    <div className="split-settled-section-status" role="status" aria-busy="true">
+      <span className="app-spinner" aria-hidden="true" />
+      <span>{messages.common.loading}</span>
+    </div>
+  );
+}
+
+// Settled rows that could not load, with the app's own Try again.
+function SettledRowsFailed({ onRetry }) {
+  return (
+    <InlineError
+      className="split-settled-section-status"
+      message={messages.common.loadFailedUnreachable}
+      retryLabel={messages.common.screenCrashRetry}
+      onRetry={onRetry}
+    />
+  );
+}
+
+// What one settlement covered, collapsed at the end of the list. The page
+// holds only its heading's numbers: its rows load when it opens (a
+// settlement can cover hundreds of them) and are drawn only while it is open.
+function SplitSettledSection({ section, isOpen, onToggle, onPrefetch, onRetry, children }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const bodyId = `split-settled-${section.checkpointId}`;
+  const prefetch = onPrefetch ? () => onPrefetch(section.checkpointId) : undefined;
+  let body = children;
+  if (section.status === "error") {
+    body = <SettledRowsFailed onRetry={() => onRetry?.(section.checkpointId)} />;
+  } else if (section.status !== "ready") {
+    body = <SettledRowsLoading />;
+  }
   return (
     <section className={`split-settled-section ${isOpen ? "is-open" : ""}`} data-settlement-section={section.checkpointId}>
       <button
@@ -25,11 +55,13 @@ function SplitSettledSection({ section, isOpen, onToggle, children }) {
         aria-expanded={isOpen}
         aria-controls={bodyId}
         onClick={() => onToggle?.(section.checkpointId)}
+        onPointerEnter={prefetch}
+        onFocus={prefetch}
       >
         <span>{settledSectionHeading(section, { today: todayInAppTimeZone(), areTotalsVisible })}</span>
         <ChevronDown size={16} aria-hidden="true" className="split-settled-section-chevron" />
       </button>
-      {isOpen ? <div id={bodyId} className="split-settled-section-body">{children}</div> : null}
+      {isOpen ? <div id={bodyId} className="split-settled-section-body" aria-busy={section.status === "ready" ? undefined : true}>{body}</div> : null}
     </section>
   );
 }
@@ -39,6 +71,7 @@ export function SplitsActivitySection({
   settledSections = [],
   openSettlementIds = [],
   onToggleSettlement,
+  settledLoading = null,
   archivedBatches,
   categories,
   groupOptions,
@@ -69,6 +102,9 @@ export function SplitsActivitySection({
   archiveControl = null
 }) {
   const hasSettled = settledSections.length > 0;
+  // A search also looks inside the settled sections on the server; until it
+  // answers, "nothing found" would be premature.
+  const settledSearchStatus = searchQuery ? settledLoading?.searchStatus ?? "off" : "off";
   // Each list gets the inline card only when the record is in it, so a
   // click inside one list's card never counts as "outside" for another.
   const draftSection = settledSections.find((section) => draftIsIn(section.groups, inlineSplitDraft));
@@ -123,11 +159,15 @@ export function SplitsActivitySection({
             // settled record whose card is open in place.
             isOpen={Boolean(searchQuery) || openSettlementIds.includes(section.checkpointId) || draftSection === section}
             onToggle={onToggleSettlement}
+            onPrefetch={settledLoading?.onPrefetch}
+            onRetry={settledLoading?.onRetry}
           >
             {renderGroups(section.groups, draftSection === section ? inlineSplitDraft : null)}
           </SplitSettledSection>
         ))}
-        {!groupedCurrentActivity.length && !hasSettled && searchQuery ? (
+        {settledSearchStatus === "loading" && !hasSettled ? <SettledRowsLoading /> : null}
+        {settledSearchStatus === "error" ? <SettledRowsFailed onRetry={settledLoading?.onRetrySearch} /> : null}
+        {!groupedCurrentActivity.length && !hasSettled && searchQuery && settledSearchStatus !== "loading" && settledSearchStatus !== "error" ? (
           <EmptyState
             icon={<SearchX />}
             title={messages.splits.noSearchResults}

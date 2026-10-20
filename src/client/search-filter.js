@@ -1,43 +1,8 @@
-const MONEY_FORMATTER = new Intl.NumberFormat("en-SG", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
+// The matching rules live in the domain (search-text.ts) so the Worker's
+// Splits search inside settled sections finds a record the same way.
+import { normalizeSearchQuery } from "../domain/search-text";
 
-export function normalizeSearchQuery(value) {
-  return String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-export function searchTokens(value) {
-  return normalizeSearchQuery(value)
-    .split(" ")
-    .filter(Boolean);
-}
-
-export function textMatchesSearch(value, query) {
-  const tokens = searchTokens(query);
-  if (!tokens.length) {
-    return true;
-  }
-  const haystack = ` ${normalizeSearchQuery(value)} `;
-  return tokens.every((token) => haystack.includes(token));
-}
-
-export function moneySearchText(...amountsMinor) {
-  return amountsMinor
-    .filter((value) => Number.isFinite(value))
-    .map((value) => {
-      const absMinor = Math.abs(value);
-      const decimal = MONEY_FORMATTER.format(absMinor / 100);
-      return `${decimal} ${decimal.replace(/,/g, "")}`;
-    })
-    .join(" ");
-}
+export { moneySearchText, normalizeSearchQuery, searchTokens, textMatchesSearch } from "../domain/search-text";
 
 export function uniqueSearchSuggestions(values, query = "", limit = 6) {
   const normalizedQuery = normalizeSearchQuery(query);

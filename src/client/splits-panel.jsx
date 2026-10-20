@@ -4,6 +4,7 @@
 import "./splits-route.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
@@ -55,6 +56,7 @@ import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsLead } from "./splits-lead-model";
 import { splitsLeadCopy } from "./copy/splits-lead-copy";
 import { buildSplitsPanelModel } from "./splits-selectors";
+import { loadSettledRecordSection, useSettledSplitRows } from "./splits-settled-rows";
 import { moniesClient } from "./monies-client-service";
 import {
   buildLinkedSplitRefreshOptions,
@@ -76,7 +78,7 @@ function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly }) {
+export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly, fetchRequiredQuery = undefined, startOptionalQuery = undefined }) {
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -90,6 +92,11 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const [archiveDialog, setArchiveDialog] = useState(null);
   // The settlements whose collapsed section at the end of the list is open.
   const [openSettlementIds, setOpenSettlementIds] = useState([]);
+  // The settled section an `editing_split_expense` link named, once read.
+  const [settledDeepLink, setSettledDeepLink] = useState(null);
+  const deepLinkReadRef = useRef("");
+  // A scroll waiting for an opened section's rows to arrive.
+  const [pendingSectionScroll, setPendingSectionScroll] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [groupDialog, setGroupDialog] = useState(null);
@@ -129,6 +136,30 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : { ...view, splitsPage }),
     [optimisticSplitsPage, splitsPage, view]
   );
+  // The settled sections' rows are not in the page: they load when a
+  // section opens, a search looks inside them, or a deep link names one.
+  const queryClient = useQueryClient();
+  const rowsGroupId = (splitsPage.groups.find((group) => group.id === selectedGroupId) ?? splitsPage.groups[0])?.id ?? "split-group-none";
+  const settledCheckpointIds = useMemo(
+    () => (splitsPage.settledSections ?? []).filter((section) => section.groupId === rowsGroupId).map((section) => section.checkpointId),
+    [rowsGroupId, splitsPage.settledSections]
+  );
+  // Without the shell (isolated renders) the reads go straight to the cache.
+  const requiredQuery = useMemo(
+    () => fetchRequiredQuery ?? ((options) => queryClient.fetchQuery({ queryKey: options.queryKey, queryFn: options.fetcher, retry: false })),
+    [fetchRequiredQuery, queryClient]
+  );
+  const settledRows = useSettledSplitRows({
+    queryClient,
+    fetchRequiredQuery: requiredQuery,
+    startOptionalQuery,
+    viewId: view.id,
+    groupId: rowsGroupId,
+    checkpointIds: settledCheckpointIds,
+    openIds: openSettlementIds,
+    searchQuery: splitSearchQuery,
+    canPrefetch: !useMobileSplitSheet
+  });
   const splitModel = useMemo(
     () => buildSplitsPanelModel({
       view: displayView,
@@ -136,9 +167,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       selectedGroupId,
       searchQuery: splitSearchQuery,
       dismissedMatchIds,
-      archiveBatchId: archiveDialog?.batchId
+      archiveBatchId: archiveDialog?.batchId,
+      settledRows
     }),
-    [archiveDialog?.batchId, categories, dismissedMatchIds, displayView, selectedGroupId, splitSearchQuery]
+    [archiveDialog?.batchId, categories, dismissedMatchIds, displayView, selectedGroupId, settledRows, splitSearchQuery]
   );
   const {
     activeGroup,
@@ -152,6 +184,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupOptions,
     hasSettledBefore,
     groupActivity,
+    groupFacts,
     pendingMatchCount,
     selectedArchivedBatch,
     settledSections,
@@ -179,6 +212,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       people,
       group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor, currency: activeGroup.currency } : null,
       activity: groupActivity,
+      // The whole group, settled or not, when the page keeps settled rows on
+      // the server (otherwise counted from the activity).
+      facts: groupFacts ?? undefined,
       pendingMatchCount,
       settlementCheckpoints: splitsPage.settlementCheckpoints ?? [],
       today: checkInClock.today,
@@ -192,7 +228,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     calmLines: SPLITS_CALM_LINES,
     alsoLabel: "Also in this group",
     clock: checkInClock
-  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, groupActivity, pendingMatchCount, people, splitsPage.settlementCheckpoints, view.id, view.label]);
+  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, groupActivity, groupFacts, pendingMatchCount, people, splitsPage.settlementCheckpoints, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
@@ -250,7 +286,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     if (isHouseholdView || draft?.kind !== "expense" || !draft.id) return null;
     const state = settlementLock?.recordKey === recordKey ? settlementLock : null;
     if (state?.undone) return null;
-    const item = displayView.splitsPage.activity.find((candidate) => candidate.kind === "expense" && candidate.id === draft.id);
+    // A settled row came with its section, not the page; it carries its lock.
+    const item = displayView.splitsPage.activity.find((candidate) => candidate.kind === "expense" && candidate.id === draft.id)
+      ?? settledRows.findItem("expense", draft.id);
     const lock = splitCardLock(item, splitsPage.settlementCheckpoints ?? [], recordKey);
     return lock && state ? { ...lock, message: state.message } : lock;
   }
@@ -327,11 +365,22 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return;
     }
 
+    // A settled expense is not in the page: its section is read first
+    // (once per link), then opened, and the card opens from its rows.
+    const settledTarget = settledDeepLink?.recordId === targetSplitExpenseId ? settledDeepLink.section : null;
     const targetExpense = splitsPage.activity.find((item) => (
       item.kind === "expense" && item.id === targetSplitExpenseId && !item.isArchived
-    ));
+    )) ?? settledTarget?.items.find((item) => item.kind === "expense" && item.id === targetSplitExpenseId);
     if (!targetExpense) {
+      if (settledDeepLink?.recordId !== targetSplitExpenseId && splitsPage.settledSections?.length && deepLinkReadRef.current !== targetSplitExpenseId) {
+        deepLinkReadRef.current = targetSplitExpenseId;
+        void loadSettledRecordSection(queryClient, requiredQuery, { viewId: view.id, recordId: targetSplitExpenseId })
+          .then((section) => setSettledDeepLink({ recordId: targetSplitExpenseId, section }));
+      }
       return;
+    }
+    if (settledTarget) {
+      setOpenSettlementIds((current) => (current.includes(settledTarget.checkpointId) ? current : [...current, settledTarget.checkpointId]));
     }
 
     const targetGroupId = targetExpense.groupId ?? "split-group-none";
@@ -364,7 +413,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     selectedGroupId,
     selectedMode,
     setSearchParams,
-    splitsPage.activity
+    settledDeepLink,
+    splitsPage.activity,
+    splitsPage.settledSections
   ]);
 
   // The Ask page's "Edit in form" (?split_action=add-expense) opens the
@@ -410,51 +461,65 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
+  // How the settled sections' rows and the settled search are loading, and
+  // their Try again (splits-activity-section.jsx shows them).
+  const settledLoading = {
+    onRetry: (checkpointId) => void settledRows.loadSection(checkpointId),
+    onPrefetch: settledRows.prefetchSection,
+    searchStatus: settledRows.search.status,
+    onRetrySearch: () => void settledRows.retrySearch()
+  };
+
   function toggleSettlementSection(checkpointId) {
     setOpenSettlementIds((current) => (current.includes(checkpointId)
       ? current.filter((id) => id !== checkpointId)
       : [...current, checkpointId]));
   }
 
+  function settledSectionElement(checkpointId) {
+    return [...document.querySelectorAll("[data-settlement-section]")]
+      .find((element) => element.getAttribute("data-settlement-section") === checkpointId) ?? null;
+  }
+
   // Opens a settlement's collapsed section, then scrolls once its rows are
-  // drawn (they render only while it is open).
-  function revealSettlementSection(checkpointId, scrollTo) {
+  // drawn (they load when it opens and render only while it is open).
+  function revealSettlementSection(checkpointId, target) {
     if (!checkpointId || typeof window === "undefined") {
       return;
     }
     setOpenSettlementIds((current) => (current.includes(checkpointId) ? current : [...current, checkpointId]));
-    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollTo));
+    setPendingSectionScroll({ checkpointId, target });
   }
+
+  // The waiting scroll runs when the section's rows are on screen (or it
+  // failed to load: then to the section, so its Try again is in view).
+  const pendingSectionStatus = pendingSectionScroll
+    ? settledSections.find((section) => section.checkpointId === pendingSectionScroll.checkpointId)?.status ?? "missing"
+    : null;
+  useEffect(() => {
+    if (!pendingSectionScroll || pendingSectionStatus === "loading" || pendingSectionStatus === "idle") {
+      return;
+    }
+    const { checkpointId, target } = pendingSectionScroll;
+    setPendingSectionScroll(null);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      const section = settledSectionElement(checkpointId);
+      const firstRow = target === "first-row" && pendingSectionStatus === "ready" ? section?.querySelector(".split-activity-card") : null;
+      (firstRow ?? section)?.scrollIntoView({ block: firstRow ? "center" : "start", behavior: "smooth" });
+    }));
+  }, [pendingSectionScroll, pendingSectionStatus]);
 
   function openSettlementFromArchive(checkpointId) {
     setArchiveDialog(null);
-    revealSettlementSection(checkpointId, () => {
-      const section = [...document.querySelectorAll("[data-settlement-section]")]
-        .find((element) => element.getAttribute("data-settlement-section") === checkpointId);
-      section?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
+    revealSettlementSection(checkpointId, "section");
   }
 
+  // View included activity: the simplified settlement's first row in this
+  // group (its records sit in its collapsed section).
   function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
     if (checkpoint?.id && settledSections.some((section) => section.checkpointId === checkpoint.id)) {
-      revealSettlementSection(checkpoint.id, () => scrollToIncludedRow(checkpoint));
-      return;
+      revealSettlementSection(checkpoint.id, "first-row");
     }
-    scrollToIncludedRow(checkpoint);
-  }
-
-  function scrollToIncludedRow(checkpoint) {
-    const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
-      document.getElementById(splitActivityDomId("expense", recordId)) ||
-      document.getElementById(splitActivityDomId("settlement", recordId))
-    ));
-    if (!targetId || typeof window === "undefined") {
-      return;
-    }
-
-    const element = document.getElementById(splitActivityDomId("expense", targetId))
-      ?? document.getElementById(splitActivityDomId("settlement", targetId));
-    element?.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
   function closeExpenseDialogAndReturn() {
@@ -1367,6 +1432,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         settledSections={settledSections}
         openSettlementIds={openSettlementIds}
         onToggleSettlement={toggleSettlementSection}
+        settledLoading={settledLoading}
         archivedBatches={archivedBatches}
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}

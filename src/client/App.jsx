@@ -68,7 +68,7 @@ import {
 import { fetchTextWithTransientWorkerRetry } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
-import { fetchQueryWithLease } from "./query-leases";
+import { fetchQueryWithLease, startSpeculativeQuery } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useAppShellState } from "./use-app-shell-state";
 import { useAppSyncSubscription } from "./use-app-sync-subscription";
@@ -901,6 +901,8 @@ export function App() {
   // Claude credit status on Ask and Settings), so they share the shell's
   // leases and timing without importing query-leases into a route chunk.
   const fetchRequiredQuery = useCallback((options) => fetchQueryWithLease(queryClient, options), [queryClient]);
+  // And its optional twin (a Splits section's rows read ahead on hover).
+  const startOptionalQuery = useCallback((options) => startSpeculativeQuery(queryClient, options), [queryClient]);
 
   // The Ask page borrows the Entries page DTO (its split groups, and the
   // Apple Pay Shortcut's saved entry) through the same required read, so a
@@ -1173,6 +1175,10 @@ export function App() {
         || query.queryKey?.[1]?.viewId === selectedViewId
       )
     ));
+    // Settled rows (splits-settled-rows.js) belong to no month: a save or
+    // an undo can move records in or out of a settled section, so every
+    // view's are read again.
+    clearSplitsPageCacheByPredicate((query) => String(query.queryKey?.[0]).startsWith("splits-settled-"));
 
     if (invalidateEntries) {
       clearEntriesPageCacheByPredicate((query) => (
@@ -2194,6 +2200,8 @@ export function App() {
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentSplitsPage(options)}
           runBackgroundRefresh={runBackgroundRefresh}
+          fetchRequiredQuery={fetchRequiredQuery}
+          startOptionalQuery={startOptionalQuery}
         />
       );
     }

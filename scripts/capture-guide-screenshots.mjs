@@ -28,6 +28,7 @@ import process from "node:process";
 import { chromium, devices, webkit } from "@playwright/test";
 import sharp from "sharp";
 import { prepareStack, startStack } from "./e2e-stack.mjs";
+import { pickCategory } from "../tests/e2e/helpers.js";
 
 // The showcase's seed month: its last month (M0), with 16 months of history
 // before it, seeded in full. The Import inbox asks for files against the
@@ -306,7 +307,9 @@ const SHOTS = [
       const composer = page.locator(".entry-composer").first();
       await composer.getByLabel("Description").fill("Kopi and kaya toast");
       await composer.getByLabel("Amount").fill("6.80");
-      await composer.locator("select").first().selectOption({ label: "Food & Drinks" });
+      // The shared category list (design.md "Category list"), as the e2e tests pick it.
+      await pickCategory(page, composer.getByRole("button", { name: /^Category,/ }).first(), "Food & Drinks");
+      await page.waitForTimeout(200);
       await scrollToLocator(page, composer, 60);
       await hideCaret(page);
     }
@@ -342,7 +345,7 @@ const SHOTS = [
       await page.locator(".splits-lead").getByRole("button", { name: "+ Add expense" }).click();
       const dialog = page.getByRole("dialog", { name: "New split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
-      await dialog.getByLabel("Category").selectOption("Food & Drinks");
+      await pickCategory(page, dialog.locator("[data-row='category']"), "Food & Drinks");
       await dialog.getByLabel("Expense total").fill("86.40");
       await dialog.getByLabel("Note").fill("Birthday dinner");
       // Back to the top, so the shot leads with the card and its total.

@@ -24,7 +24,10 @@ export function buildSplitsPanelModel({
   selectedGroupId,
   searchQuery = "",
   dismissedMatchIds,
-  archiveBatchId
+  archiveBatchId,
+  // The settled rows loaded so far (splits-settled-rows.js): a section's
+  // `{ status, items }` by settlement, and the search's settled matches.
+  settledRows = null
 }) {
   // Splits can render before the route slice finishes hydrating, so the
   // selectors stay defensive and fall back to empty collections.
@@ -40,15 +43,21 @@ export function buildSplitsPanelModel({
   const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);
   // The list shows the open records by date; what a settlement covered waits
   // in one collapsed section per settlement at the end (search narrows both).
+  // The page sends each section as a summary; its rows load when it opens.
   const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
+  const groupSettledSummaries = (splitsPage.settledSections ?? []).filter((section) => section.groupId === activeGroupId);
+  const settledSearchItems = settledRows?.search?.items ?? [];
   const {
     shownActivity: currentGroupActivity,
     groupedOpenActivity: groupedCurrentActivity,
     settledSections
   } = buildSplitActivitySections({
     activity: activeGroupActivity.filter((item) => !item.isArchived),
+    summaries: groupSettledSummaries,
     checkpoints: settlementCheckpoints,
-    searchQuery
+    searchQuery,
+    sectionRows: (checkpointId) => settledRows?.sections?.get(checkpointId) ?? null,
+    searchResults: settledSearchItems
   });
   const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
   const archivedBatches = splitService.groupActivityByBatch(archivedGroupActivity);
@@ -59,21 +68,26 @@ export function buildSplitsPanelModel({
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
   // The chip, the donut and the label all read the one open period (the
   // search narrows them like the list under them).
-  const { spendMinor, hasSettledBefore, donutChart } = deriveGroupFigures({
+  const { spendMinor, hasSettledBefore: hasSettledInPage, donutChart } = deriveGroupFigures({
     groupActivity: activeGroupActivity,
     shownActivity: currentGroupActivity,
     categories,
     viewId: view.id
   });
+  // A settled section is a settle-up the group had, though its rows stay on
+  // the server.
+  const hasSettledBefore = hasSettledInPage || groupSettledSummaries.length > 0;
 
   return {
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
     currentGroupActivity,
-    // All of the group's activity before any search, settled or not: the
-    // money check-in reads it and says which of its figures are all-time.
+    // The group's activity the page holds, before any search: the money
+    // check-in reads the open period from it, and the whole group (settled
+    // or not) from `groupFacts` when the page sent them.
     groupActivity: activeGroupActivity,
+    groupFacts: splitsPage.groupFacts?.[activeGroupId] ?? null,
     donutChart,
     donutRows: buildDonutRows(donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
@@ -91,7 +105,7 @@ export function buildSplitsPanelModel({
     totalExpenseMinor: spendMinor,
     hasSettledBefore,
     visibleMatches: unresolvedMatches,
-    searchSuggestions: getSplitSearchSuggestions(activeGroupActivity, splitsPage.matches, searchQuery)
+    searchSuggestions: getSplitSearchSuggestions([...activeGroupActivity, ...settledSearchItems], splitsPage.matches, searchQuery)
   };
 }
 

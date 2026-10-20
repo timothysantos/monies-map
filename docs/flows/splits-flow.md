@@ -108,15 +108,65 @@ with a match; the section holding the open inline card is open too. Rows
 inside keep the settled behaviour above (read-only card, reason and Undo on
 top). Archived batches (`splits-archive-dialog.jsx`) lists each settlement
 above the closed batches; choosing one closes the sheet, opens the section and
-scrolls to it. The page payload is unchanged: the settled rows still arrive
-with the page, because the Just for fun lines, the search and the read-only
-card need them (`docs/audits/splits-settled-collapsed/README.md`).
+scrolls to it.
+
+### Settled sections load on demand
+
+The page does not send the records a settled section holds
+(`docs/audits/splits-settled-collapsed/README.md`, "Settled rows load on
+demand": production's 352 settled records were ~300 kB of every Splits
+load). It sends:
+
+- the open records and closed batches (`splitsPage.activity`), read with the
+  `outside-settled-sections` scope (`SplitRecordScope`,
+  `app-repository-splits.ts`);
+- one summary per settlement and group (`splitsPage.settledSections`:
+  checkpoint, group, date, paid, entry count, expense total, currency),
+  counted in SQL (`loadSettledSectionSummaries`, `split-settled-history.ts`);
+- for each group with a settled section, its whole-group facts
+  (`splitsPage.groupFacts`, `split-group-facts.ts`) for the Just for fun
+  lines, counted in SQL in one batch of grouped statements
+  (`loadSplitGroupFacets`);
+- the settlement checkpoints without `includedRecordIds`.
+
+Both keys are left out while nothing is settled. The rows load through
+`useSettledSplitRows` (`splits-settled-rows.js`), one TanStack Query entry
+each, via the shell's `fetchRequiredQuery`:
+
+- opening a section: `GET /api/splits/settled-rows?view&checkpoint&group`
+  (built exactly as the page built them, `buildSplitActivityForView`, so the
+  read-only card's lock and Undo come with them; household-scoped, view
+  filtered, newest first, at most 2,000 per kind with `truncated`). On a wide
+  screen a hover or focus on the heading reads ahead (`startOptionalQuery`).
+  Loading shows the spinner and "Loading..."; a failure "We couldn't reach
+  your data just now." with Try again; a failed read never retries by itself;
+- a search: `GET /api/splits/settled-search?view&group&q`, after a 250 ms pause
+  in typing, returns the group's settled records that match with the page's
+  own rule (`splitActivityMatchesSearch`, `src/domain/search-text.ts`, shared
+  by page and Worker), at most 500. The page narrows them by the current words,
+  shows their sections opened with the matches' own count and total, and holds
+  back "nothing matches" until the server answered;
+- a deep link (`editing_split_expense`) to an expense not in the page:
+  `GET /api/splits/settled-rows?view&record` reads its section (and fills that
+  section's entry), then the group and section open and the card opens
+  read-only.
+
+A split save or undo clears every `splits-settled-` entry with the page's
+own (`clearSplitMutationCaches`, App.jsx), so open sections read again.
+Ask's answers (`buildSplitsPageDto` groups and checkpoints, Ask lookups and
+turn resolution, which build their own full projection) and the settle-up
+sheet read balances and checkpoints, not the settled rows, so they are
+unchanged. `tests/splits-settled-lazy.test.mjs` proves the page, every
+section's rows, the facts and every check-in line equal the old full page on
+seeds; `tests/e2e/splits-settled-lazy.spec.js` the browser behaviour.
 
 ## Data Flow
 
 Splits data comes from:
 
 - `GET /api/splits-page`
+- `GET /api/splits/settled-rows` and `GET /api/splits/settled-search`, on
+  demand (see "Settled sections load on demand")
 
 Split mutations may also refresh:
 

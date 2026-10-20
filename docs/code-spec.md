@@ -91,6 +91,17 @@ Rules that keep it so:
   `tests/page-load-scale-guard.test.mjs` pins statements, rows read, row bytes,
   response bytes and node CPU for Imports, Settings and Summary pills on a
   10k-transaction household with heavy previews and diagnostics.
+- A page sends no rows its screen keeps collapsed. The Splits page sends a
+  settled section as a summary and a settled group's Just for fun counts as
+  facts, both grouped in SQL (`split-settled-history.ts`); the section's rows
+  are one bounded read when it opens (`/api/splits/settled-rows`, at most
+  2,000 rows per kind). On the 10k household with production's 352 settled
+  records: Splits page 22 round trips and ~21 kB (was 20 and ~390 kB),
+  the 287-row section 8 round trips and ~70 ms locally. The same test pins
+  that no settled row is in the page, at most 24 round trips and 30 kB, and
+  the section read at 8 round trips. The page's handler time there (~2.3 s
+  locally) is the bank-match suggestion scan (`loadSplitMatchCandidates`
+  over every unlinked record, settled or not), not the settled rows.
 
 ## Performance Budgets
 
