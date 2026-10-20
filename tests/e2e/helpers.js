@@ -87,7 +87,8 @@ export async function postJson(page, path, body) {
     } catch (error) {
       lastError = error;
       const errorMessage = String(error?.message ?? error);
-      if (attempt < 7 && (errorMessage.includes("worker restarted mid-request") || errorMessage.includes("socket hang up"))) {
+      // A local Worker restart drops the connection (hang up or reset).
+      if (attempt < 7 && (errorMessage.includes("worker restarted mid-request") || errorMessage.includes("socket hang up") || errorMessage.includes("ECONNRESET"))) {
         continue;
       }
       throw error;
