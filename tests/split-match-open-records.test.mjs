@@ -1,14 +1,15 @@
-// Bank-match suggestions are for open split records only (owner approved,
-// 2026-10-20). A record a settle-up covers (an active settlement checkpoint,
-// or a closed batch: the open period's isCoveredBySettleUp) is settled and
-// locked: it sits in a collapsed section or the archive, so suggesting it a
-// bank row was noise, and scanning ~350 of them against every imported row
-// in their date windows was ~2.1 s of the Splits page on the 10k fixture.
+// Bank-match suggestions skip settled split records (owner approved,
+// 2026-10-20). A record an active settlement checkpoint covers is settled and
+// locked: it sits in a collapsed settled section, so suggesting it a bank row
+// was noise, and scanning ~350 of them against every imported row in their
+// date windows was ~2.1 s of the Splits page on the 10k fixture. A closed
+// batch's records are still scanned: Settle group files its own settle-up
+// record in the batch it closes, and that record waits for its transfer.
 //
 // The old scan is frozen in tests/support/split-match-candidates-before.ts.
-// For open records the new scan must suggest exactly what the old one did;
-// for a settled record it must suggest nothing; and reopening or voiding the
-// checkpoint, or reopening the batch, must bring its records back.
+// For every other record the new scan must suggest exactly what the old one
+// did; for a settled record it must suggest nothing; and reopening or voiding
+// the checkpoint must bring its records back.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -46,15 +47,13 @@ async function addImportedTwins(db) {
   ]);
 }
 
-// Settled, by the open period's rule, written out independently in SQL: in
-// an active checkpoint, or in a closed batch.
+// Settled by a checkpoint, written out independently in SQL: covered by one
+// that is not reopened or voided (the settlement lock's rule).
 async function settledRecordIds(db) {
   const rows = await db.prepare(`
     SELECT items.record_id AS id FROM split_settlement_checkpoint_items AS items
     INNER JOIN split_settlement_checkpoints AS checkpoints ON checkpoints.id = items.checkpoint_id
     WHERE checkpoints.status NOT IN ('reopened', 'voided')
-    UNION SELECT split_expenses.id FROM split_expenses INNER JOIN split_batches ON split_batches.id = split_expenses.split_batch_id WHERE split_batches.closed_on IS NOT NULL
-    UNION SELECT split_settlements.id FROM split_settlements INNER JOIN split_batches ON split_batches.id = split_settlements.split_batch_id WHERE split_batches.closed_on IS NOT NULL
   `).all();
   return new Set(rows.results.map((row) => row.id));
 }
@@ -119,24 +118,28 @@ test("reopening or voiding the checkpoint brings its records' suggestions back",
   assert.deepEqual(await loadSplitMatchCandidates(db, MONTH), reopened.after, "a voided checkpoint covers nothing");
 });
 
-test("a closed batch's records get no suggestion until the batch is reopened", async (t) => {
+// Settle group files its settle-up record in the batch it closes, and the
+// bank transfer that pays it arrives later: that record (and the batch's
+// expenses) keep their suggestions, as before.
+test("a closed batch's records keep their suggestions: a group settle-up still waits for its transfer", async (t) => {
   const { db } = await openSeededDatabase(t, template);
   await seedSettledSplitHistory(db);
-  await addImportedTwins(db);
   await db.batch([
     db.prepare(`INSERT INTO split_batches (id, household_id, split_group_id, batch_name, opened_on, closed_on)
-      VALUES ('smscan-batch', 'household-1', '${SETTLED_HISTORY.bigGroupId}', 'Settled trip', '2025-09-01', '2025-09-20')`),
-    db.prepare("UPDATE split_expenses SET split_batch_id = 'smscan-batch' WHERE id IN ('prod-shape-exp-0353', 'prod-shape-exp-0355')")
+      VALUES ('smscan-batch', 'household-1', '${SETTLED_HISTORY.smallGroupId}', 'Settled flat costs', '2025-09-01', '2025-09-20')`),
+    db.prepare("UPDATE split_expenses SET split_batch_id = 'smscan-batch' WHERE id IN ('prod-shape-exp-0349', 'prod-shape-exp-0351')"),
+    db.prepare(`INSERT INTO split_settlements (id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id, settlement_date, amount_minor, currency, payment_method, payment_status)
+      VALUES ('prod-shape-set-batch', 'household-1', '${SETTLED_HISTORY.smallGroupId}', 'smscan-batch', 'person-joyce', 'person-tim', '2025-09-20', 4321, 'SGD', 'bank', 'awaiting_statement')`)
   ]);
-  const closed = await compareWithOldScan(db);
-  const closedIds = closed.after.map((match) => match.splitRecordId);
-  assert.ok(closed.before.some((match) => match.splitRecordId === "prod-shape-exp-0353"), "the old scan suggested it");
-  assert.ok(!closedIds.includes("prod-shape-exp-0353") && !closedIds.includes("prod-shape-exp-0355"), "a closed batch's records are settled");
-  assert.deepEqual(closed.after, closed.beforeOpen);
-
-  await db.prepare("UPDATE split_batches SET closed_on = NULL WHERE id = 'smscan-batch'").run();
-  const reopenedIds = (await loadSplitMatchCandidates(db, MONTH)).map((match) => match.splitRecordId);
-  assert.ok(reopenedIds.includes("prod-shape-exp-0353") && reopenedIds.includes("prod-shape-exp-0355"), "reopened: suggested again");
+  await addImportedTwins(db);
+  const { settled, after, before } = await compareWithOldScan(db);
+  assert.ok(!settled.has("prod-shape-set-batch"));
+  assert.deepEqual(after, before.filter((match) => !settled.has(match.splitRecordId)));
+  const suggested = after.map((match) => match.splitRecordId);
+  for (const id of ["prod-shape-set-batch", "prod-shape-exp-0349", "prod-shape-exp-0351"]) {
+    assert.ok(suggested.includes(id), `${id} is still suggested its bank row`);
+  }
+  assert.equal(after.find((match) => match.splitRecordId === "prod-shape-set-batch").transactionId, "twin-prod-shape-set-batch");
 });
 
 test("on the 10k-transaction household the open records' suggestions are unchanged", async (t) => {

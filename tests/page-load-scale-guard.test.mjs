@@ -130,9 +130,10 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   const dto = JSON.parse(page.body).splitsPage;
   const rows = await measure(`/api/splits/settled-rows?view=person-tim&checkpoint=${history.checkpointId}&group=${history.bigGroupId}`);
   console.log(`# splits-page: ${page.statements} round trips, ${page.rowsRead} rows read, ${page.body.length} response bytes, ${page.medianMs.toFixed(0)} ms node CPU`);
-  // The bank-match suggestion scan: the records it reads (open and unlinked
-  // only) and the imported rows in their date windows.
-  const scanRecords = page.calls.filter((call) => /FROM split_(expenses|settlements)\b.*linked_transaction_id IS NULL AND split_batches\.closed_on IS NULL/.test(call.sql));
+  // The bank-match suggestion scan: the records it reads (unlinked, and no
+  // settlement checkpoint covers them) and the imported rows in their date
+  // windows.
+  const scanRecords = page.calls.filter((call) => /FROM split_(expenses|settlements)\b.*\.linked_transaction_id IS NULL AND NOT split_(expenses|settlements)\.id IN/.test(call.sql));
   const scanRows = page.calls.filter((call) => /FROM transactions INNER JOIN imports .*split_settlement_checkpoint_matches/.test(call.sql));
   console.log(`# match scan: ${scanRecords.reduce((sum, call) => sum + call.rows, 0)} records, ${scanRows.reduce((sum, call) => sum + call.rows, 0)} imported rows (${scanRows.reduce((sum, call) => sum + call.rowsRead, 0)} read, ${scanRows.reduce((sum, call) => sum + call.bytes, 0)} B)`);
   console.log(`# settled-rows (287 rows): ${rows.statements} round trips, ${rows.rowsRead} rows read, ${rows.body.length} response bytes, ${rows.medianMs.toFixed(0)} ms node CPU`);

@@ -111,11 +111,13 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
 //   outside-settled-sections: everything the Splits page sends
 //   settled-section: one checkpoint's records in one group (the lazy rows)
 //   settled-in-group: every settled-section record of one group (search)
-//   awaiting-match: open records with no ledger link, the only ones the
-//     bank-match suggestions are for. A record a settle-up covers (an active
-//     checkpoint, or a closed batch: the open period's isCoveredBySettleUp)
-//     is settled and locked, so it is never suggested a bank row; reopening
-//     or voiding the checkpoint (or reopening the batch) brings it back.
+//   awaiting-match: records with no ledger link that no active settlement
+//     checkpoint covers, the only ones the bank-match suggestions are for. A
+//     covered record is settled and locked (a collapsed settled section), so
+//     it is never suggested a bank row; reopening or voiding the checkpoint
+//     brings it back. A closed batch's records stay in: Settle group puts
+//     its own settle-up record in the batch it closes, and that record still
+//     waits for its bank transfer.
 export type SplitRecordScope =
   | { kind: "outside-settled-sections" }
   | { kind: "settled-section"; checkpointId: string; groupId: string }
@@ -142,7 +144,7 @@ function splitRecordScopeSql(table: "split_expenses" | "split_settlements", scop
       )`;
   if (scope.kind === "awaiting-match") {
     return {
-      sql: ` AND ${table}.linked_transaction_id IS NULL AND split_batches.closed_on IS NULL AND NOT ${covered("")}`,
+      sql: ` AND ${table}.linked_transaction_id IS NULL AND NOT ${covered("")}`,
       limit: "",
       binds: [DEFAULT_HOUSEHOLD_ID]
     };
@@ -674,8 +676,6 @@ export async function unmatchSplitSettlementCheckpoint(db: D1Database, input: { 
 const SPLIT_MATCH_WINDOW_DAYS = 8;
 const SPLIT_MATCH_MAX_WINDOWS = 40;
 
-// Merges the unlinked records' dates into the fewest date ranges that cover
-// every possible candidate. Past a cap, one range spans them all.
 function shiftIsoDate(date: string, days: number) {
   const moved = new Date(`${date}T00:00:00Z`);
   moved.setUTCDate(moved.getUTCDate() + days);
@@ -695,6 +695,8 @@ function rowsNearDate<T extends { transaction_date: string }>(rows: T[], date: s
   return rows.filter((row) => row.transaction_date >= from && row.transaction_date <= to);
 }
 
+// Merges the unlinked records' dates into the fewest date ranges that cover
+// every possible candidate. Past a cap, one range spans them all.
 export function buildSplitMatchDateWindows(dates: string[]): { from: string; to: string }[] {
   const shift = shiftIsoDate;
   const sorted = Array.from(new Set(dates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)))).sort();
@@ -719,11 +721,12 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   return (await loadSplitMatchCandidatesWithRecords(db, month)).matches;
 }
 
-// The bank-match suggestions and the records they were found for: the open,
-// unlinked ones (scope "awaiting-match"). A settled record is locked and sits
-// in a collapsed section or the archive, so it is never offered a bank row,
-// and its date never widens the imported rows read. The Splits page checks a
-// suggestion's record against the person view with these records.
+// The bank-match suggestions and the records they were found for: the
+// unlinked ones no settlement checkpoint covers (scope "awaiting-match"). A
+// covered record is locked and folded into a settled section, so it is never
+// offered a bank row, and its date never widens the imported rows read. The
+// Splits page checks a suggestion's record against the person view with
+// these records.
 export async function loadSplitMatchCandidatesWithRecords(db: D1Database, month = getCurrentMonthKey()): Promise<{
   matches: SplitMatchCandidateDto[];
   expenses: SplitExpenseDto[];
@@ -750,7 +753,7 @@ async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseD
   // A candidate lies within a week of an unlinked record's date
   // (split-matching.ts), so only those date windows are read: one query,
   // each window a range on idx_transactions_household_date (a multi-index
-  // OR), with the open records' dates only.
+  // OR), with the unsettled records' dates only.
   const windows = buildSplitMatchDateWindows(unlinkedDates);
   if (!windows.length) {
     return [];

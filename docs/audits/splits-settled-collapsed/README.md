@@ -116,75 +116,7 @@ The Splits page handler took 2.4 s before and 2.3 s after on the 10k fixture.
 Both are almost all the bank-match suggestion scan (`loadSplitMatchCandidates`
 ~2.1 s alone: every unlinked split record, settled or not, against every
 imported row in their date windows). That scan is unchanged here; it is
-fixed in the next section.
-
-## Settled records skip the bank-match scan (2026-10-20, owner approved)
-
-A settled record (in an active settlement checkpoint, or in a closed batch:
-the open period's `isCoveredBySettleUp`) is locked and folded away, so a
-bank-match suggestion for it was noise. Before, the scan read every
-unlinked record and the imported rows around all their dates, and each
-record tokenised every row read; the Matches review and its "Review N bank
-matches" count listed a settled record whenever one matched (the
-production-shaped fixture had none only because its synthetic bank rows
-share no words with the splits; with a bank twin for each record the old
-scan suggested all 178 unlinked settled records).
-
-Now the scan reads only open, unlinked records (scope `awaiting-match` in
-`loadSplitExpenses` / `loadSplitSettlements`: the `NOT IN` checkpoint list
-of the settled sections and `split_batches.closed_on IS NULL`), so their
-dates alone set the date windows, and each record compares only the rows
-within its own window. Reopening or voiding the checkpoint, or reopening
-the batch, puts the records back. Splits, the Imports page's count and Ask
-read the same loader.
-
-The candidate read stays one query: each window a range on
-`idx_transactions_household_date` (EXPLAIN: `MULTI-INDEX OR`, `SEARCH
-transactions USING INDEX idx_transactions_household_date (household_id=?
-AND transaction_date>? AND transaction_date<?)` per window); rows held by a
-split are excluded through the two partial `linked_transaction_id` indexes,
-and the checkpoint matches as one `NOT IN` list (it was a correlated scan per
-row). The record reads use `idx_split_expenses_household_date` and a list
-subquery on the checkpoint items' unique index.
-
-### Numbers
-
-Splits page (`/api/splits-page?view=person-tim&month=2025-10`), in-process
-Worker on local D1, 21 timed runs after a warm-up, before (origin/master
-90cf8e38) and after:
-
-| Fixture | Node CPU p50 / p95 | Wall p50 / p95 | Rows read | Match scan |
-| --- | ---: | ---: | ---: | --- |
-| 10k household + 352 settled, before | 2,316 / 2,441 ms | 2,370 / 2,442 ms | 70,256 | 181 records, 4,999 imported rows (20,220 read, 1.08 MB), 2,178 ms alone |
-| same, after | 101 / 136 ms | 166 / 177 ms | 54,306 | 8 records, 920 imported rows (3,704 read, 198 kB), 31 ms alone |
-| Demo + 352 settled, before | 94 / 131 ms | 136 / 152 ms | 17,208 | 4,066 read, 188 kB |
-| same, after | 85 / 124 ms | 130 / 145 ms | 17,574 | 4,432 read, 8 kB |
-| Demo, before | 94 / 114 ms | 116 / 138 ms | 639 | 64 read |
-| same, after | 93 / 127 ms | 123 / 135 ms | 658 | 83 read |
-
-Round trips (22) and the response (20,873 B; 8,049 B on the demo) are
-unchanged, and so are the suggestions on all three fixtures (the page's and
-the loader's, compared as JSON). On the demo fixtures the handler is
-dominated by the rest of the page, so the small differences are noise.
-
-### Proof
-
-- `tests/split-match-open-records.test.mjs` runs the old scan (frozen in
-  `tests/support/split-match-candidates-before.ts`) beside the new one with
-  a bank twin for every unlinked record of the production-shaped history,
-  on the demo seed and on the 10k household: the open records'
-  suggestions are equal value for value and in order; no settled record
-  gets one (the old scan suggested all 178, 4 settle-ups included); Matches, its
-  count in every view and the Imports count agree; reopening or voiding the
-  checkpoint and reopening a closed batch bring the records back. All four
-  tests fail on the old code.
-- `tests/page-load-scale-guard.test.mjs` pins the scan on the 10k household:
-  two record reads and one candidate query, at most 20 records and 2,000
-  imported rows (8,000 read), the page at most 110,000 rows read and under
-  the 600 ms node CPU bound (it was ~2,300 ms).
-
-No visible string or control changed: a settled record simply no longer
-appears in the Matches review or its count.
+fixed in "Settled records skip the bank-match scan" below.
 
 ### How the numbers stay the same
 
@@ -210,6 +142,85 @@ uses "We couldn't reach your data just now." and "Try again" (existing
 strings). Screenshots: `after-lazy-loading-desktop.png`,
 `after-lazy-loading-phone.png`, `after-lazy-error-desktop.png`,
 `after-lazy-error-phone.png`.
+
+## Settled records skip the bank-match scan (2026-10-20, owner approved)
+
+A record an active settlement checkpoint covers (any status but `reopened`
+or `voided`, the settlement lock's and the settled sections' rule) is locked
+and folded into a collapsed section, so a bank-match suggestion for it was
+noise. Before, the scan read every unlinked record and the imported rows
+around all their dates, and each record tokenised every row read; the
+Matches review and its "Review N bank matches" count listed a settled record
+whenever one matched (the production-shaped fixture had none only because
+its synthetic bank rows share no words with the splits; with a bank twin for
+each record the old scan suggested all 178 unlinked settled records).
+
+Now the scan reads only unlinked records no active checkpoint covers (scope
+`awaiting-match` in `loadSplitExpenses` / `loadSplitSettlements`: the
+settled sections' `NOT IN` checkpoint list), so their dates alone set the
+date windows, and each record compares only the rows within its own window.
+Reopening or voiding the checkpoint puts the records back. Splits, the
+Imports page's count and Ask read the same loader.
+
+A closed batch (Settle group) is not skipped. A first cut skipped it too
+(the open period counts it as settled), and `tests/splits-api.test.mjs`
+("foreign group settle-up links to an imported SGD transfer") caught it:
+Settle group files its own settle-up record in the batch it closes, and
+that record still waits for the bank transfer that pays it. Skipping a
+closed batch's expenses but not its settle-up would be a separate rule for
+the owner to decide; production's slow part is the checkpoint.
+
+The candidate read stays one query: each window a range on
+`idx_transactions_household_date` (EXPLAIN: `MULTI-INDEX OR`, `SEARCH
+transactions USING INDEX idx_transactions_household_date (household_id=?
+AND transaction_date>? AND transaction_date<?)` per window); rows held by a
+split are excluded through the two partial `linked_transaction_id` indexes,
+and the checkpoint matches as one `NOT IN` list (it was a correlated scan per
+row). The record reads use `idx_split_expenses_household_date` and a list
+subquery on the checkpoint items' unique index.
+
+### Numbers
+
+Splits page (`/api/splits-page?view=person-tim&month=2025-10`) on the 10k
+household with production's 352 settled records, in-process Worker on local
+D1, 21 timed runs after a warm-up per cohort. The old (origin/master
+90cf8e38) and new code ran alternately, old, new, old, new, so both saw the
+same machine load (other sessions were running; load average ~20 to 30):
+
+| Run | Node CPU p50 / p95 | Wall p50 / p95 | Scan alone (median) |
+| --- | ---: | ---: | ---: |
+| Old, 1 | 2,499 / 2,766 ms | 2,766 / 4,332 ms | 2,783 ms |
+| New, 1 | 153 / 229 ms | 278 / 496 ms | 39 ms |
+| Old, 2 | 2,425 / 2,561 ms | 2,576 / 2,666 ms | 2,589 ms |
+| New, 2 | 126 / 173 ms | 204 / 289 ms | 40 ms |
+
+An earlier quiet run of the old code: 2,316 / 2,441 ms node CPU p50 / p95.
+
+Per request: 22 round trips before and after; rows read 70,256 -> 54,567;
+the scan's records 181 -> 9 and its imported rows 4,999 -> 988 (20,220 ->
+3,976 read, 1.08 MB -> 213 kB). The response (20,873 B) and the suggestions
+(the page's and the loader's, compared as JSON) are the same on the demo,
+the demo plus the settled history, and the 10k household; the demo pages'
+handler time is the rest of the page and did not change beyond noise.
+
+### Proof
+
+- `tests/split-match-open-records.test.mjs` runs the old scan (frozen in
+  `tests/support/split-match-candidates-before.ts`) beside the new one with
+  a bank twin for every unlinked record of the production-shaped history,
+  on the demo seed and on the 10k household: every other record's
+  suggestions are equal value for value and in order; no settled record
+  gets one (the old scan suggested all 178, 4 settle-ups included);
+  Matches, its count in every view and the Imports count agree; reopening
+  or voiding the checkpoint brings the records back; a closed batch's
+  settle-up and expenses keep theirs. All four tests fail on the old code.
+- `tests/page-load-scale-guard.test.mjs` pins the scan on the 10k household:
+  two record reads and one candidate query, at most 20 records and 2,000
+  imported rows (8,000 read), the page at most 110,000 rows read and under
+  the 600 ms node CPU bound (it was ~2,300 to 2,500 ms).
+
+No visible string or control changed: a settled record simply no longer
+appears in the Matches review or its count.
 
 ## Screenshots
 

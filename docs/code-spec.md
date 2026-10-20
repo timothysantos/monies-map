@@ -102,14 +102,15 @@ Rules that keep it so:
   the section read at 8 round trips.
 - A page never computes for rows nobody can act on. The bank-match
   suggestion scan (`loadSplitMatchCandidates`: Splits, Imports' count, Ask)
-  reads only open, unlinked split records (scope `awaiting-match`: not in
-  an active checkpoint, not in a closed batch), so a settled record neither
-  gets a suggestion nor widens the date windows of imported rows read, and
-  each record compares only the rows within its own window. On the same 10k
-  household: the scan reads 8 records and 920 imported rows (3,704 read,
-  198 kB) instead of 181 and 4,999 (20,220 read, 1.08 MB); the Splits
-  handler's node CPU is ~100 ms p50 / ~135 ms p95 over 21 runs, was ~2,320
-  / ~2,440 ms. The guard pins the scan to its two record reads and one
+  reads only unlinked split records no active settlement checkpoint covers
+  (scope `awaiting-match`), so a settled record neither gets a suggestion
+  nor widens the date windows of imported rows read, and each record
+  compares only the rows within its own window. On the same 10k household:
+  the scan reads 9 records and 988 imported rows (3,976 read, 213 kB)
+  instead of 181 and 4,999 (20,220 read, 1.08 MB); the Splits handler's
+  node CPU is ~125 to 155 ms p50 over 21 runs, was ~2,300 to 2,500 ms
+  (alternating cohorts, docs/audits/splits-settled-collapsed). The guard
+  pins the scan to its two record reads and one
   candidate query, at most 20 records and 2,000 imported rows, and the page
   under the 600 ms CPU bound (`tests/split-match-open-records.test.mjs`
   proves the open records' suggestions are unchanged).
