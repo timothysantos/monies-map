@@ -3106,6 +3106,12 @@ searched.
   (underline on hover, focus ring, a hit area that reaches above the text).
 - It lives in lazy chunks (list, popover, styles, copy, guess request); the
   first screen carries only the host and the trigger.
+- The last category is always in reach, by scrolling and by search, on a
+  phone and a desktop. A popover opened inside a dialog or sheet takes the
+  scroll lock while it is open (`category-popover-content.jsx`): the dialog's
+  lock cancels wheel and touch scrolling outside the dialog, and the popover
+  is drawn outside it. Guard: `tests/e2e/category-list-reach.spec.js`
+  (390x664, 320x568, 1280x800).
 
 ## Mobile Sheet
 

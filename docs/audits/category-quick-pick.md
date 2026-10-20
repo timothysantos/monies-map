@@ -122,6 +122,28 @@ keyboard is emulated through `visualViewport`). Screenshots (WebKit, iPhone 13
 size, grey block for the keyboard) in `docs/audits/category-sheet-keyboard/`;
 the iOS Simulator was not available (access not granted).
 
+## Reaching the last category (2026-10-20)
+
+Three `tests/e2e/picker-scroll.spec.js` cases failed on master ("the Category
+picker reaches and picks the last category" for Edit entry, New split expense
+and the Month plan sheet). On a phone the product was fine: the list scrolls
+inside the stable `min(70dvh, 640px)` sheet and its last row ends above the
+bar. The test swiped at most 12 times (about 1,300px on an iPhone 13), sized
+for the old sheet that grew with its content; the 34-row list in the fixed box
+needs about 1,600px. The swipe loop now swipes until the end shows, failing if
+a swipe does not move the list.
+
+A new guard, `tests/e2e/category-list-reach.spec.js`, reaches and picks the
+last alphabetical category by scrolling and by search in each way the list
+opens (Edit entry, New split expense, Month plan line, an Entries row's label,
+the Entries filter) at 390x664, 320x568 and 1280x800. It found a real desktop
+bug: in the New split expense dialog the popover could not be scrolled with a
+mouse wheel or trackpad. The dialog's scroll lock (`EntryMobileSheet`'s
+`RemoveScroll`) cancels every wheel outside the dialog, and the popover is
+portalled to `<body>`. A popover opened inside a dialog now takes the lock
+while it is open, so its list scrolls and the dialog's lock returns when it
+closes; outside a dialog nothing changes. No visible change.
+
 ## Not covered
 
 - Rule words in the search ("any category rule words if cheap"): the page does
