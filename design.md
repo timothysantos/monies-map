@@ -154,8 +154,9 @@ day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
 two Splits colours), so no band shows behind the label. Stuck at the top, the
-label becomes the same rounded bar an Entries day label does (the group's
-width and 16 px radius, `--splits-surface` at 84% with a blur inside it;
+label becomes a rounded bar (the group's width and 16 px radius,
+`--splits-surface` at 84% with a blur inside it; Entries now pins a
+full-width band instead, see "Entries list";
 `tests/e2e/date-row-flat.spec.js`).
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
@@ -1430,16 +1431,32 @@ Where it is used:
   in one rounded white group. The day header is not a box at rest: it is
   sticky and paints `--page` (the panel behind the list), flat, so no lighter
   band or square corner shows above the group in any colour preset or mode.
-  Stuck at the top of the screen it becomes a rounded bar (the owner's
-  choice over the earlier fade): the day group's width, so its left and
-  right edges sit on the group's, the group's 16 px radius, `--page` at 84%
-  with a 12 px backdrop blur inside the rounded shape only, and its text
-  inset 14 px (12 px on a phone) from the curve. Its height does not change,
-  so nothing under it moves. `stuck-date-row.js` sets `data-stuck` from one
-  shared IntersectionObserver (root top pulled in by 1 px), with no scroll
-  listener and no render. `tests/e2e/date-row-flat.spec.js` samples pixels
-  at rest in every preset and mode and checks the stuck bar's radius, blur,
-  alpha and edges, on Entries and Splits, desktop and phone. A phone row is 68 px or more (icon, category,
+  It pins just below anything already stuck at the top (`--date-top`: the
+  demo and local environment banner, whose height it mirrors, and the
+  iPhone's top inset), and the next day's header pushes it up and takes its
+  place. Pinned, its background is a band the full width of the window (the
+  owner's request of 2026-10-20, replacing the rounded bar): a `::before`
+  over the header's own height that reaches out to both window edges by
+  `--date-bleed-left` and `--date-bleed-right`, `--page` at
+  `--date-band-share` (92%) with a 12 px backdrop blur (solid `--page` where
+  blur is unsupported) and a `--line` hairline at its foot. The date, the
+  daily net and the refresh button stay exactly where they sit at rest, on
+  the content column, and the height does not change, so nothing moves; no
+  transition is added. Rows and everything in them carry a
+  `scroll-margin-top` of the pinned header plus a gap, so a row reached by
+  keyboard stops below it. The Entries panel no longer clips sideways on a
+  wide screen (nothing in it overflows; a phone's panel still clips), so the
+  band can reach the edges. `stuck-date-row.js` sets `data-stuck` from an
+  IntersectionObserver per sticky top (root top pulled in to 1 px below
+  it), moves a row to the right observer if its top changed, and when a row
+  pins writes the two bleeds from the observer's own rectangle (a resize
+  re-measures the pinned rows); no scroll listener and no render.
+  `tests/e2e/entries-sticky-date.spec.js` (1440 and 390 px) checks the
+  pinned top under the banner, the band's edges and hairline, the text
+  column, the hand-over to the next day, keyboard focus and no overlap with
+  the floating chrome; `tests/e2e/date-row-flat.spec.js` samples pixels at
+  rest in every preset and mode (Entries and Splits) and `tests/colour-contrast.test.mjs`
+  checks the date and daily net on the band. A phone row is 68 px or more (icon, category,
   merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a

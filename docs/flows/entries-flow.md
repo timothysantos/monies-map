@@ -141,7 +141,14 @@ row says "All entries" or "N filters on"). The inline "+ Add entry" is gone:
 the round + opens Ask's new entry card and its "Edit in form" opens the
 form. List rows show a quiet category line, the wallet as a quiet line and a
 right-aligned amount, with the person's colour edge; the day header is a
-hairline divider with the daily net (design.md "Entries list").
+hairline divider with the daily net (design.md "Entries list"). Scrolling a
+day, its header pins at the top of the screen (just below the demo or local
+banner where there is one) while its rows pass under it, until the next
+day's header pushes it up; pinned, its background is a page-coloured band
+the full width of the window with a hairline at its foot, while the date and
+daily net stay on the content column. A row reached by keyboard stops below
+it (`tests/e2e/entries-sticky-date.spec.js`; frames in
+`docs/audits/entries-sticky-date/`).
 
 ## Category list
 
