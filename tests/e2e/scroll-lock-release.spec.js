@@ -347,9 +347,14 @@ const OTHER_PLACES = [
   },
   {
     name: "New split expense, a category list opened inside, then Escape",
+    // A phone opens it through Ask's "Edit in form" link, not a button; the
+    // phone's category list inside a sheet is covered by Transfer details and
+    // Edit entry above.
+    desktopOnly: true,
     scrollable: false,
     async run(page, screen) {
-      await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none&split_action=add-expense");
+      await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+      await press(screen, page.locator(".splits-lead").getByRole("button", { name: "+ Add expense" }));
       const dialog = page.getByRole("dialog", { name: "New split expense" });
       await expect(dialog).toBeVisible({ timeout: 60_000 });
       await press(screen, dialog.locator('[data-row="category"]').first());
