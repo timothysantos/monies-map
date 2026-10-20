@@ -11,6 +11,37 @@ import { projectEntriesForView } from "./entry-row-projection";
 import { getEntryTotals, getExpenseBreakdown } from "./entry-totals";
 import { findInvestmentMoves } from "../domain/investment-moves";
 import { figureEntryIds, moneyJobFigureMinor } from "../domain/money-figures";
+import { readEntryForPerson } from "../domain/transfer-purpose";
+
+// The Entries list holds ledger rows (a transfer with a purpose stays a
+// transfer, so it is edited as one). Its filters, totals, figures and rows
+// read them as the view counts them (transfer-purpose.ts): in a person view
+// such a transfer is the sender's spending in its category and a payback
+// for the person it went to. A read row keeps its ledger row as
+// `ledgerEntry` for the editor. One read per (entry object, view), so an
+// unchanged entry keeps the same row object and memoized rows can skip it.
+const readCache = new WeakMap();
+
+function readEntryForView(entry, viewId) {
+  if (!entry.transferPurpose || viewId === "household") {
+    return entry;
+  }
+  let byView = readCache.get(entry);
+  if (!byView) {
+    byView = new Map();
+    readCache.set(entry, byView);
+  }
+  if (!byView.has(viewId)) {
+    const read = readEntryForPerson(entry, viewId);
+    byView.set(viewId, read === entry ? entry : { ...read, ledgerEntry: entry });
+  }
+  return byView.get(viewId);
+}
+
+/** The entries as the view counts them (see readEntryForView). */
+export function readEntriesForList(entries, viewId) {
+  return viewId === "household" ? entries : entries.map((entry) => readEntryForView(entry, viewId));
+}
 
 // The transfers into investment accounts (the same rule as the invested
 // totals, investment-moves.ts), when the filter asks for them
@@ -38,7 +69,8 @@ function figureRowIds(entries, entryFilters, selectedScope, viewId, investmentAc
   return figureEntryIds(entryFilters.figure, inScope, entries, investmentAccountIds ?? new Set());
 }
 
-export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [], investmentAccountIds = undefined }) {
+export function getFilteredEntries({ entries: listedEntries, entryFilters, selectedScope, viewId, pinnedEntryIds = [], investmentAccountIds = undefined }) {
+  const entries = readEntriesForList(listedEntries, viewId);
   const movesIn = investmentMoveIds(entries, entryFilters, investmentAccountIds);
   const figureIds = figureRowIds(entries, entryFilters, selectedScope, viewId, investmentAccountIds);
   return entries.filter((entry) => {
@@ -107,7 +139,7 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
     ? moneyJobFigureMinor(
       entryFilters.figure,
       aggregateEntries.map((entry) => ({ ...entry, amountMinor: entry.visibleAmountMinor })),
-      entries,
+      readEntriesForList(entries, viewId),
       investmentAccountIds ?? new Set()
     )
     : null;

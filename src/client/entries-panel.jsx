@@ -74,6 +74,7 @@ import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
 import { useIsMobileLayout } from "./use-viewport";
 import { useStableHandler } from "./use-stable-handler";
+import { EntryTransferPurposeRow, offersTransferPurpose } from "./entry-transfer-purpose-row";
 import { useLiveSearchParams } from "./use-live-search-params";
 import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
@@ -214,6 +215,7 @@ export function EntriesPanel({
     resumeEntryEdit,
     finishEntryEdit,
     changeEntryCategory,
+    setTransferPurpose,
     cancelEntryEdit,
     linkTransferCandidate,
     refreshTransferCandidates,
@@ -1484,6 +1486,14 @@ export function EntriesPanel({
                 trigger={<EntryTransferMatchRow />}
               />
             )}
+            transferPurposeRow={offersTransferPurpose(activeEditingEntry) ? (
+              <EntryTransferPurposeRow
+                entry={activeEditingEntry}
+                categories={categories}
+                isSheet
+                onChange={setTransferPurpose}
+              />
+            ) : null}
           />
         </EntryMobileSheet>,
         document.body
@@ -1523,6 +1533,7 @@ export function EntriesPanel({
           getTransferCandidatesForEntry={getTransferCandidatesForEntry}
           onLinkTransferCandidate={linkTransferCandidate}
           onSettleTransfer={settleTransfer}
+          onSetTransferPurpose={setTransferPurpose}
           createdSplitAction={createdSplitAction}
           deletingCreatedSplitId={deletingCreatedSplitId}
           onAddEntryToSplits={handleAddEntryToSplits}

@@ -397,6 +397,19 @@ export const messages = {
       transferMatch: "Transfer match",
       manageTransfer: "Manage transfer"
     },
+    // A transfer to someone in the household that says what it pays for
+    // (DOMAIN.md "Transfer Purpose"). Owner-approved design, 2026-10-20.
+    transferPurpose: {
+      label: "What is this for?",
+      clear: "Just a transfer",
+      rememberedCue: "Set like last month",
+      undo: "Undo",
+      saving: "Saving...",
+      sentChip: (name) => `Transfer to ${name}`,
+      receivedChip: (name) => `${name}'s transfer to you`,
+      householdChip: (transferLabel, categoryName) => `${transferLabel} · for ${categoryName}`,
+      failed: "That didn't save. Try again."
+    },
     noSpendBreakdown: "No spend rows in this view.",
     noSpendBreakdownDetail: "Spending shows up here once entries are recorded.",
     noEntries: "No entries match this view.",

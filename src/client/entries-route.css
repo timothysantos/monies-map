@@ -1074,6 +1074,25 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   display: contents;
 }
 
+/* "What is this for?": the cue and "Just a transfer" / Undo sit quietly
+   under the row, at its right edge, like "Clear time". */
+.entry-edit-card .entry-transfer-purpose-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 36px;
+  font-size: 0.9rem;
+}
+
+.entry-edit-card .entry-transfer-purpose-cue {
+  color: var(--muted);
+}
+
+.entry-edit-card .entry-transfer-purpose-actions .lsd-quiet {
+  padding: 0 8px;
+}
+
 /* Phone: the edit sheet. Its top row keeps the eye and a round close
    button; its bottom bar stays at the bottom of the sheet with the primary
    action under the thumb. */

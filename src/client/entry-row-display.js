@@ -34,12 +34,10 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
       ? getSplitGroupChipStyle(splitGroupName)
       : undefined,
     splitPercent,
-    transferLabel: entry.entryType === "transfer"
-      ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
-      : null,
+    transferLabel: getTransferLabel(entry),
     // A matched transfer is settled bookkeeping, so its chip is a quiet
     // line; an unmatched one keeps the pill that asks for a look.
-    isTransferMatched: entry.entryType === "transfer" && Boolean(entry.linkedTransfer),
+    isTransferMatched: Boolean(entry.linkedTransfer) && (entry.entryType === "transfer" || Boolean(entry.transferPurpose?.role)),
     transferDetail: entry.linkedTransfer
       ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
       : entry.accountName,
@@ -53,6 +51,26 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     amountTone: entryAmountTone(entry.entryType, signedAmountMinor),
     secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
   };
+}
+
+// A transfer's chip. A transfer that says what it pays for stays visibly a
+// transfer: in a person view it reads as spending (or a payback) in its
+// category, so the chip names who it went to or came from; the household
+// row adds what it was for.
+function getTransferLabel(entry) {
+  const purpose = entry.transferPurpose;
+  const copy = messages.entries.transferPurpose;
+  if (purpose?.role === "sent") {
+    return copy.sentChip(purpose.toPersonName);
+  }
+  if (purpose?.role === "received") {
+    return copy.receivedChip(entry.ownerName ?? entry.accountOwnerLabel ?? messages.common.emptyValue);
+  }
+  if (entry.entryType !== "transfer") {
+    return null;
+  }
+  const label = `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`;
+  return purpose ? copy.householdChip(label, purpose.categoryName) : label;
 }
 
 export function getSplitGroupChipStyle(groupName) {

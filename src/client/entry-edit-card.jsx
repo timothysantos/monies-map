@@ -67,6 +67,9 @@ export function EntryEditCard({
   onOwnerChange,
   splitsRow = null,
   transferTools = null,
+  // "What is this for?" on a transfer to someone in the household
+  // (entry-transfer-purpose-row.jsx), or null.
+  transferPurposeRow = null,
   amountAction = null
 }) {
   const isSheet = layout === "sheet";
@@ -424,6 +427,7 @@ export function EntryEditCard({
         {ownerRow}
         {splitsRow}
         {transferRow}
+        {transferPurposeRow}
         {noteRow}
         {isSheet ? (
           <MoreDetails

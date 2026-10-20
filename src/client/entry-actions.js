@@ -367,16 +367,64 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
-  function beginEntryEdit(entry) {
-    if (editingEntryId === entry.id) {
+  function beginEntryEdit(row) {
+    if (editingEntryId === row.id) {
       cancelEntryEdit();
       return;
     }
 
+    // The snapshot is the listed entry itself: a row read for a person view
+    // (a transfer with a purpose shown as spending) is not what is saved.
+    const entry = entries.find((item) => item.id === row.id) ?? row;
     setShowEntryComposer(false);
     setEntrySubmitError("");
     setEditingEntryId(entry.id);
     setEntrySnapshot({ ...entry, splits: entry.splits.map((split) => ({ ...split })) });
+  }
+
+  // "What is this for?" on a transfer to someone in the household
+  // (POST /api/transfers/purpose; null clears it). Saved at once, like the
+  // row's category list; the entry keeps the answer while its editor is
+  // open, and the views' figures refresh behind it.
+  async function setTransferPurpose(row, categoryName) {
+    const entry = entries.find((item) => item.id === row.id) ?? row;
+    try {
+      const response = await fetch("/api/transfers/purpose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryId: entry.id, categoryName: categoryName ?? null })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { ok: false, error: data.error };
+      }
+      const transferPurpose = categoryName
+        ? {
+            categoryName,
+            toPersonId: entry.transferPurpose?.toPersonId ?? "",
+            toPersonName: entry.transferPurpose?.toPersonName ?? entry.linkedTransfer?.accountOwnerLabel ?? ""
+          }
+        : undefined;
+      const withPurpose = (item) => {
+        const next = { ...item, transferPurpose };
+        if (!transferPurpose) {
+          delete next.transferPurpose;
+        }
+        return next;
+      };
+      setEntries((current) => current.map((item) => (item.id === entry.id ? withPurpose(item) : item)));
+      setEntrySnapshot((current) => (current?.id === entry.id ? withPurpose(current) : current));
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
+      refreshEntriesInBackground();
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
   }
 
   // Reopens the editor on `draft`, an edited copy of one of these entries
@@ -410,6 +458,11 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   async function changeEntryCategory(entry, categoryName) {
     if (!categoryName || categoryName === entry.categoryName) {
       return { ok: true };
+    }
+    // A person view shows a transfer with a purpose under its purpose:
+    // choosing another category there changes what it is for.
+    if (entry.transferPurpose?.role) {
+      return setTransferPurpose(entry, categoryName);
     }
     const patch = categoryService.buildPatch(categories, categoryName);
     if (entry.linkedSplitExpenseId) {
@@ -828,6 +881,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     resumeEntryEdit,
     finishEntryEdit,
     changeEntryCategory,
+    setTransferPurpose,
     cancelEntryEdit,
     linkTransferCandidate,
     refreshTransferCandidates,

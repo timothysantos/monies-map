@@ -25,6 +25,7 @@ import { buildEntryDeepLink } from "./entry-deep-link";
 import { SplitShareChoices } from "./split-share-choices";
 import { EntryLinkCopyButton } from "./entry-link-copy";
 import { splitShareCopy } from "./copy/split-share-copy";
+import { EntryTransferPurposeRow, offersTransferPurpose } from "./entry-transfer-purpose-row";
 
 const {
   categories: categoryService,
@@ -100,6 +101,7 @@ export function EntriesDateGroups({
   getTransferCandidatesForEntry,
   onLinkTransferCandidate,
   onSettleTransfer,
+  onSetTransferPurpose = undefined,
   onAddEntryToSplits,
   quickSplitGroup = null,
   onRefreshSplitGroups,
@@ -247,6 +249,7 @@ export function EntriesDateGroups({
       onRefreshTransferCandidates,
       onLinkTransferCandidate,
       onSettleTransfer,
+      onSetTransferPurpose,
       onOpenSplitPicker: openSplitPicker,
       quickSplitGroup,
       onQuickAddToSplits: quickSplitGroup
@@ -298,7 +301,7 @@ export function EntriesDateGroups({
                   onBeginEntryEdit={beginEntryEdit}
                   onChangeEntryCategory={changeEntryCategory}
                   onCategoryAppearanceChange={changeCategoryAppearance}
-                  editor={isEditing && renderInlineEditor ? buildEditor(entry) : null}
+                  editor={isEditing && renderInlineEditor ? buildEditor(entry.ledgerEntry ?? entry) : null}
                 />
               );
             })}
@@ -571,8 +574,10 @@ function EntryRow({
 
       {editor ? (
         <div ref={pageFlagRef(PAGE_FLAG.entryInlineEditor, inlineEditorRef)} className="entry-inline-editor">
+          {/* A row read for the view (a transfer with a purpose shown as
+              spending) is edited as the ledger transfer it is. */}
           <EntryInlineEditorFields
-            entry={entry}
+            entry={entry.ledgerEntry ?? entry}
             viewId={viewId}
             categories={categories}
             bankState={bankState}
@@ -648,6 +653,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
     onRefreshTransferCandidates,
     onLinkTransferCandidate,
     onSettleTransfer,
+    onSetTransferPurpose,
     onOpenSplitPicker,
     quickSplitGroup,
     onQuickAddToSplits,
@@ -734,6 +740,14 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
             trigger={<EntryTransferMatchRow />}
           />
         )}
+        transferPurposeRow={onSetTransferPurpose && offersTransferPurpose(entry) ? (
+          <EntryTransferPurposeRow
+            entry={entry}
+            categories={categories}
+            isSheet={false}
+            onChange={onSetTransferPurpose}
+          />
+        ) : null}
       />
       {entrySettlementLock
         ? <SettlementLockNotice lock={entrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={onUndoEntrySettlementLock} />

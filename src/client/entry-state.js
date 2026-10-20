@@ -73,6 +73,9 @@ export function mergeEntriesById(
           ...currentEntry,
           linkedTransfer: serverEntry.linkedTransfer,
           linkedSplitExpenseId: serverEntry.linkedSplitExpenseId,
+          // Saved on its own (POST /api/transfers/purpose), so the server's
+          // answer is the truth even while the editor is open.
+          transferPurpose: serverEntry.transferPurpose,
           isPendingDerived: false
         };
       }
