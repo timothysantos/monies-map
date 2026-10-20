@@ -174,11 +174,12 @@
 }
 
 /* On a phone the quick add goes on its own line under the Splits row, a full
-   44 px target, so the row keeps its whole "Add to splits". */
+   44 px target, so the row keeps its whole "Add to splits". The 8 px gap
+   keeps the two targets apart (design.md: 8 px between neighbours). */
 @media (max-width: 760px) {
   .entry-split-action-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    gap: 8px;
   }
 
   .entry-split-quick-action {

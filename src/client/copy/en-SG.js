@@ -393,6 +393,11 @@ export const messages = {
       // and Remove from Splits (keeps the entry, removes only its split).
       splitsMenuLabel: "Splits: View split or Remove from Splits",
       removeFromSplits: "Remove from Splits",
+      // Its confirmation: the full words in the title, and a short button
+      // ("Remove from Splits" wraps to two lines at 320 px).
+      removeFromSplitsTitle: "Remove from Splits?",
+      removeFromSplitsNote: "The entry stays in Entries. Only its split on Splits is removed.",
+      removeFromSplitsConfirm: "Remove",
       deleteEntry: "Delete entry",
       transferMatch: "Transfer match",
       manageTransfer: "Manage transfer"
