@@ -1,5 +1,5 @@
 /* Spending Mix's ranked list and its donut's openable slices
-   (spending-mix-list.jsx, design.md "Summary body" and "Entries top"),
+   (SpendingMixList in category-visuals.jsx, design.md "Summary body" and "Entries top"),
    shared by Summary's and Month's Spending Mix and the Entries page's
    spending by category. It ships with those lazy chunks, never
    public/styles.css. Colours are tokens and the category colours; every
@@ -168,6 +168,10 @@
   gap: 6px;
   color: var(--accent-strong);
   font-weight: 700;
+}
+
+.summary-mix-more .summary-mix-more-up {
+  transform: rotate(180deg);
 }
 
 /* A slice is an openable figure: focusable, and lifted a little while it

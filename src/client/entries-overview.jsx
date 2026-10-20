@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
-import { SpendingMixChart } from "./category-visuals";
+import { mixShareText, SpendingMixChart, SpendingMixList } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { spendingMixCopy as mixCopy } from "./copy/spending-mix-copy";
 import { EmptyState } from "./ui-states";
@@ -17,7 +17,6 @@ import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { paletteColour } from "./palette-colour";
 import { rowMotionProps } from "./row-motion";
-import { mixShareText, SpendingMixList } from "./spending-mix-list";
 import { useIsMobileLayout } from "./use-viewport";
 
 const { categories: categoryService, format: formatService } = moniesClient;

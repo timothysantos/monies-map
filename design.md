@@ -1312,7 +1312,7 @@ Where it is used:
   `tests/simple-page.test.mjs`, `tests/viewer-preferences.test.mjs`.)
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`; the ranked list and the slices'
-  CSS are `spending-mix-list.jsx` and `spending-mix-list.css`, shared with
+  CSS are `SpendingMixList` (`category-visuals.jsx`) and `spending-mix-list.css`, shared with
   the Entries breakdown; in the Spending Mix and Summary
   chunks; no `styles.css` growth; Spending Mix is a `React.lazy` chunk beside
   the first screen, list, slice menus and words included). The Spending Mix donut labels only the

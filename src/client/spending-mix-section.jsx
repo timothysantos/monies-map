@@ -4,7 +4,9 @@ import { ChevronRight } from "lucide-react";
 
 import {
   CategoryAppearancePopover,
-  SpendingMixChart
+  mixShareText,
+  SpendingMixChart,
+  SpendingMixList
 } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { spendingMixCopy as mixCopy } from "./copy/spending-mix-copy";
@@ -20,7 +22,6 @@ import { rowMotionProps } from "./row-motion";
 import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { EmptyState } from "./ui-states";
-import { mixShareText, SpendingMixList } from "./spending-mix-list";
 import { useIsMobileLayout } from "./use-viewport";
 
 // Spending Mix: spending by category as a donut, its slices labelled with

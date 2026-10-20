@@ -163,7 +163,7 @@ test("entries breakdown category rows hide chart slices separately from multi-ca
   await expect(page.locator(".entries-filter").filter({ hasText: "By category" })).toContainText("2 categories");
 
   await page.getByRole("button", { name: "Spending by category" }).click();
-  // One lean line per category (spending-mix-list.jsx): the row's tap is
+  // One lean line per category (SpendingMixList): the row's tap is
   // the filter, the eye at its end hides the slice.
   const foodRow = page.locator(".entries-mix-panel .summary-mix-row").filter({ hasText: "Food & Drinks" });
   await expect(foodRow).toBeVisible();
