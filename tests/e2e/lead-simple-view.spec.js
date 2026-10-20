@@ -82,7 +82,8 @@ async function expectPlan(page, { summary, jobs = true }) {
   await expect(group.locator(".money-jobs")).toHaveCount(jobs ? 1 : 0);
   await expect(group.locator(".lead-simple")).toHaveCount(0);
   if (summary) {
-    await expect(group.locator(".summary-support-pill")).toHaveCount(2);
+    // Income and Saved: the stat strip on a desktop, pills on a phone.
+    await expect(group.locator('[data-metric="income"], [data-metric="saved"]')).toHaveCount(2);
     await expect(page.locator(".summary-intent")).toBeVisible();
     await expect(page.locator("[data-earned-spent]")).toHaveCount(0);
   } else {

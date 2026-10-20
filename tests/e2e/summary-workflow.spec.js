@@ -93,10 +93,10 @@ test.describe("summary workflow", () => {
     await expect(page.getByRole("group", { name: "Scope" })).toHaveCount(0);
   });
 
-  // The desktop scope switch uses the spare support-column space above
-  // Income and Saved, leaving the Summary title column clean.
-  test("the desktop scope switch sits above the Summary support cards", async ({ page }) => {
-    for (const width of [1440, 1920]) {
+  // The desktop scope switch sits in the title row, after "Viewing • Tim",
+  // above the full-width lead (design.md "Summary lead"), in Plan and Simple.
+  test("the desktop scope switch sits in the Summary title row, whole, above the lead", async ({ page }) => {
+    for (const width of [1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoPageAfterApi(
         page,
@@ -108,24 +108,34 @@ test.describe("summary workflow", () => {
       await expect(scope.getByRole("button", { name: "Both", exact: true })).toHaveAttribute("aria-pressed", "true");
       // The lead shows once the range's cards arrive; measure the header with it.
       await expect(page.locator(".summary-lead .summary-lead-spent")).toBeVisible();
-      await expect(page.locator(".financial-insight-summary")).toBeVisible();
       const switchBox = await scope.boundingBox();
       const titleBox = await page.locator(".summary-head h2").boundingBox();
+      const viewer = await page.locator(".summary-head .panel-context").boundingBox();
+      const lead = await page.locator(".summary-lead").boundingBox();
+      await expect(page.locator(".summary-head .panel-context")).toHaveText("Viewing • Tim");
 
-      // The spare support-column space holds the viewer and scope above the
-      // Income and Saved cards, leaving the title column clean.
-      const support = await page.locator(".summary-support-pills").boundingBox();
-      const income = await page.locator('.summary-support-pill[data-metric="income"]').boundingBox();
-      expect(switchBox.x, `${width}`).toBeGreaterThanOrEqual(support.x);
-      expect(switchBox.x + switchBox.width, `${width}`).toBeLessThanOrEqual(support.x + support.width);
-      expect(switchBox.y + switchBox.height, `${width}`).toBeLessThanOrEqual(income.y);
-      expect(switchBox.x, `${width}`).toBeGreaterThan(titleBox.x + titleBox.width);
-
-      // The same page without the switch is the no-control baseline.
-      await page.addStyleTag({ content: ".summary-scope-switch { display: none !important; }" });
-      await expect(scope).toBeHidden();
-      await expect(page.locator(".summary-support-context")).toContainText("Viewing");
+      // One row: the title, the viewer, then the switch, all above the lead.
+      expect(viewer.x, `${width}`).toBeGreaterThan(titleBox.x + titleBox.width);
+      expect(switchBox.x, `${width}`).toBeGreaterThan(viewer.x + viewer.width);
+      expect(switchBox.y, `${width}`).toBeLessThan(titleBox.y + titleBox.height);
+      expect(switchBox.y + switchBox.height, `${width}`).toBeGreaterThan(titleBox.y);
+      expect(switchBox.y + switchBox.height, `${width}`).toBeLessThanOrEqual(lead.y);
+      // Nothing in the row is cut.
+      const cut = await page.locator(".summary-head .panel-context, .summary-scope-switch .pill").evaluateAll((elements) => elements
+        .filter((element) => element.scrollWidth > element.clientWidth + 1).map((element) => element.textContent));
+      expect(cut, `${width}`).toEqual([]);
+      // No second copy in the lead's column.
+      await expect(page.locator(".summary-support-context")).toHaveCount(0);
     }
+
+    // Simple keeps the same title row.
+    await page.evaluate(() => window.localStorage.setItem("monies-map:lead-view", "simple"));
+    await page.reload();
+    await expect(page.locator(".summary-lead-group[data-lead-view=simple]")).toBeVisible({ timeout: 30_000 });
+    const simpleTitle = await page.locator(".summary-head h2").boundingBox();
+    const simpleSwitch = await page.getByRole("group", { name: "Scope" }).boundingBox();
+    expect(simpleSwitch.y).toBeLessThan(simpleTitle.y + simpleTitle.height);
+    expect(simpleSwitch.x).toBeGreaterThan(simpleTitle.x + simpleTitle.width);
 
     // The household counts every entry and has no switch.
     await page.setViewportSize({ width: 1440, height: 900 });

@@ -60,7 +60,7 @@ const MONTH_CARD_CAP = 270;
 // between groups (16 px from 761 px wide), and a line-height on every text
 // role. The gaps are measured between the rendered boxes, so a rule that
 // glues the legend to the bar or the sentence to the legend fails here. Runs on
-// the Month and Summary leads (the Summary card has no stat strip).
+// the Month and Summary leads (a phone's Summary card has no stat strip).
 const SPACING_SCALE = [4, 8, 12, 16];
 async function expectLeadRhythm(page, lead) {
   const group = isPhone(page) ? 12 : 16;
@@ -85,7 +85,11 @@ async function expectLeadRhythm(page, lead) {
   near(await gap(plan, legend), 8, "plan bar to legend");
   expect(await gap(track, legend), "the legend never touches the bar").toBeGreaterThanOrEqual(8);
   near(await gap(legend, sentence), group, "legend to sentence");
-  near(await gap(sentence, jobs), 4, "sentence to money jobs line");
+  // A wide Summary card puts the money jobs and the stat strip in a right
+  // column (summary-lead.css): the jobs line is level with the eyebrow there.
+  const beside = (await box(jobs)).x > (await box(sentence)).right;
+  if (beside) near((await box(jobs)).y, (await box(lead.locator(".lsd-eyebrow"))).y, "money jobs line level with the eyebrow");
+  else near(await gap(sentence, jobs), 4, "sentence to money jobs line");
   const columns = lead.locator(".lead-columns");
   if (await columns.count()) {
     near(await gap(jobs, columns), group, "money jobs to the stat strip");
@@ -434,7 +438,7 @@ test.describe("desktop", () => {
 
     // The Support pills and the plan line are still there; the old spend-vs-plan
     // bar is not (the savings bar and its plan bar are the only bars).
-    await expect(page.locator('.summary-support-pill[data-metric="income"] strong')).toBeVisible();
+    await expect(lead.locator('.lead-column[data-metric="income"] strong')).toBeVisible();
     await expect(lead.locator(".lsd-progress-line")).toBeVisible();
     await expect(lead.locator(".lsd-bar")).toHaveCount(0);
   });

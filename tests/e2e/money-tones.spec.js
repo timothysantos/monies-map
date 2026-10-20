@@ -18,17 +18,6 @@ const INK = {
 };
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
 
-// Chromium reports color-mix() results as color(srgb r g b / a) with 0-1
-// channels; everything else as rgb()/rgba() with 0-255 channels.
-function parseColour(value) {
-  const srgb = value.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/);
-  if (srgb) {
-    return { rgb: [srgb[1], srgb[2], srgb[3]].map((channel) => Number(channel) * 255), alpha: srgb[4] === undefined ? 1 : Number(srgb[4]) };
-  }
-  const rgb = value.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/);
-  return { rgb: [rgb[1], rgb[2], rgb[3]].map(Number), alpha: rgb[4] === undefined ? 1 : Number(rgb[4]) };
-}
-
 function looks(locator) {
   return locator.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -70,12 +59,14 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// The Summary top (design.md, "Lead · Support · Detail"): the lead card's
-// planned spend is sky text, its spend plain (rose over plan), the headroom
-// mint under plan and rose over; Income and Saved are soft-tint pills.
-const summaryPill = (page, metric) => page.locator(`.summary-support-pill[data-metric="${metric}"]`);
+// The Summary top (design.md, "Lead · Support · Detail" and "Summary
+// lead"): the lead card's planned spend is sky text, its spend plain (rose
+// over plan), the headroom mint under plan and rose over; on a desktop
+// Income and Saved are the card's stat strip, text colour only (the Month
+// lead's), and on a phone soft-tint pills.
+const summaryStat = (page, metric) => page.locator(`.summary-lead .lead-column[data-metric="${metric}"]`);
 
-test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spending within plan plain", async ({ page }) => {
+test("Summary lead and strip: the plan is sky text, outcomes their tone as text, spending within plan plain", async ({ page }) => {
   await revealMoney(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   const summary = await page.request.get("/api/summary-page?view=household&month=2026-04&scope=direct_plus_shared&summary_start=2026-04&summary_end=2026-04").then((response) => response.json());
@@ -88,14 +79,13 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
   expect(plan.background).toBe(TRANSPARENT);
 
   expect(amount("Actual income")).toBeGreaterThan(0);
-  const incomePill = await looks(summaryPill(page, "income"));
-  expect(incomePill.className).toContain("money-soft");
-  expect(incomePill.background).not.toBe(TRANSPARENT);
-  expect((await looks(summaryPill(page, "income").locator("strong .private-money"))).color).toBe(INK.in);
-  // The label and the plan line on a tinted pill are the tone's ink too
-  // (muted grey would fail AA there).
-  expect((await looks(summaryPill(page, "income").locator(".summary-support-pill-label"))).color).toBe(INK.in);
-  expect((await looks(summaryPill(page, "income").locator("small"))).color).toBe(INK.in);
+  // In the card the strip is text only: no tint, the figure in its tone, the
+  // label and the plan line muted on the white card.
+  await expect(page.locator(".summary-support-pill")).toHaveCount(0);
+  expect((await looks(summaryStat(page, "income"))).background).toBe(TRANSPARENT);
+  expect((await looks(summaryStat(page, "income").locator("strong .private-money"))).color).toBe(INK.in);
+  expect((await looks(summaryStat(page, "income").locator(".lead-column-label"))).color).toBe(INK.muted);
+  expect((await looks(summaryStat(page, "income").locator("small"))).color).toBe(INK.muted);
 
   // The lead is the spend job: spending against the spend plan (leadFigures).
   const lead = leadFigures(summary);
@@ -112,7 +102,7 @@ test("Summary lead and pills: the plan is sky text, outcomes a soft tint, spendi
   await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   // Saved is what was kept: money moved to Savings counts as saved.
   const savings = lead.kept;
-  expect((await looks(summaryPill(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
+  expect((await looks(summaryStat(page, "saved").locator("strong .private-money"))).color).toBe(savings > 0 ? INK.in : savings < 0 ? INK.short : INK.text);
 
   // Intent vs Outcome's detail rows (the latest month's are open): text
   // only, no tint behind the numbers.
@@ -283,24 +273,11 @@ test("hidden money shows no tone", async ({ page }) => {
   await expect(page.locator(".summary-lead .lsd-bar")).toHaveCount(0);
   await expect(page.locator(".summary-lead-headroom")).toHaveCount(0);
   for (const metric of ["income", "saved"]) {
-    const pill = summaryPill(page, metric);
-    await expect(pill.locator("strong")).toHaveText("••••");
-    expect((await looks(pill.locator("strong .private-money"))).color, metric).toBe(INK.text);
-    // The pill keeps no mint or rose tint either: none, or the cream neutral
-    // soft tint (60% over the card).
-    const surface = parseColour((await looks(pill)).background);
-    if (surface.alpha > 0) {
-      const neutral = parseColour(await page.evaluate(() => {
-        const probe = document.createElement("span");
-        probe.style.color = "color-mix(in srgb, var(--pastel-neutral) 60%, var(--card))";
-        document.body.append(probe);
-        const colour = getComputedStyle(probe).color;
-        probe.remove();
-        return colour;
-      })).rgb;
-      surface.rgb.forEach((channel, index) => expect(Math.abs(channel - neutral[index]), `${metric} tint`).toBeLessThan(3));
-    }
-    expect((await looks(pill.locator(".summary-support-pill-label"))).color).toBe(INK.muted);
+    const stat = summaryStat(page, metric);
+    await expect(stat.locator("strong")).toHaveText("••••");
+    expect((await looks(stat.locator("strong .private-money"))).color, metric).toBe(INK.text);
+    expect((await looks(stat)).background, `${metric} tint`).toBe(TRANSPARENT);
+    expect((await looks(stat.locator(".lead-column-label"))).color).toBe(INK.muted);
   }
 
   await gotoPageAfterApi(page, "/entries?view=person-tim&month=2026-04&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));

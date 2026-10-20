@@ -278,27 +278,30 @@ test.describe("Summary lead", () => {
     await expect(page.locator(".summary-lead .lsd-progress-line")).toHaveText(
       `${Math.round((actual / planned) * 100)}% of plan${money(Math.abs(headroom))} ${headroom >= 0 ? "under plan" : "over plan"}`
     );
-    const income = page.locator('.summary-support-pill[data-metric="income"]');
+    // Income and Saved: the lead's stat strip on a desktop, pills on a phone.
+    const income = page.locator('.summary-lead-group [data-metric="income"]');
     await expect(income.locator("strong")).toHaveText(money(card("Actual income")));
     await expect(income.locator("small")).toHaveText(`plan ${money(card("Planned income"))}`);
-    const saved = page.locator('.summary-support-pill[data-metric="saved"]');
+    const saved = page.locator('.summary-lead-group [data-metric="saved"]');
     await expect(saved.locator("strong")).toHaveText(money(kept));
     await expect(saved.locator("small")).toHaveText(`target ${money(card("Savings target"))}`);
     // The six cards are gone from Summary; their figures are all above.
     await expect(page.locator(".panel-head .metric")).toHaveCount(0);
   }
 
-  test("desktop: the lead card with the Income and Saved pills in a column to its right", async ({ page }) => {
+  test("desktop: the full-width lead card with Income and Saved side by side in its stat strip", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await expectLeadMatchesCards(page);
     const lead = await box(page.locator(".summary-lead"));
-    const income = await box(page.locator('.summary-support-pill[data-metric="income"]'));
-    const saved = await box(page.locator('.summary-support-pill[data-metric="saved"]'));
-    expect(income.x).toBeGreaterThan(lead.right);
-    expect(saved.x).toBe(income.x);
-    expect(saved.y).toBeGreaterThan(income.bottom);
+    const income = await box(page.locator('.summary-lead .lead-column[data-metric="income"]'));
+    const saved = await box(page.locator('.summary-lead .lead-column[data-metric="saved"]'));
+    expect(income.bottom).toBeLessThanOrEqual(lead.bottom);
+    expect(income.x).toBeGreaterThan(lead.x + lead.width / 2);
+    expect(saved.y).toBe(income.y);
+    expect(saved.x).toBeGreaterThan(income.right - 1);
+    await expect(page.locator(".summary-support-pill")).toHaveCount(0);
     const title = await box(page.locator(".summary-head h2"));
-    expect(lead.x).toBeGreaterThan(title.right);
+    expect(lead.y).toBeGreaterThanOrEqual(title.bottom);
   });
 
   test("phone: the lead card full width, the pills side by side under it, nothing scrolls sideways", async ({ page }) => {
@@ -307,6 +310,7 @@ test.describe("Summary lead", () => {
     const lead = await box(page.locator(".summary-lead"));
     const income = await box(page.locator('.summary-support-pill[data-metric="income"]'));
     const saved = await box(page.locator('.summary-support-pill[data-metric="saved"]'));
+    await expect(page.locator(".summary-lead .lead-column")).toHaveCount(0);
     expect(lead.width).toBeGreaterThan(390 - 2 * 24);
     expect(income.y).toBeGreaterThan(lead.bottom);
     expect(saved.y).toBe(income.y);
