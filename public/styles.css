@@ -1851,11 +1851,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   line-height: 1.45;
 }
 
-.transfer-match-dialog {
-  max-height: min(80vh, 820px);
-  overflow: auto;
-}
-
 .month-plan-stack-hint.is-readonly {
   text-align: center;
   color: var(--negative);
@@ -2296,13 +2291,19 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   z-index: 80;
 }
 
+/* Every dialog fits the window (design.md, "Fits the window"): it is never
+   taller than the visible window less 24 px a side, so centring it can never
+   put its top above the window, and whatever does not fit scrolls inside it.
+   (vh first for browsers without dvh.) */
 .note-dialog-content {
   position: fixed;
   top: 50%;
   left: 50%;
   width: min(720px, calc(100vw - 40px));
+  max-height: min(86vh, calc(100vh - 48px));
   max-height: min(86vh, calc(100dvh - 48px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   transform: translate(-50%, -50%);
   padding: 20px;
   border: 1px solid var(--line);
