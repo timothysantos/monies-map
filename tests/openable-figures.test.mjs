@@ -337,6 +337,60 @@ test("Month plan rows' actuals, Spending Mix and Top spending open exactly their
   }
 });
 
+// A transfer with a purpose (DOMAIN.md "Transfer Purpose"): Tim's $450 to
+// Joyce for Home is his Home spending and lowers hers. In every view the
+// Month lead, its plan line, Spending Mix and the Entries pills open the
+// rows that add up to them, the transfer read the same way in Entries.
+test("a transfer with a purpose: every view's figures open entries that add up to them", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const created = await api("/api/accounts/create", { name: "Joyce Bank", institution: "DBS", kind: "bank", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: "person-joyce" });
+  assert.equal(created.status, 200, JSON.stringify(created.payload));
+  await createEntry(api, { date: "2026-05-05", description: "HDB loan GIRO", accountName: "Joyce Bank", categoryName: "Home", amountMinor: 90_000, ownerName: "Joyce" });
+  const fromEntryId = await createEntry(api, { date: "2026-05-01", description: "FAST to Joyce", accountName: "UOB Savings", categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor: 45_000 });
+  const toEntryId = await createEntry(api, { date: "2026-05-01", description: "FAST from Tim", accountName: "Joyce Bank", categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor: 45_000, ownerName: "Joyce" });
+  assert.equal((await api("/api/transfers/link", { fromEntryId, toEntryId })).status, 200);
+  assert.equal((await api("/api/transfers/purpose", { entryId: fromEntryId, categoryName: "Home" })).status, 200);
+  await savePlanRow(api, { rowId: "figure-house-loan", month: MAY, categoryName: "Home", label: "House loan", plannedMinor: 45_000, planDate: "2026-05-01" });
+  assert.equal((await api("/api/month-plan/links", { rowId: "figure-house-loan", month: MAY, transactionIds: [fromEntryId] })).status, 200);
+  const { accounts } = await get(api, "/api/reference-data");
+
+  const homeByView = {};
+  for (const view of [VIEWS[0], VIEWS[1], VIEWS[2], { viewId: "person-joyce", scope: "direct_plus_shared" }, { viewId: "person-joyce", scope: "direct" }]) {
+    const { page, lead } = await monthLead(api, view, MAY);
+    const search = viewSearch(view, MAY);
+    const period = { startMonth: MAY, endMonth: MAY };
+    for (const [figure, amountMinor] of Object.entries(leadFigures(lead.figures))) {
+      const { model } = await viewEntries(api, accounts, figure, { search, period });
+      assert.equal(model.spent.amountMinor, amountMinor, `${view.viewId}/${view.scope} ${figure}`);
+    }
+    for (const slice of page.monthPage.categoryShareChart) {
+      const { model } = await viewEntries(api, accounts, "category", { search, period, arg: slice.label });
+      assert.equal(model.spent.amountMinor, slice.valueMinor, `${view.viewId} mix ${slice.label}`);
+    }
+    const houseLoan = page.monthPage.planSections.flatMap((section) => section.rows).find((row) => (row.sourceRowIds ?? [row.id]).includes("figure-house-loan"));
+    if (houseLoan?.actualEntryIds?.length) {
+      const { model } = await viewEntries(api, accounts, "spent", { search, ids: houseLoan.actualEntryIds });
+      assert.equal(model.spent.amountMinor, houseLoan.actualMinor, `${view.viewId} House loan`);
+    }
+    homeByView[`${view.viewId}/${view.scope}`] = {
+      home: page.monthPage.categoryShareChart.find((slice) => slice.label === "Home")?.valueMinor ?? 0,
+      houseLoan: houseLoan?.actualMinor ?? null
+    };
+  }
+  assert.deepEqual(homeByView["household/direct_plus_shared"].houseLoan, 0);
+  assert.deepEqual(homeByView["person-tim/direct_plus_shared"].houseLoan, 45_000);
+  assert.equal(homeByView["person-tim/direct_plus_shared"].home + homeByView["person-joyce/direct_plus_shared"].home, homeByView["household/direct_plus_shared"].home);
+
+  // The Entries list itself, in Tim's view: the row counts under Home and
+  // keeps its ledger transfer for the editor.
+  const { derived } = await openEntries(api, { pathname: "/entries", search: `?view=${TIM}&month=${MAY}&scope=direct_plus_shared&category=Home` }, accounts);
+  const row = derived.filteredEntries.find((entry) => entry.id === fromEntryId);
+  assert.deepEqual(
+    { entryType: row.entryType, categoryName: row.categoryName, role: row.transferPurpose.role, ledger: [row.ledgerEntry.entryType, row.ledgerEntry.categoryName] },
+    { entryType: "expense", categoryName: "Home", role: "sent", ledger: ["transfer", "Transfer"] }
+  );
+});
+
 test("the one figure Entries cannot show as it is: a budget line whose refunds are more than its spending reads zero", async (t) => {
   // The plan row's actual never goes below zero (derivePlanRowActuals);
   // its entries add up to the refund, shown as it is (below zero).

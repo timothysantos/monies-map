@@ -83,3 +83,28 @@ test("a matched transfer row is the quiet kind and names the other wallet; an un
   assert.equal(expense.transferLabel, null);
   assert.equal(expense.isTransferMatched, false);
 });
+
+// A transfer with a purpose stays visibly a transfer (DOMAIN.md "Transfer
+// Purpose"): the household row says what it was for, and each person's row,
+// read as spending or a payback in its category, names who it went to or
+// came from. Hidden money changes none of these (they carry no amount).
+test("a transfer with a purpose keeps a transfer chip in every view", async () => {
+  const { readEntryForPerson } = await import("../src/domain/transfer-purpose.ts");
+  const transfer = {
+    id: "t1", date: "2026-10-01", description: "FAST to Joyce", accountName: "UOB Savings", accountOwnerLabel: "Tim",
+    categoryName: "Transfer", entryType: "transfer", transferDirection: "out", ownershipType: "direct", ownerName: "Tim",
+    amountMinor: 45000, offsetsCategory: false,
+    linkedTransfer: { transactionId: "t1-in", accountName: "Joyce Bank", accountOwnerLabel: "Joyce", amountMinor: 45000, transactionDate: "2026-10-01" },
+    splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 45000 }],
+    transferPurpose: { categoryName: "Home", toPersonId: "person-joyce", toPersonName: "Joyce" }
+  };
+  const household = buildEntryRowDisplay(transfer, "household");
+  assert.deepEqual([household.transferLabel, household.isTransferMatched, household.primarySignedAmountMinor], ["Matched transfer out · for Home", true, -45000]);
+  const tim = buildEntryRowDisplay(readEntryForPerson(transfer, "person-tim"), "person-tim");
+  assert.deepEqual([tim.transferLabel, tim.isTransferMatched, tim.amountTone, tim.primarySignedAmountMinor], ["Transfer to Joyce", true, "out", -45000]);
+  const joyce = buildEntryRowDisplay(readEntryForPerson(transfer, "person-joyce"), "person-joyce");
+  assert.deepEqual([joyce.transferLabel, joyce.amountTone, joyce.primarySignedAmountMinor], ["Tim's transfer to you", "in", 45000]);
+  // Without a purpose nothing changes.
+  const { transferPurpose: _purpose, ...plain } = transfer;
+  assert.equal(buildEntryRowDisplay(plain, "household").transferLabel, "Matched transfer out");
+});
