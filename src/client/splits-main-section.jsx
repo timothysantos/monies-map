@@ -24,6 +24,7 @@ export function SplitsMainSection({
   settledSections = [],
   openSettlementIds = [],
   onToggleSettlement,
+  settledLoading = null,
   archivedBatches,
   searchQuery = "",
   inlineSplitDraft,
@@ -121,6 +122,7 @@ export function SplitsMainSection({
             settledSections={settledSections}
             openSettlementIds={openSettlementIds}
             onToggleSettlement={onToggleSettlement}
+            settledLoading={settledLoading}
             archivedBatches={archivedBatches}
             searchQuery={searchQuery}
             categories={categories}

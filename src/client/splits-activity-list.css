@@ -224,6 +224,25 @@
   transform: rotate(180deg);
 }
 
+/* While an opened section's rows load (or failed): one quiet line under the
+   heading, tall as a row, so the rows arriving do not jump the page. */
+.panel-splits .split-settled-section-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  margin-top: 10px;
+  padding: 0 14px;
+  color: rgb(var(--on-strong-rgb) / 0.8);
+  font-size: 0.88rem;
+}
+
+.panel-splits .split-settled-section-status .app-spinner {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel-splits .split-settled-section-chevron {
     transition: none;
