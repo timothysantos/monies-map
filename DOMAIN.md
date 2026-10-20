@@ -1850,6 +1850,13 @@ Every Splits figure for a group reads this one set
   total in the group's currency ("Simplified on <date>" while an `open` or
   `partially_matched` checkpoint is not marked paid). A closed batch's
   records stay in Archived batches, which lists the settlements too.
+  The Splits page sends each such section as a **settled section summary**
+  (checkpoint, group, settlement date, paid or not, entry count, expense
+  total, currency) and never its records: the rows load when the section is
+  opened, a search looks inside the sections on the server with the page's
+  own search rule, and a link to a settled expense reads its section first
+  (`/api/splits/settled-rows`, `/api/splits/settled-search`;
+  docs/flows/splits-flow.md, "Settled sections load on demand").
 
 The Just for fun lines about a group (the trip in numbers, what shared costs
 add up to, the busiest day and the rest) are deliberately about the whole
@@ -1857,7 +1864,15 @@ group, settled or not. Once anything in the group was settled each says so:
 "... (settled or not, since 2 Apr)", with the day of the first cost (and
 its year when that is not this year). A group
 never settled has one set and says nothing extra. These lines are never
-forecasts and never promise anything.
+forecasts and never promise anything. Because the page no longer holds a
+settled section's records, a group with one comes with its **group facts**
+(`src/domain/split-group-facts.ts`): the whole group's counts the lines read
+(how many expenses, their total in the group's currency, the busiest day,
+weekday and month, the priciest, smallest named, first and latest cost, the
+repeated name, the categories, payment ways, currencies and settle-ups),
+counted in SQL on the server (`split-settled-history.ts`) by the same rules
+the lines always used. A group with nothing settled is counted on the page
+from its records.
 
 ### Split Match Suggestion
 

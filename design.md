@@ -180,7 +180,16 @@ settlement at the end of the list (`splits-settled-sections.js`,
 payment is not made; the year only when it is not this year; the amount is
 dots while money is hidden). The figure is not openable: it adds split
 expense totals, which no Entries list totals to the cent (cash splits have no
-entry), so it has no View entries. Its rows are drawn only while it is open.
+entry), so it has no View entries. Its rows are drawn only while it is open,
+and they are not in the page at all: the page sends the heading's numbers,
+and opening the section reads its rows (`splits-settled-rows.js`,
+`useSettledSplitRows`; one TanStack Query entry per section, read through the
+shell's `fetchRequiredQuery`, and on a wide screen read ahead on hover or
+focus through `startOptionalQuery`). While they load the section shows the
+app spinner and "Loading..." on a row-tall line; a failed read shows
+"We couldn't reach your data just now." with Try again (both existing
+strings). A search also asks the server for the group's settled matches
+(after a 250 ms pause in typing).
 A search opens every section it found something in; an open inline card and
 View included activity open theirs. The Archived batches sheet lists each
 settlement above the closed batches ("Settled up" / "Simplified, not paid
