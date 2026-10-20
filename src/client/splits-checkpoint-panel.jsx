@@ -58,7 +58,7 @@ export function SplitsCheckpointPanel({
         {transfers}
         {checkpoint.amountMinor !== 0 ? matchControls : null}
       </DetailRows>
-      <span className="split-checkpoint-navigation-hint">Included rows are marked in the timeline below.</span>
+      <span className="split-checkpoint-navigation-hint">Included rows are tucked away at the end of the list below.</span>
       <div className="split-checkpoint-completion-actions">
         <BottomActions
           className="split-checkpoint-actions-bar"
