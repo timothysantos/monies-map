@@ -126,10 +126,19 @@ async function swipeToEnd(page, browserName, list) {
   // Start inside the visible part of the list.
   const startY = Math.round(Math.min(box.y + box.height, viewport.height) - 40);
   const distance = Math.round(Math.max(120, startY - Math.max(box.y, 0) - 80));
-  const atEnd = () => list.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 1);
+  const position = () => list.evaluate((element) => ({ top: element.scrollTop, atEnd: element.scrollTop + element.clientHeight >= element.scrollHeight - 1 }));
   const cdp = await page.context().newCDPSession(page);
-  for (let swipe = 0; swipe < 12 && !(await atEnd()); swipe += 1) {
+  // Swipe as a person would, as many times as the list needs: the category
+  // sheet is one fixed box (design.md "Sheets and the keyboard"), so its
+  // 30-odd rows take more swipes than a sheet sized to its content did. Every
+  // swipe must move the list until its end shows; one that does not means
+  // the list is stuck.
+  for (let swipe = 0, before = await position(); !before.atEnd; swipe += 1) {
+    expect(swipe, "the options list reaches its end within 40 swipes").toBeLessThan(40);
     await cdp.send("Input.synthesizeScrollGesture", { x, y: startY, yDistance: -distance, gestureSourceType: "touch", speed: 1600 });
+    const after = await position();
+    expect(after.top, "each swipe moves the options list").toBeGreaterThan(before.top);
+    before = after;
   }
   await cdp.detach();
 }
