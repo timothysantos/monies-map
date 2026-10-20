@@ -278,6 +278,19 @@ for (const preset of PRESETS) {
     }
   });
 
+  // The pinned Entries day header (entries-route.css, design.md "Entries
+  // list"): its date, the daily net in its money tone and the refresh mark
+  // sit on the full-width band, --page at DATE_BAND over the white rows
+  // scrolling under it, over the page beside them, or solid --page where
+  // a blur is not supported.
+  test(`${id}: the pinned Entries date and daily net read AA on the full-width band`, () => {
+    const inks = { text: TEXT, muted: rgb("--muted"), ...Object.fromEntries(["mint", "rose"].map((hue) => [`${hue} ink`, rgb(`--pastel-${hue}-ink`)])) };
+    const bands = { "over the rows": mix(PAGE, DATE_BAND, PAPER), "over the page": PAGE, "over a card": mix(PAGE, DATE_BAND, CARD) };
+    for (const [bandName, band] of Object.entries(bands)) {
+      for (const [inkName, ink] of Object.entries(inks)) assertAA(ink, band, `${inkName} on the band ${bandName}`);
+    }
+  });
+
   // The hover, press and focus wash of rows and cards (row-motion.css): the
   // row's category colour, or the strong accent, at ROW_WASH over the page,
   // a card, the panel or the paper. The text, the muted lines and the money
@@ -294,6 +307,14 @@ for (const preset of PRESETS) {
     }
   });
 }
+
+// The pinned Entries band's share of --page, as entries-route.css writes it.
+const DATE_BAND = Number(readFileSync(new URL("../src/client/entries-route.css", import.meta.url), "utf8")
+  .match(/--date-band-share: (\d+)%/)[1]) / 100;
+
+test("the pinned Entries band stays nearly solid: at least 85% of the page colour", () => {
+  assert.ok(DATE_BAND >= 0.85 && DATE_BAND <= 1, `the band is ${DATE_BAND}`);
+});
 
 // The wash share as row-motion.css writes it.
 const ROW_WASH = Number(readFileSync(new URL("../src/client/row-motion.css", import.meta.url), "utf8")
