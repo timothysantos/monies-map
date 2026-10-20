@@ -3201,6 +3201,16 @@ desktop dialogs, and swipes down to close (below):
   inherited style (see "Mobile sheet: a lighter modal" in
   `docs/audits/macro-loading-baseline.md`). Keep it that way: a new modal
   behaviour for the sheet must not restyle `<body>` or the app root.
+- Every lock is released on unmount, in any order. The `<html>` lock is
+  counted (`page-scroll-lock.js`): the first sheet in saves the page's own
+  styles and only the last one out restores them. Sheets opened from a
+  sheet (Transfer details or Delete entry? from Edit entry) close together
+  with it when their action succeeds, and React runs the outer sheet's
+  cleanup first, so a per-sheet save-and-restore left `overflow: hidden`
+  on `<html>` and the page never scrolled again (owner report
+  2026-10-20). A new lock on the page must be counted the same way;
+  `scroll-lock-release.spec.js` closes every kind of dialog and sheet and
+  checks the page scrolls.
 - It lifts itself above the phone keyboard. iPhone Safari keeps the layout
   viewport when the keyboard opens and only shrinks the visual viewport, so
   `use-keyboard-inset.js` sets `--keyboard-inset` on the sheet (the height
