@@ -26,9 +26,12 @@ const planWords = messages.summary.monthChoice;
 // The old spend-vs-plan bar is gone: three bars were too many, and the text
 // line says the same.
 //
-// `inline` is the Month top: Income, Saved and `children` (Remaining budget)
-// fold into the lead card as one row of equal columns under the bar, in
-// text colour only, so the whole card stays compact on a phone.
+// `inline` folds Income, Saved and `children` (Month's Remaining budget) into
+// the lead card as one row of equal columns, the stat strip, in text colour
+// only: the Month top always, the Summary top on a wider screen (a phone's
+// Summary keeps them as pills under the card). The strip sits with the money
+// jobs in `.lead-aside`, which is no box of its own until a wide Summary card
+// makes it the card's right column (summary-lead.css).
 //
 // Every figure here is openable (design.md "Openable figures"): it carries
 // `data-fig` (figure-menu.js reads it; `fig` below) and the group carries
@@ -38,7 +41,7 @@ const planWords = messages.summary.monthChoice;
 // Simple is "Earned $x · Spent $y" over the same savings bar without its plan
 // bar, and nothing else: the plan line, the money jobs and the Income, Saved
 // and Remaining budget figures (each a plan or a repeat of the lead) go.
-export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null, supportHeader = null }) {
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null }) {
   const simple = view === "simple";
   const over = model.headroom?.isOver;
   return (
@@ -69,17 +72,17 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
         )}
       >
         {simple ? null : <SpendLine model={model} />}
-        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare} />
-        {simple ? null : inline ? (
-          <div className="lead-columns">
-            <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} open={fig("earned", "income")} />
-            <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} open={fig("kept", "")} />
-            {children}
-          </div>
-        ) : null}
+        <MoneyUse model={model} period={period} simple={simple} categoryShare={categoryShare}>
+          {inline ? (
+            <div className="lead-columns">
+              <LeadColumn metric="income" label={copy.income} amountMinor={model.income.amountMinor} tone={model.income.tone} planLabel={copy.incomePlan} planMinor={model.income.planMinor} open={fig("earned", "income")} />
+              <LeadColumn metric="saved" label={copy.saved} amountMinor={model.saved.amountMinor} tone={model.saved.tone} planLabel={copy.savedTarget} planMinor={model.saved.planMinor} open={fig("kept", "")} />
+              {children}
+            </div>
+          ) : null}
+        </MoneyUse>
       </LeadCard>
       {inline || simple ? null : <div className="summary-support-pills">
-        {supportHeader}
         <SummarySupportPill
           metric="income"
           label={copy.income}
@@ -98,7 +101,6 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
           planMinor={model.saved.planMinor}
           open={fig("kept", "")}
         />
-        {children}
       </div>}
     </div>
   );
@@ -119,7 +121,8 @@ export const fig = (kind, plan = null, ask = "") => ({
 // period's money (`model.figures`, splitMoneyUse): spend, invested and kept,
 // and the plan's spend, investment and savings jobs. `period` is
 // { startMonth, endMonth, inProgress } for the parts' menus and "so far".
-function MoneyUse({ model, period, simple, categoryShare }) {
+// `children` is the stat strip, kept with the money jobs.
+function MoneyUse({ model, period, simple, categoryShare, children }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
   return (
@@ -129,7 +132,12 @@ function MoneyUse({ model, period, simple, categoryShare }) {
         <Suspense fallback={null}>
           <SimpleDetail part="metrics" figures={model.figures} categoryShare={categoryShare} period={period} />
         </Suspense>
-      ) : <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />}
+      ) : (
+        <div className="lead-aside">
+          <MoneyJobs figures={model.figures} plannedIncomeMinor={model.income.planMinor} hidden={hidden} period={period} />
+          {children}
+        </div>
+      )}
     </>
   );
 }
@@ -175,7 +183,7 @@ function SpendLine({ model }) {
   );
 }
 
-// One column of the Month lead's support row: a small label, the figure on
+// One cell of the lead's stat strip: a small label, the figure on
 // one line (its money tone as text colour only) and the plan or target as a
 // quiet line under it.
 export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null, planMinor = null, open = {} }) {
@@ -188,8 +196,8 @@ export function LeadColumn({ metric, label, amountMinor, tone, planLabel = null,
   );
 }
 
-// A Support figure on Summary: a soft tint when it is an outcome (mint
-// income, mint or rose savings), its plan as a quiet line inside it.
+// A Support figure on a phone's Summary: a soft tint when it is an outcome
+// (mint income, mint or rose savings), its plan as a quiet line inside it.
 function SummarySupportPill({ metric, label, amountMinor, tone, planLabel, planMinor, open }) {
   return (
     <div className={`summary-support-pill ${metricCardToneClass(tone)}`} data-metric={metric} {...open}>

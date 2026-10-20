@@ -577,8 +577,11 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   margin-bottom: 14px;
 }
 
+/* Summary: the title row (title, viewer, scope switch), then the lead at
+   the full width (design.md "Summary lead"). */
 .summary-head {
-  align-items: start;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .panel-head > div:first-child {
@@ -614,17 +617,12 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
-/* Adds no width or height to the header; see SummaryScopeSwitch. */
 .summary-scope-switch {
-  flex-basis: 100%;
-  contain: inline-size;
-  margin-left: -12px;
+  align-self: center;
 }
 
 .summary-scope-switch .pill-row {
-  display: inline-flex;
   flex-wrap: nowrap;
-  margin-left: 12px;
 }
 
 /* Text announced to screen readers but never shown (e.g. a picker's dialog description). */
@@ -6565,16 +6563,6 @@ th {
   .import-history-main,
   .import-meta-compact {
     justify-content: flex-start;
-  }
-
-  .summary-head {
-    flex-direction: column;
-  }
-
-  .summary-scope-switch {
-    flex-basis: auto;
-    contain: none;
-    align-self: center;
   }
 
   .entry-edit-grid {

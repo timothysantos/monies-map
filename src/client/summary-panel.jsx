@@ -178,7 +178,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       <div className="panel-head summary-head">
         <div>
           <h2>{messages.tabs.summary}</h2>
-          {isMobileLayout || leadView !== "simple" ? null : <>
+          {isMobileLayout ? null : <>
             <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
             <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />
           </>}
@@ -190,12 +190,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           categoryShare={safeSummaryPage.categoryShareChart}
           rangeStartMonth={safeSummaryPage.rangeStartMonth}
           rangeEndMonth={safeSummaryPage.rangeEndMonth}
-          supportHeader={isMobileLayout || leadView === "simple" ? null : (
-            <div className="summary-support-context">
-              <span>{messages.common.viewingDot(view.label)}</span>
-              <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />
-            </div>
-          )}
         />
       </div>
 
@@ -269,12 +263,10 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
 }
 
 // A person view's figures follow the route's scope, so desktop Summary names
-// the scope they count with a compact one-click switch in the empty space
-// under its title, beside the taller metric cards. It adds no height, and no
-// width to the title column: `contain: inline-size` drops its content size and
-// a -12px margin cancels the title row's flex gap (.summary-scope-switch in
-// styles.css). Where the header stacks (960px and below) it joins the title
-// row instead. What each scope counts is the option's tooltip. The page view carries the scope of the
+// the scope they count with a compact one-click switch in the title row,
+// after "Viewing • Tim", above the full-width lead (Plan and Simple alike;
+// .summary-head in styles.css). What each scope counts is the option's
+// tooltip. The page view carries the scope of the
 // request the figures answer (buildSummaryPageView), so it never runs ahead of
 // them. The household has one Combined scope and no switch. On a phone the
 // floating View and scope bar in App.jsx is the one scope control.

@@ -319,6 +319,11 @@
   box-shadow: 0 14px 32px rgba(27, 24, 21, 0.1);
 }
 
+/* Summary's full-width two-column lead is about 250 px tall on a desktop. */
+@media (min-width: 761px) {
+  [data-skeleton="summary"] .sk-lead { height: 250px; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .sk::after {
     content: "";
