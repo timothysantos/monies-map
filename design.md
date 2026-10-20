@@ -153,11 +153,18 @@ colour), and that day's rows share one rounded white group with hairlines. A
 day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
-two Splits colours), so no band shows behind the label. Stuck at the top, the
-label becomes a rounded bar (the group's width and 16 px radius,
-`--splits-surface` at 84% with a blur inside it; Entries now pins a
-full-width band instead, see "Entries list";
-`tests/e2e/date-row-flat.spec.js`).
+two Splits colours), so no band shows behind the label. Pinned, it is the
+same full-width band as an Entries day ("Entries list"; the same
+`stuck-date-row.js` measuring and the same rule in
+`splits-activity-list.css`): just below the environment banner, a
+`::before` in `--splits-surface` at 92% with a blur (solid without blur
+support) reaching both window edges, a hairline at its foot, the text,
+padding and height unchanged. Its date, count and refresh mark go to full
+on-strong while pinned, because at 88% they miss AA over the white rows under
+the band (`tests/colour-contrast.test.mjs`). Rows keep clear of it when
+focused (`scroll-margin-top`). `tests/e2e/splits-sticky-date.spec.js` and
+`tests/e2e/date-row-flat.spec.js`; frames in
+`docs/audits/splits-sticky-date/`.
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
 figure sit at the row's right in their money tone as text only. An open inline
