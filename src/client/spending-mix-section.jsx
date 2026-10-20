@@ -16,6 +16,7 @@ import {
 } from "./donut-visibility";
 import { getCategory, getCategoryTheme } from "./category-utils";
 import { paletteColour } from "./palette-colour";
+import { rowMotionProps } from "./row-motion";
 import { money } from "./formatters";
 import { PrivateMoney } from "./money-privacy";
 import { EmptyState } from "./ui-states";
@@ -151,8 +152,11 @@ export function SpendingMixSection({
                   <div
                     key={item.key}
                     data-fig-row={categoryName}
-                    className={`summary-mix-row ${isHidden ? "is-hidden-from-donut" : ""}`}
-                    style={{ "--bar-color": paletteColour(getCategoryTheme(categories, item, index).color) }}
+                    className={`summary-mix-row motion-row ${isHidden ? "is-hidden-from-donut" : ""}`}
+                    {...rowMotionProps(
+                      { name: categoryName, iconKey: category?.iconKey, color: getCategoryTheme(categories, item, index).color },
+                      { "--bar-color": paletteColour(getCategoryTheme(categories, item, index).color) }
+                    )}
                   >
                     <CategoryAppearancePopover category={category} onChange={onCategoryAppearanceChange} />
                     <button

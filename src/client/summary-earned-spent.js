@@ -1,4 +1,5 @@
 import "./simple-view.css";
+import "./row-motion.css";
 import { simpleViewCopy as copy } from "./copy/simple-view-copy";
 import { formatMonthLabel, money } from "./formatters";
 import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
@@ -29,7 +30,7 @@ export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentM
     chart,
     h("ul", { className: "earned-spent-months" }, rows.map((row) => h(
       "li",
-      { key: row.month, className: "earned-spent-row", "data-month": row.month, "data-fig-period": `${row.month}:${row.month}` },
+      { key: row.month, className: "earned-spent-row motion-row", "data-month": row.month, "data-fig-period": `${row.month}:${row.month}` },
       h(
         "button",
         { type: "button", className: "summary-month-link", onClick: () => onOpenMonth(row.month) },

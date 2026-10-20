@@ -28,7 +28,15 @@ const SCREENS = [
     optional: [
       ".financial-insight-fold", ".financial-insight-toggle", ".summary-mix-arrow", ".summary-mix-main", ".summary-mix-more", ".summary-wallet-row", ".summary-note-trigger",
       ".checkin-action", ".summary-chevron"
-    ]
+    ],
+    // The month-by-month section and its chart load beside the first screen
+    // and arrive a moment later, pushing the accounts under them about
+    // 2,400 px down on a phone: measured before they land, a wallet row's
+    // place is stale and the point falls on the chart.
+    prepare: async (page) => {
+      await page.locator(".summary-intent-month, .earned-spent-row").first().waitFor({ state: "visible", timeout: 30_000 });
+      await page.locator("[data-earned-spent-chart]").waitFor({ state: "attached", timeout: 30_000 });
+    }
   },
   {
     name: "Month",
@@ -129,6 +137,11 @@ async function measureAll(page, selector) {
 }
 
 test.describe("phone tap targets", () => {
+  // Hit areas are measured at rest: the charts' first-view motion is off, as
+  // it is for anyone who asks for reduced motion (design.md "Motion"), so
+  // nothing mid-animation is measured.
+  test.use({ reducedMotion: "reduce" });
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.setViewportSize(PHONE);

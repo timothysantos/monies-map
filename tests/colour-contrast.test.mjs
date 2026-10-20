@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { getPersonColour, getPersonColourVars } from "../src/client/person-colour.js";
 import { getSplitGroupChipStyle } from "../src/client/entry-row-display.js";
+import { CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR } from "../src/domain/category-palette.ts";
 import { contrast, deltaE, hexRgb, lab, loadPresets, mix, WHITE } from "./support/colour-presets.mjs";
 
 // Every text-on-surface pair the tokens make meets WCAG AA (4.5:1; 3:1 for
@@ -276,7 +277,34 @@ for (const preset of PRESETS) {
       assertAA(inkOf(colour), mix(colour, 0.16, PAPER), `group ${hex} ink on its chip`);
     }
   });
+
+  // The hover, press and focus wash of rows and cards (row-motion.css): the
+  // row's category colour, or the strong accent, at ROW_WASH over the page,
+  // a card, the panel or the paper. The text, the muted lines and the money
+  // inks on the row keep AA on it.
+  test(`${id}: row hover washes keep every ink on the row AA, for every category colour`, () => {
+    const tints = [...CATEGORY_COLOURS, FALLBACK_CATEGORY_COLOUR].map((hex) => [hex, hexRgb(preset.cat(hex))]);
+    tints.push(["accent-strong", rgb("--accent-strong")]);
+    const inks = { text: TEXT, muted: rgb("--muted"), accent: rgb("--accent"), ...Object.fromEntries(["mint", "rose", "sky"].map((hue) => [`${hue} ink`, rgb(`--pastel-${hue}-ink`)])) };
+    for (const [surfaceName, surface] of Object.entries({ page: PAGE, card: CARD, panel: PANEL, paper: PAPER })) {
+      for (const [hex, tint] of tints) {
+        const wash = mix(tint, ROW_WASH, surface);
+        for (const [inkName, ink] of Object.entries(inks)) assertAA(ink, wash, `${inkName} on the ${hex} wash over the ${surfaceName}`);
+      }
+    }
+  });
 }
+
+// The wash share as row-motion.css writes it.
+const ROW_WASH = Number(readFileSync(new URL("../src/client/row-motion.css", import.meta.url), "utf8")
+  .match(/--row-wash: color-mix\(in srgb, var\(--row-tint, var\(--accent-strong\)\) (\d+)%/)[1]) / 100;
+
+test("the row wash stays faint: a tenth of the colour at most", () => {
+  assert.ok(ROW_WASH > 0 && ROW_WASH <= 0.1, `${ROW_WASH}`);
+  // The guard bites: a strong wash of a dark category colour fails muted text.
+  const failing = PRESETS.some((preset) => [...CATEGORY_COLOURS].some((hex) => contrast(preset.rgb("--muted"), mix(hexRgb(preset.cat(hex)), 0.4, preset.rgb("--card"))) < AA));
+  assert.ok(failing);
+});
 
 // The small accent text found on --page in 70s Warm Light (4.5:1 needed, the
 // strong accent is 3.67:1 there) is written with --accent, not --accent-strong.

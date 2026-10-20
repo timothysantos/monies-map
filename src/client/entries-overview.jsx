@@ -14,6 +14,7 @@ import { CategoryGlyph, DetailRow, DetailRows, LeadCard } from "./ui-components"
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { paletteColour } from "./palette-colour";
+import { rowMotionProps } from "./row-motion";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -154,7 +155,11 @@ export function EntriesBreakdownPanel({
           const categoryName = item.categoryName ?? item.label;
           const isFiltered = selectedCategoryNames.includes(categoryName);
           return (
-            <div key={item.key} className={`category-row category-toggle-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
+            <div
+              key={item.key}
+              className={`category-row category-toggle-row motion-row ${isHidden ? "is-hidden-from-donut" : ""}`}
+              {...rowMotionProps({ name: categoryName, iconKey: theme.iconKey, color: theme.color })}
+            >
               <div className="category-key">
                 <span className="category-icon category-icon-static" style={{ "--category-color": paletteColour(theme.color) }}>
                   <CategoryGlyph iconKey={theme.iconKey} />

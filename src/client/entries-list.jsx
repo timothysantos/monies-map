@@ -20,6 +20,7 @@ import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { flowTone } from "../domain/money-tone";
 import { trackStuckDateRow } from "./stuck-date-row";
+import { rowMotionProps } from "./row-motion";
 import { buildEntryDeepLink } from "./entry-deep-link";
 import { SplitShareChoices } from "./split-share-choices";
 import { EntryLinkCopyButton } from "./entry-link-copy";
@@ -459,8 +460,8 @@ function EntryRow({
     <div ref={rowRef} className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
       {!isEditing || !renderInlineEditor ? (
         <div
-          className={`entry-row-main has-owner-cue ${entry.isPendingDerived ? "is-pending" : ""}`}
-          style={ownerCue.style}
+          className={`entry-row-main has-owner-cue motion-row ${entry.isPendingDerived ? "is-pending" : ""}`}
+          {...rowMotionProps(category, ownerCue.style)}
           role="button"
           tabIndex={0}
           onClick={(event) => {

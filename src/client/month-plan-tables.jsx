@@ -21,6 +21,7 @@ import { SortableHeader } from "./ui-components";
 import { leadProgress } from "./ui/lead-support-detail";
 import { useIsMobileLayout, useIsMonthSheetLayout } from "./use-viewport";
 import { moneyToneClass } from "./money-tone-class";
+import { rowMotionProps } from "./row-motion";
 import { flowTone, headroomTone, incomeVarianceTone, spendTone } from "../domain/money-tone";
 
 const { categories: categoryService, format: formatService, months: monthService } = moniesClient;
@@ -263,7 +264,8 @@ function IncomePlanSection({
                 return (
                   <Fragment key={row.id}>
                     <tr
-                      className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
+                      className={`motion-row ${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
+                      {...rowMotionProps(categoryService.get(categories, row))}
                       onClick={isRowOpenable ? handleRowOpen : undefined}
                     >
                       <td className="month-cell-category">
@@ -549,7 +551,8 @@ function PlanningRow({
   return (
     <Fragment key={row.id}>
       <tr
-        className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
+        className={`motion-row ${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
+        {...rowMotionProps(categoryService.get(categories, row))}
         onClick={isRowOpenable ? handleRowOpen : undefined}
       >
         <td className="month-cell-category">

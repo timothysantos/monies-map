@@ -15,6 +15,7 @@ import { SettlementLockNotice } from "./settlement-lock-notice";
 import { moneyToneClass } from "./money-tone-class";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import { paletteColour } from "./palette-colour";
+import { rowMotionProps } from "./row-motion";
 import { trackStuckDateRow } from "./stuck-date-row";
 
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -402,7 +403,8 @@ export function SplitActivityGroups({
               id={splitActivityDomId(item)}
               key={splitItemKey(item)}
               type={canOpen ? "button" : undefined}
-              className={`split-activity-card ${isPendingDerived ? "is-pending" : ""} ${item.settlementCheckpointId ? "is-settlement-included" : ""}`}
+              className={`split-activity-card motion-row ${isPendingDerived ? "is-pending" : ""} ${item.settlementCheckpointId ? "is-settlement-included" : ""}`}
+              {...rowMotionProps({ name: item.categoryName, iconKey: theme.iconKey, color: theme.color })}
               title={item.settlementCheckpointId ? "Included in simplified settlement" : undefined}
               onClick={canOpen ? openEditor : undefined}
             >

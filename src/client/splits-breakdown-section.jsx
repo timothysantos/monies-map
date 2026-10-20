@@ -14,6 +14,7 @@ import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { SplitsLeadCard } from "./splits-lead-card";
 import { paletteColour } from "./palette-colour";
+import { rowMotionProps } from "./row-motion";
 
 const { format: formatService } = moniesClient;
 
@@ -93,7 +94,8 @@ export function SplitsBreakdownSection({
                   <button
                     key={item.key}
                     type="button"
-                    className={`category-row category-row-button ${hiddenCategoryIds.has(getDonutItemId(item)) ? "is-hidden-from-donut" : ""}`}
+                    className={`category-row category-row-button motion-row ${hiddenCategoryIds.has(getDonutItemId(item)) ? "is-hidden-from-donut" : ""}`}
+                    {...rowMotionProps({ name: item.label, iconKey: item.theme.iconKey, color: item.theme.color })}
                     aria-pressed={!hiddenCategoryIds.has(getDonutItemId(item))}
                     onClick={() => toggleCategoryVisibility(item)}
                   >

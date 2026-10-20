@@ -853,9 +853,11 @@ function parseArgs(argv) {
 // choice (once per tab, so a switch inside a shot sticks) unless it sets
 // `leadView: "default"` to show what a new account sees.
 async function newContext(browser, device, baseURL, { hidden = false, leadView = "plan", planMode = "tables" } = {}) {
+  // Reduced motion: the charts are drawn at rest, never mid-sweep or mid-grow
+  // (design.md "Motion").
   const context = await browser.newContext(device === "phone"
-    ? { ...devices["iPhone 13"], baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" }
-    : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, baseURL, locale: "en-SG", timezoneId: "Asia/Singapore" });
+    ? { ...devices["iPhone 13"], baseURL, locale: "en-SG", timezoneId: "Asia/Singapore", reducedMotion: "reduce" }
+    : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, baseURL, locale: "en-SG", timezoneId: "Asia/Singapore", reducedMotion: "reduce" });
   await context.addInitScript((visible) => {
     window.localStorage.setItem("monies-map:money-totals-visible", visible ? "true" : "false");
   }, !hidden);

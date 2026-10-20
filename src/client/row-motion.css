@@ -1,0 +1,131 @@
+/* Hover and press motion for list rows and cards (row-motion.js, design.md
+   "Motion"). Loaded with the lazy chunks whose rows use it (Entries, Spending
+   Mix, the Summary month list and cards, the Month plan tables, Splits),
+   never with public/styles.css.
+
+   - The wash: under a mouse or trackpad, or keyboard focus, the row takes a
+     faint wash of its category's colour (--row-tint, set by
+     rowMotionProps) or of the accent when it has none: 6% over what is
+     under it (--row-base: the page for a row, the card's own colour for a
+     card). Every ink keeps AA on it in every colour preset
+     (tests/colour-contrast.test.mjs). It only colours: money tones and
+     hidden money are untouched.
+   - On a touch screen there is no hover, so nothing sticks after a tap: a
+     press shows the wash while the finger is down, a moment late, so a
+     finger that scrolls past a row does not flash it.
+   - The icon: under a mouse or trackpad the category bubble lifts 1.5px and
+     its glyph makes its category's move once (data-glyph: tilt, fly, drive,
+     bounce, shake, rise, or pop), in 240ms or less, transforms only. Never
+     on touch, never on focus, never for reduced motion. */
+.motion-row {
+  --row-wash: color-mix(in srgb, var(--row-tint, var(--accent-strong)) 6%, var(--row-base, transparent));
+}
+
+.lsd-card.motion-row {
+  --row-base: var(--card);
+}
+
+.category-row.motion-row {
+  --row-base: rgb(var(--paper-rgb) / 0.84);
+}
+
+.motion-row:focus-visible,
+.motion-row:has(> :focus-visible) {
+  background-color: var(--row-wash);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .motion-row:hover {
+    background-color: var(--row-wash);
+  }
+}
+
+@media (hover: none) {
+  .motion-row:active {
+    background-color: var(--row-wash);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motion-row {
+    transition: background-color 180ms ease-out;
+  }
+}
+
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  .motion-row:active {
+    transition-delay: 60ms;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .motion-row .category-icon {
+    transition: transform 180ms ease-out;
+  }
+
+  .motion-row:hover .category-icon {
+    transform: translateY(-1.5px);
+  }
+
+  .motion-row:hover .category-icon svg,
+  .motion-row:hover .category-icon::before {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: glyph-pop 220ms ease-out;
+  }
+
+  .motion-row[data-glyph="tilt"]:hover .category-icon svg { animation: glyph-tilt 240ms ease-out; }
+  .motion-row[data-glyph="fly"]:hover .category-icon svg { animation: glyph-fly 240ms ease-out; }
+  .motion-row[data-glyph="drive"]:hover .category-icon svg { animation: glyph-drive 240ms ease-out; }
+  .motion-row[data-glyph="bounce"]:hover .category-icon svg { animation: glyph-bounce 240ms ease-out; }
+  .motion-row[data-glyph="shake"]:hover .category-icon svg { animation: glyph-shake 240ms ease-out; }
+  .motion-row[data-glyph="rise"]:hover .category-icon svg { animation: glyph-rise 220ms ease-out; }
+
+  @keyframes glyph-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes glyph-tilt {
+    0% { transform: rotate(0deg); }
+    35% { transform: rotate(-14deg); }
+    70% { transform: rotate(8deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  @keyframes glyph-fly {
+    0% { transform: translate(0, 0); }
+    45% { transform: translate(3px, -3px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  @keyframes glyph-drive {
+    0% { transform: translateX(0); }
+    45% { transform: translateX(3px); }
+    75% { transform: translateX(-1px); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes glyph-bounce {
+    0% { transform: translateY(0); }
+    35% { transform: translateY(-3px); }
+    65% { transform: translateY(0); }
+    82% { transform: translateY(-1px); }
+    100% { transform: translateY(0); }
+  }
+
+  @keyframes glyph-shake {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+    75% { transform: rotate(-4deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  @keyframes glyph-rise {
+    0% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-3px) scale(1.06); }
+    100% { transform: translateY(0) scale(1); }
+  }
+}

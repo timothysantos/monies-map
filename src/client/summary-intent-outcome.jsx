@@ -1,4 +1,5 @@
 import "./summary-intent-outcome.css";
+import "./row-motion.css";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
@@ -73,7 +74,7 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
   const { headroom } = card;
   return (
     <LeadCard
-      className={isOpen ? "summary-intent-month is-details-open" : "summary-intent-month"}
+      className={isOpen ? "summary-intent-month motion-row is-details-open" : "summary-intent-month motion-row"}
       data-month={card.month}
       data-fig-period={`${card.month}:${card.month}`}
       tag={(

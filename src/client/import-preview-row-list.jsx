@@ -24,6 +24,7 @@ import { FALLBACK_THEME } from "./ui-options";
 import { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip } from "./ui-components";
 import { ChipDateField } from "./ui/lead-support-detail";
 import "./import-preview-row-list.css";
+import "./row-motion.css";
 
 const { format: formatService } = moniesClient;
 
@@ -65,7 +66,7 @@ export function PreviewRowList({
             <li key={row.rowId}>
               <button
                 type="button"
-                className={`import-row-item${needsReview || duplicateMatch ? " is-flagged" : ""}`}
+                className={`import-row-item motion-row${needsReview || duplicateMatch ? " is-flagged" : ""}`}
                 data-commit-status={row.commitStatus}
                 aria-haspopup="dialog"
                 onClick={() => setOpenRowId(row.rowId)}
