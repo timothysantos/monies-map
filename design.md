@@ -1572,6 +1572,16 @@ actions; it gives them the layout:
 - Wide screen: a centred Radix dialog (520 px, `wide` 720 px) with the same
   head, lead, rows and bar (`is-dialog-bar`, Cancel at the start, primary at
   the end). The first field takes focus, so the close button shows no ring.
+- Fits the window: every desktop dialog (`.note-dialog-content`) is at most
+  `min(86vh, 100dvh - 48px)` tall (a `vh` line first for browsers without
+  `dvh`) and centred, so its top is never above the window. In `SheetDialog`
+  the head (title and close) and the bar (the actions) stay put and only the
+  body between them scrolls (`overflow-y: auto`, `overscroll-behavior:
+  contain`, its rows keep their own height); a one-off dialog scrolls as one
+  box inside the same cap. Transfer details once scrolled as one box, so
+  scrolled down its title went off the top (`docs/audits/dialog-fit/`).
+  Guard: `tests/e2e/dialog-fit.spec.js` (1280 x 600 to 1440 x 900, and a
+  phone).
 - Lead: what the dialog is about (`LeadCard`): the item being deleted, the
   account being edited, the planned item being matched, the month a note
   belongs to. A confirmation uses `ConfirmLead`, a rose bubble with the
