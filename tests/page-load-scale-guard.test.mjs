@@ -142,13 +142,15 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   };
   const measure = async (path) => {
     await call(path);
+    // Node CPU, as for the other pages: wall time swings with the machine's load.
     const samples = [];
     let measured;
     for (let run = 0; run < 5; run += 1) {
       counting.reset();
-      const startedAt = performance.now();
+      const before = process.cpuUsage();
       const body = await call(path);
-      samples.push(performance.now() - startedAt);
+      const used = process.cpuUsage(before);
+      samples.push((used.user + used.system) / 1000);
       measured = { body, ...counting.summary() };
     }
     samples.sort((left, right) => left - right);
@@ -158,8 +160,8 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   const page = await measure("/api/splits-page?view=person-tim&month=2025-10");
   const dto = JSON.parse(page.body).splitsPage;
   const rows = await measure(`/api/splits/settled-rows?view=person-tim&checkpoint=${history.checkpointId}&group=${history.bigGroupId}`);
-  console.log(`# splits-page: ${page.statements} round trips, ${page.rowsRead} rows read, ${page.body.length} response bytes, ${page.medianMs.toFixed(0)} ms handler (node, local D1)`);
-  console.log(`# settled-rows (287 rows): ${rows.statements} round trips, ${rows.rowsRead} rows read, ${rows.body.length} response bytes, ${rows.medianMs.toFixed(0)} ms handler (node, local D1)`);
+  console.log(`# splits-page: ${page.statements} round trips, ${page.rowsRead} rows read, ${page.body.length} response bytes, ${page.medianMs.toFixed(0)} ms node CPU`);
+  console.log(`# settled-rows (287 rows): ${rows.statements} round trips, ${rows.rowsRead} rows read, ${rows.body.length} response bytes, ${rows.medianMs.toFixed(0)} ms node CPU`);
 
   assert.equal(dto.activity.filter((item) => item.settlementCheckpointId && !item.isArchived).length, 0, "no settled row in the page");
   assert.ok(dto.settlementCheckpoints.every((checkpoint) => !checkpoint.includedRecordIds), "no covered record ids in the page");
