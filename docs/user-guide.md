@@ -628,8 +628,9 @@ bar on the left is the owner's colour.
   when you need a different group or the first person's 0%, 50% or 100%
   share. At 0%, none of it is theirs: if they paid, the other person owes
   them all of it. Once it is shared, tap **View split** for two choices:
-  **View split** opens it on Splits, and **Remove from Splits** takes it off
-  Splits after you confirm. The entry itself stays.
+  **View split** opens it on Splits, and **Remove from Splits** asks
+  **Remove from Splits?** and takes it off Splits when you tap **Remove**.
+  The entry itself stays.
 - **Copy link** (computer): copies a link that opens this entry. If the
   browser won't let the app copy, it says so and shows the link, ready for
   you to select and copy yourself.

@@ -1600,8 +1600,11 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, e
   const amountLabel = amountMinor == null ? null : moniesClient.format.money(amountMinor);
   const dateLabel = entry?.date ? moniesClient.format.formatDateOnly(entry.date) : "";
   const description = entry?.description || "this row";
-  const title = isEntryDelete ? "Delete entry?" : "Delete split?";
-  const consequence = isEntryDelete ? "This removes the ledger entry." : "The ledger entry stays in Entries.";
+  // Taking an entry off Splits says what the Splits row's menu said (owner,
+  // 2026-10-20): Remove from Splits, and the entry itself stays.
+  const editCopy = messages.entries.editCard;
+  const title = isEntryDelete ? "Delete entry?" : editCopy.removeFromSplitsTitle;
+  const consequence = isEntryDelete ? "This removes the ledger entry." : editCopy.removeFromSplitsNote;
 
   return (
     <SheetDialog
@@ -1610,14 +1613,14 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, e
       title={title}
       description={isEntryDelete
         ? `Delete ${[dateLabel, description].filter(Boolean).join(" - ")}? ${consequence}`
-        : `Delete the split record for ${description}? ${consequence}`}
+        : `Remove ${description} from Splits? ${consequence}`}
       descriptionHidden
       lead={(
         <ConfirmLead icon={Trash2} title={description} subtitle={dateLabel || null} amount={amountLabel}>
           <p className="lsd-note">{consequence}</p>
         </ConfirmLead>
       )}
-      primaryLabel={isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
+      primaryLabel={isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : editCopy.removeFromSplitsConfirm}
       primaryDisabled={isSubmitting}
       isSubmitting={isSubmitting}
       errorMessage={errorMessage}

@@ -174,11 +174,12 @@
 }
 
 /* On a phone the quick add goes on its own line under the Splits row, a full
-   44 px target, so the row keeps its whole "Add to splits". */
+   44 px target, so the row keeps its whole "Add to splits". The 8 px gap
+   keeps the two targets apart (design.md: 8 px between neighbours). */
 @media (max-width: 760px) {
   .entry-split-action-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    gap: 8px;
   }
 
   .entry-split-quick-action {
@@ -676,13 +677,31 @@
 
 /* The day label is not a box: at rest it paints the page's own colour
    (--page, the panel behind the list), so no band shows above the rounded
-   group. Stuck under the top of the screen (data-stuck, stuck-date-row.js)
-   it becomes a rounded bar: the day card's width and 16px radius, --page
-   slightly see-through with a blur inside the rounded shape only, its
-   text inset from the curve. The height does not change, so nothing
-   below it moves. */
+   group. It pins just below whatever is already stuck at the top (the demo
+   and local environment banner, the iPhone's top inset): --date-top.
+   Pinned (data-stuck, stuck-date-row.js) its background becomes a band the
+   full width of the window: a ::before over the header's own height that
+   reaches out by the space from each window edge to the header
+   (--date-bleed-left and -right, measured when it pins), with a hairline at
+   its foot. The date, the daily net and the button do not move and the
+   height does not change, so nothing shifts. No transition, so nothing to
+   reduce for reduced motion. */
+.entries-date-groups {
+  --date-top: env(safe-area-inset-top, 0px);
+  /* Room a focused row keeps above it: the pinned header and a gap. */
+  --date-head-room: 66px;
+}
+
+/* The environment banner (styles.css): 3px padding over and under one line
+   of 0.72rem type at line-height 1.2. tests/e2e/entries-sticky-date.spec.js
+   measures that the header pins exactly at its foot. */
+.shell:has(> .environment-banner) .entries-date-groups {
+  --date-top: calc(6px + 0.864rem + env(safe-area-inset-top, 0px));
+}
+
 .entries-date-head {
   --date-fade: 12px;
+  top: var(--date-top);
   align-items: center;
   gap: 10px;
   margin: 0;
@@ -694,11 +713,34 @@
 }
 
 .entries-date-head[data-stuck] {
-  padding: 15px 14px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--page) 84%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: transparent;
+}
+
+/* Solid --page where a blur is not supported; --date-band-share of it with a
+   blur where it is (tests/colour-contrast.test.mjs reads the share). */
+.entries-date-head[data-stuck]::before {
+  --date-band-share: 92%;
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(-1 * var(--date-bleed-right, 0px)) 0 calc(-1 * var(--date-bleed-left, 0px));
+  border-bottom: 1px solid var(--line);
+  background: var(--page);
+  pointer-events: none;
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .entries-date-head[data-stuck]::before {
+    background: color-mix(in srgb, var(--page) var(--date-band-share), transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* A row reached by keyboard (or scrolled to) stops clear of the pinned header. */
+.entries-date-group .entry-row,
+.entries-date-group .entry-row * {
+  scroll-margin-top: calc(var(--date-top) + var(--date-head-room));
 }
 
 .entries-date-head > strong {
@@ -802,10 +844,6 @@
     transform: none;
     backface-visibility: visible;
     contain: none;
-  }
-
-  .entries-date-head[data-stuck] {
-    padding: 14px 12px;
   }
 
   .entries-date-head > strong {

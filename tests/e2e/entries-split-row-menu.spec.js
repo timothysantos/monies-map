@@ -7,8 +7,11 @@ import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
 // Close (or Cancel) and Save. Taking the entry off Splits moved to its
 // Splits row: "View split ›" opens a small menu with View split and Remove
 // from Splits, which asks first (the same dialog and command as the old
-// Delete split button) and keeps the entry. An entry not on Splits keeps its
-// plain "Add to splits" row, with no menu.
+// Delete split button) and keeps the entry. The confirmation says what the
+// menu said (owner, 2026-10-20): "Remove from Splits?", the entry stays, and
+// its button is "Remove" (the full words wrap at 320 px), with no "Delete
+// split" left. An entry not on Splits keeps its plain "Add to splits" row,
+// with no menu.
 
 const MONTH = "2026-05";
 const PHONE = { width: 390, height: 664 };
@@ -46,6 +49,10 @@ async function openEditor(page, entryId, { phone }) {
   await expect(editor).toBeVisible({ timeout: 60_000 });
   return editor;
 }
+
+const REMOVE_TITLE = "Remove from Splits?";
+const REMOVE_BUTTON = "Remove";
+const REMOVE_NOTE = "The entry stays in Entries. Only its split on Splits is removed.";
 
 const actionBar = (editor, phone) => editor.locator(phone ? ".entry-edit-sheet-actions" : ".entry-edit-inline-actions");
 
@@ -98,14 +105,20 @@ for (const device of [{ name: "phone", viewport: PHONE, phone: true }, { name: "
         expect((await item.boundingBox()).height).toBeGreaterThanOrEqual(44);
       }
 
-      // Remove from Splits asks first, with the existing dialog.
+      // Remove from Splits asks first, with the existing dialog, in the
+      // menu's words: the entry stays, only its split goes.
       await menu.getByRole("menuitem", { name: "Remove from Splits" }).click();
       await expect(menu).toBeHidden();
       const dialog = page.locator(".entry-delete-dialog");
       await expect(dialog).toBeVisible();
-      await expect(dialog).toContainText("The ledger entry stays in Entries.");
+      await expect(page.getByRole("dialog", { name: REMOVE_TITLE })).toBeVisible();
+      await expect(dialog).toContainText(REMOVE_NOTE);
+      await expect(dialog).toContainText(description);
+      await expect(dialog).toContainText("$60.00");
+      await expect(dialog).not.toContainText(/delete split|ledger/i);
+      await expect(dialog.getByRole("button", { name: "Delete split" })).toHaveCount(0);
       const deleted = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/delete") && response.ok());
-      await dialog.getByRole("button", { name: "Delete split" }).click();
+      await dialog.getByRole("button", { name: REMOVE_BUTTON, exact: true }).click();
       await deleted;
       await expect(dialog).toBeHidden();
 
@@ -141,7 +154,7 @@ for (const device of [{ name: "phone", viewport: PHONE, phone: true }, { name: "
       await editor.locator("[data-row='splits']").click();
       await page.getByRole("menu", { name: "Splits" }).getByRole("menuitem", { name: "Remove from Splits" }).click();
       const dialog = page.locator(".entry-delete-dialog");
-      await dialog.getByRole("button", { name: "Delete split" }).click();
+      await dialog.getByRole("button", { name: REMOVE_BUTTON, exact: true }).click();
       await expect(dialog.getByText("That split cannot change right now.")).toBeVisible();
       await dialog.getByRole("button", { name: "Cancel" }).click();
       await expect(dialog).toBeHidden();
@@ -161,5 +174,41 @@ for (const device of [{ name: "phone", viewport: PHONE, phone: true }, { name: "
       await expect(editor.locator("[aria-haspopup='menu'][data-row='splits'], [data-row='splits'] [aria-haspopup='menu']")).toHaveCount(0);
       await expect(page.getByRole("menu", { name: "Splits" })).toHaveCount(0);
     });
+  });
+}
+
+// Owner condition: "as long as it is not too cramped". The title and the
+// button label each sit on one line, uncut, at every phone width and on a
+// wide screen.
+async function lineCount(locator) {
+  return locator.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+  });
+}
+
+for (const width of [320, 375, 390, 1280]) {
+  test(`the Remove from Splits confirmation fits on one line each at ${width}px`, async ({ page }) => {
+    const phone = width < 768;
+    const viewport = phone ? { width, height: 664 } : DESKTOP;
+    await setUp(page, viewport);
+    const { entryId } = await createEntry(page, `Split remove fit ${width} ${Date.now()}`, { linked: true });
+    const editor = await openEditor(page, entryId, { phone });
+    await editor.locator("[data-row='splits']").click();
+    await page.getByRole("menu", { name: "Splits" }).getByRole("menuitem", { name: "Remove from Splits" }).click();
+    const dialog = page.getByRole("dialog", { name: REMOVE_TITLE });
+    await expect(dialog).toBeVisible();
+    const title = dialog.getByText(REMOVE_TITLE, { exact: true });
+    const button = dialog.getByRole("button", { name: REMOVE_BUTTON, exact: true });
+    const cancel = dialog.getByRole("button", { name: "Cancel", exact: true });
+    for (const [name, locator] of [["title", title], ["button", button], ["Cancel", cancel]]) {
+      expect(await lineCount(locator), `${name} sits on one line`).toBe(1);
+      expect(await locator.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), `${name} is not cut`).toBe(true);
+    }
+    const [buttonBox, cancelBox] = [await button.boundingBox(), await cancel.boundingBox()];
+    expect(buttonBox.height).toBeGreaterThanOrEqual(44);
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(Math.max(buttonBox.x - (cancelBox.x + cancelBox.width), cancelBox.x - (buttonBox.x + buttonBox.width))).toBeGreaterThanOrEqual(8);
   });
 }

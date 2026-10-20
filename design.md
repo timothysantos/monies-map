@@ -99,7 +99,9 @@ Group tiles carry no money tone (the Splits orange).
 An expense editor shows the normal **Add to splits** row with a compact
 one-tap shortcut for the viewer's last real split group: beside the row on a
 wide screen, on its own 44 px line under it on a phone (beside it, it cut the
-row's own words to "Add to s…"). The shortcut names the group and its even
+row's own words to "Add to s…"), 8 px clear of the row so the two targets
+never crowd. Tab reaches it right after the row, as the eye reads them
+(`phone-tap-targets.spec.js`, `lead-support-detail-sheets.spec.js`). The shortcut names the group and its even
 default in plain words (for example, "Add to Okaeri · Half each"; an even
 split is "half each" wherever the app names it, never "50/50"). Its words
 and the share hint live in `copy/split-share-copy.js`. It
@@ -152,8 +154,9 @@ day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
 two Splits colours), so no band shows behind the label. Stuck at the top, the
-label becomes the same rounded bar an Entries day label does (the group's
-width and 16 px radius, `--splits-surface` at 84% with a blur inside it;
+label becomes a rounded bar (the group's width and 16 px radius,
+`--splits-surface` at 84% with a blur inside it; Entries now pins a
+full-width band instead, see "Entries list";
 `tests/e2e/date-row-flat.spec.js`).
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
@@ -1380,7 +1383,11 @@ Where it is used:
   sent. Delete entry, Cancel and Save are in the bottom bar, one row with
   one destructive action. Removing the entry from Splits is in its Splits
   row's menu (View split, Remove from Splits; `EntrySplitsMenuRow`, a Radix
-  popover rendered in place so the phone sheet's focus trap keeps it).
+  popover rendered in place so the phone sheet's focus trap keeps it). Its
+  confirmation uses the menu's words: "Remove from Splits?", "The entry
+  stays in Entries. Only its split on Splits is removed." and a **Remove**
+  button (the full words wrapped to two lines at 320 px;
+  `docs/audits/remove-from-splits/`).
 - The Entries top (`entries-overview.jsx` `EntriesTotals`,
   `entries-totals-model.js`, its CSS in `entries-route.css`, in the lazy
   Entries route). Lead: "Spent · Aug 2026", the filtered view's gross spend
@@ -1424,16 +1431,32 @@ Where it is used:
   in one rounded white group. The day header is not a box at rest: it is
   sticky and paints `--page` (the panel behind the list), flat, so no lighter
   band or square corner shows above the group in any colour preset or mode.
-  Stuck at the top of the screen it becomes a rounded bar (the owner's
-  choice over the earlier fade): the day group's width, so its left and
-  right edges sit on the group's, the group's 16 px radius, `--page` at 84%
-  with a 12 px backdrop blur inside the rounded shape only, and its text
-  inset 14 px (12 px on a phone) from the curve. Its height does not change,
-  so nothing under it moves. `stuck-date-row.js` sets `data-stuck` from one
-  shared IntersectionObserver (root top pulled in by 1 px), with no scroll
-  listener and no render. `tests/e2e/date-row-flat.spec.js` samples pixels
-  at rest in every preset and mode and checks the stuck bar's radius, blur,
-  alpha and edges, on Entries and Splits, desktop and phone. A phone row is 68 px or more (icon, category,
+  It pins just below anything already stuck at the top (`--date-top`: the
+  demo and local environment banner, whose height it mirrors, and the
+  iPhone's top inset), and the next day's header pushes it up and takes its
+  place. Pinned, its background is a band the full width of the window (the
+  owner's request of 2026-10-20, replacing the rounded bar): a `::before`
+  over the header's own height that reaches out to both window edges by
+  `--date-bleed-left` and `--date-bleed-right`, `--page` at
+  `--date-band-share` (92%) with a 12 px backdrop blur (solid `--page` where
+  blur is unsupported) and a `--line` hairline at its foot. The date, the
+  daily net and the refresh button stay exactly where they sit at rest, on
+  the content column, and the height does not change, so nothing moves; no
+  transition is added. Rows and everything in them carry a
+  `scroll-margin-top` of the pinned header plus a gap, so a row reached by
+  keyboard stops below it. The Entries panel no longer clips sideways on a
+  wide screen (nothing in it overflows; a phone's panel still clips), so the
+  band can reach the edges. `stuck-date-row.js` sets `data-stuck` from an
+  IntersectionObserver per sticky top (root top pulled in to 1 px below
+  it), moves a row to the right observer if its top changed, and when a row
+  pins writes the two bleeds from the observer's own rectangle (a resize
+  re-measures the pinned rows); no scroll listener and no render.
+  `tests/e2e/entries-sticky-date.spec.js` (1440 and 390 px) checks the
+  pinned top under the banner, the band's edges and hairline, the text
+  column, the hand-over to the next day, keyboard focus and no overlap with
+  the floating chrome; `tests/e2e/date-row-flat.spec.js` samples pixels at
+  rest in every preset and mode (Entries and Splits) and `tests/colour-contrast.test.mjs`
+  checks the date and daily net on the band. A phone row is 68 px or more (icon, category,
   merchant and amount, wallet, chips), a wide row keeps the three columns.
 - New, edit and view split expense (`split-expense-card.jsx`, from the Splits
   dialog in the phone sheet and the wide dialog, and in the list). Selecting a
@@ -1549,6 +1572,16 @@ actions; it gives them the layout:
 - Wide screen: a centred Radix dialog (520 px, `wide` 720 px) with the same
   head, lead, rows and bar (`is-dialog-bar`, Cancel at the start, primary at
   the end). The first field takes focus, so the close button shows no ring.
+- Fits the window: every desktop dialog (`.note-dialog-content`) is at most
+  `min(86vh, 100dvh - 48px)` tall (a `vh` line first for browsers without
+  `dvh`) and centred, so its top is never above the window. In `SheetDialog`
+  the head (title and close) and the bar (the actions) stay put and only the
+  body between them scrolls (`overflow-y: auto`, `overscroll-behavior:
+  contain`, its rows keep their own height); a one-off dialog scrolls as one
+  box inside the same cap. Transfer details once scrolled as one box, so
+  scrolled down its title went off the top (`docs/audits/dialog-fit/`).
+  Guard: `tests/e2e/dialog-fit.spec.js` (1280 x 600 to 1440 x 900, and a
+  phone).
 - Lead: what the dialog is about (`LeadCard`): the item being deleted, the
   account being edited, the planned item being matched, the month a note
   belongs to. A confirmation uses `ConfirmLead`, a rose bubble with the

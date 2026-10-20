@@ -52,7 +52,8 @@ test("deleting a linked split from Entries shows the entry as unshared, and it c
   const dialog = page.locator(".entry-delete-dialog");
   await expect(dialog).toBeVisible();
   const deleted = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/delete") && response.ok());
-  await dialog.getByRole("button", { name: "Delete split" }).click();
+  await expect(page.getByRole("dialog", { name: "Remove from Splits?" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Remove", exact: true }).click();
   await deleted;
   await expect(dialog).toBeHidden();
 

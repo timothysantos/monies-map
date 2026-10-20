@@ -8,10 +8,11 @@ import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 // rest it paints the exact surface behind it (--page on Entries, the Splits
 // surface on Splits), so no lighter band or square corner shows above the
 // day's rounded group, in every colour preset and in light and dark. Stuck
-// under the top of the screen it becomes a rounded bar: inset to the day
-// card's width with the card's radius, its left and right edges on the
-// card's, the surface colour slightly see-through with a blur inside the
-// rounded shape only.
+// under the top of the screen the Splits label becomes a rounded bar: inset
+// to the day card's width with the card's radius, its left and right edges
+// on the card's, the surface colour slightly see-through with a blur inside
+// the rounded shape only. The Entries label instead gets a band the full
+// width of the window behind it (entries-sticky-date.spec.js has the rest).
 
 const PRESETS = ["70s", "60s", "80s", "modern", "mono", "code", "midnight", "genz", "future"];
 const MODES = ["light", "dark"];
@@ -31,6 +32,7 @@ const PAGES = {
     card: ".entries-rows",
     headText: "24 May 2026",
     surfaceToken: "--page",
+    stuckLook: "band",
     async seed(page, marker) {
       for (let index = 0; index < 40; index += 1) {
         await postJson(page, "/api/entries/create", {
@@ -59,6 +61,7 @@ const PAGES = {
     card: ".split-date-items",
     headText: "12 Jun 2026",
     surfaceToken: "--splits-surface",
+    stuckLook: "bar",
     async seed(page, marker) {
       for (let index = 0; index < 36; index += 1) {
         await postJson(page, "/api/splits/expenses/create", {
@@ -148,7 +151,7 @@ async function placeHeader(page, header, fromTop) {
 
 for (const [pageName, config] of Object.entries(PAGES)) {
   for (const [viewportName, viewport] of VIEWPORTS) {
-    test(`${pageName} ${viewportName}: the date row is not a box at rest in any colour scheme, and a rounded bar when stuck`, async ({ page }) => {
+    test(`${pageName} ${viewportName}: the date row is not a box at rest in any colour scheme, and ${config.stuckLook === "band" ? "a full-width band" : "a rounded bar"} when stuck`, async ({ page }) => {
       test.setTimeout(240_000);
       const marker = `Playwright date row ${pageName} ${viewportName} ${Date.now()}`;
       await page.setViewportSize(viewport);
@@ -202,6 +205,34 @@ for (const [pageName, config] of Object.entries(PAGES)) {
         expect(Math.abs(box.y), `${label}: header holds the top of the screen`).toBeLessThanOrEqual(1);
         expect(await page.evaluate(() => window.scrollY), label).toBeGreaterThan(200);
         await expect(header, label).toHaveAttribute("data-stuck", "");
+        if (config.stuckLook === "band") {
+          // Entries: the header itself stays square and clear; a band the
+          // window's full width, in the page colour with a blur, sits behind it.
+          const band = await header.evaluate((element) => {
+            const style = getComputedStyle(element);
+            const before = getComputedStyle(element, "::before");
+            const rect = element.getBoundingClientRect();
+            return {
+              radius: style.borderTopLeftRadius,
+              left: rect.left + parseFloat(before.left),
+              right: rect.right - parseFloat(before.right),
+              blur: before.backdropFilter || before.webkitBackdropFilter,
+              colour: before.backgroundColor,
+              width: document.documentElement.clientWidth
+            };
+          });
+          expect(band.radius, label).toBe("0px");
+          expect(Math.abs(band.left), `${label}: band from the window's left edge`).toBeLessThanOrEqual(1);
+          expect(Math.abs(band.right - band.width), `${label}: band to the window's right edge`).toBeLessThanOrEqual(1);
+          expect(band.blur, label).toMatch(/blur\(/);
+          const surface = await readToken(page, config.surfaceToken);
+          const at = await readPixels(page);
+          const inside = at(box.x + box.width * 0.5, 3);
+          for (let channel = 0; channel < 3; channel += 1) {
+            expect(Math.abs(inside[channel] - surface[channel]), `${label}: inside the band ${inside} vs ${surface}`).toBeLessThanOrEqual(40);
+          }
+          continue;
+        }
         const stuck = await header.evaluate((element) => {
           const style = getComputedStyle(element);
           return {

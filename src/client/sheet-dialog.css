@@ -41,11 +41,44 @@
   box-shadow: 0 10px 24px rgba(27, 24, 21, 0.08);
 }
 
-/* Wide screen: a centred dialog with the same head, lead, rows and bar. */
+/* Wide screen: a centred dialog with the same head, lead, rows and bar. It
+   fits the window (design.md, "Fits the window"; the height cap is on
+   .note-dialog-content): the head (title and close) stays at the top and the
+   bar (the actions) at the bottom, and only the body between them scrolls. */
 .note-dialog-content.sheet-dialog {
+  display: flex;
+  flex-direction: column;
   width: min(520px, calc(100vw - 40px));
+  overflow: hidden;
   padding: 22px;
   border-radius: 22px;
+}
+
+.note-dialog-content.sheet-dialog > form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.note-dialog-content.sheet-dialog > form > * {
+  flex: 0 0 auto;
+}
+
+/* The body reaches the dialog's edges, so its scroll bar sits at the edge
+   and the lead's shadow is not cut; its padding gives back the space its
+   negative margins take, so a body that fits looks as it always did. */
+.note-dialog-content.sheet-dialog > form > .sheet-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: -4px -22px -18px;
+  padding: 4px 22px 18px;
+  /* Rows keep their own height and scroll; a row that clips its corners
+     (overflow: hidden) would otherwise be squeezed to nothing. */
+  grid-auto-rows: max-content;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .note-dialog-content.sheet-dialog.is-wide {

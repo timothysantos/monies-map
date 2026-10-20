@@ -466,10 +466,21 @@ test("phone quick add sits on its own line under the Splits row and never cuts A
   const rowBox = await splitsRow.boundingBox();
   const quickBox = await quickAdd.boundingBox();
   expect(quickBox.height).toBeGreaterThanOrEqual(44);
-  expect(quickBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1);
+  // Two targets one above the other keep 8 px clear between them (design.md,
+  // 44 px targets with 8 px between neighbours): the quick add is narrower
+  // than the row, so the two are not one stacked group.
+  expect(quickBox.y - (rowBox.y + rowBox.height)).toBeGreaterThanOrEqual(8);
   expect(quickBox.width).toBeGreaterThanOrEqual(rowBox.width - 32);
   const quickFits = await quickAdd.evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
   expect(quickFits).toBe(true);
+
+  // Tab follows what the eye reads: the row's own Add to splits, then the
+  // quick add under it, then the next row.
+  await splitsRow.focus();
+  await page.keyboard.press("Tab");
+  await expect(quickAdd).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest("[data-row='note']")))).toBe(true);
 
   const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
   await quickAdd.click();
