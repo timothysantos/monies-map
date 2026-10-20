@@ -627,7 +627,9 @@ bar on the left is the owner's colour.
   On a phone it sits on its own line under the row. Use **Add to splits**
   when you need a different group or the first person's 0%, 50% or 100%
   share. At 0%, none of it is theirs: if they paid, the other person owes
-  them all of it. Once it is shared, **View split** opens it on Splits.
+  them all of it. Once it is shared, tap **View split** for two choices:
+  **View split** opens it on Splits, and **Remove from Splits** takes it off
+  Splits after you confirm. The entry itself stays.
 - **Copy link** (computer): copies a link that opens this entry. If the
   browser won't let the app copy, it says so and shows the link, ready for
   you to select and copy yourself.
@@ -2044,7 +2046,8 @@ There are two ways, depending on where the expense is.
 3. Pick the group from **Split group**. The split is created as soon as you
    choose; **Cancel** closes the box without sharing anything.
 4. The split starts half each, with the entry's owner as the payer. Select
-   **View split** to change the people, shares, group, category or note.
+   **View split**, then **View split** in its menu, to change the people,
+   shares, group, category or note.
 
 ![Add to splits asks which group the entry belongs to](/faq/guide/desktop/thumbs/entries-add-to-splits.webp)
 

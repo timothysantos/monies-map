@@ -1377,8 +1377,10 @@ Where it is used:
   description, amount, the eye, the three chips, then the rows in order, and
   the card is about 40 px shorter (the stated cap at 1,280 px is 380 px for
   the editor, `entries-lsd.spec.js`). The saved request is the one the rows
-  sent. Delete entry (and Delete split once it is on Splits), Cancel and
-  Save are in the bottom bar.
+  sent. Delete entry, Cancel and Save are in the bottom bar, one row with
+  one destructive action. Removing the entry from Splits is in its Splits
+  row's menu (View split, Remove from Splits; `EntrySplitsMenuRow`, a Radix
+  popover rendered in place so the phone sheet's focus trap keeps it).
 - The Entries top (`entries-overview.jsx` `EntriesTotals`,
   `entries-totals-model.js`, its CSS in `entries-route.css`, in the lazy
   Entries route). Lead: "Spent · Aug 2026", the filtered view's gross spend
