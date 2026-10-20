@@ -4,11 +4,29 @@
    rounded white group with hairlines between them; the viewer's balance
    words are aligned at the right in their money tone (text only). The
    date is a quiet label above its group, like an Entries day: it stays
-   sticky and paints the page's own flat colour (--splits-surface, which
-   the panel and the page behind it use too), so rows never read under it
-   and no band shows. Imported by splits-activity-section.jsx, so it ships with the
-   lazy Splits route. Scoped to .split-list-section: the archive dialog
-   keeps its own look (splits-dialogs.css). */
+   sticky and at rest paints the page's own flat colour (--splits-surface,
+   which the panel and the page behind it use too), so no band shows.
+   Pinned it looks exactly like a pinned Entries day (entries-route.css,
+   design.md "Entries list"): it pins just below whatever is already stuck
+   at the top (the environment banner, the iPhone's top inset), and a
+   ::before band in --splits-surface reaches both edges of the window
+   (--date-bleed-left and -right, measured by stuck-date-row.js), with a
+   hairline at its foot; the text, padding and height do not change.
+   Imported by splits-activity-section.jsx, so it ships with the lazy Splits
+   route. Scoped to .split-list-section: the archive dialog keeps its own
+   look (splits-dialogs.css). */
+.panel-splits .split-list-section {
+  --date-top: env(safe-area-inset-top, 0px);
+  /* Room a focused row keeps above it: the pinned header and a gap. */
+  --date-head-room: 62px;
+}
+
+/* The environment banner (styles.css): 3px padding over and under one line
+   of 0.72rem type at line-height 1.2, as on Entries. */
+.shell:has(> .environment-banner) .panel-splits .split-list-section {
+  --date-top: calc(6px + 0.864rem + env(safe-area-inset-top, 0px));
+}
+
 .panel-splits .split-list-section .split-date-group {
   display: block;
   gap: 0;
@@ -25,25 +43,53 @@
 .panel-splits .split-list-section .split-date-header {
   gap: 10px;
   --date-fade: 12px;
+  top: var(--date-top);
   margin: 0;
   padding: 14px 2px var(--date-fade);
   border: 0;
   border-radius: 0;
-  /* The panel's own flat colour, so no band shows at rest; stuck under the
-     top of the screen it is a rounded bar the width of the day's group, as
-     an Entries day label is. */
+  /* The panel's own flat colour, so no band shows at rest. */
   background: var(--splits-surface);
   backdrop-filter: none;
   color: rgb(var(--on-strong-rgb) / 0.88);
   font-size: 0.8rem;
 }
 
-.panel-splits .split-list-section .split-date-header[data-stuck] {
-  padding: 13px 12px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--splits-surface) 84%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+/* Pinned, white rows scroll under the band's see-through share, so the date,
+   count and refresh mark go to full strength to keep AA
+   (tests/colour-contrast.test.mjs). */
+.panel-splits .split-list-section .split-date-header[data-stuck],
+.panel-splits .split-list-section .split-date-header[data-stuck] .split-date-refresh-button {
+  background: transparent;
+  color: rgb(var(--on-strong-rgb));
+}
+
+/* Solid --splits-surface where a blur is not supported; --date-band-share
+   of it with a blur where it is (tests/colour-contrast.test.mjs reads the
+   share). */
+.panel-splits .split-list-section .split-date-header[data-stuck]::before {
+  --date-band-share: 92%;
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(-1 * var(--date-bleed-right, 0px)) 0 calc(-1 * var(--date-bleed-left, 0px));
+  border-bottom: 1px solid rgb(var(--on-strong-rgb) / 0.32);
+  background: var(--splits-surface);
+  pointer-events: none;
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .panel-splits .split-list-section .split-date-header[data-stuck]::before {
+    background: color-mix(in srgb, var(--splits-surface) var(--date-band-share), transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* A row reached by keyboard (or scrolled to) stops clear of the pinned header. */
+.panel-splits .split-list-section .split-activity-card,
+.panel-splits .split-list-section .split-inline-editor-card {
+  scroll-margin-top: calc(var(--date-top) + var(--date-head-room));
 }
 
 .panel-splits .split-list-section .split-date-header > strong {
@@ -136,6 +182,52 @@
 .panel-splits .split-archive-trigger:hover:not(:disabled) {
   border-color: rgb(var(--on-strong-rgb) / 0.7);
   background: rgb(var(--on-strong-rgb) / 0.08);
+}
+
+/* What a settlement covered: one quiet dashed row at the end of the list,
+   the same outline as Archived batches; open, its days follow under it. */
+.panel-splits .split-settled-section {
+  display: block;
+  margin-top: 18px;
+}
+
+.panel-splits .split-settled-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px dashed rgb(var(--on-strong-rgb) / 0.45);
+  border-radius: 14px;
+  background: transparent;
+  color: rgb(var(--on-strong-rgb) / 0.9);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-splits .split-settled-section-toggle:hover {
+  border-color: rgb(var(--on-strong-rgb) / 0.7);
+  background: rgb(var(--on-strong-rgb) / 0.08);
+}
+
+.panel-splits .split-settled-section-chevron {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.panel-splits .split-settled-section.is-open .split-settled-section-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-splits .split-settled-section-chevron {
+    transition: none;
+  }
 }
 
 @media (max-width: 760px) {

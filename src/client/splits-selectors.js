@@ -1,8 +1,8 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { deriveGroupFigures } from "../domain/split-open-period";
+import { buildSplitActivitySections } from "./splits-settled-sections";
 import {
-  filterSplitActivityForSearch,
   filterSplitMatchesForSearch,
   getSplitSearchSuggestions,
   splitActivityMatchesSearch,
@@ -38,9 +38,19 @@ export function buildSplitsPanelModel({
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
   const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);
-  const currentGroupActivity = filterSplitActivityForSearch(activeGroupActivity.filter((item) => !item.isArchived), searchQuery);
+  // The list shows the open records by date; what a settlement covered waits
+  // in one collapsed section per settlement at the end (search narrows both).
+  const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
+  const {
+    shownActivity: currentGroupActivity,
+    groupedOpenActivity: groupedCurrentActivity,
+    settledSections
+  } = buildSplitActivitySections({
+    activity: activeGroupActivity.filter((item) => !item.isArchived),
+    checkpoints: settlementCheckpoints,
+    searchQuery
+  });
   const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
-  const groupedCurrentActivity = splitService.groupActivityByDate(currentGroupActivity);
   const archivedBatches = splitService.groupActivityByBatch(archivedGroupActivity);
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
@@ -73,6 +83,8 @@ export function buildSplitsPanelModel({
     groupOptions,
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
+    settledSections,
+    settlementCheckpoints,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
     // Spend of the open period (what no settle-up has covered); the label
     // follows whether the group was ever settled, which a search must not change.

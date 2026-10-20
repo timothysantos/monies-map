@@ -291,6 +291,18 @@ for (const preset of PRESETS) {
     }
   });
 
+  // The pinned Splits day header (splits-activity-list.css): its date, count
+  // and refresh mark (full on-strong while pinned) sit on the same full-width band in
+  // the flat Splits colour, at SPLITS_DATE_BAND over the white rows scrolling
+  // under it, or solid where a blur is not supported.
+  test(`${id}: the pinned Splits date reads AA on its full-width band`, () => {
+    const ON = rgb("--on-strong-rgb");
+    const flat = mix(rgb("--splits-rgb"), 0.5, SPLITS_DEEP);
+    for (const [bandName, band] of Object.entries({ "over the rows": mix(flat, SPLITS_DATE_BAND, PAPER), "over a card": mix(flat, SPLITS_DATE_BAND, CARD), "solid": flat })) {
+      assertAA(ON, band, `the date on the Splits band ${bandName}`);
+    }
+  });
+
   // The hover, press and focus wash of rows and cards (row-motion.css): the
   // row's category colour, or the strong accent, at ROW_WASH over the page,
   // a card, the panel or the paper. The text, the muted lines and the money
@@ -310,6 +322,10 @@ for (const preset of PRESETS) {
 
 // The pinned Entries band's share of --page, as entries-route.css writes it.
 const DATE_BAND = Number(readFileSync(new URL("../src/client/entries-route.css", import.meta.url), "utf8")
+  .match(/--date-band-share: (\d+)%/)[1]) / 100;
+
+// The pinned Splits band's share of the Splits colour, as splits-activity-list.css writes it.
+const SPLITS_DATE_BAND = Number(readFileSync(new URL("../src/client/splits-activity-list.css", import.meta.url), "utf8")
   .match(/--date-band-share: (\d+)%/)[1]) / 100;
 
 test("the pinned Entries band stays nearly solid: at least 85% of the page colour", () => {

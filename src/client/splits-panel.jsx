@@ -88,6 +88,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const [showBreakdown, setShowBreakdown] = useState(false);
   const useMobileSplitSheet = useIsMobileLayout();
   const [archiveDialog, setArchiveDialog] = useState(null);
+  // The settlements whose collapsed section at the end of the list is open.
+  const [openSettlementIds, setOpenSettlementIds] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [groupDialog, setGroupDialog] = useState(null);
@@ -152,6 +154,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
+    settledSections,
     searchSuggestions,
     totalExpenseMinor,
     visibleMatches
@@ -307,6 +310,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     refreshGuardRef.current = createSplitRefreshGuard();
     resetForViewChange();
     setArchiveDialog(null);
+    setOpenSettlementIds([]);
   }, [resetForViewChange, splitsPage.month, view.id]);
 
   useEffect(() => {
@@ -406,7 +410,40 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
+  function toggleSettlementSection(checkpointId) {
+    setOpenSettlementIds((current) => (current.includes(checkpointId)
+      ? current.filter((id) => id !== checkpointId)
+      : [...current, checkpointId]));
+  }
+
+  // Opens a settlement's collapsed section, then scrolls once its rows are
+  // drawn (they render only while it is open).
+  function revealSettlementSection(checkpointId, scrollTo) {
+    if (!checkpointId || typeof window === "undefined") {
+      return;
+    }
+    setOpenSettlementIds((current) => (current.includes(checkpointId) ? current : [...current, checkpointId]));
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollTo));
+  }
+
+  function openSettlementFromArchive(checkpointId) {
+    setArchiveDialog(null);
+    revealSettlementSection(checkpointId, () => {
+      const section = [...document.querySelectorAll("[data-settlement-section]")]
+        .find((element) => element.getAttribute("data-settlement-section") === checkpointId);
+      section?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
+    if (checkpoint?.id && settledSections.some((section) => section.checkpointId === checkpoint.id)) {
+      revealSettlementSection(checkpoint.id, () => scrollToIncludedRow(checkpoint));
+      return;
+    }
+    scrollToIncludedRow(checkpoint);
+  }
+
+  function scrollToIncludedRow(checkpoint) {
     const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
       document.getElementById(splitActivityDomId("expense", recordId)) ||
       document.getElementById(splitActivityDomId("settlement", recordId))
@@ -1327,6 +1364,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         leadControls={leadControls}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
+        settledSections={settledSections}
+        openSettlementIds={openSettlementIds}
+        onToggleSettlement={toggleSettlementSection}
         archivedBatches={archivedBatches}
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
@@ -1374,6 +1414,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       <SplitArchiveDialog
         archiveDialog={archiveDialog}
         archivedBatches={archivedBatches}
+        settledSections={settledSections}
+        settlementCheckpoints={settlementCheckpoints}
+        onOpenSettlement={openSettlementFromArchive}
         selectedArchivedBatch={selectedArchivedBatch}
         categories={categories}
         viewId={view.id}

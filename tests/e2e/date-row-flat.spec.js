@@ -8,11 +8,9 @@ import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 // rest it paints the exact surface behind it (--page on Entries, the Splits
 // surface on Splits), so no lighter band or square corner shows above the
 // day's rounded group, in every colour preset and in light and dark. Stuck
-// under the top of the screen the Splits label becomes a rounded bar: inset
-// to the day card's width with the card's radius, its left and right edges
-// on the card's, the surface colour slightly see-through with a blur inside
-// the rounded shape only. The Entries label instead gets a band the full
-// width of the window behind it (entries-sticky-date.spec.js has the rest).
+// under the top of the screen both labels get a band the full width of the
+// window behind them in their surface colour (entries-sticky-date.spec.js
+// and splits-sticky-date.spec.js have the rest).
 
 const PRESETS = ["70s", "60s", "80s", "modern", "mono", "code", "midnight", "genz", "future"];
 const MODES = ["light", "dark"];
@@ -61,7 +59,7 @@ const PAGES = {
     card: ".split-date-items",
     headText: "12 Jun 2026",
     surfaceToken: "--splits-surface",
-    stuckLook: "bar",
+    stuckLook: "band",
     async seed(page, marker) {
       for (let index = 0; index < 36; index += 1) {
         await postJson(page, "/api/splits/expenses/create", {

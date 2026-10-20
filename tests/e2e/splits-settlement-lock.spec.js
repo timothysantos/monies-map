@@ -70,7 +70,10 @@ test.beforeEach(async ({ page }) => {
 test("a settled split opens read-only with the reason and Undo, and is editable in place after the undo", async ({ page }) => {
   const settled = await createSettledSplits(page, Date.now());
   await page.goto(`/splits?view=person-tim&month=${month}&split_group=split-group-none`);
-  const card = page.locator(".split-activity-card").filter({ hasText: settled.cashDescription }).first();
+  // Settled rows wait in their settlement's collapsed section at the end of the list.
+  const section = page.locator(`[data-settlement-section="${settled.checkpointId}"]`);
+  await section.locator(".split-settled-section-toggle").click({ timeout: 60_000 });
+  const card = section.locator(".split-activity-card").filter({ hasText: settled.cashDescription }).first();
   await expect(card).toBeVisible({ timeout: 60_000 });
   await expect(card).toContainText("Included in simplified settlement");
 

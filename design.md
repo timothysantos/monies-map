@@ -153,16 +153,40 @@ colour), and that day's rows share one rounded white group with hairlines. A
 day reads as one unit, the same shape as an Entries day (an unboxed label over
 its rounded group): the Splits panel, the page behind it on a phone and the
 sticky date label all paint `--splits-surface` (`:root`, halfway between the
-two Splits colours), so no band shows behind the label. Stuck at the top, the
-label becomes a rounded bar (the group's width and 16 px radius,
-`--splits-surface` at 84% with a blur inside it; Entries now pins a
-full-width band instead, see "Entries list";
-`tests/e2e/date-row-flat.spec.js`).
+two Splits colours), so no band shows behind the label. Pinned, it is the
+same full-width band as an Entries day ("Entries list"; the same
+`stuck-date-row.js` measuring and the same rule in
+`splits-activity-list.css`): just below the environment banner, a
+`::before` in `--splits-surface` at 92% with a blur (solid without blur
+support) reaching both window edges, a hairline at its foot, the text,
+padding and height unchanged. Its date, count and refresh mark go to full
+on-strong while pinned, because at 88% they miss AA over the white rows under
+the band (`tests/colour-contrast.test.mjs`). Rows keep clear of it when
+focused (`scroll-margin-top`). `tests/e2e/splits-sticky-date.spec.js` and
+`tests/e2e/date-row-flat.spec.js`; frames in
+`docs/audits/splits-sticky-date/`.
 `tests/e2e/splits-day-unit.spec.js` measures the label's geometry and type
 against Entries' and that no band shows. The viewer's words and
 figure sit at the row's right in their money tone as text only. An open inline
 split card fills its group as the row opened up. Archived batches is a dashed
 outline row.
+
+The list shows only open records. What a settlement checkpoint covers (the
+open period's rule, `partitionActivityBySettlement` in
+`src/domain/split-open-period.ts`) sits in one collapsed section per
+settlement at the end of the list (`splits-settled-sections.js`,
+`SplitSettledSection`): a dashed outline row like Archived batches reading
+"Settled up on 27 Aug · 287 entries · $28,823.06" ("Simplified on …" while the
+payment is not made; the year only when it is not this year; the amount is
+dots while money is hidden). The figure is not openable: it adds split
+expense totals, which no Entries list totals to the cent (cash splits have no
+entry), so it has no View entries. Its rows are drawn only while it is open.
+A search opens every section it found something in; an open inline card and
+View included activity open theirs. The Archived batches sheet lists each
+settlement above the closed batches ("Settled up" / "Simplified, not paid
+yet", who paid whom for every group, this group's entry count); choosing it
+closes the sheet and opens the section in place, so there is one place to
+find everything settled without a second copy of the rows.
 
 The Splits dialogs and panels use the same blocks (no behaviour change):
 Record settlement (`split-settlement-card.jsx`, in the phone sheet, the wide

@@ -170,10 +170,11 @@ Open **Splits** (it opens on a person view, for example Ethan).
 - Select **Home & Bills**. It shows a **Simplified settlement**: last month
   the couple combined Home & Bills and Dinners out into one payment, so
   Serene pays Ethan one amount instead of settling each group. The included
-  records are marked in the timeline and locked, with **Undo
-  simplification** available.
-- Press **Archived batches**: two earlier settle-ups closed their batches.
-  Open one to see its records and the **Undo settle-up** option.
+  records are folded into one row at the end of the list ("Simplified on
+  …"); open it to see them, locked, with **Undo simplification** available.
+- Press **Archived batches**: two earlier settle-ups closed their batches,
+  and the simplified settlement is listed too. Open a batch to see its
+  records and the **Undo settle-up** option.
 - **Review matches** shows one suggestion: a dinner Serene recorded in
   Splits before her card row arrived.
 - **Activity history** shows a dinner that was entered twice and deleted.

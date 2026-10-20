@@ -78,6 +78,9 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   await page.reload();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
   await expect(page.locator(".split-checkpoint-transfer")).toHaveCount(1);
+  // The included rows wait collapsed at the end of the list until opened.
+  await expect(page.locator(".split-settlement-marker")).toHaveCount(0);
+  await page.locator(`[data-settlement-section="${checkpoint.checkpointId}"] .split-settled-section-toggle`).click();
   await expect(page.locator(".split-settlement-marker").first()).toContainText("Included in simplified settlement");
   await page.locator(".split-checkpoint-transfer").first().getByRole("button", { name: "Remove" }).click();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("open");
