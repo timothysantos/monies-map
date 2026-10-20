@@ -4299,8 +4299,6 @@ body[data-ask-dock="docked"] .environment-banner {
   position: relative;
   min-width: 0;
   max-width: 100%;
-  overflow-x: clip;
-  overflow-y: visible;
 }
 
 .entries-filter-toggle {
