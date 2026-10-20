@@ -10,6 +10,7 @@ import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
 import { SheetDiscardConfirm, SheetDragHandle, useSheetSwipeDismiss } from "./sheet-swipe";
 import { InlineError } from "./ui-states";
 import { useKeyboardInset } from "./use-keyboard-inset";
+import { lockPageKeyboardScroll } from "./page-scroll-lock";
 
 // The mobile bottom sheet shared by Entries and Month. It behaves like the
 // modal desktop dialogs: focus moves into the sheet on open and stays inside
@@ -215,24 +216,11 @@ function useSheetStack() {
   return () => openSheets[openSheets.length - 1] === idRef.current;
 }
 
-// `overflow: hidden` on <html> stops Space, Page Down and arrow keys from
-// scrolling the page behind the sheet. Unlike a change on <body>, it restyles
-// only the root. Where the page shows a classic scrollbar (a narrow desktop
-// window), a stable gutter keeps the page from shifting sideways.
+// `overflow: hidden` on <html> while any sheet is open; counted across nested
+// sheets (page-scroll-lock.js), so sheets closing together in any order give
+// the page its scrolling back.
 function usePageKeyboardScrollLock() {
-  useEffect(() => {
-    const root = document.documentElement;
-    const previous = { overflow: root.style.overflow, scrollbarGutter: root.style.scrollbarGutter };
-    const hasClassicScrollbar = window.innerWidth - root.clientWidth > 0;
-    root.style.overflow = "hidden";
-    if (hasClassicScrollbar) {
-      root.style.scrollbarGutter = "stable";
-    }
-    return () => {
-      root.style.overflow = previous.overflow;
-      root.style.scrollbarGutter = previous.scrollbarGutter;
-    };
-  }, []);
+  useEffect(() => lockPageKeyboardScroll(), []);
 }
 
 // While Add to splits asks which group, the sheet's bottom bar becomes the
