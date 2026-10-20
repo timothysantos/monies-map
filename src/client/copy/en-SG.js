@@ -389,7 +389,10 @@ export const messages = {
       transferIn: "Transfer in",
       splits: "Splits",
       viewSplit: "View split",
-      deleteSplit: "Delete split",
+      // The Splits row of an entry on Splits opens a small menu: View split,
+      // and Remove from Splits (keeps the entry, removes only its split).
+      splitsMenuLabel: "Splits: View split or Remove from Splits",
+      removeFromSplits: "Remove from Splits",
       deleteEntry: "Delete entry",
       transferMatch: "Transfer match",
       manageTransfer: "Manage transfer"

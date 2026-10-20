@@ -1116,13 +1116,6 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   row-gap: 4px;
 }
 
-/* Two destructive actions (Delete entry, Delete split) take their own line
-   above Cancel and Save. */
-.entry-edit-sheet-actions .lsd-bottom-start:has(> :nth-child(2)) {
-  flex: 1 0 100%;
-  justify-content: space-between;
-}
-
 .entry-edit-sheet-actions .lsd-primary {
   flex: 0 1 160px;
 }
@@ -1220,3 +1213,41 @@ body[data-entry-inline-editor] > .entries-ask-chip {
 }
 
 .entries-filter-target { display: contents; }
+
+/* The Splits row's menu of an entry on Splits (entry-edit-card.jsx): View
+   split, and Remove from Splits in the danger ink. Rendered in place inside
+   the phone sheet, so it sits above the sheet. */
+.entry-splits-menu {
+  z-index: 90;
+  display: grid;
+  gap: 2px;
+  width: min(240px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+}
+
+.entry-splits-menu-item {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry-splits-menu-item:hover,
+.entry-splits-menu-item:focus-visible {
+  background: rgb(var(--accent-strong-rgb) / 0.1);
+}
+
+.entry-splits-menu-item.is-danger {
+  color: var(--pastel-rose-ink);
+}

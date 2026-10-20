@@ -704,7 +704,9 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
           <EntrySplitsRow
             isLinked={Boolean(linkedSplitExpenseId)}
             isWorking={!linkedSplitExpenseId && (isAddingToSplits || isSavingEntry)}
+            isRemoving={Boolean(linkedSplitExpenseId) && deletingCreatedSplitId === linkedSplitExpenseId}
             onViewSplit={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
+            onRemoveFromSplits={onDeleteCreatedSplit ? () => void onDeleteCreatedSplit(entry.id, linkedSplitExpenseId) : undefined}
             onAddToSplits={() => void onOpenSplitPicker(entry)}
             quickAddLabel={quickSplitGroup ? splitShareCopy.quickAdd(quickSplitGroup.name) : ""}
             quickAddTitle={quickSplitGroup ? splitShareCopy.quickAddTitle(quickSplitGroup.name) : ""}
@@ -738,21 +740,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
         : entrySubmitError ? <p className="form-error" role="alert">{entrySubmitError}</p> : null}
       <BottomActions
         className="entry-inline-actions entry-edit-inline-actions"
-        destructive={(
-          <>
-            {deleteEntryButton}
-            {linkedSplitExpenseId ? (
-              <button
-                type="button"
-                className="lsd-quiet is-danger"
-                disabled={deletingCreatedSplitId === linkedSplitExpenseId}
-                onClick={() => void onDeleteCreatedSplit?.(entry.id, linkedSplitExpenseId)}
-              >
-                {deletingCreatedSplitId === linkedSplitExpenseId ? messages.common.working : messages.entries.editCard.deleteSplit}
-              </button>
-            ) : null}
-          </>
-        )}
+        destructive={deleteEntryButton}
         secondary={(
           <>
             <EntryLinkCopyButton buildLink={buildEntryLink} />

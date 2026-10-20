@@ -971,6 +971,7 @@ export function EntriesPanel({
       return;
     }
     const entry = entries.find((item) => item.id === entryId) ?? activeEditingEntry ?? null;
+    setCreatedSplitActionError("");
     setDeleteConfirmation({ kind: "created-split", entryId, splitExpenseId, entry });
   }
 
@@ -1392,26 +1393,14 @@ export function EntriesPanel({
                 <div className="entry-edit-sheet-actions">
                   <BottomActions
                     destructive={(
-                      <>
-                        <button
-                          type="button"
-                          className="lsd-quiet is-danger"
-                          disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
-                          onClick={() => requestDeleteEntry(activeEditingEntry)}
-                        >
-                          {deletingEntryId === activeEditingEntry.id ? messages.common.working : messages.entries.editCard.deleteEntry}
-                        </button>
-                        {activeLinkedSplitExpenseId && activeEditingEntry.entryType === "expense" ? (
-                          <button
-                            type="button"
-                            className="lsd-quiet is-danger"
-                            disabled={deletingCreatedSplitId === activeLinkedSplitExpenseId}
-                            onClick={() => requestDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                          >
-                            {deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : messages.entries.editCard.deleteSplit}
-                          </button>
-                        ) : null}
-                      </>
+                      <button
+                        type="button"
+                        className="lsd-quiet is-danger"
+                        disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
+                        onClick={() => requestDeleteEntry(activeEditingEntry)}
+                      >
+                        {deletingEntryId === activeEditingEntry.id ? messages.common.working : messages.entries.editCard.deleteEntry}
+                      </button>
                     )}
                     secondary={(
                       <button type="button" className="lsd-quiet" onClick={closeEntryEditSheet}>
@@ -1459,7 +1448,9 @@ export function EntriesPanel({
               <EntrySplitsRow
                 isLinked={Boolean(activeLinkedSplitExpenseId)}
                 isWorking={addingToSplitsEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
+                isRemoving={Boolean(activeLinkedSplitExpenseId) && deletingCreatedSplitId === activeLinkedSplitExpenseId}
                 onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                onRemoveFromSplits={() => requestDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
                 onAddToSplits={() => {
                   setMobileSplitGroupId("");
                   setIsMobileSplitPickerOpen(true);
@@ -1579,6 +1570,7 @@ export function EntriesPanel({
             ? deletingEntryId === deleteConfirmation.entry?.id
             : deletingCreatedSplitId === deleteConfirmation?.splitExpenseId
         }
+        errorMessage={deleteConfirmation?.kind === "created-split" ? createdSplitActionError : ""}
         onCancel={() => setDeleteConfirmation(null)}
         onConfirm={() => void confirmDeleteAction()}
       />
@@ -1586,7 +1578,8 @@ export function EntriesPanel({
   );
 }
 
-function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, onCancel, onConfirm }) {
+// A refusal to remove a split shows inside the dialog, where the person is.
+function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, errorMessage = "", onCancel, onConfirm }) {
   if (!confirmation) {
     return null;
   }
@@ -1616,6 +1609,7 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, o
       primaryLabel={isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
       primaryDisabled={isSubmitting}
       isSubmitting={isSubmitting}
+      errorMessage={errorMessage}
       onSubmit={onConfirm}
       onClose={onCancel}
     />

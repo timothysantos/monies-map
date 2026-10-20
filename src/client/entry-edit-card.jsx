@@ -539,17 +539,30 @@ export function EntryLeadAmount({ entry, amountMinorValue, amountInputValue, loc
 }
 
 // The Splits row of an expense: "Add to splits", or "View split" once it is
-// on Splits. Removing it from Splits (Delete split) sits with the other
-// destructive actions in the bottom bar.
+// on Splits. On Splits, the row opens a small menu (owner request,
+// 2026-10-20): View split, and Remove from Splits, which keeps the entry and
+// asks first (the page's own confirmation and command). The bottom bar keeps
+// one destructive action, Delete entry.
 export function EntrySplitsRow({
   isLinked,
   isWorking = false,
+  isRemoving = false,
   onAddToSplits,
   onViewSplit,
+  onRemoveFromSplits = undefined,
   quickAddLabel = "",
   quickAddTitle = "",
   onQuickAddToSplits = undefined
 }) {
+  if (isLinked && onRemoveFromSplits) {
+    return (
+      <EntrySplitsMenuRow
+        isWorking={isWorking || isRemoving}
+        onViewSplit={onViewSplit}
+        onRemoveFromSplits={onRemoveFromSplits}
+      />
+    );
+  }
   if (isLinked || !quickAddLabel || !onQuickAddToSplits) {
     return (
       <DetailRow
@@ -582,6 +595,56 @@ export function EntrySplitsRow({
         {isWorking ? messages.common.working : quickAddLabel}
       </button>
     </div>
+  );
+}
+
+// The Splits row's menu. The Radix popover renders in place, not in a
+// portal, so it stays inside the phone sheet's focus trap; each item closes
+// the menu and hands the work to the page.
+function EntrySplitsMenuRow({ isWorking, onViewSplit, onRemoveFromSplits }) {
+  const [open, setOpen] = useState(false);
+  const items = [
+    { key: "view", label: copy.editCard.viewSplit, run: onViewSplit, danger: false },
+    { key: "remove", label: copy.editCard.removeFromSplits, run: onRemoveFromSplits, danger: true }
+  ];
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <DetailRow
+          label={copy.editCard.splits}
+          value={isWorking ? messages.common.working : copy.editCard.viewSplit}
+          state="action"
+          disabled={isWorking}
+          data-row="splits"
+          aria-label={copy.editCard.splitsMenuLabel}
+          aria-haspopup="menu"
+        />
+      </Popover.Trigger>
+      <Popover.Content
+        className="entry-splits-menu"
+        role="menu"
+        aria-label={copy.editCard.splits}
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        collisionPadding={12}
+      >
+        {items.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="menuitem"
+            className={`entry-splits-menu-item${item.danger ? " is-danger" : ""}`}
+            onClick={() => {
+              setOpen(false);
+              item.run?.();
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </Popover.Content>
+    </Popover.Root>
   );
 }
 
