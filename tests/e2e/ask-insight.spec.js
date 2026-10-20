@@ -162,7 +162,9 @@ test.describe("Ask about this on a phone", () => {
       }
       await askVia(page, page.locator(".financial-insight-content .checkin-line-btn").nth(index));
       await expect(card(page).last()).toBeVisible();
-      withEntries = await card(page).last().getByText("The entries").isVisible();
+      // The heading only: while the rows load, the status line under it reads
+      // "Loading the entries…", which a substring match would also find.
+      withEntries = await card(page).last().getByText("The entries", { exact: true }).isVisible();
     }
     test.skip(!withEntries, "No insight in this month's demo data has entries behind it.");
     await expect(card(page).last().locator(".ask-insight-entries li").first()).toBeVisible({ timeout: 30_000 });
