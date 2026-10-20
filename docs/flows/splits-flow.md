@@ -280,8 +280,13 @@ Watch area:
 - bank-match suggestions (`split_mode=matches`): besides rows that share a
   description word, a row with the exact amount and date is suggested when it
   is the only one ("Same amount and date as this split expense"); a row
-  another split already holds is never suggested. Rules in DOMAIN.md, "Split
-  Match Suggestion"; `split-match-exact-suggestion.test.mjs` and
+  another split already holds is never suggested. Only open records are
+  scanned: a settled one (active checkpoint or closed batch) gets no
+  suggestion, so the review, its "Review N bank matches" count and the
+  Imports count never list one; reopening the settlement brings them back.
+  Rules in DOMAIN.md, "Split Match Suggestion";
+  `split-match-exact-suggestion.test.mjs`,
+  `split-match-open-records.test.mjs` and
   `splits-exact-match-suggestion.spec.js` prove them
 - a travel split's shares stay in its currency in Splits; Entries, Month,
   Summary and the stored month totals count each person's SGD share of the

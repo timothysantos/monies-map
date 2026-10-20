@@ -115,8 +115,76 @@ raw / 13,579 B gzip in 8 round trips, 69 ms median handler; a search
 The Splits page handler took 2.4 s before and 2.3 s after on the 10k fixture.
 Both are almost all the bank-match suggestion scan (`loadSplitMatchCandidates`
 ~2.1 s alone: every unlinked split record, settled or not, against every
-imported row in their date windows). That scan is unchanged here and is the
-next thing to look at if the Splits page is still slow on the server.
+imported row in their date windows). That scan is unchanged here; it is
+fixed in the next section.
+
+## Settled records skip the bank-match scan (2026-10-20, owner approved)
+
+A settled record (in an active settlement checkpoint, or in a closed batch:
+the open period's `isCoveredBySettleUp`) is locked and folded away, so a
+bank-match suggestion for it was noise. Before, the scan read every
+unlinked record and the imported rows around all their dates, and each
+record tokenised every row read; the Matches review and its "Review N bank
+matches" count listed a settled record whenever one matched (the
+production-shaped fixture had none only because its synthetic bank rows
+share no words with the splits; with a bank twin for each record the old
+scan suggested all 178 unlinked settled records).
+
+Now the scan reads only open, unlinked records (scope `awaiting-match` in
+`loadSplitExpenses` / `loadSplitSettlements`: the `NOT IN` checkpoint list
+of the settled sections and `split_batches.closed_on IS NULL`), so their
+dates alone set the date windows, and each record compares only the rows
+within its own window. Reopening or voiding the checkpoint, or reopening
+the batch, puts the records back. Splits, the Imports page's count and Ask
+read the same loader.
+
+The candidate read stays one query: each window a range on
+`idx_transactions_household_date` (EXPLAIN: `MULTI-INDEX OR`, `SEARCH
+transactions USING INDEX idx_transactions_household_date (household_id=?
+AND transaction_date>? AND transaction_date<?)` per window); rows held by a
+split are excluded through the two partial `linked_transaction_id` indexes,
+and the checkpoint matches as one `NOT IN` list (it was a correlated scan per
+row). The record reads use `idx_split_expenses_household_date` and a list
+subquery on the checkpoint items' unique index.
+
+### Numbers
+
+Splits page (`/api/splits-page?view=person-tim&month=2025-10`), in-process
+Worker on local D1, 21 timed runs after a warm-up, before (origin/master
+90cf8e38) and after:
+
+| Fixture | Node CPU p50 / p95 | Wall p50 / p95 | Rows read | Match scan |
+| --- | ---: | ---: | ---: | --- |
+| 10k household + 352 settled, before | 2,316 / 2,441 ms | 2,370 / 2,442 ms | 70,256 | 181 records, 4,999 imported rows (20,220 read, 1.08 MB), 2,178 ms alone |
+| same, after | 101 / 136 ms | 166 / 177 ms | 54,306 | 8 records, 920 imported rows (3,704 read, 198 kB), 31 ms alone |
+| Demo + 352 settled, before | 94 / 131 ms | 136 / 152 ms | 17,208 | 4,066 read, 188 kB |
+| same, after | 85 / 124 ms | 130 / 145 ms | 17,574 | 4,432 read, 8 kB |
+| Demo, before | 94 / 114 ms | 116 / 138 ms | 639 | 64 read |
+| same, after | 93 / 127 ms | 123 / 135 ms | 658 | 83 read |
+
+Round trips (22) and the response (20,873 B; 8,049 B on the demo) are
+unchanged, and so are the suggestions on all three fixtures (the page's and
+the loader's, compared as JSON). On the demo fixtures the handler is
+dominated by the rest of the page, so the small differences are noise.
+
+### Proof
+
+- `tests/split-match-open-records.test.mjs` runs the old scan (frozen in
+  `tests/support/split-match-candidates-before.ts`) beside the new one with
+  a bank twin for every unlinked record of the production-shaped history,
+  on the demo seed and on the 10k household: the open records'
+  suggestions are equal value for value and in order; no settled record
+  gets one (the old scan suggested all 178, 4 settle-ups included); Matches, its
+  count in every view and the Imports count agree; reopening or voiding the
+  checkpoint and reopening a closed batch bring the records back. All four
+  tests fail on the old code.
+- `tests/page-load-scale-guard.test.mjs` pins the scan on the 10k household:
+  two record reads and one candidate query, at most 20 records and 2,000
+  imported rows (8,000 read), the page at most 110,000 rows read and under
+  the 600 ms node CPU bound (it was ~2,300 ms).
+
+No visible string or control changed: a settled record simply no longer
+appears in the Matches review or its count.
 
 ### How the numbers stay the same
 

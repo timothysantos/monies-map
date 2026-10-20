@@ -1896,6 +1896,13 @@ other split expense, settlement or settlement checkpoint already holds is
 never offered, because linking it is refused ("already linked"). A suggestion
 never links by itself: the person confirms with Match, as before.
 
+Suggestions are for open records only (owner approved, 2026-10-20). A
+record a settle-up covers (an active settlement checkpoint, or a closed
+batch: the open period's rule) is settled: it sits in a collapsed settled
+section or the archive and is never suggested a bank row, in the Matches
+review, its count, the Imports count or Ask. Reopening or voiding the
+checkpoint, or reopening the batch, brings its records back.
+
 ### Settlement Checkpoint
 
 A person-level snapshot that simplifies open balances across multiple split

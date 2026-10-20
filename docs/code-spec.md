@@ -99,9 +99,20 @@ Rules that keep it so:
   records: Splits page 22 round trips and ~21 kB (was 20 and ~390 kB),
   the 287-row section 8 round trips and ~70 ms locally. The same test pins
   that no settled row is in the page, at most 24 round trips and 30 kB, and
-  the section read at 8 round trips. The page's handler time there (~2.3 s
-  locally) is the bank-match suggestion scan (`loadSplitMatchCandidates`
-  over every unlinked record, settled or not), not the settled rows.
+  the section read at 8 round trips.
+- A page never computes for rows nobody can act on. The bank-match
+  suggestion scan (`loadSplitMatchCandidates`: Splits, Imports' count, Ask)
+  reads only open, unlinked split records (scope `awaiting-match`: not in
+  an active checkpoint, not in a closed batch), so a settled record neither
+  gets a suggestion nor widens the date windows of imported rows read, and
+  each record compares only the rows within its own window. On the same 10k
+  household: the scan reads 8 records and 920 imported rows (3,704 read,
+  198 kB) instead of 181 and 4,999 (20,220 read, 1.08 MB); the Splits
+  handler's node CPU is ~100 ms p50 / ~135 ms p95 over 21 runs, was ~2,320
+  / ~2,440 ms. The guard pins the scan to its two record reads and one
+  candidate query, at most 20 records and 2,000 imported rows, and the page
+  under the 600 ms CPU bound (`tests/split-match-open-records.test.mjs`
+  proves the open records' suggestions are unchanged).
 
 ## Performance Budgets
 
