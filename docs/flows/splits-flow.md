@@ -277,7 +277,18 @@ Watch area:
 - the category breakdown donut is built on the page from the open group's
   open expenses (`deriveGroupFigures` in `splits-selectors.js`), formatted in
   that group's currency. The page sends no donut of its own, so there is no
-  second copy to disagree with the chip. Yen are never added to dollars
+  second copy to disagree with the chip. A person's donut has a "Your share |
+  Whole group" switch (`splits-donut-mode-switch.jsx`, radio group "What the
+  chart adds up", the `lead-view-switch` look, 44 px targets): Your share
+  charts that person's share of each open expense (centre "Your share since
+  last settle-up" / "Your share"); Whole group charts each category's full
+  amount from the same open set (`wholeGroupDonutChart` of
+  `deriveGroupFigures`), its centre equal to the chip with the chip's words
+  ("Since last settle-up" / "Group spend"). The choice is kept in
+  `localStorage` per device (`splits-donut-mode.js`), survives a group change
+  and an unreadable store falls back to Your share. The everyone reading has
+  one chart (the Household pill is disabled on Splits) and renders no switch.
+  Switching never replays the sweep. Yen are never added to dollars
   (DOMAIN.md, "Split currency in charts"); `split-currency-display.test.mjs`,
   `atomic-writes-travel-split-home-amounts.test.mjs` and
   `splits-figures-agree.test.mjs` cover it

@@ -707,7 +707,12 @@ always know you are working on shared money rather than your bank ledger.
   entry count and the balance; a group you have never settled up reads **Group
   spend** and adds up everything. The chart behind it shows your own share of
   that same spending and says so in its middle ("Your share since last
-  settle-up"), so with half each it is half of the chip, not a different total. The
+  settle-up"), so with half each it is half of the chip, not a different total.
+  A small switch above the chart, **Your share** or **Whole group**, changes
+  what it adds up: **Whole group** charts the full amount of each expense, and
+  its middle ("Since last settle-up", or "Group spend" for a group never
+  settled up) is exactly the number on the chip. Your choice is kept on this
+  device. The
   insights follow the same rule: what they say about "now" counts only what has
   not been settled up, and a fun fact about the whole group says "(settled or
   not, since 2 Apr)". **History** is quiet and **Settle group** is
