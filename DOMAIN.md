@@ -1836,7 +1836,13 @@ Every Splits figure for a group reads this one set
   centre equals the chip ("Since last settle-up" or "Group spend"). A person
   view charts that person's own share of each expense, whoever paid, and says
   so: "Your share since last settle-up" or "Your share" while never settled,
-  so its centre cannot be read as the chip's figure;
+  so its centre cannot be read as the chip's figure. A person's donut has two
+  modes, chosen with a switch on the card and kept per device: **Your share**
+  (the default, as above) and **Whole group**, each category's full amount of
+  the same open expenses, whose centre equals the chip to the cent and uses
+  the chip's words ("Since last settle-up" or "Group spend"). For each
+  category, the people's own shares add up to the Whole group amount. The
+  everyone reading has only the whole-group chart and no switch;
 - the money insight "You paid for N% of shared costs": only open expenses
   count, over the last 3 months of the open period, or "since the last
   settle-up" (a group never settled: "in this group"), so its total is the

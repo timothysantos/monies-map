@@ -135,7 +135,13 @@ chips: the other person in their colour and "Spent since last settle-up
 <amount>" (the open period: expenses no settle-up has covered; "Group spend
 <amount>" while the group was never settled; DOMAIN.md, "Group Spend (open
 period)"), which is the old summary strip's category breakdown toggle (it keeps the name "Toggle
-split donut" and `aria-expanded`). History (the `lsd-quiet` action, named
+split donut" and `aria-expanded`). The donut it opens carries a "Your share |
+Whole group" switch (`splits-donut-mode-switch.jsx`): the Plan | Simple
+segmented control (`lead-view-switch`, radio group "What the chart adds up",
+44 px targets, arrow keys from the browser), right-aligned above the chart,
+default Your share, remembered per device (`splits-donut-mode.js`), kept when
+the group changes, absent in the everyone reading. Whole group's centre equals
+the chip. The slices are not openable figures in either mode. History (the `lsd-quiet` action, named
 "Activity history") and Settle group (the one `lsd-primary`; off at zero) share
 the bottom row; a wide screen adds "+ Add expense" between them, in a column
 at the card's right. Simplify settlement stays in the page head on a wide
