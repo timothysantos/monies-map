@@ -1330,6 +1330,15 @@ can still be added after the user verifies the export. Exact and probable
 statement-covered rows remain skipped, and explicitly including the exception
 creates a provisional transaction that a later statement can certify.
 
+Such a row was bought before the cut-off and posted after it. An uncovered
+row dated in the statement's last `LATE_POSTING_DAYS` (3) days is included
+without review, and the commit posts every included activity row inside a
+confirmed cycle on the day after that statement closed (its
+`transaction_date` stays the purchase day). The closed statement's balance
+therefore never moves; the next statement counts the row
+(`src/domain/closed-statement-periods.ts`,
+`tests/activity-after-saved-statement.test.mjs`).
+
 If a statement mismatch is exactly resolved by including unresolved near-match
 rows, probable duplicates, or other app-skipped duplicate rows for that account,
 the preview treats those rows as statement-confirmed instead of duplicate

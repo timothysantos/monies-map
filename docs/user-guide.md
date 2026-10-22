@@ -1868,8 +1868,12 @@ For every import:
   confirmed May 2026 statement as …"). If the statement does not list the
   activity row, it is marked **Needs review** and stays out of the commit until
   you check the source row and choose **Include row**. This keeps an omitted
-  bank activity visible without silently changing a closed statement. Rows
-  after the statement import as usual.
+  bank activity visible without silently changing a closed statement. A row
+  from the statement's last three days that it does not list was bought just
+  before the statement closed and billed on the next one, so it is included
+  and counts toward the next statement. Any activity row you include this way
+  keeps its purchase day but counts toward the next statement, so the closed
+  statement still matches. Rows after the statement import as usual.
 
 A statement preview shows **Matched** for each account when its balance
 agrees with the bank. When every row on the statement is already in your

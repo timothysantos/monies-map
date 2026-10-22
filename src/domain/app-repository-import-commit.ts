@@ -29,6 +29,7 @@ import {
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
+import { loadClosedStatementPeriods, resolveActivityPostDate } from "./closed-statement-periods";
 import {
   buildInvestmentValueCleanupStatement,
   buildInvestmentValueRollbackStatements,
@@ -535,6 +536,8 @@ export async function commitImportBatch(
       }] : [];
     })
   });
+  // An activity row inside a confirmed statement's cycle posts after it.
+  const closedStatementPeriods = isOfficialStatementImport ? [] : await loadClosedStatementPeriods(db);
   const certifiedEntryIds = new Set<string>();
   const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
   const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
@@ -756,7 +759,7 @@ export async function commitImportBatch(
 
       // Promotion fills the bank-cleared lane only. The ledger event date
       // stays pinned to the original manual or split-entered intent date.
-      const promotedPostDate = row.date;
+      const promotedPostDate = resolveActivityPostDate(closedStatementPeriods, accountId, row.date);
 
       write(db
         .prepare(`
@@ -883,7 +886,7 @@ export async function commitImportBatch(
     // bank's posted date. When no hint exists, both lanes collapse to the
     // same day.
     const importedEventDate = resolveImportPreviewEventDate(row);
-    const storedPostDate = row.date;
+    const storedPostDate = resolveActivityPostDate(closedStatementPeriods, accountId, row.date);
 
     stage(db
       .prepare(`
@@ -926,6 +929,7 @@ export async function commitImportBatch(
     });
 
     monthsToRecalculate.add(row.date.slice(0, 7));
+    monthsToRecalculate.add(storedPostDate.slice(0, 7));
 
     // A statement row paired with its bank entry becomes one transfer with it.
     const linkPlan = transferLinkPlans.get(row.rowId);

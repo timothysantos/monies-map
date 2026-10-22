@@ -20,6 +20,7 @@ import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
+import { isLatePosting, loadClosedStatementPeriods, type ClosedStatementPeriod } from "./closed-statement-periods";
 import { formatForeignAmount } from "./foreign-currency";
 import { entryAddedByFromReference } from "./entry-source";
 import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
@@ -185,7 +186,7 @@ export async function buildImportPreview(
   const claimedReconciliationTargetIds = new Set<string>();
   // Confirmed statement periods per account. A mid-cycle row dated inside one
   // must already be on that statement (see applyCertifiedStatementCoverage).
-  const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadCertifiedStatementPeriods(db);
+  const certifiedStatementPeriods = input.sourceType === "pdf" ? [] : await loadClosedStatementPeriods(db);
   const claimedStatementCoverIds = new Set<string>();
   const matchContext = buildPreviewMatchContext(input.rows, ledgerRows, input.defaultAccountName);
   for (const [index, rawRow] of input.rows.entries()) {
@@ -442,48 +443,26 @@ async function matchStatementAccountsByCardLast4(db: D1Database, input: {
   });
 }
 
-interface CertifiedStatementPeriod {
-  accountId: string;
-  checkpointMonth: string;
-  startDate: string | null;
-  endDate: string;
-}
-
-async function loadCertifiedStatementPeriods(db: D1Database): Promise<CertifiedStatementPeriod[]> {
-  const result = await db
-    .prepare(`
-      SELECT certificates.account_id, certificates.checkpoint_month,
-        certificates.statement_start_date, certificates.statement_end_date
-      FROM statement_reconciliation_certificates AS certificates
-      INNER JOIN imports ON imports.id = certificates.import_id AND imports.status = 'completed'
-      WHERE certificates.household_id = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ account_id: string; checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }>();
-  return result.results.map((row) => ({
-    accountId: row.account_id,
-    checkpointMonth: row.checkpoint_month,
-    startDate: row.statement_start_date,
-    endDate: row.statement_end_date ?? getMonthEndDate(row.checkpoint_month)
-  }));
-}
-
 // A confirmed statement is the complete record for its period. A mid-cycle
 // row (CSV/XLS/manual) whose posted date falls inside one for its account is
 // therefore either on that statement or not a real charge on that card:
 // - one of the statement's certified entries with the same signed amount,
 //   inside the velocity window and not taken by another row, covers it: the
 //   row is skipped as already on the statement, however the export words it;
-// - nothing covers it: it needs an explicit user decision before commit, so it
-//   cannot slip into a closed statement and unbalance it. The user can include
-//   it after checking the source row.
+// - nothing covers it and it is dated in the statement's last days: it was
+//   bought before the cut-off and posted after it, so it is included and the
+//   commit posts it the day after the statement closed (closed-statement-
+//   periods.ts);
+// - nothing covers an older one: it needs an explicit user decision before
+//   commit. Included, it also posts after the close, so it never unbalances
+//   the closed statement.
 // Rows the earlier lanes already handled (an exact duplicate, a promotion of
 // a manual entry, an explicit user choice) are only labelled.
 function applyCertifiedStatementCoverage(input: {
   previewRow: ImportPreviewRowDto;
   previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
   ledgerRows: PreviewLedgerRow[];
-  certifiedStatementPeriods: CertifiedStatementPeriod[];
+  certifiedStatementPeriods: ClosedStatementPeriod[];
   claimedStatementCoverIds: Set<string>;
   requestedCommitStatus?: "included" | "skipped" | "needs_review";
   matchContext: PreviewMatchContext;
@@ -546,6 +525,12 @@ function applyCertifiedStatementCoverage(input: {
     previewRow.commitStatus = "skipped";
     previewRow.commitStatusReason = `Already on the confirmed ${monthLabel} statement as ${cover.row.description}.`;
     previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: true };
+    return;
+  }
+
+  if (isLatePosting(period, previewRow.date)) {
+    previewRow.commitStatusReason = `Not on the ${monthLabel} statement, which closed just after it, so it counts toward the next statement.`;
+    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
     return;
   }
 
