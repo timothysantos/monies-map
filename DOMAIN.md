@@ -778,10 +778,11 @@ Important distinctions:
   statement or not a charge on that card: when a certified entry with the
   same signed amount inside the velocity window (and not taken by another
   row) covers it, the row is skipped as already on the statement, however
-  the export words it; when nothing covers it, the row is left out by
-  default with a reason the user reads, and can still be included. This
-  keeps a later activity export from unbalancing a closed statement. The
-  preview row carries `certifiedStatement: { checkpointMonth, covered }`.
+  the export words it; when nothing covers it, the row was bought before
+  the cut-off and billed on the next statement. It is included and keeps its purchase day as `transaction_date` and posts
+  the day after the statement closed, so a later activity export never
+  unbalances a closed statement. The preview row carries
+  `certifiedStatement: { checkpointMonth, covered }`.
 - A statement uploaded again for an account and month that a completed
   import already confirmed names that import on its statement
   reconciliation (`previousStatementImport`: import id, source label,
