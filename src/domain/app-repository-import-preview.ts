@@ -20,7 +20,7 @@ import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
-import { isLatePosting, loadClosedStatementPeriods, type ClosedStatementPeriod } from "./closed-statement-periods";
+import { loadClosedStatementPeriods, type ClosedStatementPeriod } from "./closed-statement-periods";
 import { formatForeignAmount } from "./foreign-currency";
 import { entryAddedByFromReference } from "./entry-source";
 import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
@@ -449,12 +449,9 @@ async function matchStatementAccountsByCardLast4(db: D1Database, input: {
 // - one of the statement's certified entries with the same signed amount,
 //   inside the velocity window and not taken by another row, covers it: the
 //   row is skipped as already on the statement, however the export words it;
-// - nothing covers it and it is dated in the statement's last days: it was
-//   bought before the cut-off and posted after it, so it is included and the
-//   commit posts it the day after the statement closed (closed-statement-
-//   periods.ts);
-// - nothing covers an older one: it needs an explicit user decision before
-//   commit. Included, it also posts after the close, so it never unbalances
+// - nothing covers it: it was bought before the cut-off and billed on the
+//   next statement. It is included and the commit posts it the day after the
+//   statement closed (closed-statement-periods.ts), so it never unbalances
 //   the closed statement.
 // Rows the earlier lanes already handled (an exact duplicate, a promotion of
 // a manual entry, an explicit user choice) are only labelled.
@@ -528,14 +525,10 @@ function applyCertifiedStatementCoverage(input: {
     return;
   }
 
-  if (isLatePosting(period, previewRow.date)) {
-    previewRow.commitStatusReason = `Not on the ${monthLabel} statement, which closed just after it, so it counts toward the next statement.`;
-    previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
-    return;
-  }
-
-  previewRow.commitStatus = "needs_review";
-  previewRow.commitStatusReason = `Dated inside the confirmed ${monthLabel} statement, but that statement does not list it. Review the source row before importing it.`;
+  // The statement's certified rows are its complete record, so a row it
+  // does not have was billed on the next one. The commit posts it the day
+  // after this statement closed.
+  previewRow.commitStatusReason = `Not on the confirmed ${monthLabel} statement, so it counts toward the next statement.`;
   previewRow.certifiedStatement = { checkpointMonth: period.checkpointMonth, covered: false };
 }
 

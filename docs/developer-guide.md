@@ -1322,22 +1322,16 @@ popover in the preview so a mismatch can be inspected without restoring the row
 first.
 
 An activity row dated inside a confirmed statement that has no certified
-same-amount cover is a separate accounting exception. Preview marks it
-`needs_review`, keeps it out of the commit payload, and shows the source-row
-reason beside an **Include row** action. This is deliberate: the closed
-statement remains authoritative by default, while a genuinely omitted bank row
-can still be added after the user verifies the export. Exact and probable
-statement-covered rows remain skipped, and explicitly including the exception
-creates a provisional transaction that a later statement can certify.
-
-Such a row was bought before the cut-off and posted after it. An uncovered
-row dated in the statement's last `LATE_POSTING_DAYS` (3) days is included
-without review, and the commit posts every included activity row inside a
-confirmed cycle on the day after that statement closed (its
-`transaction_date` stays the purchase day). The closed statement's balance
-therefore never moves; the next statement counts the row
+same-amount cover was billed on the next statement: the certified rows are
+the statement's complete record, so the app already knows the row is not
+part of it. Preview includes it ("Not on the confirmed … statement, so it
+counts toward the next statement.") and the commit posts it on the day after
+that statement closed, keeping `transaction_date` as the purchase day. The
+closed statement's balance never moves, and a row that never reaches the
+next statement shows up in that statement's own check
 (`src/domain/closed-statement-periods.ts`,
-`tests/activity-after-saved-statement.test.mjs`).
+`tests/activity-after-saved-statement.test.mjs`). Exact and probable
+statement-covered rows remain skipped.
 
 If a statement mismatch is exactly resolved by including unresolved near-match
 rows, probable duplicates, or other app-skipped duplicate rows for that account,

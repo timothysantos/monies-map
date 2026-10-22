@@ -15,11 +15,6 @@ export interface ClosedStatementPeriod {
   endDate: string;
 }
 
-// A row this many days before the close or less is ordinary posting lag:
-// the preview carries it to the next statement without asking. An older one
-// still needs the person's review.
-export const LATE_POSTING_DAYS = 3;
-
 export async function loadClosedStatementPeriods(db: D1Database): Promise<ClosedStatementPeriod[]> {
   const result = await db
     .prepare(`
@@ -55,10 +50,6 @@ export function findClosedStatementPeriod(periods: ClosedStatementPeriod[], acco
 export function resolveActivityPostDate(periods: ClosedStatementPeriod[], accountId: string | null | undefined, date: string) {
   const period = findClosedStatementPeriod(periods, accountId, date);
   return period ? addDays(period.endDate, 1) : date;
-}
-
-export function isLatePosting(period: ClosedStatementPeriod, date: string) {
-  return date >= addDays(period.endDate, -LATE_POSTING_DAYS);
 }
 
 function addDays(date: string, days: number) {

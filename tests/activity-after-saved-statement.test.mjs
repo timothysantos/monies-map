@@ -164,7 +164,7 @@ test("an export for a card with no saved statement keeps every row on its own da
   assert.equal(shifted[0].count, 0);
 });
 
-test("an older row the statement does not list still needs review, and included it posts after the close", async (t) => {
+test("an older row the statement does not list is carried to the next statement too", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const parsed = parseCitibankActivityCsv(CSV, "ACCT_349_01_09_2026.csv", { accountName: CITI, accountKind: "credit_card", institution: "Citibank" });
   // As if the statement had left out the 5 Sep CHABAIKDO charge.
@@ -182,18 +182,11 @@ test("an older row the statement does not list still needs review, and included 
   });
   const previewRows = preview.payload.preview.previewRows;
   const older = previewRows.find(isChabaikdo);
-  assert.deepEqual([older.commitStatus, older.commitStatusReason], [
-    "needs_review",
-    "Dated inside the confirmed September 2026 statement, but that statement does not list it. Review the source row before importing it."
-  ]);
+  const reason = "Not on the confirmed September 2026 statement, so it counts toward the next statement.";
+  assert.deepEqual([older.commitStatus, older.commitStatusReason], ["included", reason]);
   const late = previewRows.find((row) => row.date === "2026-09-10" && row.amountMinor === 2822);
-  assert.deepEqual([late.commitStatus, late.commitStatusReason], [
-    "included",
-    "Not on the September 2026 statement, which closed just after it, so it counts toward the next statement."
-  ]);
+  assert.deepEqual([late.commitStatus, late.commitStatusReason], ["included", reason]);
 
-  // The person checks the source row and includes it.
-  older.commitStatus = "included";
   const commit = await api("/api/imports/commit", {
     sourceLabel: parsed.sourceLabel,
     sourceType: "csv",
