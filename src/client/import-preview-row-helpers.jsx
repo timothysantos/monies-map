@@ -34,11 +34,13 @@ export function RestoreRowDialog({ target, onClose, onConfirm }) {
 }
 
 export function formatDuplicateMatch(match) {
-  return messages.common.triplet(
+  const summary = messages.common.triplet(
     formatImportPreviewDate(match.date),
     match.accountName ?? messages.common.emptyValue,
     formatService.formatMinorInput(match.amountMinor)
   );
+  const origin = importMessages.duplicateMatchOrigin[match.existingAddedBy ?? match.existingSourceType];
+  return origin ? `${summary} • ${origin}` : summary;
 }
 
 function formatImportPreviewDate(value) {
