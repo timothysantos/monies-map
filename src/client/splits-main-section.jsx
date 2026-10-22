@@ -15,6 +15,8 @@ export function SplitsMainSection({
   lead,
   donutRows,
   donutChart,
+  wholeGroupDonutChart,
+  wholeGroupDonutRows,
   categories,
   groupOptions,
   people,
@@ -83,6 +85,9 @@ export function SplitsMainSection({
         activeGroup={activeGroup}
         donutRows={donutRows}
         donutChart={donutChart}
+        wholeGroupDonutChart={wholeGroupDonutChart}
+        wholeGroupDonutRows={wholeGroupDonutRows}
+        isHousehold={viewId === "household"}
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}

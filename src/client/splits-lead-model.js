@@ -34,7 +34,9 @@ export function buildSplitsLead({ group, viewId, people, areTotalsVisible, spend
     // person's own share, so it says "Your share" and cannot read as the chip.
     donutLabel: isHousehold
       ? (hasSettledBefore ? copy.sinceSettleUp : copy.groupSpend)
-      : (hasSettledBefore ? copy.yourShareSinceSettleUp : copy.yourShare)
+      : (hasSettledBefore ? copy.yourShareSinceSettleUp : copy.yourShare),
+    // The "Whole group" reading's centre: the chip's own words, whoever looks.
+    wholeGroupDonutLabel: hasSettledBefore ? copy.sinceSettleUp : copy.groupSpend
   };
 
   // The household has no "you": the spend leads and no balance is claimed.

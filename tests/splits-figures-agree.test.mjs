@@ -14,6 +14,7 @@ import {
 } from "../src/domain/money-signals/splits-signals.ts";
 import { findAppJargon } from "../src/domain/money-signals/tone.ts";
 import { buildSplitsLead } from "../src/client/splits-lead-model.js";
+import { createDonutModeStore, resolveDonutMode } from "../src/client/splits-donut-mode.js";
 
 // Every Splits figure for a group uses ONE set: the open period (expenses no
 // settle-up has covered). A figure that is deliberately about the whole group
@@ -99,6 +100,7 @@ function build({ expenses = [...settledExpenses, ...openExpenses, elsewhere], ch
     totalExpenseMinor: figures.spendMinor,
     hasSettledBefore: figures.hasSettledBefore,
     donutChart: figures.donutChart,
+    wholeGroupDonutChart: figures.wholeGroupDonutChart,
     groupActivity
   };
   const lead = buildSplitsLead({
@@ -272,4 +274,95 @@ test("buildOpenPeriodDonut skips settlements, settled expenses and zero shares",
   ];
   assert.deepEqual(buildOpenPeriodDonut(activity, [], "p1").map(({ label, valueMinor, entryCount }) => ({ label, valueMinor, entryCount })), [{ label: "A", valueMinor: 400, entryCount: 1 }]);
   assert.deepEqual(buildOpenPeriodDonut(activity, [], "household").map(({ label, valueMinor }) => [label, valueMinor]), [["A", 900], ["B", 100]]);
+});
+
+// Donut modes: "Your share" (the person's own share of each open expense) and
+// "Whole group" (each category's full amount, the chip's own set).
+
+const sumOf = (chart) => chart.reduce((sum, item) => sum + item.valueMinor, 0);
+const byLabel = (chart) => Object.fromEntries(chart.map((item) => [item.label, item.valueMinor]));
+
+test("Whole group: the centre figure equals the chip to the cent, per category the full amounts", () => {
+  for (const viewId of ["person-tim", "person-joyce", "household"]) {
+    const { model, lead } = build({ viewId });
+    assert.equal(sumOf(model.wholeGroupDonutChart), lead.spendMinor);
+    assert.deepEqual(byLabel(model.wholeGroupDonutChart), { Transport: 20_000, "Food & Drinks": 10_000 });
+  }
+  // Never settled: the chip says Group spend and so does the whole-group centre.
+  const never = build({ checkpoints: [], viewId: "person-tim" });
+  assert.equal(sumOf(never.model.wholeGroupDonutChart), never.lead.spendMinor);
+  assert.equal(never.lead.wholeGroupDonutLabel, "Group spend");
+  assert.equal(build({ viewId: "person-tim" }).lead.wholeGroupDonutLabel, "Since last settle-up");
+  // Negative: it never counts Bali's villa or the settled expenses.
+  assert.ok(!byLabel(build({ viewId: "person-tim" }).model.wholeGroupDonutChart).Travel);
+});
+
+test("Whole group follows the search like the chip", () => {
+  const { model, lead } = build({ viewId: "person-tim", searchQuery: "taxi" });
+  assert.equal(sumOf(model.wholeGroupDonutChart), 20_000);
+  assert.equal(lead.spendMinor, 20_000);
+});
+
+test("the people's shares add up to the whole group per category: even, and uneven whoever paid", () => {
+  const uneven = (id, total, categoryName, payer, timShare) => expense(id, "2026-10-01", total, {
+    categoryName,
+    payerPersonId: payer,
+    payerPersonName: payer === "person-tim" ? "Tim" : "Joyce",
+    shares: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: Math.round((timShare / total) * 10_000), amountMinor: timShare },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10_000 - Math.round((timShare / total) * 10_000), amountMinor: total - timShare }
+    ]
+  });
+  const expenses = [
+    uneven("u1", 9_001, "Food & Drinks", "person-tim", 3_000),
+    uneven("u2", 12_345, "Food & Drinks", "person-joyce", 10_001),
+    uneven("u3", 5_555, "Transport", "person-joyce", 1_234),
+    uneven("u4", 777, "Travel", "person-tim", 777)
+  ];
+  const tim = build({ expenses, checkpoints: [], viewId: "person-tim" });
+  const joyce = build({ expenses, checkpoints: [], viewId: "person-joyce" });
+  const whole = byLabel(tim.model.wholeGroupDonutChart);
+  assert.deepEqual(whole, { "Food & Drinks": 21_346, Transport: 5_555, Travel: 777 });
+  for (const label of Object.keys(whole)) {
+    assert.equal((byLabel(tim.model.donutChart)[label] ?? 0) + (byLabel(joyce.model.donutChart)[label] ?? 0), whole[label], label);
+  }
+  assert.equal(sumOf(tim.model.wholeGroupDonutChart), tim.lead.spendMinor);
+  // Your share differs from the whole group, so the two modes are not one chart.
+  assert.notDeepEqual(tim.model.donutChart, tim.model.wholeGroupDonutChart);
+  assert.equal(byLabel(tim.model.donutChart)["Food & Drinks"], 13_001);
+  assert.equal(byLabel(joyce.model.donutChart)["Food & Drinks"], 8_345);
+});
+
+test("a foreign-currency group uses the same home amounts as the chip in both modes", () => {
+  const jpy = (id, total) => expense(id, "2026-10-02", total, { currency: "JPY", categoryName: "Travel" });
+  const { model, lead } = build({ expenses: [jpy("j1", 1_200_000), jpy("j2", 345_000)], checkpoints: [], viewId: "person-tim" });
+  assert.equal(lead.spendMinor, 1_545_000);
+  assert.equal(sumOf(model.wholeGroupDonutChart), lead.spendMinor);
+  assert.equal(sumOf(model.donutChart), 772_500);
+});
+
+test("the household reading has one chart: whole group equals the donut, and no switch applies", () => {
+  const { model } = build({ viewId: "household" });
+  assert.deepEqual(model.wholeGroupDonutChart, model.donutChart);
+  assert.equal(resolveDonutMode("group", true), "group");
+  assert.equal(resolveDonutMode("share", true), "group");
+  assert.equal(resolveDonutMode("share", false), "share");
+  assert.equal(resolveDonutMode("group", false), "group");
+  // Negative: anything unknown is the default, Your share.
+  assert.equal(resolveDonutMode("both", false), "share");
+  assert.equal(resolveDonutMode(null, false), "share");
+});
+
+test("the donut mode is remembered on the device, and blocked storage still works", () => {
+  const data = new Map();
+  const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
+  const store = createDonutModeStore(storage);
+  assert.equal(store.read(), "share");
+  store.write("group");
+  assert.equal(createDonutModeStore(storage).read(), "group");
+  store.write("nonsense");
+  assert.equal(createDonutModeStore(storage).read(), "group");
+  const blocked = createDonutModeStore({ getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } });
+  assert.equal(blocked.read(), "share");
+  assert.doesNotThrow(() => blocked.write("group"));
 });

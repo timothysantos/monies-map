@@ -142,6 +142,86 @@ for (const [name, size] of [["desktop", { width: 1280, height: 800 }], ["phone",
       await expect(page.locator(".financial-insight-splits")).not.toContainText("settled or not");
     });
 
+    test("the donut switch: Whole group centre equals the chip, the choice survives a reload and a group change", async ({ page }) => {
+      const { groupId } = await createSettledGroup(page, Date.now());
+      await openGroup(page, groupId, "person-tim");
+      const chip = page.locator(".splits-lead [data-chip='group-spend']");
+      await chip.click();
+      const panel = page.locator(".split-donut-panel");
+      const group = panel.getByRole("radiogroup", { name: "What the chart adds up" });
+      await expect(group.locator("label")).toHaveText(["Your share", "Whole group"]);
+      // Default: Your share, as before.
+      await expect(group.getByRole("radio", { name: "Your share" })).toBeChecked();
+      await expect(panel.locator(".donut-center strong")).toHaveText("$37.50");
+      // Each radio covers a 44 px target.
+      for (const radio of await group.getByRole("radio").all()) {
+        expect((await radio.boundingBox()).height).toBeGreaterThanOrEqual(44);
+      }
+
+      await group.getByText("Whole group").click();
+      await expect(panel.locator(".donut-center > span")).toHaveText("Since last settle-up");
+      await expect(panel.locator(".donut-center strong")).toHaveText("$75.00");
+      const rows = panel.locator(".entries-breakdown-list .category-row");
+      await expect(rows).toHaveCount(1);
+      await expect(rows.first()).toContainText("$75.00");
+      await expect(rows.first()).toContainText("2 entries");
+      expect(money(await panel.locator(".donut-center strong").innerText())).toBe(money(await chip.locator(".splits-lead-spend").innerText()));
+      await expect(panel).not.toContainText("$37.50");
+
+      // Remembered on this device.
+      await page.reload();
+      await page.locator(".splits-lead").waitFor();
+      await page.locator(".splits-lead [data-chip='group-spend']").click();
+      await expect(page.locator(".split-donut-panel .donut-center strong")).toHaveText("$75.00");
+      await expect(page.getByRole("radio", { name: "Whole group" })).toBeChecked();
+
+      // Another group keeps the choice (and a never-settled group says Group spend).
+      const stamp = Date.now();
+      const never = await postJson(page, "/api/splits/groups/create", { name: `Never ${stamp}`, currency: "SGD", expenseSource: "mixed" });
+      await createExpense(page, never.groupId, `Only ${stamp}`, `${month}-02`, 10_000);
+      await openGroup(page, never.groupId, "person-tim");
+      await page.locator(".splits-lead [data-chip='group-spend']").click();
+      await expect(page.getByRole("radio", { name: "Whole group" })).toBeChecked();
+      await expect(page.locator(".split-donut-panel .donut-center > span")).toHaveText("Group spend");
+      await expect(page.locator(".split-donut-panel .donut-center strong")).toHaveText("$100.00");
+    });
+
+    test("the donut switch works from the keyboard", async ({ page }) => {
+      const { groupId } = await createSettledGroup(page, Date.now());
+      await openGroup(page, groupId, "person-tim");
+      await page.locator(".splits-lead [data-chip='group-spend']").click();
+      const panel = page.locator(".split-donut-panel");
+      await panel.getByRole("radio", { name: "Your share" }).focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(panel.getByRole("radio", { name: "Whole group" })).toBeChecked();
+      await expect(panel.locator(".donut-center strong")).toHaveText("$75.00");
+      await page.keyboard.press("ArrowLeft");
+      await expect(panel.getByRole("radio", { name: "Your share" })).toBeChecked();
+      await expect(panel.locator(".donut-center strong")).toHaveText("$37.50");
+    });
+
+    test("Splits has no everyone reading to switch: a household address falls back to a person, who has the switch", async ({ page }) => {
+      const { groupId } = await createSettledGroup(page, Date.now());
+      await openGroup(page, groupId, "household");
+      // The Household pill is disabled on Splits, so the donut is always a
+      // person's; the household's single chart (no switch) is unit-tested.
+      await expect(page.locator(".pill-disabled")).toHaveText("Household");
+      await page.locator(".splits-lead [data-chip='group-spend']").click();
+      await expect(page.locator("[data-donut-mode-switch]")).toBeVisible();
+    });
+
+    test("hidden money: Whole group keeps its label and shows no figure", async ({ page }) => {
+      const { groupId } = await createSettledGroup(page, Date.now());
+      await openGroup(page, groupId, "person-tim");
+      await page.locator(".splits-lead [data-chip='group-spend']").click();
+      await page.getByRole("button", { name: "Hide money totals" }).first().click();
+      const panel = page.locator(".split-donut-panel");
+      await panel.getByText("Whole group").click();
+      await expect(panel.locator(".donut-center > span")).toHaveText("Since last settle-up");
+      await expect(panel.locator(".donut-center strong")).toHaveText("••••");
+      await expect(panel).not.toContainText("$75.00");
+    });
+
     test("hidden money keeps the labels and shows no figure anywhere", async ({ page }) => {
       const { groupId } = await createSettledGroup(page, Date.now());
       await openGroup(page, groupId, "person-tim");

@@ -194,9 +194,15 @@ export function deriveGroupFigures(input: {
   categories: Array<{ id?: string; name: string }>;
   viewId: string;
 }) {
+  const donutChart = buildOpenPeriodDonut(input.shownActivity, input.categories, input.viewId);
   return {
     spendMinor: summariseOpenPeriod(input.shownActivity).spendMinor,
     hasSettledBefore: summariseOpenPeriod(input.groupActivity).hasSettledBefore,
-    donutChart: buildOpenPeriodDonut(input.shownActivity, input.categories, input.viewId)
+    donutChart,
+    // The "Whole group" reading of the donut: each category's full amount, the
+    // chip's own set, whoever's view it is. The household's donut already is it.
+    wholeGroupDonutChart: input.viewId === "household"
+      ? donutChart
+      : buildOpenPeriodDonut(input.shownActivity, input.categories, "household")
   };
 }

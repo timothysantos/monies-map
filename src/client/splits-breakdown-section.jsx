@@ -13,6 +13,8 @@ import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { SplitsLeadCard } from "./splits-lead-card";
+import { SplitsDonutModeSwitch } from "./splits-donut-mode-switch";
+import { createDonutModeStore, resolveDonutMode } from "./splits-donut-mode";
 import { paletteColour } from "./palette-colour";
 import { rowMotionProps } from "./row-motion";
 
@@ -26,6 +28,10 @@ export function SplitsBreakdownSection({
   activeGroup,
   donutRows,
   donutChart,
+  wholeGroupDonutChart = donutChart,
+  wholeGroupDonutRows = donutRows,
+  // The household reading has one chart, so no switch.
+  isHousehold = false,
   categories,
   onToggleBreakdown,
   onAddExpense,
@@ -36,10 +42,25 @@ export function SplitsBreakdownSection({
   readOnly = false
 }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
+  // "Your share" or "Whole group", kept on this device and across groups.
+  const modeStore = useMemo(() => createDonutModeStore(), []);
+  const [storedMode, setStoredMode] = useState(() => modeStore.read());
+  const mode = resolveDonutMode(storedMode, isHousehold);
+  const isWholeGroup = mode === "group";
+  const shownChart = isWholeGroup ? wholeGroupDonutChart : donutChart;
+  const shownRows = isWholeGroup ? wholeGroupDonutRows : donutRows;
+  const centreLabel = isWholeGroup && !isHousehold
+    ? lead?.wholeGroupDonutLabel
+    : lead?.donutLabel;
   const visibleDonutChart = useMemo(
-    () => getVisibleDonutData(donutChart, hiddenCategoryIds),
-    [donutChart, hiddenCategoryIds]
+    () => getVisibleDonutData(shownChart, hiddenCategoryIds),
+    [shownChart, hiddenCategoryIds]
   );
+
+  function chooseMode(next) {
+    setStoredMode(next);
+    modeStore.write(next);
+  }
   const visibleTotalMinor = sumDonutValueMinor(visibleDonutChart);
 
   function toggleCategoryVisibility(item) {
@@ -70,13 +91,15 @@ export function SplitsBreakdownSection({
       {showBreakdown ? (
         <section className="split-donut-panel">
           {donutRows.length ? (
+            <>
+            {isHousehold ? null : <SplitsDonutModeSwitch mode={mode} onChange={chooseMode} />}
             <div className="entries-breakdown-panel split-breakdown-panel">
               <div className="entries-breakdown-chart">
                 <SpendingMixChart
                   data={visibleDonutChart}
                   categories={categories}
                   totalMinor={visibleTotalMinor}
-                  totalLabel={lead?.donutLabel ?? messages.entries.totalSpend}
+                  totalLabel={centreLabel ?? messages.entries.totalSpend}
                   currency={currency}
                   compact
                   height={300}
@@ -90,7 +113,7 @@ export function SplitsBreakdownSection({
                 ) : null}
               </div>
               <div className="entries-breakdown-list category-list">
-                {donutRows.map((item) => (
+                {shownRows.map((item) => (
                   <button
                     key={item.key}
                     type="button"
@@ -112,6 +135,7 @@ export function SplitsBreakdownSection({
                 ))}
               </div>
             </div>
+            </>
           ) : (
             <EmptyState>{messages.splits.noEntries}</EmptyState>
           )}

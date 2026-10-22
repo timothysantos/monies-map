@@ -68,7 +68,7 @@ export function buildSplitsPanelModel({
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
   // The chip, the donut and the label all read the one open period (the
   // search narrows them like the list under them).
-  const { spendMinor, hasSettledBefore: hasSettledInPage, donutChart } = deriveGroupFigures({
+  const { spendMinor, hasSettledBefore: hasSettledInPage, donutChart, wholeGroupDonutChart } = deriveGroupFigures({
     groupActivity: activeGroupActivity,
     shownActivity: currentGroupActivity,
     categories,
@@ -90,6 +90,9 @@ export function buildSplitsPanelModel({
     groupFacts: splitsPage.groupFacts?.[activeGroupId] ?? null,
     donutChart,
     donutRows: buildDonutRows(donutChart, categories),
+    // The "Whole group" reading (same object as the donut for everyone's view).
+    wholeGroupDonutChart,
+    wholeGroupDonutRows: buildDonutRows(wholeGroupDonutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
     groupBalanceMinor,
     groupedCurrentActivity,

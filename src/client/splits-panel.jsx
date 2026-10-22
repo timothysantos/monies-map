@@ -180,6 +180,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     categoryOptions,
     donutChart,
     donutRows,
+    wholeGroupDonutChart,
+    wholeGroupDonutRows,
     groupedCurrentActivity,
     groupBalanceMinor,
     groups,
@@ -1436,6 +1438,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         lead={selectedMode === "matches" ? null : lead}
         donutRows={donutRows}
         donutChart={donutChart}
+        wholeGroupDonutChart={wholeGroupDonutChart}
+        wholeGroupDonutRows={wholeGroupDonutRows}
         categories={categories}
         groupOptions={groupOptions}
         people={people}
