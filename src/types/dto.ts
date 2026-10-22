@@ -1177,6 +1177,8 @@ export interface ReconciliationCandidateDto {
   existingTransactionId?: string;
   existingAccountId?: string;
   existingSourceType?: "csv" | "pdf" | "manual";
+  // The tool that saved a manual entry (Apple Pay Shortcut or Ask), if any.
+  existingAddedBy?: EntryAddedBy;
   existingBankCertificationStatus?: "provisional" | "statement_certified";
   date: string;
   postedDate?: string;

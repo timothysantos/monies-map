@@ -632,6 +632,14 @@ export const importMessages = {
   duplicateMatchKindProbable: "Probable match",
   duplicateMatchKindNear: "Near match",
   duplicateRowDetail: (match) => `Already in ledger: ${match}`,
+  // What the existing ledger row came from, shown after its date, card and amount.
+  duplicateMatchOrigin: {
+    apple_pay_shortcut: "Apple Pay entry",
+    ask: "Added in Ask",
+    manual: "Manual entry",
+    csv: "Mid-cycle export",
+    pdf: "PDF statement"
+  },
   viewLedgerMatch: "View match",
   duplicateMatchPopoverTitle: "Ledger match",
   duplicateMatchPopoverDetail: "Compare the incoming row with the existing ledger row before deciding.",

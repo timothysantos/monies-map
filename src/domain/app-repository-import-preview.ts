@@ -21,6 +21,7 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import { formatForeignAmount } from "./foreign-currency";
+import { entryAddedByFromReference } from "./entry-source";
 import { findNoLongerListedEntries, loadUnlistedEstimates } from "./import-no-longer-listed-entries";
 import { loadWrongCardEvidence, toWrongCardDuplicateDtos } from "./import-wrong-card-duplicates";
 import {
@@ -89,6 +90,7 @@ export async function buildImportPreview(
         transactions.post_date,
         transactions.description,
         transactions.note,
+        transactions.external_reference,
         transactions.amount_minor,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -118,6 +120,7 @@ export async function buildImportPreview(
       post_date: string | null;
       description: string;
       note: string | null;
+      external_reference: string | null;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
@@ -1203,6 +1206,7 @@ function mapCandidateToReconciliationMatch(
     transaction_date: string;
     post_date: string | null;
     description: string;
+    external_reference?: string | null;
     amount_minor: number;
     bank_certification_status: "provisional" | "statement_certified";
     account_name: string;
@@ -1212,6 +1216,7 @@ function mapCandidateToReconciliationMatch(
   },
   matchKind: "exact" | "probable" | "near"
 ) {
+  const addedBy = entryAddedByFromReference(candidate.external_reference);
   return {
     ...(candidate.original_currency && candidate.original_amount_minor != null
       ? { originalAmount: formatForeignAmount(Number(candidate.original_amount_minor), candidate.original_currency), currency: candidate.currency }
@@ -1220,6 +1225,7 @@ function mapCandidateToReconciliationMatch(
     existingTransactionId: candidate.transaction_id,
     existingAccountId: candidate.account_id,
     existingSourceType: candidate.source_type,
+    ...(addedBy ? { existingAddedBy: addedBy } : {}),
     existingBankCertificationStatus: candidate.bank_certification_status,
     date: candidate.transaction_date,
     ...(candidate.post_date ? { postedDate: candidate.post_date } : {}),

@@ -760,6 +760,8 @@ test("current-activity import promotes shortcut rows with compact merchant alias
   const previewRow = preview.preview.previewRows[0];
   expect(previewRow.reconciliationTargetTransactionId).toBe(created.entryId);
   expect(previewRow.reconciliationMatch?.existingSourceType).toBe("manual");
+  // Typed by hand (no Shortcut or Ask reference), so no tool is named.
+  expect(previewRow.reconciliationMatch?.existingAddedBy).toBeUndefined();
   expect(previewRow.reconciliationMatch?.matchKind).toBe("probable");
   expect(previewRow.commitStatus).toBe("included");
   expect(previewRow.commitStatusReason).toContain("Matches the entry you added.");

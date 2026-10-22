@@ -1861,7 +1861,10 @@ For every import:
   positive number, as printed by the bank.
 - **Rows**: each row can be **Exclude row** or **Include row**. A row marked
   **Matched to ledger** will confirm an entry you already have instead of
-  adding a duplicate. **View match** compares the two side by side.
+  adding a duplicate. The line under it ends with where your existing entry
+  came from: **Apple Pay entry**, **Added in Ask**, **Manual entry**,
+  **Mid-cycle export** or **PDF statement**. **View match** compares the two
+  side by side.
 - **Already covered rows**: duplicates the app skipped. They stay visible; use
   **Include row** only if the match was wrong.
 - **Activity inside a confirmed statement**: a statement you committed is the

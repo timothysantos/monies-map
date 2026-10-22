@@ -583,11 +583,13 @@ function getPreviewRowStatementAccountName(row) {
 }
 
 function formatDuplicateMatch(match) {
-  return messages.common.triplet(
+  const summary = messages.common.triplet(
     formatService.formatDateOnly(match.date),
     match.accountName ?? messages.common.emptyValue,
     formatService.formatMinorInput(match.amountMinor)
   );
+  const origin = importMessages.duplicateMatchOrigin[match.existingAddedBy ?? match.existingSourceType];
+  return origin ? `${summary} • ${origin}` : summary;
 }
 
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {
