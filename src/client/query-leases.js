@@ -5,7 +5,10 @@
 
 import { hashKey, isCancelledError } from "@tanstack/react-query";
 
-import { WARMUP_LIMITS } from "./route-warmup-policy.js";
+// How long an optional (speculative) read may run before it is cancelled. The
+// warmup policy (route-warmup-policy.js, loaded after the first screen) lists
+// it with its other limits.
+export const SPECULATIVE_DEADLINE_MS = 1500;
 
 export function createRequiredLeases() {
   const counts = new Map();
@@ -165,7 +168,7 @@ export function startSpeculativeQuery(queryClient, {
   fetcher,
   leases = requiredLeases,
   clock = globalThis,
-  deadlineMs = WARMUP_LIMITS.speculativeDeadlineMs
+  deadlineMs = SPECULATIVE_DEADLINE_MS
 }) {
   const findQuery = () => queryClient.getQueryCache().find({ queryKey, exact: true });
   if (leases.isRequired(queryKey)) {

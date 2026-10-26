@@ -21,7 +21,8 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { useIsMobileLayout } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
-import { DetailRow, DetailRows, SimpleDetail } from "./ui-components";
+import { DetailRow, DetailRows } from "./ui/lead-support-detail";
+import { SimpleDetail } from "./ui/spend-lead-group";
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
 // Spending Mix sits under the lead and the insights: its section (the list,

@@ -1,6 +1,6 @@
 import { getCurrentMonthKey } from "../lib/month";
 import { formatSummaryLeadRange } from "./summary-lead-model";
-import { SpendLeadGroup } from "./ui-components";
+import { SpendLeadGroup } from "./ui/spend-lead-group";
 import { useIsMobileLayout } from "./use-viewport";
 
 // The Summary top (design.md, "Lead · Support · Detail" and "Summary lead"):

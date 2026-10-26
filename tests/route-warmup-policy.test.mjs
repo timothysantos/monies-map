@@ -9,6 +9,7 @@ import {
   selectWarmupCandidates,
   selectWarmupMode
 } from "../src/client/route-warmup-policy.js";
+import { SPECULATIVE_DEADLINE_MS } from "../src/client/query-leases.js";
 
 const NOW = 1_000_000;
 
@@ -202,6 +203,13 @@ test("quiet period: mobile 1,999 denied / 2,000 allowed; desktop 1,199 / 1,200",
   assert.equal(quiet("desktop", 1_200).allowed, true);
   assert.equal(WARMUP_LIMITS.mobile.quietMs, 2_000);
   assert.equal(WARMUP_LIMITS.desktop.quietMs, 1_200);
+});
+
+// The policy lists the limit without importing query-leases (a first-screen
+// module), so the lazy warmup chunk adds no shared chunks.
+test("the policy's speculative deadline is the one query-leases applies", () => {
+  assert.equal(WARMUP_LIMITS.speculativeDeadlineMs, SPECULATIVE_DEADLINE_MS);
+  assert.equal(SPECULATIVE_DEADLINE_MS, 1_500);
 });
 
 test("desktop data spacing: 1,499 ms denied, 1,500 allowed; two per visit", () => {

@@ -25,9 +25,11 @@ import { paletteColour } from "../palette-colour";
 // These blocks hold only layout and the money-privacy rules for the lead;
 // callers pass the copy, the controls and every handler.
 //
-// Bundle: ui-components.jsx re-exports the blocks so they share its chunk
-// (the Summary lead is on the first screen, and check:bundle counts files),
-// and this module imports its own stylesheet so every caller gets it.
+// Bundle: first-screen code (the Summary lead) imports these blocks from this
+// module directly, not through ui-components.jsx, whose selects and category
+// list host are not first-screen code (tests/first-screen-structure.test.mjs).
+// ui-components.jsx re-exports them for the routes, and this module imports
+// its own stylesheet so every caller gets it.
 
 const NEUTRAL_BUBBLE = "#7C8791";
 const STATE_TONES = new Set(["mint", "rose", "sky", "butter", "lavender"]);

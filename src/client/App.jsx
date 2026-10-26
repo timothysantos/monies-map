@@ -76,7 +76,7 @@ import { useReferenceData } from "./use-reference-data";
 import { useRefreshNotice } from "./use-refresh-notice";
 import { useRouteData } from "./use-route-data";
 import { useSummaryData } from "./use-summary-data";
-import { useRouteWarmup } from "./use-route-warmup";
+import { useRouteWarmup, useRouteWarmupEngine } from "./use-route-warmup";
 import {
   buildRouteIdentity,
   buildRouteWorkKey,
@@ -1997,7 +1997,9 @@ export function App() {
   );
   // Route code, then a few optional data requests, warm only once this route
   // is usable and quiet, plus exact link intent. Clicks always load normally.
-  const getNavIntentProps = useRouteWarmup({
+  const getNavIntentProps = useRouteWarmup();
+  // The engine is a lazy chunk, fetched the first time the page is usable.
+  useRouteWarmupEngine({
     routeIdentity: activeRouteIdentity,
     routeWork,
     queryEpoch,
@@ -3469,7 +3471,7 @@ export function App() {
               } else {
                 openAskDock({ intent: { mode: "add", from: "entries" } });
               }
-            }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
+            }} aria-label={messages.shell.addEntry} title={messages.shell.addEntry}>
               <Plus size={24} />
             </button>,
             document.body
@@ -3504,7 +3506,7 @@ export function App() {
               } else {
                 openAskDock({ intent: { mode: "expense", from: "splits", splitGroupId: splitGroup } });
               }
-            }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
+            }} aria-label={messages.shell.addSplitsExpense} title={messages.shell.addSplitsExpense}>
               <Receipt size={24} />
             </button>,
             document.body

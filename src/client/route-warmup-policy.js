@@ -1,9 +1,9 @@
 // Pure warmup policy: decides whether one optional module or data request may
 // start now, and which exact destinations are worth considering. No DOM,
-// React, timers, fetch or imports; the scheduler (H05/H07) injects time,
+// React, timers, fetch or imports (the lazy engine chunk must not pull the
+// first screen's modules into new shared chunks); the scheduler (H05/H07) injects time,
 // capabilities and route work. Reason strings are for tests and development
 // diagnostics only, never user-visible copy.
-
 export const WARMUP_LIMITS = Object.freeze({
   desktop: Object.freeze({ quietMs: 1200, autoModulesPerVisit: 1, dataPerVisit: 2, dataSpacingMs: 1500 }),
   mobile: Object.freeze({
@@ -18,6 +18,8 @@ export const WARMUP_LIMITS = Object.freeze({
     maxDataHandlerMs: 250,
     maxRecentRequiredMs: 500
   }),
+  // Same value as SPECULATIVE_DEADLINE_MS in query-leases.js (the default
+  // deadline of a speculative read); tests/route-warmup-policy.test.mjs pins them.
   speculativeDeadlineMs: 1500
 });
 
