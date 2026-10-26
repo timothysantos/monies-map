@@ -42,6 +42,13 @@ Import mutations may also refresh:
 
 when the import changes shared ledger evidence or reference data.
 
+A UOB PayNow-FAST row takes its time of day from the line's own `PIB`
+reference (`src/lib/paynow-reference.ts`, DOMAIN.md "PayNow Reference") when it
+is a real moment within 3 days of the row's date: commit stores it as the new
+entry's `transaction_time`. The row's date comes from the file; a row that
+matches an Apple Pay or hand-made entry never changes that entry's time; no
+valid reference means no time. No preview or review control changes.
+
 ## Ownership Notes
 
 Imports owns:

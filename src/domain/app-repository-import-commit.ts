@@ -64,6 +64,7 @@ import type {
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { classifyBankCharge } from "./bank-charges";
 import { statementNoticesToJson } from "./statement-notices";
+import { payNowEntryTime } from "../lib/paynow-reference";
 
 // D1 applies its per-query limits (100 bound parameters, 100 KB of SQL,
 // 30 s) to each statement in a batch and documents no statement-count limit,
@@ -895,8 +896,9 @@ export async function commitImportBatch(
           post_date,
           description, amount_minor, currency, entry_type, transfer_direction,
           category_id, owner_person_id, offsets_category, note,
-          bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at,
+          transaction_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         transactionId,
@@ -917,7 +919,10 @@ export async function commitImportBatch(
         isOfficialStatementImport ? "statement_certified" : "provisional",
         isOfficialStatementImport ? importId : null,
         isOfficialStatementImport ? rowId : null,
-        isOfficialStatementImport ? new Date().toISOString() : null
+        isOfficialStatementImport ? new Date().toISOString() : null,
+        // A UOB PayNow-FAST line names the moment of the purchase; any other
+        // bank row has no time of day (paynow-reference.ts).
+        payNowEntryTime(row.description, importedEventDate)
       ));
     pendingLedger.upserts.set(transactionId, {
       id: transactionId,

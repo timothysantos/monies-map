@@ -623,7 +623,9 @@ bar on the left is the owner's colour.
   type to narrow it (a word like "kopi" finds Food & Drinks), or look down the
   list, which is in alphabetical order. The category Monie's Map thinks is
   most likely is at the top, marked **Best guess**, based on your category
-  rules, what you usually pick for that shop and everyday words. On a
+  rules, what you usually pick for that shop and everyday words (a UOB PayNow
+  payment is recognised by the shop's company number on the bank line, even
+  when the name after it changes). On a
   computer you can start typing straight away and press Enter to pick; on a
   phone, tap the search box to type.
 - **Splits** row: the quick button (for example **Add to Home · Half each**)
@@ -2708,6 +2710,10 @@ No. PDF statements and bank exports are read inside your browser. Only the
 rows you commit, the import details and the statement balance are saved.
 Refreshing the page or selecting **Start over** clears the draft. An import
 saves every row or none of them.
+
+A UOB PayNow payment line names the day and time of the purchase, so when you
+import one the entry shows that time (for example 8:52 pm) beside its wallet.
+Entries from other bank lines, and entries you had before, show no time.
 
 # Glossary
 
