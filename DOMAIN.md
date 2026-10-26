@@ -1627,11 +1627,23 @@ Rules (`src/domain/transfer-purpose.ts`, `readEntryForPerson`):
 - Linking the pair makes the receiver the other side's owner; a link to the
   sender's own account clears it. A write that makes the entry stop being a
   transfer out to someone else clears it in the same batch.
-- Learning: a new transfer out (import commit, manual add, Shortcut) gets
-  the purpose of the newest earlier transfer out of the same account with
-  the same amount and description (digits ignored) within 100 days, marked
-  `remembered` ("Set like last month", with Undo). An undone month has no
-  purpose, so the next month is left alone. Deterministic, no AI.
+- Learning (owner decision, 2026-10-26, "same receiver, ignore the bank's
+  wording"): a repeat transfer is the same sending account, the same
+  receiving person (and receiving account when both sides know it), the same
+  amount to the cent and the same currency within 100 days; the description
+  is ignored. A new transfer out (import commit, manual add, Shortcut) whose
+  receiver is known (its pair is matched) gets the purpose of the newest
+  earlier repeat that has one, marked `remembered` ("Set like last month",
+  with Undo). When earlier purposes disagree the newest wins. An earlier
+  repeat the person cleared by hand (Undo, "Just a transfer"; an
+  `transfer_purpose_cleared` audit event) stops the chain, and that
+  transfer is never given a purpose again; one that was merely never tagged
+  is skipped. A different amount, receiver or currency never carries over.
+  Until the receiver is known the old rule applies (same account, amount and
+  description, digits ignored), and it is tried again the moment the pair is
+  first matched (the link route, and an import that matches an earlier
+  entry). It is applied at those moments only, never when an entry opens, and
+  existing rows are not changed. Deterministic, no AI.
 
 Code:
 - `src/domain/transfer-purpose.ts` (reading, refusals; shared with the

@@ -1523,13 +1523,16 @@ export default {
         return json({ ok: false, error: "Missing transfer link fields" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await linkTransferPair(env.DB, {
-          fromEntryId: body.fromEntryId,
-          toEntryId: body.toEntryId
-        }))
+      const linked = await linkTransferPair(env.DB, {
+        fromEntryId: body.fromEntryId,
+        toEntryId: body.toEntryId
       });
+      // The receiver is known now: a monthly transfer out like an earlier
+      // one to the same person gets its purpose. Best effort.
+      await applyRememberedTransferPurposes(env.DB, [body.fromEntryId, body.toEntryId]).catch((error) => {
+        console.error("Remembered transfer purposes failed", error);
+      });
+      return json({ ok: true, ...linked });
     }
 
     // "What is this for?" on a transfer out to someone in the household
