@@ -9,6 +9,7 @@ import {
 } from "../category-guess";
 import type { CategoryMatchRuleDto } from "../../types/dto";
 import { todayInAppTimeZone } from "../../lib/app-calendar";
+import { payNowMerchantCode } from "../../lib/paynow-reference";
 
 // The best-guess category for one description (POST /api/entries/category-
 // guess, DOMAIN.md "Category Guess"). Not a page DTO: the category list asks
@@ -32,6 +33,9 @@ export async function buildCategoryGuess(db: D1Database, request: { description:
   const today = todayInAppTimeZone();
   const word = shopKey.split(" ").reduce((longest, candidate) => (candidate.length > longest.length ? candidate : longest), "");
   const habitKey = habitMerchantKey(request.description);
+  // A PayNow line's shop is its company code: the one read also takes the rows
+  // that carry it, whatever payee text they have.
+  const companyCode = payNowMerchantCode(request.description);
 
   const statements = [
     db.prepare("SELECT name FROM categories WHERE household_id = ?").bind(DEFAULT_HOUSEHOLD_ID),
@@ -52,11 +56,11 @@ export async function buildCategoryGuess(db: D1Database, request: { description:
         WHERE transactions.household_id = ?
           AND transactions.transaction_date BETWEEN date(?, ?) AND ?
           AND transactions.entry_type IN ('expense', 'income')
-          AND instr(lower(transactions.description), ?) > 0
+          AND (instr(lower(transactions.description), ?) > 0 OR instr(lower(transactions.description), ?) > 0)
         ORDER BY transactions.transaction_date DESC
         LIMIT ?
       `)
-      .bind(DEFAULT_HOUSEHOLD_ID, today, `-${CATEGORY_GUESS_POLICY.lookbackDays} days`, today, word, CATEGORY_GUESS_HISTORY_ROW_LIMIT)
+      .bind(DEFAULT_HOUSEHOLD_ID, today, `-${CATEGORY_GUESS_POLICY.lookbackDays} days`, today, word, companyCode?.toLowerCase() ?? word, CATEGORY_GUESS_HISTORY_ROW_LIMIT)
   ];
   const habitStatement = habitKey
     ? db

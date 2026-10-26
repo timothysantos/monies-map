@@ -7,7 +7,10 @@
 // 1. the household's category rules (first active match, by priority),
 // 2. an Ask habit for the shop (confidence high or suggest),
 // 3. the household's own entries at the same shop over the last 12 months
-//    (the most used category, at least 2 entries, newest wins a tie),
+//    (the most used category, at least 2 entries, newest wins a tie). A UOB
+//    PayNow line's shop is its company code (paynow-reference.ts), so its
+//    entries at the same code count first, whatever payee text each carried;
+//    then entries with the same description,
 // 4. the everyday-word map (category-everyday-words.ts).
 // A catch-all ("Other", "Other - Income") and Transfer are never a guess, and
 // a category that does not exist for the household is skipped.
@@ -16,6 +19,7 @@ import { normalizeDescriptionForMatch } from "./app-repository-helpers";
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { habitConfidence, habitMerchantKey, type AskHabit } from "./ask-habits";
 import { categoryFromEverydayWords } from "./category-everyday-words";
+import { payNowMerchantCode } from "../lib/paynow-reference";
 
 export const CATEGORY_GUESS_POLICY = Object.freeze({ lookbackDays: 365, minHistoryEntries: 2 });
 
@@ -57,24 +61,35 @@ export function guessCategory(input: {
     return { categoryName: habitValue, source: "habit" };
   }
 
+  const code = payNowMerchantCode(description);
   const shop = normalizeDescriptionForMatch(description);
-  if (shop) {
-    const tallies = new Map<string, { count: number; latest: string }>();
-    for (const row of input.history) {
-      if (!usable(row.categoryName) || normalizeDescriptionForMatch(row.description) !== shop) continue;
-      const tally = tallies.get(row.categoryName) ?? { count: 0, latest: "" };
-      tally.count += 1;
-      if (row.date > tally.latest) tally.latest = row.date;
-      tallies.set(row.categoryName, tally);
-    }
-    const ranked = [...tallies.entries()]
-      .filter(([, tally]) => tally.count >= CATEGORY_GUESS_POLICY.minHistoryEntries)
-      .sort((left, right) => right[1].count - left[1].count || right[1].latest.localeCompare(left[1].latest) || left[0].localeCompare(right[0]));
-    if (ranked.length) return { categoryName: ranked[0][0], source: "history" };
+  const sameShop: Array<(row: CategoryGuessHistoryRow) => boolean> = [];
+  if (code) sameShop.push((row) => payNowMerchantCode(row.description) === code);
+  if (shop) sameShop.push((row) => normalizeDescriptionForMatch(row.description) === shop);
+  for (const isSameShop of sameShop) {
+    const mostUsed = mostUsedCategory(input.history.filter(isSameShop), usable);
+    if (mostUsed) return { categoryName: mostUsed, source: "history" };
   }
 
   const worded = categoryFromEverydayWords(description, input.categoryNames);
   return usable(worded) ? { categoryName: worded, source: "words" } : null;
+}
+
+// The category used at least twice by the given rows (Other and Transfer never
+// count): most used, newest wins a tie, then the name.
+function mostUsedCategory(rows: readonly CategoryGuessHistoryRow[], usable: (name: string | undefined) => name is string): string | null {
+  const tallies = new Map<string, { count: number; latest: string }>();
+  for (const row of rows) {
+    if (!usable(row.categoryName)) continue;
+    const tally = tallies.get(row.categoryName) ?? { count: 0, latest: "" };
+    tally.count += 1;
+    if (row.date > tally.latest) tally.latest = row.date;
+    tallies.set(row.categoryName, tally);
+  }
+  const ranked = [...tallies.entries()]
+    .filter(([, tally]) => tally.count >= CATEGORY_GUESS_POLICY.minHistoryEntries)
+    .sort((left, right) => right[1].count - left[1].count || right[1].latest.localeCompare(left[1].latest) || left[0].localeCompare(right[0]));
+  return ranked.length ? ranked[0][0] : null;
 }
 
 // The habit key the page loader reads (the shop, long digit runs dropped).

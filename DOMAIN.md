@@ -988,7 +988,8 @@ not drift when the bank clears later:
   conversion) an Apple Pay or hand-made entry was made, on its own day. It is a
   label for telling one day's purchases apart and matching them to the bank or
   the phone, never an input to matching, duplicate checks, month totals or
-  planning. Null for a bank-imported row (bank files carry no time), for an
+  planning. Null for a bank-imported row, except a UOB PayNow-FAST row whose
+  line carries a valid PayNow Reference (below), for an
   entry dated another day than the day it was made (a backdated entry has no
   honest time) and for every entry that predates the column. Source: the
   Apple Pay Shortcut gets the time the server received the request, converted
@@ -1002,6 +1003,28 @@ not drift when the bank clears later:
   it (`EntryDto.time`, absent when none); the Entries list orders a day's
   timed entries first, latest on top, then the rest in their usual order.
   Code: `src/lib/entry-time.ts`.
+
+* **PayNow Reference:** What a UOB PayNow-FAST bank line carries, read at
+  import and at read time by one pure function (`readPayNowReference`,
+  `src/lib/paynow-reference.ts`; no lookup, no AI):
+  `PAYNOW-FAST OTHR SBA-202627699C PIB26100120520761 86 SLEEK TECH PTE LTD`.
+  - `PIB<YYMMDD><HHMMSS>...` is the date and Singapore clock time of the
+    purchase. When it is a real date and time and within 3 days of the row's
+    own date, an imported row stores it as its Transaction Time (`HH:MM`; the
+    date stays the file's). A matched Apple Pay or hand-made entry keeps the
+    time it already has; the bank row never overwrites it. Anything else
+    (impossible date or time, further than 3 days, truncated) gives no time.
+  - `<letters>-<UEN>` gives the company code (`merchantCode`): the UEN, in the
+    documented shapes only (`YYYYNNNNNC` local company, `NNNNNNNNC` business,
+    `T/S/R YY LL NNNN C`). It is the stable shop key for PayNow lines, since the
+    payee text after the timestamp varies: an Ask habit key is
+    `paynow <code>`, and the Category Guess counts entries with the same code
+    as the same shop. Descriptions are never rewritten.
+  Only this UOB format is supported: OCBC PayNow lines ("FAST PAYMENT ... via
+  PayNow-Mobile / PayNow-UEN") carry no timestamp or code. A registry lookup of
+  the UEN is deliberately not built. Rows imported before this existed stay
+  untimed; nothing rewrites them (a row already in the ledger is not imported
+  again, so a re-import does not add a time to it).
 
 **Why this matters:**
 An April 30 expense must stay in April for budgets and split math even if the
@@ -2643,7 +2666,9 @@ Important distinctions:
   active match by priority), then an Ask habit for the shop (high or suggest
   confidence), then the household's own entries at the same shop over the last
   12 months (the most used category, at least 2 entries, the newest wins a
-  tie), then the everyday-word map. No answer means no tag.
+  tie; for a UOB PayNow line the entries with the same company code count
+  first, whatever their payee text, see PayNow Reference), then the
+  everyday-word map. No answer means no tag.
 - Other, Other - Income and Transfer are never a guess, and a rule that files
   into Other is skipped. A category the household does not have is skipped.
 - It is asked for once when a list opens, and only where an entry or its

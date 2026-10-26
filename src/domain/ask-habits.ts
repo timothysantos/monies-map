@@ -22,6 +22,7 @@
 // safe action by itself), "suggest" at 2 (Ask only offers it), else "none".
 // A habit not used for a year is "none": what a household does changes.
 
+import { payNowMerchantCode } from "../lib/paynow-reference";
 import { normalizeDescriptionForMatch } from "./app-repository-helpers";
 
 // The app_settings key of "Let Ask handle safe things" (default on).
@@ -82,8 +83,13 @@ export function askHabitId(kind: AskHabitKind, key: string) {
 // The shop a habit is keyed by: the entry description the way category and
 // split matching read it, with long digit runs (a PayNow phone number, a
 // card or reference number) dropped so a key never carries a number.
-// "" when nothing usable is left.
+// "" when nothing usable is left. A UOB PayNow line's shop is its company
+// code ("paynow 202627699c"): the reference and payee text on the line vary
+// while the code stays the same (a company registration number, not a
+// person's or an account's).
 export function habitMerchantKey(description: string | null | undefined): string {
+  const code = payNowMerchantCode(description);
+  if (code) return `paynow ${code.toLowerCase()}`;
   const tokens = normalizeDescriptionForMatch(description ?? "")
     .split(" ")
     .filter((token) => token && !/^\d{4,}$/.test(token));

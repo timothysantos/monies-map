@@ -14,8 +14,9 @@ manual entries I think it'll help if we display the time too."
   Apple Pay Shortcut (server receive time, because the installed Shortcut
   sends only `date`; the Shortcut runs when the Wallet transaction happens),
   an entry typed in the form (its Time field, now by default for today) and
-  an Ask-saved entry (now). Bank imports, backdated entries and every entry
-  from before this change have none.
+  an Ask-saved entry (now). Backdated entries and every entry
+  from before this change have none, and so does a bank import except a UOB
+  PayNow-FAST row (see "PayNow reference" below).
 - **Edits.** An update that does not name a time keeps it (also when the date
   changes); the Time row under More details changes it, and Clear time
   removes it. A statement that certifies an Apple Pay entry keeps its time.
@@ -31,6 +32,16 @@ manual entries I think it'll help if we display the time too."
   true })`), and only on entries that have one: 15 bytes (`"time":"14:32",`)
   per timed entry, nothing for the rest. Month, Splits and Summary responses
   are unchanged. The API payload budget is untouched.
+
+## PayNow reference (added 26 October 2026)
+
+A UOB PayNow-FAST bank line carries `PIB<YYMMDD><HHMMSS>...`, the moment of the
+purchase. At import commit, a new row from such a line stores that time (the
+date stays the file's), when the reference is a real date and time within 3 days
+of the row's date. It is never written onto a matched Apple Pay or hand-made
+entry, which keeps its own time. Existing imported rows stay untimed. Shown the
+same way as any time; no new control. Details: DOMAIN.md "PayNow Reference",
+`tests/paynow-reference.test.mjs`, `tests/paynow-import-time-api.test.mjs`.
 
 ## Display
 
