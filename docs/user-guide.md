@@ -1575,8 +1575,9 @@ counts once, and the transfer stays a transfer. In a person's list the row
 shows under Home and says **Transfer to Serene** or **Ethan's transfer to
 you**.
 
-Next month the same transfer (same account, same amount, same description)
-gets the same answer by itself and says **Set like last month**. Select
+Next month the same transfer (same account, same person, same amount; the
+bank's wording can change) gets the same answer by itself, as soon as the
+other side is matched, and says **Set like last month**. Select
 **Undo** if it was not for that this time; the month after is then left alone
 too. **Just a transfer** clears it. A move between your own accounts, money
 into investments and a settle-up on Splits cannot have one. If the bill is

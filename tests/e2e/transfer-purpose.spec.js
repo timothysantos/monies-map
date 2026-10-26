@@ -210,3 +210,40 @@ test("390px: the edit sheet sets What is this for? and Tim's row reads as Home s
   // No horizontal scroll at phone width.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+// The production case: the bank's wording changed from "Funds Transfer
+// JOYCE" in the month tagged Home to "Funds Transfer HDB mortgage JO" the
+// next month. The same sender, receiver and amount is still the same
+// transfer once Joyce's side is matched, so it is set like last month.
+async function octoberHdbMortgage(page) {
+  const { outId: first } = await seedOwnerCase(page);
+  await postJson(page, "/api/transfers/purpose", { entryId: first, categoryName: "Home" });
+  const outId = await createEntry(page, { date: "2026-06-01", description: "Funds Transfer HDB mortgage JO", accountName: "UOB Savings", categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor: 45_000 });
+  // Before Joyce's side is matched the receiver is not known: nothing yet.
+  const inId = await createEntry(page, { date: "2026-06-01", description: "FAST from Tim", accountName: "Joyce Bank", categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor: 45_000, ownerName: "Joyce" });
+  await postJson(page, "/api/transfers/link", { fromEntryId: outId, toEntryId: inId });
+  return outId;
+}
+
+test("desktop: a transfer whose bank wording changed is still set like last month, with Undo", async ({ page }) => {
+  const outId = await octoberHdbMortgage(page);
+  await openEntryEditor(page, outId, { month: "2026-06" });
+  const editor = page.locator(".entry-inline-editor");
+  await expect(editor.getByText("Set like last month")).toBeVisible();
+  await expect(editor.getByRole("button", { name: /^What is this for\?/ })).toContainText("Home");
+  const undone = page.waitForResponse((response) => response.url().includes("/api/transfers/purpose") && response.ok());
+  await editor.getByRole("button", { name: "Undo" }).click();
+  await undone;
+  await expect(editor.getByText("Set like last month")).toHaveCount(0);
+});
+
+test("390px: a transfer whose bank wording changed is still set like last month, with Undo", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  const outId = await octoberHdbMortgage(page);
+  await openEntryEditor(page, outId, { month: "2026-06" });
+  const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
+  await expect(sheet.getByText("Set like last month")).toBeVisible();
+  await expect(sheet.getByRole("button", { name: /^What is this for\?/ })).toContainText("Home");
+  await expect(sheet.getByRole("button", { name: "Undo" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

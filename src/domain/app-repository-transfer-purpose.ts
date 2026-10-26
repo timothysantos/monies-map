@@ -6,8 +6,12 @@
 // - setTransferPurposeRecord: "What is this for?" on a transfer out to
 //   another person of the household, or cleared.
 // - applyRememberedTransferPurposes: a new transfer out gets the purpose of
-//   the newest earlier one like it (same account, amount and description,
-//   digits ignored, within 100 days), marked `remembered`.
+//   the newest earlier one like it, marked `remembered`. Like it means the
+//   same sending account, receiving person (and receiving account when both
+//   sides know it), amount to the cent and currency within 100 days, whatever
+//   the bank's wording; until the receiver is known (the pair not matched
+//   yet) the old rule applies: same account, amount and description, digits
+//   ignored.
 
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
@@ -34,6 +38,7 @@ type PurposeEntryRow = {
   entry_type: string;
   transfer_direction: string | null;
   owner_person_id: string | null;
+  account_id: string;
   transfer_group_id: string | null;
   currency: string | null;
   account_kind: string | null;
@@ -54,6 +59,7 @@ const ENTRY_SELECT = `
     transactions.entry_type,
     transactions.transfer_direction,
     transactions.owner_person_id,
+    transactions.account_id,
     transactions.transfer_group_id,
     transactions.currency,
     accounts.account_kind,
@@ -194,34 +200,78 @@ export async function setTransferPurposeRecord(
 
 export const TRANSFER_PURPOSE_MEMORY_DAYS = 100;
 
-// The learning rule (pure): the newest earlier transfer out of the same
-// account, with the same amount and the same description once digits are
-// ignored, decides. When it has a purpose the new one gets it; when it has
-// none (never set, or undone) nothing is applied, so an Undo stops the next
-// month too.
-export function rememberedTransferPurpose<T extends {
+// The learning rule (pure). A repeat transfer is the same sending account,
+// the same receiving person (and receiving account when both sides know it),
+// the same amount to the cent and the same currency within 100 days; the
+// bank's wording is ignored. Walking those earlier transfers newest first,
+// the first one with a purpose decides (so the newest wins when purposes
+// disagree) and the first one the person cleared by hand ("Just a transfer",
+// Undo) stops the chain, so an undone month stops the next one. A transfer
+// that was merely never tagged is skipped.
+//
+// Until the receiver is known (the pair is not matched yet) the old rule
+// applies: the newest earlier transfer out of the same account with the same
+// amount and the same description once digits are ignored decides, and one
+// with no purpose means nothing is applied.
+export interface TransferPurposeSubjectKey {
   id: string;
   accountId: string;
   amountMinor: number;
+  currency?: string | null;
+  date: string;
+  description: string;
+  receiverPersonId?: string | null;
+  receiverAccountId?: string | null;
+}
+
+export interface TransferPurposeHistoryRow {
+  id: string;
+  accountId: string;
+  amountMinor: number;
+  currency?: string | null;
   date: string;
   description: string;
   purposeCategoryId: string | null;
   purposePersonId: string | null;
-}>(subject: Omit<T, "purposeCategoryId" | "purposePersonId">, history: T[]): { categoryId: string; personId: string; fromEntryId: string } | null {
+  receiverPersonId?: string | null;
+  receiverAccountId?: string | null;
+  clearedByHand?: boolean;
+}
+
+export function rememberedTransferPurpose(
+  subject: TransferPurposeSubjectKey,
+  history: TransferPurposeHistoryRow[]
+): { categoryId: string; personId: string; fromEntryId: string } | null {
+  const earliest = shiftDays(subject.date, -TRANSFER_PURPOSE_MEMORY_DAYS);
+  const newestFirst = (rows: TransferPurposeHistoryRow[]) => rows
+    .filter((entry) => entry.id !== subject.id
+      && entry.accountId === subject.accountId
+      && entry.amountMinor === subject.amountMinor
+      && entry.date < subject.date
+      && entry.date >= earliest)
+    .sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
+
+  if (subject.receiverPersonId) {
+    const currency = subject.currency ?? "SGD";
+    const chain = newestFirst(history).filter((entry) => (entry.currency ?? "SGD") === currency
+      && (entry.receiverPersonId ?? entry.purposePersonId) === subject.receiverPersonId
+      && (!subject.receiverAccountId || !entry.receiverAccountId || entry.receiverAccountId === subject.receiverAccountId));
+    for (const entry of chain) {
+      if (entry.purposeCategoryId && entry.purposePersonId) {
+        return { categoryId: entry.purposeCategoryId, personId: subject.receiverPersonId, fromEntryId: entry.id };
+      }
+      if (entry.clearedByHand) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   const key = habitMerchantKey(subject.description);
   if (!key) {
     return null;
   }
-  const earliest = shiftDays(subject.date, -TRANSFER_PURPOSE_MEMORY_DAYS);
-  const previous = history
-    .filter((entry) => entry.id !== subject.id
-      && entry.accountId === subject.accountId
-      && entry.amountMinor === subject.amountMinor
-      && entry.date <= subject.date
-      && entry.date >= earliest
-      && habitMerchantKey(entry.description) === key)
-    .sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
-  const newest = previous.find((entry) => entry.date < subject.date) ?? null;
+  const newest = newestFirst(history.filter((entry) => habitMerchantKey(entry.description) === key))[0] ?? null;
   if (!newest?.purposeCategoryId || !newest.purposePersonId) {
     return null;
   }
@@ -234,9 +284,12 @@ function shiftDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-// After entries are saved (an import commit, a manual add): each new
-// transfer out without a purpose gets the remembered one, when the rules
-// still allow it. One batch for all of them; nothing when none apply.
+// After entries are saved (an import commit, a manual add, the Apple Pay
+// Shortcut) and after a pair is first matched: each transfer out without a
+// purpose gets the remembered one, when the rules still allow it. A transfer
+// the person cleared by hand is never given one again. One batch for all of
+// them; nothing when none apply. Applied at those moments only, never when
+// an entry opens: existing rows are not changed behind the person's back.
 export async function applyRememberedTransferPurposes(db: D1Database, entryIds: string[]): Promise<string[]> {
   const ids = [...new Set(entryIds.filter(Boolean))];
   if (!ids.length) {
@@ -244,63 +297,100 @@ export async function applyRememberedTransferPurposes(db: D1Database, entryIds: 
   }
   const subjects = (await db
     .prepare(`
-      SELECT id, account_id, amount_minor, transaction_date, description, owner_person_id
+      SELECT id, account_id, amount_minor, currency, transaction_date, description, owner_person_id
       FROM transactions
       WHERE household_id = ?
         AND entry_type = 'transfer'
         AND transfer_direction = 'out'
         AND transfer_purpose_category_id IS NULL
         AND id IN (${ids.map(() => "?").join(", ")})
+        AND NOT EXISTS (
+          SELECT 1 FROM audit_events
+          WHERE audit_events.entity_type = 'transaction' AND audit_events.entity_id = transactions.id
+            AND audit_events.action = 'transfer_purpose_cleared'
+        )
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, ...ids)
-    .all<{ id: string; account_id: string; amount_minor: number; transaction_date: string; description: string; owner_person_id: string | null }>()).results;
+    .all<{ id: string; account_id: string; amount_minor: number; currency: string | null; transaction_date: string; description: string; owner_person_id: string | null }>()).results;
   if (!subjects.length) {
     return [];
   }
   const dates = subjects.map((subject) => subject.transaction_date).sort();
-  const history = (await db
+  const accountIds = [...new Set(subjects.map((subject) => subject.account_id))];
+  // Earlier transfers out of the same accounts with, for each, the other
+  // side of its pair (when matched) and whether the person cleared its
+  // purpose by hand.
+  const history = [...new Map((await db
     .prepare(`
-      SELECT id, account_id, amount_minor, transaction_date, description, transfer_purpose_category_id, transfer_purpose_person_id
+      SELECT
+        transactions.id,
+        transactions.account_id,
+        transactions.amount_minor,
+        transactions.currency,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.transfer_purpose_category_id,
+        transactions.transfer_purpose_person_id,
+        other.account_id AS receiver_account_id,
+        other.owner_person_id AS receiver_person_id,
+        EXISTS (
+          SELECT 1 FROM audit_events
+          WHERE audit_events.entity_type = 'transaction' AND audit_events.entity_id = transactions.id
+            AND audit_events.action = 'transfer_purpose_cleared'
+        ) AS cleared_by_hand
       FROM transactions
-      WHERE household_id = ?
-        AND entry_type = 'transfer'
-        AND transfer_direction = 'out'
-        AND transaction_date >= ?
-        AND transaction_date <= ?
-        AND account_id IN (${[...new Set(subjects.map((subject) => subject.account_id))].map(() => "?").join(", ")})
+      LEFT JOIN transactions AS other
+        ON other.transfer_group_id = transactions.transfer_group_id AND other.id != transactions.id
+      WHERE transactions.household_id = ?
+        AND transactions.entry_type = 'transfer'
+        AND transactions.transfer_direction = 'out'
+        AND transactions.transaction_date >= ?
+        AND transactions.transaction_date <= ?
+        AND transactions.account_id IN (${accountIds.map(() => "?").join(", ")})
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, shiftDays(dates[0], -TRANSFER_PURPOSE_MEMORY_DAYS), dates[dates.length - 1], ...new Set(subjects.map((subject) => subject.account_id)))
-    .all<{ id: string; account_id: string; amount_minor: number; transaction_date: string; description: string; transfer_purpose_category_id: string | null; transfer_purpose_person_id: string | null }>()).results
-    .map((row) => ({
+    .bind(DEFAULT_HOUSEHOLD_ID, shiftDays(dates[0], -TRANSFER_PURPOSE_MEMORY_DAYS), dates[dates.length - 1], ...accountIds)
+    .all<{
+      id: string; account_id: string; amount_minor: number; currency: string | null; transaction_date: string; description: string;
+      transfer_purpose_category_id: string | null; transfer_purpose_person_id: string | null;
+      receiver_account_id: string | null; receiver_person_id: string | null; cleared_by_hand: number;
+    }>()).results
+    .map((row): [string, TransferPurposeHistoryRow] => [row.id, {
       id: row.id,
       accountId: row.account_id,
       amountMinor: row.amount_minor,
+      currency: row.currency,
       date: row.transaction_date,
       description: row.description,
       purposeCategoryId: row.transfer_purpose_category_id,
-      purposePersonId: row.transfer_purpose_person_id
-    }));
+      purposePersonId: row.transfer_purpose_person_id,
+      receiverPersonId: row.receiver_person_id,
+      receiverAccountId: row.receiver_account_id,
+      clearedByHand: Boolean(row.cleared_by_hand)
+    }])).values()];
 
   const statements: D1PreparedStatement[] = [];
   const applied: string[] = [];
   const months = new Set<string>();
   for (const subject of subjects) {
-    const remembered = rememberedTransferPurpose({
-      id: subject.id,
-      accountId: subject.account_id,
-      amountMinor: subject.amount_minor,
-      date: subject.transaction_date,
-      description: subject.description
-    }, history);
-    if (!remembered) {
-      continue;
-    }
     // The same checks as setting it by hand; a refused one is skipped.
     const entry = await loadPurposeEntry(db, subject.id);
     if (!entry) {
       continue;
     }
     const counterpart = await loadCounterpart(db, entry);
+    const remembered = rememberedTransferPurpose({
+      id: subject.id,
+      accountId: subject.account_id,
+      amountMinor: subject.amount_minor,
+      currency: subject.currency,
+      date: subject.transaction_date,
+      description: subject.description,
+      receiverPersonId: counterpart?.owner_person_id ?? null,
+      receiverAccountId: counterpart?.account_id ?? null
+    }, history);
+    if (!remembered) {
+      continue;
+    }
     const receiverPersonId = counterpart ? counterpart.owner_person_id : remembered.personId;
     if (transferPurposeRefusal(subjectOf(entry, counterpart), receiverPersonId)) {
       continue;
@@ -338,11 +428,21 @@ export async function applyRememberedTransferPurposes(db: D1Database, entryIds: 
   return applied;
 }
 
-// The same, for the transfers out an import just committed.
+// The same, for the transfers out an import just committed and the earlier
+// transfers out its rows were matched with.
 export async function applyRememberedTransferPurposesForImport(db: D1Database, importId: string): Promise<string[]> {
   const rows = await db
-    .prepare("SELECT id FROM transactions WHERE household_id = ? AND import_id = ? AND entry_type = 'transfer' AND transfer_direction = 'out' AND transfer_purpose_category_id IS NULL")
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .prepare(`
+      SELECT id FROM transactions
+      WHERE household_id = ? AND entry_type = 'transfer' AND transfer_direction = 'out' AND transfer_purpose_category_id IS NULL
+        AND (
+          import_id = ?
+          OR transfer_group_id IN (
+            SELECT transfer_group_id FROM transactions WHERE household_id = ? AND import_id = ? AND transfer_group_id IS NOT NULL
+          )
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId, DEFAULT_HOUSEHOLD_ID, importId)
     .all<{ id: string }>();
   return applyRememberedTransferPurposes(db, rows.results.map((row) => row.id));
 }
