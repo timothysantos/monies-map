@@ -120,6 +120,25 @@ last month" and the editor row an Undo, which clears it; a cleared month
 stops the next one (the newest earlier transfer now has none). No new table:
 the rule reads the ledger, like the card and split suggestions.
 
+Update, 2026-10-26 (owner decision "same receiver, ignore the bank's
+wording"). The production miss: Tim's monthly $450 to Joyce was "Funds
+Transfer JOYCE" on 1 Sep (tagged Home) and "Funds Transfer HDB mortgage JO"
+on 1 Oct, so the description key did not match. The key is now the sending
+account, the receiving person (and receiving account when both sides know
+it), the amount to the cent and the currency within 100 days; the
+description is ignored. Newest earlier repeat with a purpose wins; a repeat
+cleared by hand (an `transfer_purpose_cleared` audit event, the way Undo and
+"Just a transfer" are recorded) stops the chain and is never re-tagged; a
+repeat merely never tagged is skipped. The receiver is known when the pair
+is matched, so the rule also runs when a pair is first matched (the link
+route, and an import that matches an earlier entry); before that, and for a
+transfer with no known receiver, the old description rule applies. Decision
+on existing rows: nothing is changed behind the person's back and the rule
+does not run when an editor opens; `scripts/transfer-purpose-would-match.mjs`
+prints the untagged transfers the new rule would tag (read-only, against a
+local database copy) so the owner can tag them in the editor. No schema
+change.
+
 Ask: changing a transfer's category is not an Ask change today
 (`transferKeepsCategory`), and a purpose is not added to Ask's change set in
 this change (it would need its own action, validators and eval bank).
