@@ -3084,3 +3084,44 @@ states). The simulators on this machine run iOS 18, which needs no
 prefix either, so the iOS 16.4–17 result could not be captured; there it
 now matches what iOS 18 shows. First-screen CSS 24,653 -> 24,686 B gzip;
 the budget follows the measured size.
+
+### First-screen JS trim (2026-10-26)
+
+The owner approved trimming the first screen: master had grown to 171,690 B
+gzip of JS (7 files; limit 171,492 B with the 5% allowance), leaving the next
+features no room. Measured with `npx vite build --sourcemap` and a script that
+attributes each first-screen chunk's bytes to source files through the source
+map (gzip estimated at each chunk's own ratio).
+
+| Contributor (before) | gzip B | What happened |
+| --- | ---: | --- |
+| `react-dom` | 56,100 | Stays (the app) |
+| `App.jsx` | 14,550 | Stays (it is the shell); the warmup hook inside it is now only the tab-link handlers |
+| `react-router` | 11,200 | Stays |
+| `@tanstack/query-core` | 7,600 | Stays |
+| Route warmup (`use-route-warmup`, policy, scheduler, costs) | about 4,300 | Lazy chunk `route-warmup-engine.js`, fetched when the page is first usable |
+| `copy/en-SG.js` | 5,700 | Month, Entries, Splits and Guide copy moved to `copy/en-SG-<route>.js`; 2,300 B stay |
+| `ui-components.jsx` barrel with `responsive-select`, `category-picker-host`, the selects | about 2,400 | Summary imports `DetailRow`, `SpendLeadGroup` from their own modules; the barrel is route code |
+| Radix dialog/popover, floating-ui, remove-scroll | about 15,000 | Stays: the tab bar's More menu, the period pickers and the View and scope sheet open them |
+| `lucide-react` | 3,800 | Per-icon imports already; stays |
+
+Result: **JS 171,690 -> 161,519 B gzip (-10,171 B), 7 files**; CSS unchanged
+at 23,708 B (budget 23,136 B, limit 24,293 B). Budget file JS lowered
+163,326 -> **161,600 B** (a 5% allowance still applies on top).
+
+Chunk shape is fragile with this bundler (Rolldown): a lazy chunk that
+imports a module the first screen shares splits that module into a new shared
+chunk and `check:bundle` counts another file. Measured on the way: importing
+`query-leases`, `summary-query`, `use-viewport` or React from the warmup
+engine each raised the file count from 7 to 8 or 9, so the engine imports none
+of them (`use-route-warmup.js` hands it the route modules, the phone query,
+the timing read and the data adapter) and the policy lists the speculative
+deadline itself (a test pins it to `query-leases`).
+`tests/first-screen-structure.test.mjs` guards the structure.
+
+No behaviour change except one timing detail: hover and focus on a tab link
+offer nothing until the warmup engine has loaded (about one request after the
+page is usable); the policy already refused warmup before the page was usable.
+Also noticed, not changed: `splits-linked-entry-dialog.jsx` reads a
+`splitsMessages.editLinkedEntry` key that does not exist and nothing mounts
+the dialog.

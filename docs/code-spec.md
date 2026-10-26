@@ -227,6 +227,17 @@ Budget rules:
   importing neither React nor `money-privacy`, and being handed React by
   `summary-panel.jsx` (`createEarnedSpentChart`), as `simple-detail.js` is
   handed `h`
+- first-screen trim (2026-10-26): route copy lives in
+  `copy/en-SG-<route>.js`; the warmup engine is a lazy chunk, and it
+  imports no React and no first-screen module, because a lazy chunk that
+  imports modules the first screen shares splits them into new shared chunks
+  (`check:bundle` then counts 9 files instead of 7: measured, `query-leases`,
+  `summary-query`, `use-viewport` and React each did it). `use-route-warmup.js`
+  hands the engine its route modules, the phone query, the timing read and
+  the data adapter. Summary imports `DetailRow`, `SpendLeadGroup` from
+  their own modules, never `ui-components.jsx` (selects, category list host).
+  `tests/first-screen-structure.test.mjs` walks the first screen's static
+  imports and names the file that dragged a lazy-only module in
 - App loads the active route's code as soon as the route is known, beside
   its data (the panel renders only once its data is here); it never loads
   another route's code this way (that is warmup, and waits for `usable`)

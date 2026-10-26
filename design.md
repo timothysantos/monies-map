@@ -3601,9 +3601,13 @@ required read.
   which exact destinations are worth considering. Desktop and mobile have
   separate limits; hybrid or unknown devices get the mobile policy.
 - `route-warmup-scheduler.js` owns the quiet period, the per-visit budgets
-  and the one-at-a-time queue, with an injected clock. `use-route-warmup.js`
-  feeds it browser signals: visibility, connection, interaction, editable
-  focus and route work.
+  and the one-at-a-time queue, with an injected clock.
+  `route-warmup-engine.js` feeds it browser signals (visibility,
+  connection, interaction, editable focus, route work). It is a lazy chunk,
+  fetched by `use-route-warmup.js` the first time the page is usable, and
+  imports no React and no first-screen module; the tab links' hover and
+  focus handlers stay in `use-route-warmup.js` and reach the scheduler
+  through `warmupBridge`.
 - `route-modules.js` is the only route-code loader, shared by navigation and
   warmup, so a warmed chunk is the one the route uses.
 - `query-leases.js` keeps the two fetch paths. Required reads take a lease

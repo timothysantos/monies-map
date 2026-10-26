@@ -166,6 +166,12 @@ Details and the reasons are in `docs/code-spec.md` and
   speculative data) starts only when `routeWork.usable` is true and goes
   through the warmup scheduler (`src/client/use-route-warmup.js`). Never add
   idle prefetch effects or eager imports of other routes to `App.jsx`.
+- Route-only code stays out of the first screen: copy lives in
+  `copy/en-SG-<route>.js` (`en-SG.js` holds only what every page shows) and
+  the route warmup engine is the lazy `route-warmup-engine.js`, which
+  imports no React and no first-screen module (its inputs are handed in by
+  `use-route-warmup.js`). `tests/first-screen-structure.test.mjs` fails with
+  the importing file when one slips back in.
 - Keep the first screen within budget. `npm run check:bundle` (part of
   `npm run verify`) fails when the entry chunk plus the Summary route, or
   the built (minified) `styles.css`, grows more than 5% past
@@ -434,8 +440,9 @@ Details and the reasons are in `docs/code-spec.md` and
   "Category list": a search, the best guess first, then A to Z; `ResponsiveSelect`
   or `PickerRow` with `categoryPick`, `FilterMultiSelect` for a filter). Never
   add a native select of categories (`tests/category-list-guard.test.mjs`),
-  and keep its code in the lazy chunks: the first screen carries only
-  `category-picker-host.jsx`.
+  and keep its code in the lazy chunks: the first screen carries none of it
+  (Summary imports its blocks from `ui/lead-support-detail.jsx` and
+  `ui/spend-lead-group.jsx`, never the `ui-components.jsx` barrel).
 - Write user-facing copy in plain words. Say what happened to the
   person's money, then the number; never describe the app's own state
   ("in the app", "unlinked", "every chart"). An app term a line needs
