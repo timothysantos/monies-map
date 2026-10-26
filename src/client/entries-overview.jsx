@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 import { mixShareText, SpendingMixChart, SpendingMixList } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { spendingMixCopy as mixCopy } from "./copy/spending-mix-copy";
 import { EmptyState } from "./ui-states";
 import {
@@ -39,12 +40,12 @@ export function EntriesTotals({
   filtersValue = "",
   onOpenFilters = undefined
 }) {
-  const copy = messages.entries.totals;
+  const copy = entriesMessages.totals;
   const shareAside = model.spent.shareMinor === null ? null : (
     <>{copy.shareAside(model.personLabel)} <PrivateMoney>{formatService.money(model.spent.shareMinor)}</PrivateMoney></>
   );
   return (
-    <section className="entries-totals" aria-label={messages.entries.totalsLabel}>
+    <section className="entries-totals" aria-label={entriesMessages.totalsLabel}>
       <div className="entries-totals-main">
         <LeadCard
           className="entries-totals-lead"
@@ -53,7 +54,7 @@ export function EntriesTotals({
           tone={model.spent.tone}
           amountAside={shareAside}
         />
-        <DetailRows label={messages.entries.totalsLabel} className="entries-totals-rows">
+        <DetailRows label={entriesMessages.totalsLabel} className="entries-totals-rows">
           <DetailRow
             label={copy.spendingByCategory}
             // Folded, it says the top three shares ("Travel 39% · Other
@@ -97,10 +98,10 @@ const PILL_FIGURES = { income: "earned", difference: "difference", transfers: "t
 const openFigure = (fig) => ({ "data-fig": fig, role: "button", tabIndex: 0 });
 
 const PILL_LABELS = {
-  income: messages.entries.totalIncome,
-  difference: messages.entries.totalDifference,
-  transfers: messages.entries.totalTransfersOut,
-  outflow: messages.entries.totalOutflow
+  income: entriesMessages.totalIncome,
+  difference: entriesMessages.totalDifference,
+  transfers: entriesMessages.totalTransfersOut,
+  outflow: entriesMessages.totalOutflow
 };
 
 // The Entries page's spending by category (design.md "Entries top"): the
@@ -153,7 +154,7 @@ export function EntriesBreakdownPanel({
   }
 
   return (
-    <section className="entries-mix-panel" aria-label={messages.entries.totals.spendingByCategory}>
+    <section className="entries-mix-panel" aria-label={entriesMessages.totals.spendingByCategory}>
       {expenseBreakdown.length ? (
         <div className="summary-mix entries-mix">
           <div className="summary-mix-chart">
@@ -161,7 +162,7 @@ export function EntriesBreakdownPanel({
               data={visibleBreakdown}
               categories={categories}
               totalMinor={visibleTotalMinor}
-              totalLabel={messages.entries.totalSpend}
+              totalLabel={entriesMessages.totalSpend}
               callouts={false}
               sliceLabels
               shareTotalMinor={totalMinor}
@@ -175,7 +176,7 @@ export function EntriesBreakdownPanel({
             ) : null}
           </div>
           <SpendingMixList
-            label={messages.entries.totals.spendingByCategory}
+            label={entriesMessages.totals.spendingByCategory}
             items={expenseBreakdown}
             topCount={isMobileLayout ? 3 : 5}
             renderRow={(item, index) => {
@@ -199,7 +200,7 @@ export function EntriesBreakdownPanel({
                     onClick={() => toggleCategoryFilter(categoryName)}
                   >
                     <strong className="summary-mix-name">{item.label}</strong>
-                    {isFiltered ? <span className="summary-mix-state">{messages.entries.filtered}</span> : null}
+                    {isFiltered ? <span className="summary-mix-state">{entriesMessages.filtered}</span> : null}
                     {isHidden ? <span className="summary-mix-state">{messages.common.hiddenFromChart}</span> : null}
                     <span className="summary-mix-count">{mixCopy.sliceEntries(item.entryCount)}</span>
                     <span className="summary-mix-amount"><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney></span>
@@ -220,7 +221,7 @@ export function EntriesBreakdownPanel({
           />
         </div>
       ) : (
-        <EmptyState compact title={messages.entries.noSpendBreakdown}>{messages.entries.noSpendBreakdownDetail}</EmptyState>
+        <EmptyState compact title={entriesMessages.noSpendBreakdown}>{entriesMessages.noSpendBreakdownDetail}</EmptyState>
       )}
     </section>
   );

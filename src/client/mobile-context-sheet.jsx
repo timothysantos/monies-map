@@ -3,6 +3,7 @@ import "./mobile-sheet-head.css";
 import { useEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { mobileContextCopy as copy } from "./copy/mobile-context-copy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { useKeyboardInset } from "./use-keyboard-inset";
@@ -125,7 +126,7 @@ function MobileContextSheetBody({
 
       <BottomActions
         className="is-sheet-bar mobile-context-actions"
-        quietLabel={filterProps ? messages.entries.resetFilters : null}
+        quietLabel={filterProps ? entriesMessages.resetFilters : null}
         onQuiet={filterProps?.onResetFilters}
         primaryLabel={copy.done}
         onPrimary={onClose}

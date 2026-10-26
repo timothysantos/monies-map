@@ -2,6 +2,7 @@ import { RefreshCw, Search, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { FilterMultiSelect, FilterSelect } from "./ui-components";
 
 // The filter bar is URL-state driven by Entries. Keeping it in its own route
@@ -61,17 +62,17 @@ export function EntriesFilterStack({
         <SearchFilterInput
           label={messages.common.search}
           value={entryFilters.search}
-          placeholder={messages.entries.searchPlaceholder}
+          placeholder={entriesMessages.searchPlaceholder}
           suggestions={searchSuggestions}
           listId="entries-search-suggestions"
           onChange={(value) => onChangeSearch?.(value) ?? onChangeFilter("search", value)}
         />
         <div className="entries-filter-target" data-filter-target="wallet">
           <FilterMultiSelect
-            label={messages.entries.wallet}
+            label={entriesMessages.wallet}
             values={entryFilters.wallets}
             options={wallets}
-            emptyLabel={messages.entries.allWallets}
+            emptyLabel={entriesMessages.allWallets}
             selectionLabel={(selectedOptions) => {
               if (selectedOptions.length === 1) {
                 return selectedOptions[0].label;
@@ -83,10 +84,10 @@ export function EntriesFilterStack({
         </div>
         <div className="entries-filter-target" data-filter-target="category">
           <FilterMultiSelect
-            label={messages.entries.category}
+            label={entriesMessages.category}
             values={entryFilters.categories}
             options={entryCategoryOptions}
-            emptyLabel={messages.entries.allCategories}
+            emptyLabel={entriesMessages.allCategories}
             categoryPick
             selectionLabel={(selectedOptions) => {
               if (selectedOptions.length === 1) {
@@ -99,17 +100,17 @@ export function EntriesFilterStack({
         </div>
         <div className="entries-filter-target" data-filter-target="type">
           <FilterSelect
-            label={messages.entries.type}
+            label={entriesMessages.type}
             value={entryFilters.type}
             options={["expense", "income", "transfer"]}
-            emptyLabel={messages.entries.allTypes}
+            emptyLabel={entriesMessages.allTypes}
             onChange={(value) => onChangeFilter("type", value)}
           />
         </div>
         {!hideActions ? (
           <div className="entries-filter-reset">
             <button type="button" className="subtle-action" onClick={onResetFilters}>
-              {messages.entries.resetFilters}
+              {entriesMessages.resetFilters}
             </button>
             <button
               type="button"

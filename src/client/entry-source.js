@@ -1,9 +1,9 @@
-import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 
 // Added by (DOMAIN.md): the server sends `addedBy` ("apple_pay_shortcut" or
 // "ask") for an entry an in-app tool saved, never the reference behind it.
 // These turn it into the words and glyph each surface shows.
-const copy = messages.entries.source;
+const copy = entriesMessages.source;
 
 const PROVISIONAL_LABELS = {
   apple_pay_shortcut: copy.applePayProvisional,
@@ -46,7 +46,7 @@ export function addedByLabel(addedBy) {
  * @param {{ locked?: boolean, addedBy?: string | null }} options
  */
 export function moreDetailsSummary({ locked = false, addedBy = null }) {
-  const editCopy = messages.entries.editCard;
+  const editCopy = entriesMessages.editCard;
   if (addedByLabel(addedBy)) {
     return locked ? editCopy.moreDetailsLockedAddedBy : editCopy.moreDetailsOpenAddedBy;
   }

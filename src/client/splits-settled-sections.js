@@ -5,7 +5,7 @@
 // so the list, the chip and the balance can never disagree.
 import { compareSettledSections, partitionActivityBySettlement } from "../domain/split-open-period";
 import { formatCurrencyMinor } from "../domain/split-currency";
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { filterSplitActivityForSearch } from "./split-search";
 import { groupSplitActivityByDate } from "./split-helpers";
 
@@ -103,7 +103,7 @@ function sectionMoney(amountMinor, currency, areTotalsVisible) {
 export function settledSectionHeading(section, { today, areTotalsVisible }) {
   return [
     settledTitle(section, today),
-    messages.splits.entryCount(section.entryCount),
+    splitsMessages.entryCount(section.entryCount),
     sectionMoney(section.spendMinor, section.currency, areTotalsVisible)
   ].join(" · ");
 }
@@ -126,7 +126,7 @@ export function settledSectionArchiveSummary(section, checkpoints, { viewId, are
   return {
     title: section.isPaid ? copy.settledTitle : copy.simplifiedTitle,
     subtitle,
-    meta: messages.splits.entryCount(section.entryCount)
+    meta: splitsMessages.entryCount(section.entryCount)
   };
 }
 

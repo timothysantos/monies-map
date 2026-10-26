@@ -3,6 +3,7 @@ import { Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { buildComparableSplitDraft } from "./split-editing";
 import { InlineError } from "./ui-states";
@@ -54,7 +55,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
             }}
           >
             <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{messages.splits.createGroup}</Dialog.Title>
+              <Dialog.Title>{splitsMessages.createGroup}</Dialog.Title>
               <Dialog.Description>Add a named split group for shared expenses.</Dialog.Description>
             </div>
             <div className="split-dialog-scroll" data-sheet-body>
@@ -68,7 +69,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
                 )}
                 primary={(
                   <button type="submit" className="lsd-primary" disabled={isSubmitting}>
-                    {isSubmitting ? messages.common.saving : messages.splits.saveGroup}
+                    {isSubmitting ? messages.common.saving : splitsMessages.saveGroup}
                   </button>
                 )}
               />
@@ -87,10 +88,10 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
   // New, edit and view all use the split expense card (design.md, "Lead ·
   // Support · Detail"), on a phone and on a wide screen.
   const isEditing = Boolean(dialog?.id) && !readOnly;
-  const title = readOnly ? messages.splits.viewSplit : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense);
+  const title = readOnly ? splitsMessages.viewSplit : (dialog?.id ? splitsMessages.editSplit : splitsMessages.createExpense);
   const closeLabel = readOnly
-    ? messages.splits.expenseCard.closeView
-    : (dialog?.id ? messages.splits.expenseCard.closeEdit : messages.splits.expenseCard.close);
+    ? splitsMessages.expenseCard.closeView
+    : (dialog?.id ? splitsMessages.expenseCard.closeEdit : splitsMessages.expenseCard.close);
   useKeyboardInset(isMobileLayout ? content : null);
   // On a phone the dialog is a bottom sheet and swipes down to close, asking
   // first when the draft changed since it opened (for a saved split: since
@@ -124,7 +125,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
             <div className="note-dialog-head split-dialog-head split-expense-card-head">
               <div>
                 <Dialog.Title>{title}</Dialog.Title>
-                <Dialog.Description>{messages.splits.expenseCard.sheetContext(groupName, people.map((person) => person.name))}</Dialog.Description>
+                <Dialog.Description>{splitsMessages.expenseCard.sheetContext(groupName, people.map((person) => person.name))}</Dialog.Description>
               </div>
               <div className="split-expense-card-head-actions">
                 <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
@@ -168,17 +169,17 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
                 destructive={isEditing ? (
                   // Asks in the app first (SplitDeleteDialog), as before.
                   <button type="button" className="lsd-quiet is-danger" disabled={isSubmitting} onClick={() => onRequestDelete?.(dialog)}>
-                    {messages.splits.expenseCard.deleteSplit}
+                    {splitsMessages.expenseCard.deleteSplit}
                   </button>
                 ) : null}
                 secondary={(
                   <button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onClose}>
-                    {readOnly ? messages.common.close : messages.splits.expenseCard.cancel}
+                    {readOnly ? messages.common.close : splitsMessages.expenseCard.cancel}
                   </button>
                 )}
                 primary={readOnly ? null : (
                   <button type="submit" className="lsd-primary" disabled={isSubmitting || isSaveDisabled}>
-                    {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                    {isSubmitting ? messages.common.saving : splitsMessages.saveExpense}
                   </button>
                 )}
               />
@@ -224,10 +225,10 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
           >
             <div className="note-dialog-head split-dialog-head split-expense-card-head">
               <div>
-                <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement)}</Dialog.Title>
+                <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? splitsMessages.editSplit : splitsMessages.createSettlement)}</Dialog.Title>
                 <Dialog.Description>{readOnly
                   ? "Review the split and its linked ledger evidence."
-                  : messages.splits.groupSettlementDetail(groupOptions.find((group) => group.value === dialog?.groupId)?.label)}</Dialog.Description>
+                  : splitsMessages.groupSettlementDetail(groupOptions.find((group) => group.value === dialog?.groupId)?.label)}</Dialog.Description>
               </div>
             </div>
             <div className="split-dialog-scroll" data-sheet-body>
@@ -261,7 +262,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
                 )}
                 primary={readOnly ? null : (
                   <button type="submit" className="lsd-primary" disabled={isSubmitting || isSaveDisabled}>
-                    {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
+                    {isSubmitting ? messages.common.saving : splitsMessages.saveSettlement}
                   </button>
                 )}
               />

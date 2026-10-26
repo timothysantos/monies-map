@@ -2,6 +2,7 @@ import "./splits-activity-list.css";
 import { ChevronDown, Receipt, SearchX } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { todayInAppTimeZone } from "./app-dates";
 import { useMoneyPrivacy } from "./money-privacy";
 import { EmptyState, InlineError } from "./ui-states";
@@ -170,19 +171,19 @@ export function SplitsActivitySection({
         {!groupedCurrentActivity.length && !hasSettled && searchQuery && settledSearchStatus !== "loading" && settledSearchStatus !== "error" ? (
           <EmptyState
             icon={<SearchX />}
-            title={messages.splits.noSearchResults}
-            action={onClearSearch ? { label: messages.splits.clearSearch, onClick: onClearSearch } : null}
+            title={splitsMessages.noSearchResults}
+            action={onClearSearch ? { label: splitsMessages.clearSearch, onClick: onClearSearch } : null}
           >
-            {messages.splits.noSearchResultsDetail}
+            {splitsMessages.noSearchResultsDetail}
           </EmptyState>
         ) : null}
         {!groupedCurrentActivity.length && !hasSettled && !searchQuery && !archivedBatches.length ? (
           <EmptyState
             icon={<Receipt />}
-            title={messages.splits.noEntries}
-            action={readOnly ? null : { label: messages.splits.addExpense, onClick: onAddExpense }}
+            title={splitsMessages.noEntries}
+            action={readOnly ? null : { label: splitsMessages.addExpense, onClick: onAddExpense }}
           >
-            {messages.splits.noEntriesDetail}
+            {splitsMessages.noEntriesDetail}
           </EmptyState>
         ) : null}
       </div>

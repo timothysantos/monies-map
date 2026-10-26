@@ -7,7 +7,9 @@ import test from "node:test";
 
 import { messages } from "../src/client/copy/en-SG.js";
 import { importMessages } from "../src/client/copy/en-SG-imports.js";
+import { monthMessages } from "../src/client/copy/en-SG-month.js";
 import { settingsMessages } from "../src/client/copy/en-SG-settings.js";
+import { splitsMessages } from "../src/client/copy/en-SG-splits.js";
 
 test("count strings use the singular for one and the plural otherwise", () => {
   const cases = [
@@ -50,10 +52,10 @@ test("count strings use the singular for one and the plural otherwise", () => {
     settingsMessages.statementCompareSummary({ accountName: "UOB One", checkpointMonth: "2026-05", matchedRowCount: 3, statementRowCount: 4 }),
     "UOB One 2026-05: 3 of 4 statement rows matched"
   );
-  assert.equal(messages.splits.includedSplitRecords(1), "1 included split record");
-  assert.equal(messages.splits.includedSplitRecords(3), "3 included split records");
-  assert.equal(messages.splits.entryCount(1), "1 entry");
-  assert.equal(messages.splits.entryCount(4), "4 entries");
+  assert.equal(splitsMessages.includedSplitRecords(1), "1 included split record");
+  assert.equal(splitsMessages.includedSplitRecords(3), "3 included split records");
+  assert.equal(splitsMessages.entryCount(1), "1 entry");
+  assert.equal(splitsMessages.entryCount(4), "4 entries");
 
   const oneRowConfirm = importMessages.deleteDiagnosticEntriesConfirm({ count: 1, amount: "$5.00" });
   assert.match(oneRowConfirm, /^Delete the 1 unresolved ledger row shown here now\? It nets to \$5\.00\./);
@@ -62,11 +64,11 @@ test("count strings use the singular for one and the plural otherwise", () => {
 
 test("the Delete month warning mentions the demo only on the demo site", () => {
   assert.equal(
-    messages.month.deleteMonthDetail({ isDemo: true }),
+    monthMessages.deleteMonthDetail({ isDemo: true }),
     "This removes the current month entirely from the demo, including its summary snapshot."
   );
   for (const isDemo of [false, undefined]) {
-    const detail = messages.month.deleteMonthDetail({ isDemo });
+    const detail = monthMessages.deleteMonthDetail({ isDemo });
     assert.equal(detail, "This removes the current month entirely, including its summary snapshot.");
     assert.doesNotMatch(detail, /demo/i);
   }

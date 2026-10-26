@@ -2,7 +2,7 @@ import "./splits-list-sheets.css";
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { splitHistoryActionLabel } from "./enum-labels";
 import { moniesClient } from "./monies-client-service";
 import { SheetSwipeDismiss } from "./sheet-swipe";
@@ -51,7 +51,7 @@ export function SplitHistoryDialog({ open, history = [], error = "", isSubmittin
                   </article>
                 ))}
               </div>
-            ) : <EmptyState>{messages.splits.historyEmpty}</EmptyState>}
+            ) : <EmptyState>{splitsMessages.historyEmpty}</EmptyState>}
             <InlineError message={error} />
           </div>
           <BottomActions className="is-sheet-bar split-list-sheet-actions" primaryLabel="Close" onPrimary={onClose} />

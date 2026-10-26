@@ -6,6 +6,7 @@ import { ChevronRight, SquarePen, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
@@ -109,7 +110,7 @@ export function MonthPlanStack({
   return (
     <div className="month-plan-stack" id="month-plan">
       <p className={`month-plan-stack-hint ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
-        {isCombinedHouseholdView ? messages.month.readOnlyCombinedHint : messages.month.editHint}
+        {isCombinedHouseholdView ? monthMessages.readOnlyCombinedHint : monthMessages.editHint}
       </p>
       <IncomePlanSection
         categories={categories}
@@ -214,8 +215,8 @@ function IncomePlanSection({
               <span className={`month-section-toggle ${sectionOpen.income ? "is-open" : ""}`} aria-hidden="true">
                 <ChevronRight size={16} />
               </span>
-              <h3>{messages.month.incomeSectionTitle}</h3>
-              <p className="month-section-detail-inline">{messages.month.incomeSectionDetail}</p>
+              <h3>{monthMessages.incomeSectionTitle}</h3>
+              <p className="month-section-detail-inline">{monthMessages.incomeSectionDetail}</p>
             </div>
           </button>
           <div className="month-summary-actions">
@@ -229,7 +230,7 @@ function IncomePlanSection({
                   onAddIncomeRow();
                 }}
               >
-                {messages.month.addIncomeSource}
+                {monthMessages.addIncomeSource}
               </button>
             ) : null}
           </div>
@@ -240,12 +241,12 @@ function IncomePlanSection({
           <table>
             <thead>
               <tr>
-                <SortableHeader label={messages.month.table.category} sort={tableSorts.income} columnKey="categoryName" onSort={onSortChange} tableKey="income" />
-                <SortableHeader label={messages.month.table.item} sort={tableSorts.income} columnKey="label" onSort={onSortChange} tableKey="income" />
-                <SortableHeader label={messages.month.table.planned} sort={tableSorts.income} columnKey="plannedMinor" onSort={onSortChange} tableKey="income" />
-                <SortableHeader label={messages.month.table.actual} sort={tableSorts.income} columnKey="actualMinor" onSort={onSortChange} tableKey="income" />
-                <SortableHeader label={messages.month.table.variance} sort={tableSorts.income} columnKey="variance" onSort={onSortChange} tableKey="income" />
-                <SortableHeader label={messages.month.table.note} sort={tableSorts.income} columnKey="note" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.category} sort={tableSorts.income} columnKey="categoryName" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.item} sort={tableSorts.income} columnKey="label" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.planned} sort={tableSorts.income} columnKey="plannedMinor" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.actual} sort={tableSorts.income} columnKey="actualMinor" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.variance} sort={tableSorts.income} columnKey="variance" onSort={onSortChange} tableKey="income" />
+                <SortableHeader label={monthMessages.table.note} sort={tableSorts.income} columnKey="note" onSort={onSortChange} tableKey="income" />
               </tr>
             </thead>
             <tbody>
@@ -278,7 +279,7 @@ function IncomePlanSection({
                             <span onClick={(event) => event.stopPropagation()}>
                               <ResponsiveSelect
                                 className="table-edit-input"
-                                title={messages.month.table.category}
+                                title={monthMessages.table.category}
                                 value={categoryService.getSelectValue(categories, row)}
                                 options={categoryPickOptions(categorySelectOptions, { valueKey: "id" })}
                                 categoryPick={{}}
@@ -442,7 +443,7 @@ function PlanningSection({
                   onAddPlanRow(section.key);
                 }}
               >
-                {section.key === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket}
+                {section.key === "planned_items" ? monthMessages.addPlannedItem : monthMessages.addBudgetBucket}
               </button>
             ) : null}
           </div>
@@ -453,14 +454,14 @@ function PlanningSection({
           <table>
             <thead>
               <tr>
-                <SortableHeader label={messages.month.table.category} sort={tableSorts[section.key]} columnKey="categoryName" onSort={onSortChange} tableKey={section.key} />
-                {section.key === "planned_items" ? <SortableHeader label={messages.month.table.day} sort={tableSorts[section.key]} columnKey="day" onSort={onSortChange} tableKey={section.key} /> : null}
-                <SortableHeader label={messages.month.table.item} sort={tableSorts[section.key]} columnKey="label" onSort={onSortChange} tableKey={section.key} />
-                <SortableHeader label={messages.month.table.planned} sort={tableSorts[section.key]} columnKey="plannedMinor" onSort={onSortChange} tableKey={section.key} />
-                <SortableHeader label={messages.month.table.actual} sort={tableSorts[section.key]} columnKey="actualMinor" onSort={onSortChange} tableKey={section.key} />
-                <SortableHeader label={messages.month.table.variance} sort={tableSorts[section.key]} columnKey="variance" onSort={onSortChange} tableKey={section.key} />
-                {section.key === "planned_items" ? <SortableHeader label={messages.month.table.account} sort={tableSorts[section.key]} columnKey="accountName" onSort={onSortChange} tableKey={section.key} /> : null}
-                <SortableHeader label={messages.month.table.note} sort={tableSorts[section.key]} columnKey="note" onSort={onSortChange} tableKey={section.key} />
+                <SortableHeader label={monthMessages.table.category} sort={tableSorts[section.key]} columnKey="categoryName" onSort={onSortChange} tableKey={section.key} />
+                {section.key === "planned_items" ? <SortableHeader label={monthMessages.table.day} sort={tableSorts[section.key]} columnKey="day" onSort={onSortChange} tableKey={section.key} /> : null}
+                <SortableHeader label={monthMessages.table.item} sort={tableSorts[section.key]} columnKey="label" onSort={onSortChange} tableKey={section.key} />
+                <SortableHeader label={monthMessages.table.planned} sort={tableSorts[section.key]} columnKey="plannedMinor" onSort={onSortChange} tableKey={section.key} />
+                <SortableHeader label={monthMessages.table.actual} sort={tableSorts[section.key]} columnKey="actualMinor" onSort={onSortChange} tableKey={section.key} />
+                <SortableHeader label={monthMessages.table.variance} sort={tableSorts[section.key]} columnKey="variance" onSort={onSortChange} tableKey={section.key} />
+                {section.key === "planned_items" ? <SortableHeader label={monthMessages.table.account} sort={tableSorts[section.key]} columnKey="accountName" onSort={onSortChange} tableKey={section.key} /> : null}
+                <SortableHeader label={monthMessages.table.note} sort={tableSorts[section.key]} columnKey="note" onSort={onSortChange} tableKey={section.key} />
               </tr>
             </thead>
             <tbody>
@@ -565,7 +566,7 @@ function PlanningRow({
               <span onClick={(event) => event.stopPropagation()}>
                 <ResponsiveSelect
                   className="table-edit-input"
-                  title={messages.month.table.category}
+                  title={monthMessages.table.category}
                   value={categoryService.getSelectValue(categories, row)}
                   options={categoryPickOptions(categorySelectOptions, { valueKey: "id" })}
                   categoryPick={{}}
@@ -800,7 +801,7 @@ function IncomeTotalsFooter({ rows }) {
   return (
     <tfoot>
       <tr className="table-total-row">
-        <td className="month-cell-total">{messages.month.table.total}</td>
+        <td className="month-cell-total">{monthMessages.table.total}</td>
         <td className="month-cell-blank">{messages.common.emptyValue}</td>
         <td className="month-cell-planned"><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
         <td className={`month-cell-actual ${moneyToneClass(flowTone(totals.actualMinor))}`}><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
@@ -817,7 +818,7 @@ function PlanningTotalsFooter({ section }) {
   return (
     <tfoot>
       <tr className="table-total-row">
-        <td className="month-cell-total">{messages.month.table.total}</td>
+        <td className="month-cell-total">{monthMessages.table.total}</td>
         {section.key === "planned_items" ? <td className="month-cell-blank">{messages.common.emptyValue}</td> : null}
         <td className="month-cell-blank">{messages.common.emptyValue}</td>
         <td className="month-cell-planned"><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>

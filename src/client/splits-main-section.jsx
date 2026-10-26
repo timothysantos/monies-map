@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { EmptyState } from "./ui-states";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
@@ -68,10 +68,10 @@ export function SplitsMainSection({
     return (
       <EmptyState
         icon={<Users />}
-        title={messages.splits.noGroups}
-        action={readOnly ? null : { label: messages.splits.createGroup, onClick: onCreateGroup }}
+        title={splitsMessages.noGroups}
+        action={readOnly ? null : { label: splitsMessages.createGroup, onClick: onCreateGroup }}
       >
-        {messages.splits.noGroupsDetail}
+        {splitsMessages.noGroupsDetail}
       </EmptyState>
     );
   }
@@ -114,11 +114,11 @@ export function SplitsMainSection({
           {pendingMatchCount ? (
             <section className="split-match-inbox-callout">
               <div>
-                <strong>{messages.splits.matchInboxTitle(pendingMatchCount)}</strong>
-                <p>{messages.splits.matchInboxDetail}</p>
+                <strong>{splitsMessages.matchInboxTitle(pendingMatchCount)}</strong>
+                <p>{splitsMessages.matchInboxDetail}</p>
               </div>
               <button type="button" className="dialog-primary" onClick={onOpenMatches}>
-                {messages.splits.reviewMatches}
+                {splitsMessages.reviewMatches}
               </button>
             </section>
           ) : null}

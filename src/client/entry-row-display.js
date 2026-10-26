@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { entryAmountTone } from "../domain/money-tone";
 import { paletteColour } from "./palette-colour";
 import { getPersonColour } from "./person-colour";
@@ -59,7 +60,7 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
 // row adds what it was for.
 function getTransferLabel(entry) {
   const purpose = entry.transferPurpose;
-  const copy = messages.entries.transferPurpose;
+  const copy = entriesMessages.transferPurpose;
   if (purpose?.role === "sent") {
     return copy.sentChip(purpose.toPersonName);
   }

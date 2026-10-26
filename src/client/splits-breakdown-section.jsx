@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { EmptyState } from "./ui-states";
 import {
   getDonutItemId,
@@ -99,7 +101,7 @@ export function SplitsBreakdownSection({
                   data={visibleDonutChart}
                   categories={categories}
                   totalMinor={visibleTotalMinor}
-                  totalLabel={centreLabel ?? messages.entries.totalSpend}
+                  totalLabel={centreLabel ?? entriesMessages.totalSpend}
                   currency={currency}
                   compact
                   height={300}
@@ -137,7 +139,7 @@ export function SplitsBreakdownSection({
             </div>
             </>
           ) : (
-            <EmptyState>{messages.splits.noEntries}</EmptyState>
+            <EmptyState>{splitsMessages.noEntries}</EmptyState>
           )}
         </section>
       ) : null}

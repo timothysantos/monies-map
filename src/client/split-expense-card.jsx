@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { formatCardDate } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { DateRow, GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { focusFieldUnlessEditing } from "./deferred-focus";
 import { selectAllOnFocus } from "./focus-utils";
@@ -15,8 +16,8 @@ import { CategoryGlyph } from "./ui-components";
 import { ChipDateField, ChipSelectField, DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui/lead-support-detail";
 
 const { categories: categoryService, format: formatService } = moniesClient;
-const copy = messages.splits;
-const cardCopy = messages.splits.expenseCard;
+const copy = splitsMessages;
+const cardCopy = splitsMessages.expenseCard;
 // Splits terracotta, from the category palette (the Splits-linked colour).
 const GROUP_BUBBLE_COLOUR = "#BF7D51";
 const PAYMENT_ICONS = { cash: Banknote, card: CreditCard, bank: Landmark, other: Wallet };

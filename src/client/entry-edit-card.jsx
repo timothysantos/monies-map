@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { formatCardDate, formatCardDateTime } from "./copy/ask-copy";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { selectAllOnFocus } from "./focus-utils";
 import { BANK_FACTS_LOCK_LINE, getBankFactsLockMessage, getEntryTypeOptions, getTransferDirectionForTypeSwitch } from "./entry-type-options";
 import { moniesClient } from "./monies-client-service";
@@ -18,7 +19,7 @@ import { entryAmountTone } from "../domain/money-tone";
 import { todayInAppTimeZone } from "./app-dates";
 
 const { categories: categoryService, format: formatService } = moniesClient;
-const copy = messages.entries;
+const copy = entriesMessages;
 const SIGNS = { expense: "−", income: "+", transfer: "" };
 const BANK_STATE_TONES = {
   "is-statement-certified": "mint",

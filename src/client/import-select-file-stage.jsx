@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { ChevronRight } from "lucide-react";
 
-import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { importMessages } from "./copy/en-SG-imports";
 import { moniesClient } from "./monies-client-service";
 import { describeUploadStatus } from "./import-upload-status";
@@ -182,9 +182,9 @@ export function ImportSelectFileStage({
                 placeholder={importMessages.sourceLabelPlaceholder}
               />
             </DetailRow>
-            <DetailRow label={importMessages.defaultAccount} value={defaultAccountName || messages.entries.allWallets}>
+            <DetailRow label={importMessages.defaultAccount} value={defaultAccountName || entriesMessages.allWallets}>
               <select className="lsd-row-native" aria-label={importMessages.defaultAccount} value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
-                <option value="">{messages.entries.allWallets}</option>
+                <option value="">{entriesMessages.allWallets}</option>
                 {accountOptions.map((account) => (
                   <option key={account.id} value={account.name}>{account.label}</option>
                 ))}

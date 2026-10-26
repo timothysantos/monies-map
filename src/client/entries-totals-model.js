@@ -1,5 +1,5 @@
 import { entryTotalsTones, flowTone, signTone } from "../domain/money-tone";
-import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { figureCopy } from "./copy/figure-copy";
 import { formatMonthLabel } from "./formatters";
 
@@ -56,7 +56,7 @@ export function buildEntriesTotalsModel({
   ];
   return {
     month: period,
-    eyebrow: figure ? figureCopy.eyebrow(figure, period) : messages.entries.totals.spentEyebrow(period),
+    eyebrow: figure ? figureCopy.eyebrow(figure, period) : entriesMessages.totals.spentEyebrow(period),
     figure,
     spent: figureLead({ figure, figureMinor, spent, pills }),
     pills,
@@ -86,5 +86,5 @@ function figureTone(figure, amountMinor) {
 
 // The phone's Filters row: what the View and scope sheet's filters hold now.
 export function describeEntryFilters(activeFilterCount) {
-  return activeFilterCount > 0 ? messages.entries.totals.filtersOn(activeFilterCount) : messages.entries.totals.filtersAll;
+  return activeFilterCount > 0 ? entriesMessages.totals.filtersOn(activeFilterCount) : entriesMessages.totals.filtersAll;
 }

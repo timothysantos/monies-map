@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { entryAmountTone } from "../domain/money-tone";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { importMessages } from "./copy/en-SG-imports";
 import { GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
@@ -163,7 +164,7 @@ function PreviewRowSheet({
 }) {
   const inferredAmountKeys = useInferredAmountKeys();
   // "No category yet" stays pinned above the searchable list.
-  const noCategory = { value: "", label: messages.entries.allCategories };
+  const noCategory = { value: "", label: entriesMessages.allCategories };
   const category = categories.find((item) => item.name === row.categoryName);
   const theme = { ...FALLBACK_THEME, ...(category ? { colorHex: category.colorHex, iconKey: category.iconKey } : {}) };
   const duplicateMatch = row.reconciliationMatches?.[0] ?? row.reconciliationMatch;
@@ -340,7 +341,7 @@ function PreviewRowSheet({
               disabled={isSkipped}
               onChange={(event) => onUpdatePreviewRowAccount(row.rowId, buildAccountChange({ row, nextValue: event.target.value, accounts, getPreviewAccountOwnerPatch }))}
             >
-              <option value="">{messages.entries.allWallets}</option>
+              <option value="">{entriesMessages.allWallets}</option>
               {row.accountName && !row.accountId && !knownAccountNames.has(row.accountName) ? (
                 <option value={row.accountName}>{row.accountName}</option>
               ) : null}

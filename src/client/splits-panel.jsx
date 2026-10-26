@@ -7,6 +7,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
@@ -1271,7 +1272,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
           className={`split-matches-link ${selectedMode === "matches" ? "is-active" : ""}`}
           onClick={selectedMode === "matches" ? openActiveGroupView : openMatchesView}
         >
-          {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
+          {selectedMode === "matches" ? splitsMessages.backToGroup : splitsMessages.reviewMatches}
           {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
         </button>
         {!isHouseholdView && selectedMode !== "matches" && !activeCheckpoint ? (
@@ -1288,7 +1289,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       className="splits-search"
       label={messages.common.search}
       value={splitSearchQuery}
-      placeholder={activeGroup ? splitsLeadCopy.searchGroup(activeGroup.name) : messages.splits.searchPlaceholder}
+      placeholder={activeGroup ? splitsLeadCopy.searchGroup(activeGroup.name) : splitsMessages.searchPlaceholder}
       suggestions={searchSuggestions}
       listId="splits-search-suggestions"
       onChange={updateSplitSearch}
@@ -1376,7 +1377,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
             <section className="split-settlement-follow-up" key={checkpoint.id}>
               <div>
                 <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</PrivateMoney></strong>
-                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {messages.splits.includedSplitRecords(checkpoint.includedRecordCount)} · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
+                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {splitsMessages.includedSplitRecords(checkpoint.includedRecordCount)} · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
               </div>
               <div className="split-settlement-follow-up-actions">
                 <button type="button" className="subtle-action split-settlement-follow-up-view-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>
@@ -1410,7 +1411,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>
-          <p className="panel-context">{messages.splits.viewing(view.label)}</p>
+          <p className="panel-context">{splitsMessages.viewing(view.label)}</p>
           {isRefreshingDerived ? (
             <div className="split-refresh-status" role="status" aria-live="polite">
               <span className="app-spinner" aria-hidden="true" />

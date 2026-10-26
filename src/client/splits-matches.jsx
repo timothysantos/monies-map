@@ -2,6 +2,7 @@ import "./splits-matches.css";
 import { ChevronLeft, Link2 } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
@@ -24,12 +25,12 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
       <LeadCard
         className="split-match-lead"
         category={{ colorHex: GROUP_BUBBLE_COLOUR, icon: Link2 }}
-        title={messages.splits.matches}
-        subtitle={pendingMatchCount ? messages.splits.matchInboxTitle(pendingMatchCount) : null}
+        title={splitsMessages.matches}
+        subtitle={pendingMatchCount ? splitsMessages.matchInboxTitle(pendingMatchCount) : null}
       >
-        {pendingMatchCount ? <p className="lsd-note">{messages.splits.matchReviewDetail(pendingMatchCount)}</p> : null}
+        {pendingMatchCount ? <p className="lsd-note">{splitsMessages.matchReviewDetail(pendingMatchCount)}</p> : null}
         <div className="split-match-lead-actions">
-          <button type="button" className="lsd-quiet split-match-back-action" aria-label={messages.splits.backToGroup} onClick={onBackToGroup}>
+          <button type="button" className="lsd-quiet split-match-back-action" aria-label={splitsMessages.backToGroup} onClick={onBackToGroup}>
             <ChevronLeft size={16} aria-hidden="true" />
             <span>Back</span>
           </button>
@@ -43,16 +44,16 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
                 <strong>{match.reviewLabel}</strong>
                 <MetaChip tone={CONFIDENCE_TONES[match.confidenceLabel.toLowerCase()]}>{match.confidenceLabel}</MetaChip>
               </div>
-              <DetailRows label={messages.splits.matches} className="split-match-compare">
+              <DetailRows label={splitsMessages.matches} className="split-match-compare">
                 <SplitMatchSide
-                  label={messages.splits.existingSplitRecord}
+                  label={splitsMessages.existingSplitRecord}
                   date={match.splitDate}
                   description={match.splitDescription}
                   amountMinor={match.splitAmountMinor}
                   currency={match.splitCurrency}
                 />
                 <SplitMatchSide
-                  label={messages.splits.importedLedgerRow}
+                  label={splitsMessages.importedLedgerRow}
                   date={match.transactionDate}
                   description={match.transactionDescription}
                   amountMinor={match.amountMinor}
@@ -65,7 +66,7 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
                 </p>
               ) : (
                 <p className="split-match-deltas">
-                  {messages.splits.matchDeltaSummary(
+                  {splitsMessages.matchDeltaSummary(
                     match.dateDeltaDays,
                     // Same-currency match: the delta is in that shared currency.
                     formatService.moneyWithCurrency(match.amountDeltaMinor, match.splitCurrency ?? "SGD")
@@ -75,15 +76,15 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
             </div>
             <div className="split-match-actions">
               <button type="button" className="lsd-quiet" onClick={() => onDismissMatch(match.id)}>
-                {messages.splits.keepSeparate}
+                {splitsMessages.keepSeparate}
               </button>
               <button type="button" className="lsd-primary" onClick={() => void onConfirmMatch(match)}>
-                {messages.splits.match}
+                {splitsMessages.match}
               </button>
             </div>
           </div>
         )) : (
-          <EmptyState>{messages.splits.noMatches}</EmptyState>
+          <EmptyState>{splitsMessages.noMatches}</EmptyState>
         )}
       </div>
     </section>

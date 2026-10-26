@@ -1,4 +1,4 @@
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { moniesClient } from "./monies-client-service";
 import { deriveGroupFigures } from "../domain/split-open-period";
 import { buildSplitActivitySections } from "./splits-settled-sections";
@@ -37,7 +37,7 @@ export function buildSplitsPanelModel({
     matches: []
   };
   const groups = splitsPage.groups;
-  const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup, currency: "SGD", expenseSource: "mixed" }, ...groups.filter((group) => group.id !== "split-group-none")];
+  const groupOptions = [{ id: "split-group-none", name: splitsMessages.nonGroup, currency: "SGD", expenseSource: "mixed" }, ...groups.filter((group) => group.id !== "split-group-none")];
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
   const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);

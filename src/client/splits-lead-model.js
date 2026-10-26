@@ -5,7 +5,7 @@
 
 import { splitsLeadCopy as copy } from "./copy/splits-lead-copy";
 import { splitsStripCopy } from "./copy/splits-strip-copy";
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { summariseOpenPeriod } from "../domain/split-open-period";
 
 /**
@@ -52,16 +52,16 @@ export function buildSplitsLead({ group, viewId, people, areTotalsVisible, spend
       ...base,
       amountMinor,
       tone: "neutral",
-      caption: counterpartName ? copy.balanceWith(counterpartName) : messages.splits.net
+      caption: counterpartName ? copy.balanceWith(counterpartName) : splitsMessages.net
     };
   }
   if (group.balanceMinor === 0) {
-    return { ...base, amountMinor, tone: "neutral", caption: messages.splits.settledUp };
+    return { ...base, amountMinor, tone: "neutral", caption: splitsMessages.settledUp };
   }
   const isOwedToYou = group.balanceMinor > 0;
   const caption = counterpartName
     ? (isOwedToYou ? copy.owesYou(counterpartName) : copy.youOweName(counterpartName))
-    : (isOwedToYou ? messages.splits.youAreOwed : messages.splits.youOwe);
+    : (isOwedToYou ? splitsMessages.youAreOwed : splitsMessages.youOwe);
   return { ...base, amountMinor, tone: isOwedToYou ? "in" : "short", caption };
 }
 

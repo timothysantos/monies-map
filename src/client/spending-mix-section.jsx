@@ -9,6 +9,7 @@ import {
   SpendingMixList
 } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { spendingMixCopy as mixCopy } from "./copy/spending-mix-copy";
 import {
   getDonutItemId,
@@ -189,7 +190,7 @@ export function SpendingMixSection({
           ) : null}
         </div>
       ) : (
-        <EmptyState compact title={messages.entries.noSpendBreakdown}>{messages.entries.noSpendBreakdownDetail}</EmptyState>
+        <EmptyState compact title={entriesMessages.noSpendBreakdown}>{entriesMessages.noSpendBreakdownDetail}</EmptyState>
       )}
     </section>
   );

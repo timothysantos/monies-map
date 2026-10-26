@@ -4,6 +4,7 @@ import { cloneElement, useEffect, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { entryTypeLabel } from "./enum-labels";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
@@ -103,7 +104,7 @@ export function EntryEditorFields({
   const categorySelect = (
     <ResponsiveSelect
       className="table-edit-input"
-      title={messages.entries.editCategory}
+      title={entriesMessages.editCategory}
       value={entry.categoryName}
       options={categoryOptions.map((option) => {
         const optionCategory = categories.find((categoryItem) => categoryItem.name === option);
@@ -129,7 +130,7 @@ export function EntryEditorFields({
       ) : null}
       <div className="entry-edit-grid">
         <label>
-          <span>{messages.entries.editCategory}</span>
+          <span>{entriesMessages.editCategory}</span>
           <div className="entry-category-field">
             {category && onCategoryAppearanceChange ? (
               <CategoryAppearancePopover
@@ -157,8 +158,8 @@ export function EntryEditorFields({
                 </Popover.Anchor>
                 <Popover.Portal>
                   <Popover.Content className="entry-category-save-popover" sideOffset={8} align="start">
-                    <strong>{messages.entries.saveCategoryPrompt}</strong>
-                    <p>{messages.entries.saveCategoryPromptDetail}</p>
+                    <strong>{entriesMessages.saveCategoryPrompt}</strong>
+                    <p>{entriesMessages.saveCategoryPromptDetail}</p>
                     <div className="entry-category-save-actions">
                       <button
                         type="button"
@@ -174,14 +175,14 @@ export function EntryEditorFields({
                           }
                         }}
                       >
-                        {isCategoryQuickSaving ? messages.common.saving : messages.entries.saveCategoryNow}
+                        {isCategoryQuickSaving ? messages.common.saving : entriesMessages.saveCategoryNow}
                       </button>
                       <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => {
                         quickSaveCategoryNameRef.current = "";
                         setQuickSaveCategoryName("");
                         setCategoryQuickSaveOpen(false);
                       }}>
-                        {messages.entries.cancelEdit}
+                        {entriesMessages.cancelEdit}
                       </button>
                     </div>
                     <Popover.Arrow className="category-popover-arrow" />
@@ -194,7 +195,7 @@ export function EntryEditorFields({
           </div>
         </label>
         <label>
-          <span>{messages.entries.editDate}</span>
+          <span>{entriesMessages.editDate}</span>
           <input
             className="table-edit-input"
             type="date"
@@ -205,7 +206,7 @@ export function EntryEditorFields({
           />
         </label>
         <label>
-          <span>{messages.entries.editTime}</span>
+          <span>{entriesMessages.editTime}</span>
           {/* A new entry made today starts at the time now, as the server would
               save it; clearing the field saves no time. */}
           <input
@@ -217,7 +218,7 @@ export function EntryEditorFields({
           />
         </label>
         <label>
-          <span>{messages.entries.editPostDate}</span>
+          <span>{entriesMessages.editPostDate}</span>
           <input
             className="table-edit-input"
             type="date"
@@ -228,10 +229,10 @@ export function EntryEditorFields({
           />
         </label>
         <label>
-          <span>{messages.entries.editWallet}</span>
+          <span>{entriesMessages.editWallet}</span>
           <ResponsiveSelect
             className="table-edit-input"
-            title={messages.entries.editWallet}
+            title={entriesMessages.editWallet}
             value={entry.accountId ?? entry.accountName}
             disabled={bankFactsLocked}
             options={accountOptions.map((option) => ({
@@ -249,17 +250,17 @@ export function EntryEditorFields({
           />
         </label>
         <label>
-          <span>{messages.entries.editOwner}</span>
+          <span>{entriesMessages.editOwner}</span>
           <ResponsiveSelect
             className="table-edit-input"
-            title={messages.entries.editOwner}
+            title={entriesMessages.editOwner}
             value={entry.ownerName ?? ""}
             options={ownerOptions.map((person) => ({ value: person, label: person }))}
             onValueChange={onOwnerChange}
           />
         </label>
         <label>
-          <span>{messages.entries.editAmount}</span>
+          <span>{entriesMessages.editAmount}</span>
           <div className="money-input-with-visibility">
             <input
               className={`table-edit-input table-edit-input-money ${typeToneClass}`}
@@ -294,10 +295,10 @@ export function EntryEditorFields({
           </div>
         </label>
         <label>
-          <span>{messages.entries.editType}</span>
+          <span>{entriesMessages.editType}</span>
           <ResponsiveSelect
             className={`table-edit-input ${typeToneClass}`}
-            title={messages.entries.editType}
+            title={entriesMessages.editType}
             value={entry.entryType}
             options={getEntryTypeOptions(entry, { bankFactsLocked })}
             onValueChange={(nextEntryType) => {
@@ -315,10 +316,10 @@ export function EntryEditorFields({
         </label>
         {entry.entryType === "transfer" ? (
           <label>
-            <span>{messages.entries.editTransferDirection}</span>
+            <span>{entriesMessages.editTransferDirection}</span>
             <ResponsiveSelect
               className="table-edit-input"
-              title={messages.entries.editTransferDirection}
+              title={entriesMessages.editTransferDirection}
               value={entry.transferDirection ?? "out"}
               disabled={bankFactsLocked}
               options={[
@@ -332,7 +333,7 @@ export function EntryEditorFields({
         {transferTools}
         {entry.ownershipType === "shared" && splitPercentValue != null ? (
           <label>
-            <span>{messages.entries.editSplit}</span>
+            <span>{entriesMessages.editSplit}</span>
           <input
             className="table-edit-input table-edit-input-money"
             type="number"
@@ -349,7 +350,7 @@ export function EntryEditorFields({
       </div>
       <div className="entry-writing-grid">
         <label>
-          <span>{messages.entries.editDescription}</span>
+          <span>{entriesMessages.editDescription}</span>
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.description}
@@ -361,7 +362,7 @@ export function EntryEditorFields({
           <LimitHint size={entry.description.length} max={ENTRY_DESCRIPTION_MAX} over={limitsCopy.descriptionTooLong} />
         </label>
         <label>
-          <span>{messages.entries.editNote}</span>
+          <span>{entriesMessages.editNote}</span>
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.note ?? ""}

@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { PrivateMoney } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { formatMonthLabel, money } from "./formatters";
@@ -128,7 +129,7 @@ function IntentMonthCard({ card, isInitiallyOpen, onOpenMonth, onEditNote }) {
           ))}
           <DetailRow
             className="summary-note-trigger"
-            label={messages.month.table.note}
+            label={monthMessages.table.note}
             value={card.note}
             emptyLabel={messages.common.emptyValue}
             onClick={() => onEditNote(card.month, card.note)}

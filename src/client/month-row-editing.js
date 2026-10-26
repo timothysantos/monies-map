@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { moniesClient } from "./monies-client-service";
 import { getMonthPlanEditSource } from "./month-state";
 import { getRowDateValue } from "./table-helpers";
@@ -68,7 +69,7 @@ export function buildMobileMonthIncomeDialog(row) {
     mode: "edit",
     kind: "income",
     rowId: row.id,
-    title: messages.month.editIncomeSource,
+    title: monthMessages.editIncomeSource,
     description: "Edit this month row without squeezing controls into the table.",
     categoryValue: row.categoryId ?? row.categoryName,
     label: row.label ?? "",
@@ -87,7 +88,7 @@ export function buildMobileMonthPlanDialog({ monthKey, row, sectionKey, viewId, 
     kind: "plan",
     rowId: row.id,
     sectionKey,
-    title: sectionKey === "planned_items" ? messages.month.editPlannedItem : messages.month.editBudgetBucket,
+    title: sectionKey === "planned_items" ? monthMessages.editPlannedItem : monthMessages.editBudgetBucket,
     description: "Edit this month row without squeezing controls into the table.",
     categoryValue: sourceRow.categoryId ?? sourceRow.categoryName,
     label: sourceRow.label ?? "",

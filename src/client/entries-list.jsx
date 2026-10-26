@@ -4,6 +4,7 @@ import { Check, Nfc, RefreshCw, Sparkles, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { EntryTransferTools } from "./entry-editor";
 import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
 import { EntryCategoryQuickPick } from "./entry-category-quick-pick";
@@ -270,7 +271,7 @@ export function EntriesDateGroups({
           <div className="entries-date-head" ref={trackStuckDateRow}>
             <strong>{formatService.formatDateOnly(group.date)}</strong>
             <div className="entries-date-actions">
-              <span>{messages.entries.dateNet}: <PrivateMoney className={moneyToneClass(flowTone(group.netMinor))}>{formatService.money(group.netMinor)}</PrivateMoney></span>
+              <span>{entriesMessages.dateNet}: <PrivateMoney className={moneyToneClass(flowTone(group.netMinor))}>{formatService.money(group.netMinor)}</PrivateMoney></span>
               {onRefreshEntries ? (
                 <button
                   type="button"
@@ -499,7 +500,7 @@ function EntryRow({
                   className="entry-row-category-button"
                   aria-haspopup="dialog"
                   aria-expanded={categoryPickState.open}
-                  aria-label={`${messages.entries.editCategory}: ${category?.name ?? entry.categoryName}`}
+                  aria-label={`${entriesMessages.editCategory}: ${category?.name ?? entry.categoryName}`}
                   onClick={() => setCategoryPickState({ mounted: true, open: true })}
                 >
                   <strong>{category?.name ?? entry.categoryName}</strong>
@@ -671,7 +672,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
       disabled={isDeletingEntry}
       onClick={() => void onDeleteEntry?.(entry)}
     >
-      {isDeletingEntry ? messages.common.working : messages.entries.editCard.deleteEntry}
+      {isDeletingEntry ? messages.common.working : entriesMessages.editCard.deleteEntry}
     </button>
   );
   const buildEntryLink = () => buildEntryDeepLink(window.location, {
@@ -765,7 +766,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
               disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
               onClick={onCancelEntryEdit}
             >
-              {messages.entries.cancelEdit}
+              {entriesMessages.cancelEdit}
             </button>
           </>
         )}

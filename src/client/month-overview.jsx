@@ -3,6 +3,7 @@ import { CalendarDays, RotateCcw, SquarePen, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { moniesClient } from "./monies-client-service";
 import { ConfirmLead, SheetDialog } from "./sheet-dialog";
 import { DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
@@ -56,7 +57,7 @@ export function MonthPanelHeader({
   }
 
   async function duplicateMonth() {
-    if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
+    if (await runAction(onDuplicateMonth, setDuplicateError, monthMessages.duplicateMonthFailed)) {
       onActionsOpenChange(false);
     }
   }
@@ -119,16 +120,16 @@ export function MonthPanelHeader({
               aria-expanded={actionsOpen}
               onClick={() => onActionsOpenChange(true)}
             >
-              {messages.month.actions}
+              {monthMessages.actions}
             </button>
             {actionsOpen ? (
               <SheetDialog
                 className="month-actions-sheet"
-                title={messages.month.actions}
+                title={monthMessages.actions}
                 description={monthLabel}
                 descriptionHidden
                 lead={(
-                  <LeadCard className="sheet-dialog-lead" category={{ icon: CalendarDays }} title={monthLabel} subtitle={messages.month.actions} />
+                  <LeadCard className="sheet-dialog-lead" category={{ icon: CalendarDays }} title={monthLabel} subtitle={monthMessages.actions} />
                 )}
                 errorMessage={duplicateError}
                 quietLabel={null}
@@ -136,16 +137,16 @@ export function MonthPanelHeader({
                 onSubmit={closeActions}
                 onClose={closeActions}
               >
-                <DetailRows label={messages.month.actions}>
+                <DetailRows label={monthMessages.actions}>
                   <DetailRow
-                    label={isDuplicating ? messages.common.working : messages.month.duplicateMonth}
+                    label={isDuplicating ? messages.common.working : monthMessages.duplicateMonth}
                     disabled={isDuplicating}
                     onClick={duplicateMonth}
                   />
-                  <DetailRow label={messages.month.resetMonth} disabled={isResettingMonth} onClick={openResetDialog} />
+                  <DetailRow label={monthMessages.resetMonth} disabled={isResettingMonth} onClick={openResetDialog} />
                   <DetailRow
                     className="is-danger"
-                    label={messages.month.deleteMonth}
+                    label={monthMessages.deleteMonth}
                     disabled={isDeletingMonth}
                     onClick={openDeleteDialog}
                   />
@@ -165,7 +166,7 @@ export function MonthPanelHeader({
         >
           <Popover.Trigger asChild>
             <button type="button" className="month-actions-trigger">
-              {messages.month.actions}
+              {monthMessages.actions}
             </button>
           </Popover.Trigger>
           <Popover.Portal>
@@ -176,7 +177,7 @@ export function MonthPanelHeader({
                 onClick={duplicateMonth}
                 disabled={isDuplicating}
               >
-                {isDuplicating ? messages.common.working : messages.month.duplicateMonth}
+                {isDuplicating ? messages.common.working : monthMessages.duplicateMonth}
               </button>
               <InlineError message={duplicateError} />
               <button
@@ -185,7 +186,7 @@ export function MonthPanelHeader({
                 className="month-actions-item"
                 disabled={isResettingMonth}
               >
-                {messages.month.resetMonth}
+                {monthMessages.resetMonth}
               </button>
               <button
                 type="button"
@@ -193,7 +194,7 @@ export function MonthPanelHeader({
                 className="month-actions-item month-actions-item-danger"
                 disabled={isDeletingMonth}
               >
-                {messages.month.deleteMonth}
+                {monthMessages.deleteMonth}
               </button>
             </Popover.Content>
           </Popover.Portal>
@@ -204,12 +205,12 @@ export function MonthPanelHeader({
         {resetDialogOpen ? (
           <MonthTypedConfirmDialog
             icon={RotateCcw}
-            title={messages.month.resetMonth}
-            detail={messages.month.resetMonthDetail}
+            title={monthMessages.resetMonth}
+            detail={monthMessages.resetMonthDetail}
             monthLabel={monthLabel}
-            placeholder={messages.month.resetMonthPlaceholder}
+            placeholder={monthMessages.resetMonthPlaceholder}
             phrase="reset month"
-            confirmLabel={messages.month.resetMonthConfirm}
+            confirmLabel={monthMessages.resetMonthConfirm}
             text={resetMonthText}
             error={resetError}
             isWorking={isResettingMonth}
@@ -219,7 +220,7 @@ export function MonthPanelHeader({
               setResetError("");
             }}
             onConfirm={async () => {
-              if (await runAction(onResetMonth, setResetError, messages.month.resetMonthFailed)) {
+              if (await runAction(onResetMonth, setResetError, monthMessages.resetMonthFailed)) {
                 setResetDialogOpen(false);
               }
             }}
@@ -228,12 +229,12 @@ export function MonthPanelHeader({
         {deleteDialogOpen ? (
           <MonthTypedConfirmDialog
             icon={Trash2}
-            title={messages.month.deleteMonth}
-            detail={messages.month.deleteMonthDetail({ isDemo: isDemoEnvironment })}
+            title={monthMessages.deleteMonth}
+            detail={monthMessages.deleteMonthDetail({ isDemo: isDemoEnvironment })}
             monthLabel={monthLabel}
-            placeholder={messages.month.deleteMonthPlaceholder}
+            placeholder={monthMessages.deleteMonthPlaceholder}
             phrase="delete month"
-            confirmLabel={messages.month.deleteMonthConfirm}
+            confirmLabel={monthMessages.deleteMonthConfirm}
             text={deleteMonthText}
             error={deleteError}
             isWorking={isDeletingMonth}
@@ -243,7 +244,7 @@ export function MonthPanelHeader({
               setDeleteError("");
             }}
             onConfirm={async () => {
-              if (await runAction(onDeleteMonth, setDeleteError, messages.month.deleteMonthFailed)) {
+              if (await runAction(onDeleteMonth, setDeleteError, monthMessages.deleteMonthFailed)) {
                 setDeleteDialogOpen(false);
               }
             }}
@@ -360,8 +361,8 @@ export function MonthNotesAndAccounts({
     <div className="panel-subgrid">
       <section>
         <div className="panel-subhead">
-          <h3>{messages.month.notesTitle}</h3>
-          <p>{messages.month.notesDetail}</p>
+          <h3>{monthMessages.notesTitle}</h3>
+          <p>{monthMessages.notesDetail}</p>
         </div>
         <div className="note-card-actions">
           <button
@@ -380,8 +381,8 @@ export function MonthNotesAndAccounts({
 
       <section>
         <div className="panel-subhead">
-          <h3>{messages.month.accountsTitle}</h3>
-          <p>{messages.month.accountsDetail}</p>
+          <h3>{monthMessages.accountsTitle}</h3>
+          <p>{monthMessages.accountsDetail}</p>
         </div>
         <div className="summary-account-pills">
           {visibleAccounts.map((account) => (

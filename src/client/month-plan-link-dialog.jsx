@@ -2,6 +2,7 @@ import { Link2 } from "lucide-react";
 import { memo } from "react";
 
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
 import { SheetDialog } from "./sheet-dialog";
@@ -74,7 +75,7 @@ export function MonthPlanLinkDialog({
       errorMessage={errorMessage}
       primaryLabel={isSaving ? messages.common.saving : "Save matches"}
       primaryDisabled={isSaving}
-      quietLabel={messages.month.cancelEdit}
+      quietLabel={monthMessages.cancelEdit}
       isSubmitting={isSaving}
       isDirty={isDirty}
       onSubmit={onSave}
@@ -121,7 +122,7 @@ export function MonthPlanLinkDialog({
           ))}
         </div>
       ) : (
-        <EmptyState>{messages.month.planLinkNoCandidates}</EmptyState>
+        <EmptyState>{monthMessages.planLinkNoCandidates}</EmptyState>
       )}
     </SheetDialog>
   );

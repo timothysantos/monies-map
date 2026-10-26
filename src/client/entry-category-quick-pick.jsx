@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { CategoryPickerHost } from "./category-picker-host";
-import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { CategoryGlyph } from "./ui-components";
 import { isTransferPurposeCategoryName } from "../domain/transfer-purpose";
 
@@ -32,7 +32,7 @@ export function EntryCategoryQuickPick({ entry, categories, open, onOpenChange, 
       onOpenChange={onOpenChange}
       anchorRef={anchorRef}
       returnFocusRef={anchorRef}
-      title={isPurpose ? messages.entries.transferPurpose.label : messages.entries.editCategory}
+      title={isPurpose ? entriesMessages.transferPurpose.label : entriesMessages.editCategory}
       options={options}
       value={entry.categoryName}
       description={entry.description}

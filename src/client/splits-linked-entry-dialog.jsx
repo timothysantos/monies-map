@@ -2,6 +2,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ResponsiveSelect } from "./responsive-select";
 
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { InlineError } from "./ui-states";
@@ -24,7 +26,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             }}
           >
             <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{messages.splits.editLinkedEntry}</Dialog.Title>
+              <Dialog.Title>{splitsMessages.editLinkedEntry}</Dialog.Title>
               <Dialog.Description>Edit the ledger entry that also appears on Entries.</Dialog.Description>
             </div>
             <div className="linked-entry-notice">
@@ -34,18 +36,18 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             <div className="split-dialog-section">
               <div className="entry-core-grid split-dialog-grid">
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editDate}</span>
+                  <span>{entriesMessages.editDate}</span>
                   <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
                 </label>
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editWallet}</span>
+                  <span>{entriesMessages.editWallet}</span>
                   <input className="table-edit-input" value={dialog?.accountName ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, accountName: event.target.value } : current)} />
                 </label>
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editCategory}</span>
+                  <span>{entriesMessages.editCategory}</span>
                   <ResponsiveSelect
                     className="table-edit-input"
-                    title={messages.entries.editCategory}
+                    title={entriesMessages.editCategory}
                     value={dialog?.categoryName ?? ""}
                     options={categoryOptions.map((option) => ({ value: option, label: option }))}
                     categoryPick={{ description: dialog?.description }}
@@ -57,7 +59,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             <div className="split-dialog-section split-dialog-section-compact">
               <div className="split-dialog-inline">
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editAmount}</span>
+                  <span>{entriesMessages.editAmount}</span>
               <input
                 className="table-edit-input table-edit-input-money"
                 type="number"
@@ -74,7 +76,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
                   />
                 </label>
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editOwner}</span>
+                  <span>{entriesMessages.editOwner}</span>
                   <select className="table-edit-input" value={dialog?.ownerName ?? ""} onChange={(event) => {
                     const nextValue = event.target.value;
                     onChange((current) => current ? {
@@ -93,11 +95,11 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             <div className="split-dialog-section">
               <div className="entry-writing-grid split-dialog-writing-grid">
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editDescription}</span>
+                  <span>{entriesMessages.editDescription}</span>
                   <textarea className="table-edit-input table-edit-textarea" rows={3} value={dialog?.description ?? ""} onChange={(event) => onChange((current) => current ? { ...current, description: event.target.value } : current)} />
                 </label>
                 <label className="split-dialog-field">
-                  <span>{messages.entries.editNote}</span>
+                  <span>{entriesMessages.editNote}</span>
                   <textarea className="table-edit-input table-edit-textarea" rows={3} value={dialog?.note ?? ""} onChange={(event) => onChange((current) => current ? { ...current, note: event.target.value } : current)} />
                 </label>
               </div>

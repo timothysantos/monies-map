@@ -1,7 +1,7 @@
 import "./splits-checkpoint-panel.css";
 import { ArrowRightLeft } from "lucide-react";
 
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { BottomActions, DetailRow, DetailRows, LeadCard } from "./ui/lead-support-detail";
 
 // Splits terracotta, from the category palette (the split cards' colour).
@@ -49,7 +49,7 @@ export function SplitsCheckpointPanel({
         >
           {sentence ? <p className="lsd-note">{sentence}</p> : null}
           <small>
-            {checkpoint.currency ?? "SGD"} · {messages.splits.includedSplitRecords(checkpoint.includedRecordCount)} · {matchedLabel}{checkpoint.status.replaceAll("_", " ")}
+            {checkpoint.currency ?? "SGD"} · {splitsMessages.includedSplitRecords(checkpoint.includedRecordCount)} · {matchedLabel}{checkpoint.status.replaceAll("_", " ")}
           </small>
         </LeadCard>
       </div>

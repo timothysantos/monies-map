@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { moniesClient } from "./monies-client-service";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { SplitSettlementCard } from "./split-settlement-card";
@@ -202,7 +203,7 @@ export function SplitActivityGroups({
         <header className="split-date-header" ref={archived ? undefined : trackStuckDateRow}>
           <strong>{formattedDate}</strong>
           <div className="split-date-actions">
-            <span>{messages.splits.entryCount(group.items.length)}</span>
+            <span>{splitsMessages.entryCount(group.items.length)}</span>
             {onRefreshActivity && !archived ? (
               <button
                 type="button"
@@ -272,17 +273,17 @@ export function SplitActivityGroups({
                   className="split-inline-expense-actions"
                   destructive={inlineReadOnly ? null : (
                     <button type="button" className="lsd-quiet is-danger" disabled={isSubmitting} onClick={() => onRequestDelete?.(editingDraft)}>
-                      {messages.splits.expenseCard.deleteSplit}
+                      {splitsMessages.expenseCard.deleteSplit}
                     </button>
                   )}
                   secondary={(
                     <button type="button" className="lsd-quiet" disabled={isSubmitting} onClick={onCancelEditing}>
-                      {inlineReadOnly ? messages.common.close : messages.splits.expenseCard.cancel}
+                      {inlineReadOnly ? messages.common.close : splitsMessages.expenseCard.cancel}
                     </button>
                   )}
                   primary={inlineReadOnly ? null : (
                     <button type="button" className="lsd-primary" disabled={isSubmitting || !hasEditingChanges} onClick={() => void onSaveEditing?.()}>
-                      {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+                      {isSubmitting ? messages.common.saving : splitsMessages.saveExpense}
                     </button>
                   )}
                 />
@@ -360,7 +361,7 @@ export function SplitActivityGroups({
                         item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
                       }}
                     >
-                      {messages.splits.editSplit}
+                      {splitsMessages.editSplit}
                     </button>
                     {item.linkedTransactionId ? (
                       <button
@@ -371,7 +372,7 @@ export function SplitActivityGroups({
                           onViewLinkedEntry?.(item);
                         }}
                       >
-                        {messages.splits.viewLinkedEntry}
+                        {splitsMessages.viewLinkedEntry}
                       </button>
                     ) : null}
                   </div>
@@ -389,8 +390,8 @@ export function SplitActivityGroups({
                     {isPendingDerived
                       ? messages.common.loadingLatest
                       : item.matched
-                        ? messages.splits.linked
-                        : messages.splits.manual}
+                        ? splitsMessages.linked
+                        : splitsMessages.manual}
                   </span>
                 </span>
               </div>

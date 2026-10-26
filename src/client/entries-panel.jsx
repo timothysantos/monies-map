@@ -10,6 +10,7 @@ import { Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { AppLoadingOverlay } from "./app-shell-status";
 import { EmptyState, ErrorPanel } from "./ui-states";
 import { SettlementLockNotice } from "./settlement-lock-notice";
@@ -1207,7 +1208,7 @@ export function EntriesPanel({
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.entries}</h2>
-          <span className="panel-context">{messages.entries.viewing(entryView.label)}</span>
+          <span className="panel-context">{entriesMessages.viewing(entryView.label)}</span>
         </div>
         <div className="scope-toggle pill-row scope-toggle-row desktop-scope-toggle">
           {entryView.monthPage.scopes.map((scope) => (
@@ -1360,8 +1361,8 @@ export function EntriesPanel({
       {activeEditingEntry && canPortalEntryComposer && useMobileEntrySheet ? createPortal(
         <EntryMobileSheet
           title="Edit entry"
-          description={messages.entries.editCard.sheetContext(
-            activeEditingEntry.ownershipType === "shared" ? messages.entries.shared : activeEditingEntry.ownerName,
+          description={entriesMessages.editCard.sheetContext(
+            activeEditingEntry.ownershipType === "shared" ? entriesMessages.shared : activeEditingEntry.ownerName,
             formatShortMonth(activeEditingEntry.date?.slice(0, 7))
           )}
           className="is-lead-sheet"
@@ -1371,7 +1372,7 @@ export function EntriesPanel({
             ? <SettlementLockNotice lock={activeEntrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={() => void undoEntrySettlementLock()} />
             : null}
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
-          cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
+          cancelLabel={hasEditingEntryChanges ? entriesMessages.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
           isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
           isDirty={hasEditingEntryChanges}
@@ -1402,12 +1403,12 @@ export function EntriesPanel({
                         disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
                         onClick={() => requestDeleteEntry(activeEditingEntry)}
                       >
-                        {deletingEntryId === activeEditingEntry.id ? messages.common.working : messages.entries.editCard.deleteEntry}
+                        {deletingEntryId === activeEditingEntry.id ? messages.common.working : entriesMessages.editCard.deleteEntry}
                       </button>
                     )}
                     secondary={(
                       <button type="button" className="lsd-quiet" onClick={closeEntryEditSheet}>
-                        {hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
+                        {hasEditingEntryChanges ? entriesMessages.cancelEdit : messages.common.close}
                       </button>
                     )}
                     primary={(
@@ -1603,7 +1604,7 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, e
   const description = entry?.description || "this row";
   // Taking an entry off Splits says what the Splits row's menu said (owner,
   // 2026-10-20): Remove from Splits, and the entry itself stays.
-  const editCopy = messages.entries.editCard;
+  const editCopy = entriesMessages.editCard;
   const title = isEntryDelete ? "Delete entry?" : editCopy.removeFromSplitsTitle;
   const consequence = isEntryDelete ? "This removes the ledger entry." : editCopy.removeFromSplitsNote;
 
@@ -1639,19 +1640,19 @@ function EntriesEmptyState({ suggestion, hasFilters, onSwitchView, onAddEntry, o
       <EmptyState
         className="entries-empty-state"
         icon={<SearchX />}
-        title={messages.entries.noEntries}
-        action={{ label: messages.entries.resetFilters, onClick: onResetFilters }}
+        title={entriesMessages.noEntries}
+        action={{ label: entriesMessages.resetFilters, onClick: onResetFilters }}
       >
-        {messages.entries.noEntriesFilteredDetail}
+        {entriesMessages.noEntriesFilteredDetail}
       </EmptyState>
     ) : (
       <EmptyState
         className="entries-empty-state"
         icon={<Inbox />}
-        title={messages.entries.noEntriesYet}
-        action={{ label: messages.entries.addEntry, onClick: onAddEntry }}
+        title={entriesMessages.noEntriesYet}
+        action={{ label: entriesMessages.addEntry, onClick: onAddEntry }}
       >
-        {messages.entries.noEntriesYetDetail}
+        {entriesMessages.noEntriesYetDetail}
       </EmptyState>
     );
   }
@@ -1660,11 +1661,11 @@ function EntriesEmptyState({ suggestion, hasFilters, onSwitchView, onAddEntry, o
     <EmptyState
       className="entries-empty-state"
       icon={<Inbox />}
-      title={messages.entries.walletViewMismatchTitle}
-      action={{ label: messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel), onClick: () => onSwitchView(suggestion.ownerPersonId) }}
-      secondary={{ label: messages.entries.walletViewMismatchHouseholdAction, onClick: () => onSwitchView("household") }}
+      title={entriesMessages.walletViewMismatchTitle}
+      action={{ label: entriesMessages.walletViewMismatchOwnerAction(suggestion.ownerLabel), onClick: () => onSwitchView(suggestion.ownerPersonId) }}
+      secondary={{ label: entriesMessages.walletViewMismatchHouseholdAction, onClick: () => onSwitchView("household") }}
     >
-      {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
+      {entriesMessages.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
     </EmptyState>
   );
 }

@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
+import { faqMessages } from "./copy/en-SG-faq";
 import { categoryRowDetail } from "./category-utils";
 import { CategoryGlyph } from "./ui-components";
 import { categories as defaultCategories } from "../domain/demo-data";
@@ -127,10 +128,10 @@ export function FaqPanel({ viewLabel }) {
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.faq}</h2>
-          <span className="panel-context">{messages.faq.viewing(viewLabel)}</span>
+          <span className="panel-context">{faqMessages.viewing(viewLabel)}</span>
         </div>
       </div>
-      <div className="faq-tabs pill-row" role="tablist" aria-label={messages.faq.tabsLabel} onKeyDown={handleTabKeyDown}>
+      <div className="faq-tabs pill-row" role="tablist" aria-label={faqMessages.tabsLabel} onKeyDown={handleTabKeyDown}>
         {GUIDE_TABS.map((tabId) => (
           <button
             key={tabId}
@@ -146,7 +147,7 @@ export function FaqPanel({ viewLabel }) {
             tabIndex={tabId === activeTab ? 0 : -1}
             onClick={() => selectTab(tabId)}
           >
-            {messages.faq.tabs[tabId]}
+            {faqMessages.tabs[tabId]}
           </button>
         ))}
       </div>
@@ -162,12 +163,12 @@ export function FaqPanel({ viewLabel }) {
         ) : loadError ? (
           <ErrorPanel
             className="faq-guide-error"
-            title={messages.faq.loadFailed}
-            actions={[{ label: messages.faq.retry, onClick: () => setAttempt((count) => count + 1), primary: true }]}
+            title={faqMessages.loadFailed}
+            actions={[{ label: faqMessages.retry, onClick: () => setAttempt((count) => count + 1), primary: true }]}
           />
         ) : (
           <div className="faq-guide-status state-skeleton" role="status" aria-busy="true">
-            <p className="state-detail">{messages.faq.loading}</p>
+            <p className="state-detail">{faqMessages.loading}</p>
             <div className="sk sk-lines" />
             <div className="sk sk-row" />
             <div className="sk sk-row" />
@@ -215,12 +216,12 @@ function GuideContents({ toc, onLinkClick }) {
     <div className="faq-contents">
       {isMobile ? (
         <button type="button" className="faq-contents-toggle" aria-expanded={isExpanded} aria-controls="faq-toc" onClick={() => setIsOpen((open) => !open)}>
-          <span>{messages.faq.contents}</span>
+          <span>{faqMessages.contents}</span>
           <ChevronRight size={18} aria-hidden="true" className={isExpanded ? "is-open" : ""} />
         </button>
       ) : null}
-      <nav id="faq-toc" className="faq-toc" aria-label={messages.faq.contents} hidden={!isExpanded}>
-        {isMobile ? null : <h3>{messages.faq.contents}</h3>}
+      <nav id="faq-toc" className="faq-toc" aria-label={faqMessages.contents} hidden={!isExpanded}>
+        {isMobile ? null : <h3>{faqMessages.contents}</h3>}
         <ol>
           {toc.map((part) => (
             <li key={part.id}>

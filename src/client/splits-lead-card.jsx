@@ -1,7 +1,7 @@
 import "./splits-lead.css";
 import { History, Receipt } from "lucide-react";
 
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { splitsLeadCopy as copy } from "./copy/splits-lead-copy";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
@@ -99,12 +99,12 @@ export function SplitsLeadCard({
         </button>
         {!readOnly && showAddExpense ? (
           <button type="button" className="splits-lead-add" onClick={onAddExpense}>
-            {messages.splits.addExpense}
+            {splitsMessages.addExpense}
           </button>
         ) : null}
         {!readOnly ? (
           <button type="button" className="lsd-primary splits-lead-settle" disabled={!canSettle} onClick={onSettle}>
-            {messages.splits.settleUp}
+            {splitsMessages.settleUp}
           </button>
         ) : null}
       </div>

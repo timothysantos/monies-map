@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ResponsiveSelect } from "./responsive-select";
 import { categoryPickOptions } from "./category-pick-options";
 import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
@@ -155,7 +156,7 @@ function PreviewRowsTable({
   const [restoreTarget, setRestoreTarget] = useState(null);
   const inferredAmountKeys = useInferredAmountKeys();
   // "No category yet" stays pinned above the searchable list.
-  const noCategory = { value: "", label: messages.entries.allCategories };
+  const noCategory = { value: "", label: entriesMessages.allCategories };
   const categoryChoices = [noCategory, ...categoryPickOptions(categorySelectOptions)];
   return (
     <div className="table-wrap import-table-wrap">
@@ -263,7 +264,7 @@ function PreviewRowsTable({
                       }}
                       disabled={isSkippedTable}
                     >
-                      <option value="">{messages.entries.allWallets}</option>
+                      <option value="">{entriesMessages.allWallets}</option>
                       {row.accountName && !row.accountId && !knownAccountNames.has(row.accountName) ? (
                         <option value={row.accountName}>{row.accountName}</option>
                       ) : null}
@@ -275,7 +276,7 @@ function PreviewRowsTable({
                   <td>
                     <ResponsiveSelect
                       className="table-edit-input"
-                      title={messages.entries.category}
+                      title={entriesMessages.category}
                       value={row.categoryName ?? ""}
                       options={categoryChoices}
                       categoryPick={{ description: row.description, pinned: [noCategory] }}

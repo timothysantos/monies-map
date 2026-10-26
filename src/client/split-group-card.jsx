@@ -1,11 +1,11 @@
 import { Coins, Plane, Users } from "lucide-react";
 import { useState } from "react";
 
-import { messages } from "./copy/en-SG";
+import { splitsMessages } from "./copy/en-SG-splits";
 import { GrowingTextarea, PickerRow } from "./detail-field-rows";
 import { DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
 
-const copy = messages.splits;
+const copy = splitsMessages;
 // Splits terracotta, from the category palette (the split cards' colour).
 const GROUP_BUBBLE_COLOUR = "#BF7D51";
 

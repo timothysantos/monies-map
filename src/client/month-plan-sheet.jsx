@@ -4,6 +4,7 @@ import { useId } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { planStudioAddCopy } from "./copy/plan-studio-add-copy";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { selectAllOnFocus } from "./focus-utils";
@@ -17,8 +18,8 @@ import { BottomActions, DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/l
 import { useDraftChanged } from "./use-draft-changed";
 
 const { categories: categoryService, format: formatService } = moniesClient;
-const copy = messages.month.planSheet;
-const table = messages.month.table;
+const copy = monthMessages.planSheet;
+const table = monthMessages.table;
 
 // The fields the sheet edits: a change to any of them makes a swipe down
 // ask "Discard changes?" before closing.
@@ -65,7 +66,7 @@ export function MonthPlanSheet({
   });
   const actualMoney = formatService.money(lead.progress.valueMinor);
   const isDirty = useDraftChanged(dialog, pickPlanSheetFields);
-  const saveLabel = isSaving ? messages.common.saving : messages.month.doneEdit;
+  const saveLabel = isSaving ? messages.common.saving : monthMessages.doneEdit;
   const categoryLabelId = useId();
   const accountLabelId = useId();
 
@@ -86,7 +87,7 @@ export function MonthPlanSheet({
           className="is-sheet-bar"
           primaryLabel={saveLabel}
           primaryDisabled={isSaving}
-          quietLabel={messages.month.cancelEdit}
+          quietLabel={monthMessages.cancelEdit}
           onQuiet={onClose}
         />
       )}

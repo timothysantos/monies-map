@@ -6,6 +6,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { monthMessages } from "./copy/en-SG-month";
 import { planStudioAddCopy } from "./copy/plan-studio-add-copy";
 import MonthNoteDialog from "./month-note-dialog";
 import { MonthPlanLinkDialog } from "./month-plan-link-dialog";
@@ -765,7 +766,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       plannedMinor: 0,
       actualMinor: 0,
       accountName: sectionKey === "planned_items" ? "" : undefined,
-      note: sectionKey === "planned_items" ? messages.month.newPlannedItemNote : "",
+      note: sectionKey === "planned_items" ? monthMessages.newPlannedItemNote : "",
       ownershipType,
       ownerName,
       splits: ownershipType === "shared"
@@ -797,7 +798,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     return {
       mode: "create",
       kind: "income",
-      title: messages.month.addIncomeSource,
+      title: monthMessages.addIncomeSource,
       ownerLabel: getMonthRowOwnerLabel(nextRow),
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
@@ -812,7 +813,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       mode: "create",
       kind: "plan",
       sectionKey,
-      title: sectionKey === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket,
+      title: sectionKey === "planned_items" ? monthMessages.addPlannedItem : monthMessages.addBudgetBucket,
       ownerLabel: getMonthRowOwnerLabel(nextRow),
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
@@ -970,7 +971,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   // confirms, so totals never show a delete that did not happen.
   async function deleteMonthPlanRowOnServer(rowId) {
     if (rowRemoveInFlightRef.current) {
-      throw new Error(messages.month.rowDeleteFailed);
+      throw new Error(monthMessages.rowDeleteFailed);
     }
     rowRemoveInFlightRef.current = true;
     setIsRemovingMonthRow(true);
@@ -984,7 +985,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         })
       });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.rowDeleteFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.rowDeleteFailed));
       }
     } finally {
       rowRemoveInFlightRef.current = false;
@@ -1068,7 +1069,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     try {
       await persistMonthRow(kind === "income" ? "income" : sectionKey, { ...row, note: draft });
     } catch (error) {
-      setRowNoteError(error instanceof Error && error.message ? error.message : messages.month.rowNoteSaveFailed);
+      setRowNoteError(error instanceof Error && error.message ? error.message : monthMessages.rowNoteSaveFailed);
       return;
     } finally {
       rowNoteSaveInFlightRef.current = false;
@@ -1110,7 +1111,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         })
       });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.monthNoteSaveFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.monthNoteSaveFailed));
       }
 
       setMonthNoteDialog(null);
@@ -1118,7 +1119,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         kind: "plan-row-edit"
       }));
     } catch (error) {
-      setMonthNoteError(error instanceof Error && error.message ? error.message : messages.month.monthNoteSaveFailed);
+      setMonthNoteError(error instanceof Error && error.message ? error.message : monthMessages.monthNoteSaveFailed);
     } finally {
       setIsSavingMonthNote(false);
     }
@@ -1222,7 +1223,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       label: "Other income",
       plannedMinor: 0,
       actualMinor: 0,
-      note: messages.month.extraIncomeNote,
+      note: monthMessages.extraIncomeNote,
       ownershipType: "direct",
       personId: ownerPerson?.id,
       ownerName,
@@ -1462,10 +1463,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         })
       });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.planLinkSaveFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.planLinkSaveFailed));
       }
     } catch (error) {
-      setPlanLinkError(error instanceof Error && error.message ? error.message : messages.month.planLinkSaveFailed);
+      setPlanLinkError(error instanceof Error && error.message ? error.message : monthMessages.planLinkSaveFailed);
       return;
     } finally {
       planLinkSaveInFlightRef.current = false;
@@ -1563,7 +1564,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     try {
       const response = await fetch(`/api/months/duplicate?source=${view.monthPage.month}`, { method: "POST" });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.duplicateMonthFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.duplicateMonthFailed));
       }
       const data = await response.json();
       if (data?.targetMonth) {
@@ -1583,7 +1584,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     try {
       const response = await fetch(`/api/months/reset?month=${view.monthPage.month}`, { method: "POST" });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.resetMonthFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.resetMonthFailed));
       }
       await onRefresh();
       setResetMonthText("");
@@ -1597,7 +1598,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     try {
       const response = await fetch(`/api/months/delete?month=${view.monthPage.month}`, { method: "POST" });
       if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, messages.month.deleteMonthFailed));
+        throw new Error(await buildRequestErrorMessage(response, monthMessages.deleteMonthFailed));
       }
       await onRefresh();
       setDeleteMonthText("");
@@ -1706,7 +1707,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           today={checkInClock.today}
           onSave={savePlanStudio}
           readOnly={isCombinedHouseholdView}
-          readOnlyHint={messages.month.readOnlyCombinedHint}
+          readOnlyHint={monthMessages.readOnlyCombinedHint}
         />
       </Suspense>
       ) : null}
@@ -1787,8 +1788,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           onChange={(draft) => setNoteDialog((current) => current ? { ...current, draft } : current)}
           errorMessage={rowNoteError}
           isSaving={isSavingRowNote}
-          saveLabel={isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
-          cancelLabel={messages.month.cancelEdit}
+          saveLabel={isSavingRowNote ? messages.common.saving : monthMessages.doneEdit}
+          cancelLabel={monthMessages.cancelEdit}
           closeLabel="Close note editor"
           onSave={commitNoteDialog}
           onClose={closeNoteDialog}

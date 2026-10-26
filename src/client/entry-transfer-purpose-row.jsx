@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import { messages } from "./copy/en-SG";
+import { entriesMessages } from "./copy/en-SG-entries";
 import { PickerRow } from "./detail-field-rows";
 import { CategoryGlyph } from "./ui-components";
 import { isTransferPurposeCategoryName } from "../domain/transfer-purpose";
 
-const copy = messages.entries.transferPurpose;
+const copy = entriesMessages.transferPurpose;
 
 // Whether the editor offers "What is this for?" (DOMAIN.md "Transfer
 // Purpose"): a transfer out matched to an account of someone else in the
@@ -63,7 +63,7 @@ export function EntryTransferPurposeRow({ entry, categories, isSheet, onChange }
         rowKey="transferPurpose"
         isSheet={isSheet}
         label={copy.label}
-        valueLabel={isSaving ? copy.saving : purpose?.categoryName ?? messages.entries.editCard.notSet}
+        valueLabel={isSaving ? copy.saving : purpose?.categoryName ?? entriesMessages.editCard.notSet}
         value={purpose?.categoryName ?? ""}
         options={options}
         categoryPick={{ description: entry.description }}
