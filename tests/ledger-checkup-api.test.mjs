@@ -149,8 +149,9 @@ test("duplicate split and settled-period error: the flight entered twice, inside
   assert.equal(settled[0].id, `settled_period_error:${[manual, linked].sort().join("+")}`);
   assert.equal(settled[0].amountMinor, 52_592);
   assert.match(settled[0].summary, /Joyce was charged \$525\.92 too much/);
-  assert.equal(settled[0].fix, null);
-  assert.match(settled[0].fixNote, /No fix yet/);
+  // The fix opens the settled-period correction for the hand-typed copy.
+  assert.deepEqual(settled[0].fix, { label: "Correct this settled mistake", path: `/splits?view=household&month=${TODAY.slice(0, 7)}&split_group=${group}&correct_settled=${manual}` });
+  assert.equal(settled[0].fixNote, null);
 
   const open = ofKind(payload, "duplicate_split");
   assert.deepEqual(open.map((item) => item.id), [`duplicate_split:${[openManual, openLinked].sort().join("+")}`]);
@@ -177,7 +178,7 @@ test("settled period: the production shape, a duplicate copy deleted after the s
   assert.equal(found[0].amountMinor, 52_593);
   assert.match(found[0].summary, /was in Splits twice\. The extra copy was removed on .*, but the .* settle-up had already counted both\. Joyce was charged \$525\.93 too much\./);
   assert.deepEqual(found[0].personIds, ["person-joyce", "person-tim"]);
-  assert.equal(found[0].fix, null);
+  assert.deepEqual(found[0].fix, { label: "Correct this settled mistake", path: `/splits?view=household&month=${TODAY.slice(0, 7)}&split_group=${group}&correct_settled=${typedCopy}` });
   assert.deepEqual(ofKind(payload, "duplicate_split"), [], "the kept copy alone is not a duplicate");
 
   // Reopening the settle-up releases the record: nothing is counted any more.

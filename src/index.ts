@@ -18,6 +18,7 @@ import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { handleLedgerCheckupWrite, isLedgerCheckupWritePath } from "./server/ledger-checkup-route";
+import { handleSplitCorrectionRoute, isSplitCorrectionPath } from "./server/split-corrections-route";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
@@ -554,6 +555,12 @@ export default {
 
     if (isLedgerCheckupWritePath(url.pathname)) {
       return handleLedgerCheckupWrite(request, url, env);
+    }
+
+    // Split Correction (DOMAIN.md): fix a mistake inside a settled period
+    // with a record in the open period (src/server/split-corrections-route.ts).
+    if (isSplitCorrectionPath(url.pathname)) {
+      return handleSplitCorrectionRoute(request, url, env);
     }
 
     // Ask's habits, suggestions and Done for you: no AI, deterministic

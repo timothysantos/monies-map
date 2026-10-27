@@ -110,6 +110,18 @@ export function splitsLink(groupId: string | null, date: string, label = "Open S
   return { label, path: `/splits?${params.toString()}` };
 }
 
+// Opens Splits on the group's open period with the settled-correction dialog
+// for one expense (the month is today's, where the correction will sit).
+export const SETTLED_CORRECTION_PARAM = "correct_settled";
+export function settledCorrectionLink(groupId: string | null, today: string, sourceRecordId: string): CheckupFix {
+  const params = new URLSearchParams({ view: "household", month: today.slice(0, 7) });
+  if (groupId) {
+    params.set("split_group", groupId);
+  }
+  params.set(SETTLED_CORRECTION_PARAM, sourceRecordId);
+  return { label: "Correct this settled mistake", path: `/splits?${params.toString()}` };
+}
+
 export function monthLink(month: string, label = "Open the month's plan"): CheckupFix {
   const params = new URLSearchParams({ view: "household", month });
   return { label, path: `/month?${params.toString()}#month-plan` };

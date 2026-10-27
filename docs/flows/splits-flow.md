@@ -175,6 +175,31 @@ on every render once re-ran the link's effect until React stopped the page
 ("Maximum update depth exceeded"). `tests/e2e/splits-deep-links.spec.js`
 covers every action on a desktop and a 390px phone.
 
+### Correct a settled mistake
+
+A mistake inside a settle-up (an expense counted twice) is fixed with a Split
+Correction in the open period (DOMAIN.md "Split Correction",
+docs/proposals/settled-correction.md). Two ways in, one dialog
+(`split-correction-dialog.jsx`, opened by `use-split-correction.jsx`):
+
+- the Ledger check-up's fix link, `?correct_settled=<expense id>` on a
+  `/splits` URL (any view, the household's included). The parameter is read
+  once, the dialog asks `GET /api/splits/corrections/preview` and shows the
+  effect in plain words with the server's amount; closing or adding drops the
+  parameter (`correct_settled` is also cleared when leaving Splits);
+- the read-only card of a settled shared cost: the lock notice carries
+  `Correct this settled mistake` when the preview says the cost is flagged
+  (one request per settled card that opens; forgotten after a correction is
+  added or undone).
+
+`Add correction` posts `{ sourceRecordId, alsoRemoveDuplicate, reason }` to
+`POST /api/splits/corrections`, then refreshes through
+`refreshAfterSplitMutation` and shows "Correction added." The correction row
+sits in the open list (not openable; `Undo correction` while open, posting
+`/api/splits/corrections/undo`), and settled corrections sit in their
+settlement's collapsed section like any record. Tests: `tests/settled-correction.test.mjs`
+(server), `tests/e2e/splits-settled-correction.spec.js` (desktop and 390px).
+
 ## Data Flow
 
 Splits data comes from:

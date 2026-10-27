@@ -71,6 +71,7 @@ import { useAskReturn } from "./use-ask-origin";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
 import { splitCardLock } from "./split-card-lock";
+import { useSplitCorrection } from "./use-split-correction";
 import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
@@ -121,6 +122,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   // The simplified settlement that refused the last split save or delete.
   const [settlementLock, setSettlementLock] = useState(null);
   const [showSettlementFollowUps, setShowSettlementFollowUps] = useState(false);
+  // Settled-period corrections: the dialog, the link on a settled card and
+  // Undo correction on a row (use-split-correction.jsx).
+  const correction = useSplitCorrection({
+    searchParams,
+    setSearchParams,
+    afterChange: () => refreshAfterSplitMutation({ broadcast: true }),
+    announce: (text) => { setCheckpointError(""); setCheckpointNotice(text); },
+    announceError: (text) => { setCheckpointNotice(""); setCheckpointError(text); }
+  });
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
@@ -295,12 +305,18 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     const item = displayView.splitsPage.activity.find((candidate) => candidate.kind === "expense" && candidate.id === draft.id)
       ?? settledRows.findItem("expense", draft.id);
     const lock = splitCardLock(item, splitsPage.settlementCheckpoints ?? [], recordKey);
-    return lock && state ? { ...lock, message: state.message } : lock;
+    return correction.decorateLock(lock && state ? { ...lock, message: state.message } : lock, draft.id);
   }
   const expenseCardKey = `expense:${expenseDialog?.id}`;
   const expenseCardLock = settledCardLock(expenseDialog, expenseCardKey);
   const inlineCardKey = `inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`;
   const inlineCardLock = settledCardLock(inlineSplitDraft, inlineCardKey);
+  // A settled card that opens is asked about once: does the check-up flag it?
+  const openSettledCardId = (expenseCardLock && expenseDialog?.id) || (inlineCardLock && inlineSplitDraft?.id) || "";
+  const watchSettledCard = correction.watchCard;
+  useEffect(() => {
+    watchSettledCard(openSettledCardId);
+  }, [openSettledCardId, watchSettledCard]);
   // The optimistic overlay alone is not counted: it can outlive a failed
   // refresh, and isRefreshingDerived already covers the in-flight window.
   // Back from Ask after the receipt button opened it: the scroll comes back
@@ -1490,6 +1506,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         onRequestDeleteSplit={requestDeleteSplit}
         onViewLinkedEntry={openLinkedEntry}
         onRefreshActivity={() => onRefresh()}
+        onUndoCorrection={correction.undoCorrection}
+        undoingCorrectionId={correction.undoingCorrectionId}
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
         settlementStatus={<>{splitSettlementStatus}{settlementFollowUps}</>}
@@ -1516,6 +1534,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         isUndoingSettleUp={isCheckpointing}
         undoSettleUpError={archiveUndoError}
       />
+
+      {correction.dialog}
 
       <SplitHistoryDialog
         open={showHistory}

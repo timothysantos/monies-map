@@ -180,3 +180,27 @@ export function updateSplitSettlementNote({ settlementId, note }) {
     "Failed to update settlement note."
   );
 }
+
+// Settled-period corrections (DOMAIN.md "Split Correction"). The amount and the
+// people are worked out by the server and never sent from here.
+/** @param {string} sourceRecordId @param {{ signal?: AbortSignal }} [options] */
+export async function fetchSplitCorrectionPreview(sourceRecordId, { signal } = {}) {
+  const response = await fetch(`/api/splits/corrections/preview?sourceRecordId=${encodeURIComponent(sourceRecordId)}`, { signal });
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error ?? "Failed to check the correction.");
+  }
+  return data;
+}
+
+export function addSplitCorrection({ sourceRecordId, alsoRemoveDuplicate, reason }) {
+  return postJson(
+    "/api/splits/corrections",
+    { sourceRecordId, alsoRemoveDuplicate: Boolean(alsoRemoveDuplicate), ...(reason ? { reason } : {}) },
+    "Failed to add the correction."
+  );
+}
+
+export function undoSplitCorrection(correctionId) {
+  return postJson("/api/splits/corrections/undo", { correctionId }, "Failed to undo the correction.");
+}

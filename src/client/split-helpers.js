@@ -46,7 +46,7 @@ export function formatArchiveDate(date) {
 
 export function getArchivedBatchSummary(batch, viewId) {
   const settlement = batch.items
-    .filter((item) => item.kind === "settlement")
+    .filter((item) => item.kind === "settlement" && !item.correction)
     .slice()
     .sort((left, right) => right.date.localeCompare(left.date))[0];
 

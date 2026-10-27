@@ -755,6 +755,48 @@ const SHOTS = [
     }
   },
   {
+    // A flight entered twice in a group and counted twice by a settle-up (its
+    // payment already made). The check-up's fix opens the correction dialog,
+    // and adding it puts a correction row in the open period.
+    name: "splits-settled-correction", device: "desktop", reseed: true, also: ["splits-correction-row"],
+    run: async (page, capture) => {
+      const post = async (url, data) => {
+        const response = await page.request.post(url, { data });
+        if (!response.ok()) throw new Error(`${url} failed: ${await response.text()}`);
+        return response.json();
+      };
+      // The showcase holds one open simplified settlement: mark it paid so a new one can be made.
+      const before = await (await page.request.get(`/api/splits-page?view=person-ethan&month=${MONTH}`)).json();
+      for (const checkpoint of before.splitsPage.settlementCheckpoints.filter((item) => item.status === "open" && !item.settledAt)) {
+        await post("/api/splits/checkpoints/mark-paid", { checkpointId: checkpoint.id });
+      }
+      const group = await post("/api/splits/groups/create", { name: "Japan flights", currency: "SGD", expenseSource: "mixed" });
+      for (let copy = 0; copy < 2; copy += 1) {
+        await post("/api/splits/expenses/create", {
+          groupId: group.groupId, date: `${MONTH}-03`, description: "Singapore Airlines flights", categoryName: "Travel", payerPersonName: "Ethan",
+          amountMinor: 105_185, splitAmountMinor: 52_592, currency: "SGD", paymentMethod: "cash", paymentStatus: "recorded"
+        });
+      }
+      const checkpoint = await post("/api/splits/checkpoints/create", { viewerPersonId: "person-ethan", date: `${MONTH}-10`, currency: "SGD" });
+      await post("/api/splits/checkpoints/mark-paid", { checkpointId: checkpoint.checkpointId });
+      const report = await (await page.request.get("/api/ledger-checkup")).json();
+      const fix = report.findings.find((item) => item.kind === "settled_period_error" && item.fix)?.fix;
+      if (!fix) throw new Error("The check-up did not offer the settled correction.");
+      await open(page, fix.path.replace("view=household", "view=person-ethan"));
+      const dialog = page.getByRole("dialog", { name: "Correct a settled mistake" });
+      await dialog.getByRole("button", { name: "Add correction" }).waitFor({ timeout: 30_000 });
+      await page.waitForTimeout(400);
+      await capture("splits-settled-correction");
+      await dialog.getByRole("button", { name: "Add correction" }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 30_000 });
+      await waitUsable(page);
+      const row = page.locator(".split-activity-card").filter({ hasText: "Correction: Singapore Airlines flights" }).first();
+      await scrollToLocator(page, row, 260);
+      await hideCaret(page);
+      await capture("splits-correction-row");
+    }
+  },
+  {
     name: "month-add-planned", device: "desktop", reseed: true,
     run: async (page) => {
       await open(page, `/month?view=person-ethan&month=${MONTH}`);

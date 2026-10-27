@@ -447,6 +447,8 @@ export interface SplitActivityDto {
   settlementCheckpointId?: string;
   settlementCheckpointStatus?: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
   settlementStatus?: "settled" | "open_after_settlement" | "open";
+  // A settled-period correction row: not spending and not a payment (see SplitSettlementDto).
+  correction?: SplitCorrectionDto;
 }
 
 export interface SplitSettlementCheckpointDto {
@@ -561,6 +563,16 @@ export interface SplitSettlementDto {
   linkedTransactionDescription?: string;
   linkedTransactionNote?: string;
   linkedTransactionCategoryName?: string;
+  // Present only on a settled-period correction (DOMAIN.md "Split Correction"):
+  // a record that moves a balance without being a payment.
+  correction?: SplitCorrectionDto;
+}
+
+// What a correction record says about itself: the expense whose settled effect
+// it corrects and the plain-words label shown in the activity list.
+export interface SplitCorrectionDto {
+  sourceRecordId: string;
+  reason: string;
 }
 
 export interface SplitsPageDto {
