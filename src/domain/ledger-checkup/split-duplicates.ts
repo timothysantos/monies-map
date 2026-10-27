@@ -15,10 +15,13 @@
 // - a pair no settle-up covers is `duplicate_split` (a delete in Splits fixes
 //   it); a pair where a settle-up covers a record is `settled_period_error`:
 //   the settle-up already counted the purchase twice, so the people's balances
-//   moved by the share of one copy, and the fix (phase 3) is not built yet.
+//   moved by the share of one copy. Its fix is "Correct this settled mistake"
+//   (a Split Correction in the open period, docs/proposals/settled-correction.md);
+//   a finding a live correction already resolves is silent, and is reported
+//   again if the correction is undone.
 import { countSharedTokens, normalizeDescriptionForMatch } from "../app-repository-helpers";
 import { findBestSplitExpenseMatch } from "../split-matching";
-import { clip, finding, money, personLabel, shortDate, shortId, splitsLink } from "./helpers";
+import { clip, finding, money, personLabel, settledCorrectionLink, shortDate, shortId, splitsLink } from "./helpers";
 import type { CheckupContext, DetectedFinding } from "./types";
 
 export interface SplitRecordFact {
@@ -72,6 +75,46 @@ export interface DeletedSettledFact {
 export interface SplitPairFacts {
   pairs: SplitPairFact[];
   deletedInSettled: DeletedSettledFact[];
+  // The split expenses a live correction already corrects (their settled
+  // mistake is resolved). Absent = none.
+  correctedSourceIds?: ReadonlyArray<string>;
+}
+
+// What a Split Correction would record for one settled mistake, worked out from
+// the same facts the detector reads (so a correction is only ever offered for
+// a finding the detector reports). The correction is a payment-shaped record
+// in the open period from the person who was charged too much to the person
+// who was paid too much: it moves the balance by exactly the share the settled
+// period over-charged.
+export interface SettledCorrectionPlan {
+  sourceRecordId: string;
+  sourceDescription: string;
+  sourceDate: string;
+  // The whole extra expense (the correction itself is one person's share of it).
+  sourceAmountMinor: number;
+  groupId: string | null;
+  groupName: string | null;
+  currency: string;
+  amountMinor: number;
+  // The person charged too much (the correction is in their favour) and the
+  // person paid too much (who now owes it back).
+  overchargedPersonId: string;
+  overpaidPersonId: string;
+  settledBy: { kind: "checkpoint" | "batch"; id: string; date: string };
+  // The extra copy is still a live record (it can be removed with the correction).
+  sourceStillLive: boolean;
+  // A live twin was kept (the purchase was in twice) or the cost is simply gone.
+  hasTwin: boolean;
+  // The plain-words label shown in the activity list.
+  label: string;
+}
+
+// Who was charged too much for an expense counted once too often: each person
+// who owes the payer is charged their share.
+function overchargeOf(record: SplitRecordFact) {
+  return record.shares
+    .filter((share) => share.personId !== record.payerPersonId && share.amountMinor > 0)
+    .map((share) => ({ personId: share.personId, amountMinor: share.amountMinor }));
 }
 
 type Agreement = "same" | "overlap" | "none";
@@ -178,6 +221,65 @@ function peopleOf(pair: SplitPairFact) {
   return [pair.a, pair.b].flatMap((record) => [record.payerPersonId, ...(record.toPersonId ? [record.toPersonId] : []), ...record.shares.map((share) => share.personId)]);
 }
 
+function correctionLabel(source: SplitRecordFact, settleDate: string, hasTwin: boolean, context: CheckupContext) {
+  const what = `${clip(source.description || "Shared cost", 40)} on ${shortDate(source.date, context.today)}`;
+  return hasTwin
+    ? `Correction: ${what} counted twice in the ${shortDate(settleDate, context.today)} settle-up`
+    : `Correction: ${what} removed after the ${shortDate(settleDate, context.today)} settle-up`;
+}
+
+function planFor(source: SplitRecordFact, effects: Array<{ personId: string; amountMinor: number }>, input: { sourceStillLive: boolean; hasTwin: boolean }, context: CheckupContext): SettledCorrectionPlan | null {
+  // The settled period must hold the source, and exactly one other person was
+  // charged (the balance is between two people).
+  if (!source.coveredBy || source.kind !== "expense" || effects.length !== 1) {
+    return null;
+  }
+  return {
+    sourceRecordId: source.id,
+    sourceDescription: source.description,
+    sourceDate: source.date,
+    sourceAmountMinor: source.amountMinor,
+    groupId: source.groupId,
+    groupName: source.groupName,
+    currency: source.currency,
+    amountMinor: effects[0].amountMinor,
+    overchargedPersonId: effects[0].personId,
+    overpaidPersonId: source.payerPersonId,
+    settledBy: source.coveredBy,
+    sourceStillLive: input.sourceStillLive,
+    hasTwin: input.hasTwin,
+    label: correctionLabel(source, source.coveredBy.date, input.hasTwin, context)
+  };
+}
+
+// The corrections the settled-period detector can offer, by the id of the
+// expense whose settled effect they correct. A mistake a live correction
+// already corrects is not offered again.
+export function planSettledCorrections(facts: SplitPairFacts, context: CheckupContext): Map<string, SettledCorrectionPlan> {
+  const plans = new Map<string, SettledCorrectionPlan>();
+  const corrected = new Set(facts.correctedSourceIds ?? []);
+  for (const fact of facts.deletedInSettled) {
+    const { record } = fact;
+    if (corrected.has(record.id) || !record.coveredBy || overchargeOf(record).length === 0) {
+      continue;
+    }
+    const plan = planFor(record, overchargeOf(record), { sourceStillLive: false, hasTwin: Boolean(fact.twin) }, context);
+    if (plan) plans.set(plan.sourceRecordId, plan);
+  }
+  for (const pair of facts.pairs) {
+    if (!pair.a.coveredBy && !pair.b.coveredBy) {
+      continue;
+    }
+    const reading = readPair(pair);
+    if (!reading || reading.extra.kind !== "expense" || corrected.has(reading.extra.id)) {
+      continue;
+    }
+    const plan = planFor(reading.extra, overchargeOf(reading.extra), { sourceStillLive: true, hasTwin: true }, context);
+    if (plan) plans.set(plan.sourceRecordId, plan);
+  }
+  return plans;
+}
+
 // Detector 2a: no settle-up covers either record.
 export function detectDuplicateSplits(facts: SplitPairFacts, context: CheckupContext): DetectedFinding[] {
   const findings: DetectedFinding[] = [];
@@ -219,8 +321,18 @@ export function detectDuplicateSplits(facts: SplitPairFacts, context: CheckupCon
 // Detector 8: a settle-up covers at least one of the two records.
 export function detectSettledPeriodErrors(facts: SplitPairFacts, context: CheckupContext): DetectedFinding[] {
   const findings: DetectedFinding[] = [];
+  const corrected = new Set(facts.correctedSourceIds ?? []);
+  const plans = planSettledCorrections(facts, context);
+  // "Correct this settled mistake" only where a correction can be recorded.
+  const fixFor = (sourceRecordId: string) => (plans.has(sourceRecordId)
+    ? settledCorrectionLink(plans.get(sourceRecordId)!.groupId, context.today, sourceRecordId)
+    : null);
   for (const fact of facts.deletedInSettled) {
     const { record, twin } = fact;
+    // A live correction already settles this: silent until it is undone.
+    if (corrected.has(record.id)) {
+      continue;
+    }
     const effects = record.shares.filter((share) => share.personId !== record.payerPersonId && share.amountMinor > 0);
     const effectTotal = effects.reduce((sum, effect) => sum + effect.amountMinor, 0);
     if (!record.coveredBy || effectTotal === 0) {
@@ -253,7 +365,7 @@ export function detectSettledPeriodErrors(facts: SplitPairFacts, context: Checku
       currency: record.currency,
       occurredOn: record.date,
       personIds: [record.payerPersonId, ...record.shares.map((share) => share.personId)],
-      fix: null,
+      fix: fixFor(record.id),
       fixNote: "No fix yet. A settle-up that is already closed cannot be corrected from here.",
       facts: [record.id, record.deletedAt, effectTotal, record.coveredBy.id, twin?.record.id ?? null, fact.twinCount]
     }));
@@ -267,6 +379,9 @@ export function detectSettledPeriodErrors(facts: SplitPairFacts, context: Checku
       continue;
     }
     const { extra, kept } = reading;
+    if (corrected.has(extra.id)) {
+      continue;
+    }
     const bothCovered = Boolean(pair.a.coveredBy && pair.b.coveredBy);
     const tier = reading.high && bothCovered ? "high" : "check";
     const amount = money(extra.amountMinor, extra.currency);
@@ -304,7 +419,7 @@ export function detectSettledPeriodErrors(facts: SplitPairFacts, context: Checku
       currency: extra.currency,
       occurredOn: extra.date,
       personIds: peopleOf(pair),
-      fix: null,
+      fix: fixFor(extra.id),
       fixNote: "No fix yet. A settle-up that is already closed cannot be corrected from here.",
       facts: [pair.a.id, pair.b.id, extra.amountMinor, extra.date, sharesKey(pair.a), sharesKey(pair.b), pair.a.coveredBy?.id ?? null, pair.b.coveredBy?.id ?? null, pair.a.linkedTransactionId, pair.b.linkedTransactionId]
     }));

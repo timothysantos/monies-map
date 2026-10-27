@@ -9,6 +9,7 @@ import {
 import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
 import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
+import { SPLIT_CORRECTION_DELETE_REFUSAL, SPLIT_CORRECTION_EDIT_REFUSAL, SPLIT_CORRECTION_RESTORE_REFUSAL, assertNotSplitCorrection } from "./app-repository-split-corrections";
 import {
   findBestCrossCurrencySplitSettlementLedgerCandidate,
   findBestSplitExpenseMatch,
@@ -144,7 +145,8 @@ function splitRecordScopeSql(table: "split_expenses" | "split_settlements", scop
       )`;
   if (scope.kind === "awaiting-match") {
     return {
-      sql: ` AND ${table}.linked_transaction_id IS NULL AND NOT ${covered("")}`,
+      // A correction is not a payment, so no bank row can be its match.
+      sql: `${table === "split_settlements" ? ` AND ${table}.correction_source_id IS NULL` : ""} AND ${table}.linked_transaction_id IS NULL AND NOT ${covered("")}`,
       limit: "",
       binds: [DEFAULT_HOUSEHOLD_ID]
     };
@@ -308,6 +310,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
         split_settlements.payment_status,
         split_settlements.note,
         split_settlements.linked_transaction_id,
+        split_settlements.correction_source_id,
+        split_settlements.correction_reason,
         split_groups.group_name,
         split_batches.batch_name,
         split_batches.closed_on,
@@ -343,6 +347,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       payment_status: SplitSettlementDto["paymentStatus"];
       note: string | null;
       linked_transaction_id: string | null;
+      correction_source_id: string | null;
+      correction_reason: string | null;
       group_name: string | null;
       batch_name: string | null;
       closed_on: string | null;
@@ -377,7 +383,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
     linkedTransactionNote: row.linked_transaction_note ?? undefined,
-    linkedTransactionCategoryName: row.linked_transaction_category_name ?? undefined
+    linkedTransactionCategoryName: row.linked_transaction_category_name ?? undefined,
+    ...(row.correction_source_id ? { correction: { sourceRecordId: row.correction_source_id, reason: row.correction_reason ?? "" } } : {})
   }));
 }
 
@@ -541,7 +548,10 @@ export async function planSplitSettlementCheckpoint(
     balances.set(groupId, (balances.get(groupId) ?? 0) + amount);
   }
   for (const row of openSettlements) {
-    const amount = row.toPersonId === input.viewerPersonId ? row.amountMinor : -row.amountMinor;
+    // Positive = the other person owes the viewer (the expenses above). A payment
+    // to the viewer settles some of that, so it counts against it, as the Splits
+    // balance does (splitSettlementBalanceForView).
+    const amount = row.toPersonId === input.viewerPersonId ? -row.amountMinor : row.amountMinor;
     const groupId = row.groupId ?? "split-group-none";
     balances.set(groupId, (balances.get(groupId) ?? 0) + amount);
   }
@@ -740,6 +750,8 @@ export async function loadSplitMatchCandidatesWithRecords(db: D1Database, month 
 }
 
 async function buildSplitMatchCandidates(db: D1Database, expenses: SplitExpenseDto[], settlements: SplitSettlementDto[]): Promise<SplitMatchCandidateDto[]> {
+  // A settled-period correction is not a payment: no bank row can be its match.
+  settlements = settlements.filter((item) => !item.correction);
   const unlinkedDates = [
     ...expenses.filter((item) => !item.linkedTransactionId).map((item) => item.date),
     ...settlements.filter((item) => !item.linkedTransactionId).map((item) => item.date)
@@ -1315,6 +1327,7 @@ export async function updateSplitSettlementRecord(
     paymentStatus?: SplitSettlementDto["paymentStatus"];
   }
 ) {
+  await assertNotSplitCorrection(db, input.settlementId, SPLIT_CORRECTION_EDIT_REFUSAL);
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
@@ -1393,6 +1406,7 @@ export async function updateSplitSettlementNoteRecord(
     note?: string;
   }
 ) {
+  await assertNotSplitCorrection(db, input.settlementId, SPLIT_CORRECTION_EDIT_REFUSAL);
   const existing = await db
     .prepare("SELECT id FROM split_settlements WHERE id = ? AND household_id = ?")
     .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
@@ -1464,6 +1478,7 @@ export async function deleteSplitSettlementRecord(
   db: D1Database,
   input: { settlementId: string }
 ) {
+  await assertNotSplitCorrection(db, input.settlementId, SPLIT_CORRECTION_DELETE_REFUSAL);
   const existing = await db
     .prepare(`SELECT split_settlements.id, split_settlements.split_group_id, split_groups.group_name,
         split_settlements.amount_minor, split_settlements.currency, split_settlements.deleted_at,
@@ -1568,10 +1583,13 @@ export async function loadSplitActivityHistory(db: D1Database): Promise<SplitAct
     .bind(DEFAULT_HOUSEHOLD_ID).all<{ id: string; record_kind: "expense" | "settlement"; record_id: string; action: SplitActivityHistoryDto["action"]; group_id: string | null; group_name: string | null; description: string; amount_minor: number; currency: string | null; occurred_at: string; detail: string | null }>();
   const live = await db.prepare(`SELECT id FROM split_expenses WHERE household_id = ? AND deleted_at IS NULL UNION ALL SELECT id FROM split_settlements WHERE household_id = ? AND deleted_at IS NULL`).bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID).all<{ id: string }>();
   const liveIds = new Set(live.results.map((row) => row.id));
-  return rows.results.map((row) => ({ id: row.id, recordKind: row.record_kind, recordId: row.record_id, action: row.action, groupId: row.group_id ?? undefined, groupName: row.group_name ?? undefined, description: row.description, amountMinor: row.amount_minor, currency: normalizeSplitCurrency(row.currency), occurredAt: row.occurred_at, detail: row.detail ?? undefined, canRestore: row.action === "deleted" && !liveIds.has(row.record_id) }));
+  return rows.results.map((row) => ({ id: row.id, recordKind: row.record_kind, recordId: row.record_id, action: row.action, groupId: row.group_id ?? undefined, groupName: row.group_name ?? undefined, description: row.description, amountMinor: row.amount_minor, currency: normalizeSplitCurrency(row.currency), occurredAt: row.occurred_at, detail: row.detail ?? undefined, canRestore: row.action === "deleted" && !liveIds.has(row.record_id) && !row.detail?.startsWith("correction") }));
 }
 
 export async function restoreSplitRecord(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string }) {
+  if (input.recordKind === "settlement") {
+    await assertNotSplitCorrection(db, input.recordId, SPLIT_CORRECTION_RESTORE_REFUSAL);
+  }
   const table = input.recordKind === "expense" ? "split_expenses" : "split_settlements";
   // A settle-up has no description column; its history events read "Settlement".
   const existing = await db.prepare(`SELECT id, split_group_id, ${input.recordKind === "expense" ? "description" : "'Settlement' AS description"}, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, ${input.recordKind === "expense" ? "expense_date" : "settlement_date"} AS activity_date, currency, deleted_at, linked_transaction_id FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; activity_date: string; currency: string | null; deleted_at: string | null; linked_transaction_id: string | null }>();
@@ -1806,6 +1824,7 @@ export async function linkSplitSettlementMatch(
   db: D1Database,
   input: { settlementId: string; transactionId: string }
 ) {
+  await assertNotSplitCorrection(db, input.settlementId, SPLIT_CORRECTION_EDIT_REFUSAL);
   const [settlement, transaction, alreadyUsed] = await Promise.all([
     db.prepare("SELECT amount_minor, currency, payment_method, payment_status FROM split_settlements WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
       .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)

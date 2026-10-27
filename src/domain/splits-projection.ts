@@ -392,7 +392,8 @@ function buildSplitActivity(
       batchClosedAt: settlement.batchClosedAt,
       isArchived: Boolean(settlement.batchClosedAt),
       date: settlement.date,
-      description: "Settle up",
+      // A correction reads as itself: its label, not "Settle up".
+      description: settlement.correction?.reason || "Settle up",
       fromPersonName: settlement.fromPersonName,
       toPersonName: settlement.toPersonName,
       totalAmountMinor: settlement.amountMinor,
@@ -410,6 +411,7 @@ function buildSplitActivity(
       ,fxRateBasisPoints: settlement.fxRateBasisPoints
       ,paymentMethod: settlement.paymentMethod
       ,paymentStatus: settlement.paymentStatus
+      ,...(settlement.correction ? { correction: settlement.correction } : {})
     });
   }
 

@@ -556,6 +556,13 @@ CREATE TABLE IF NOT EXISTS split_settlements (
   deleted_at TEXT,
   note TEXT,
   linked_transaction_id TEXT,
+  -- A settled-period correction (DOMAIN.md "Split Correction"): a payment
+  -- record that is not a payment. correction_source_id is the split expense
+  -- whose settled effect it corrects, correction_reason its plain-words label.
+  -- Both NULL for an ordinary settle-up. Added with ALTER TABLE on a database
+  -- that predates them (app-repository-schema.ts), no foreign key.
+  correction_source_id TEXT,
+  correction_reason TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (split_group_id) REFERENCES split_groups(id),

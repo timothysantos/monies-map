@@ -19,6 +19,15 @@ export const TRANSFER_PURPOSE_COLUMN_STATEMENTS = [
   "ALTER TABLE transactions ADD COLUMN transfer_purpose_source TEXT"
 ] as const;
 
+// A settled-period correction is a split_settlements row that carries which
+// expense it corrects and why (docs/proposals/settled-correction.md,
+// "Storage and migration"). Production and demo run these same statements
+// before the code is deployed.
+export const SPLIT_CORRECTION_COLUMN_STATEMENTS = [
+  "ALTER TABLE split_settlements ADD COLUMN correction_source_id TEXT",
+  "ALTER TABLE split_settlements ADD COLUMN correction_reason TEXT"
+] as const;
+
 export async function ensureDemoSchema(db: D1Database) {
   const pending = schemaInitializationByDatabase.get(db);
   if (pending) {
@@ -1011,6 +1020,14 @@ async function ensureDemoSchemaOnce(rawDb: D1Database) {
   }
   if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((item) => item.name === "deleted_at")) {
     await db.prepare("ALTER TABLE split_settlements ADD COLUMN deleted_at TEXT").run();
+  }
+  // Each column on its own, from the column list above (no extra round trip),
+  // so a half-applied migration is finished.
+  for (const statement of SPLIT_CORRECTION_COLUMN_STATEMENTS) {
+    const column = statement.split(" ADD COLUMN ")[1].split(" ")[0];
+    if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((existing) => existing.name === column)) {
+      await db.prepare(statement).run();
+    }
   }
 
   const splitSettlementCheckpointColumns = await db.prepare("PRAGMA table_info(split_settlement_checkpoints)").all<{ name: string }>();

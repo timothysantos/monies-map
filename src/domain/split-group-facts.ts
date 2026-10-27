@@ -24,6 +24,8 @@ export interface SplitFactsActivity {
   categoryName?: string;
   currency?: string;
   paymentMethod?: string;
+  // A settled-period correction is not a payment: the settle-up facts skip it.
+  correction?: unknown;
 }
 
 // One candidate record for a "pick" (the priciest, the smallest named, the
@@ -133,7 +135,7 @@ export function buildGroupFacetsFromActivity(activity: SplitFactsActivity[]): Sp
       coveredCount += 1;
     }
     const currency = String(item.currency ?? "");
-    if (item.kind === "settlement" && item.totalAmountMinor > 0) {
+    if (item.kind === "settlement" && item.totalAmountMinor > 0 && !item.correction) {
       const key = `${item.date}|${currency}`;
       const current = settlements.get(key) ?? { date: item.date, currency, count: 0, maxMinor: 0 };
       current.count += 1;

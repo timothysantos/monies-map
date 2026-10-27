@@ -12,7 +12,7 @@ import { detectHygiene } from "../src/domain/ledger-checkup/hygiene.ts";
 import { detectPlanProblems } from "../src/domain/ledger-checkup/plan-problems.ts";
 import { CHECKUP_DETECTORS } from "../src/domain/ledger-checkup/registry.ts";
 import { compareFindings, runLedgerCheckup } from "../src/domain/ledger-checkup/runner.ts";
-import { detectDuplicateSplits, detectSettledPeriodErrors } from "../src/domain/ledger-checkup/split-duplicates.ts";
+import { detectDuplicateSplits, detectSettledPeriodErrors, planSettledCorrections } from "../src/domain/ledger-checkup/split-duplicates.ts";
 import { detectStaleEstimates } from "../src/domain/ledger-checkup/stale-estimates.ts";
 import { buildStatementChain, detectBalanceMismatches, detectStatementGaps, detectStatementJoins } from "../src/domain/ledger-checkup/statements.ts";
 import { detectUnmatchedTransfers } from "../src/domain/ledger-checkup/unmatched-transfers.ts";
@@ -182,8 +182,9 @@ test("settled period: the flight counted twice inside one settle-up is HIGH and 
   assert.equal(found.amountMinor, 52_592);
   assert.match(found.summary, /is in Splits twice and the 27 Aug settle-up counted both\. Joyce was charged \$525\.92 too much\./);
   assert.deepEqual(found.evidence.filter((line) => line.role === "fact").map((line) => line.label), ["Joyce was charged $525.92 too much", "Tim was paid $525.92 too much"]);
-  assert.equal(found.fix, null);
-  assert.match(found.fixNote, /No fix yet/);
+  // The fix is the settled-period correction, for the hand-typed copy.
+  assert.deepEqual(found.fix, { label: "Correct this settled mistake", path: "/splits?view=household&month=2026-10&split_group=split-group-trip&correct_settled=exp-manual" });
+  assert.equal(found.fixNote, null);
 });
 
 test("settled period: one copy outside the settle-up, or a failed gate, is only a check; real purchases stay silent", () => {
@@ -225,7 +226,8 @@ test("settled period: a copy deleted after the settle-up counted it is HIGH with
   assert.equal(found.amountMinor, 52_593, "the deleted copy's share is what the settle-up over-counted");
   assert.match(found.summary, /was in Splits twice\. The extra copy was removed on 22 Oct, but the 27 Aug settle-up had already counted both\. Joyce was charged \$525\.93 too much\./);
   assert.deepEqual(found.evidence.filter((line) => line.role === "record").map((line) => line.shortId), ["deleted", "kept"]);
-  assert.equal(found.fix, null);
+  assert.equal(found.fix.label, "Correct this settled mistake");
+  assert.match(found.fix.path, /correct_settled=exp-deleted$/);
 
   // No live twin, or two, or one the settle-up did not hold: the cost is gone but the cause is not proven.
   for (const variant of [{ ...deleted, twin: null, twinCount: 0 }, { ...deleted, twin: null, twinCount: 2 }, { ...deleted, twin: { ...deleted.twin, inSameSettleUp: false } }]) {
@@ -235,6 +237,73 @@ test("settled period: a copy deleted after the settle-up counted it is HIGH with
   assert.deepEqual(kinds(detectSettledPeriodErrors({ pairs: [], deletedInSettled: [{ ...deleted, twin: { ...deleted.twin, record: { ...deleted.twin.record, shares: [{ personId: "person-tim", amountMinor: 80_000 }, { personId: "person-joyce", amountMinor: 25_185 }] } } }] }, context)), ["settled_period_error:check"]);
   // A deleted cost nobody else shared moved no balance.
   assert.deepEqual(detectSettledPeriodErrors({ pairs: [], deletedInSettled: [{ ...deleted, record: { ...deleted.record, shares: [{ personId: "person-tim", amountMinor: 105_185 }] } }] }, context), []);
+});
+
+// ---- 8b. The settled-period correction behind the fix -----------------------
+
+const flightPair = (extra = {}, kept = {}) => pair(
+  splitRecord("exp-manual", { coveredBy: settled, ...extra }),
+  splitRecord("exp-bank", { linkedTransactionId: "txn-flight", linkedEntry: flightEntry(), description: "SINGAPORE AIRLINES SINGAPORE SG", coveredBy: settled, ...kept })
+);
+
+test("settled correction: the plan is the over-charged person's share, from them to the person paid too much, whichever way the cent fell", () => {
+  const timLarger = [{ personId: "person-tim", amountMinor: 52_593 }, { personId: "person-joyce", amountMinor: 52_592 }];
+  const joyceLarger = [{ personId: "person-tim", amountMinor: 52_592 }, { personId: "person-joyce", amountMinor: 52_593 }];
+  for (const [shares, expected] of [[timLarger, 52_592], [joyceLarger, 52_593]]) {
+    const facts = flightPair({ shares, amountMinor: 105_185 }, { shares, amountMinor: 105_185 });
+    const plan = planSettledCorrections(facts, context).get("exp-manual");
+    assert.deepEqual(
+      { id: plan.sourceRecordId, amount: plan.amountMinor, from: plan.overchargedPersonId, to: plan.overpaidPersonId, live: plan.sourceStillLive, twin: plan.hasTwin, settled: plan.settledBy.date, currency: plan.currency },
+      { id: "exp-manual", amount: expected, from: "person-joyce", to: "person-tim", live: true, twin: true, settled: "2026-08-27", currency: "SGD" }
+    );
+    assert.equal(plan.label, "Correction: Singapore Airlines flights on 12 Jun counted twice in the 27 Aug settle-up");
+  }
+  // The payer is Joyce: Tim is the one charged too much.
+  const joycePaid = flightPair({ payerPersonId: "person-joyce" }, { payerPersonId: "person-joyce" });
+  const plan = planSettledCorrections(joycePaid, context).get("exp-manual");
+  assert.deepEqual([plan.overchargedPersonId, plan.overpaidPersonId, plan.amountMinor], ["person-tim", "person-joyce", 52_592]);
+});
+
+test("settled correction: a deleted copy's plan says the cost was removed, and it is not offered where it could not be exact", () => {
+  const deleted = {
+    record: splitRecord("exp-deleted", { coveredBy: settled, deletedAt: "2026-10-22 08:11:33" }),
+    twin: { record: splitRecord("exp-kept", { coveredBy: null }), inSameSettleUp: true },
+    twinCount: 1
+  };
+  const plan = planSettledCorrections({ pairs: [], deletedInSettled: [deleted] }, context).get("exp-deleted");
+  assert.equal(plan.sourceStillLive, false);
+  assert.equal(plan.label, "Correction: Singapore Airlines flights on 12 Jun counted twice in the 27 Aug settle-up");
+  const noTwin = planSettledCorrections({ pairs: [], deletedInSettled: [{ ...deleted, twin: null, twinCount: 0 }] }, context).get("exp-deleted");
+  assert.equal(noTwin.label, "Correction: Singapore Airlines flights on 12 Jun removed after the 27 Aug settle-up");
+  // The settled period did not hold the extra copy (only the kept one): deleting it in Splits is the fix.
+  const keptOnly = pair(splitRecord("exp-manual"), splitRecord("exp-bank", { linkedTransactionId: "txn-flight", linkedEntry: flightEntry(), description: "SINGAPORE AIRLINES SINGAPORE SG", coveredBy: settled }));
+  assert.equal(planSettledCorrections(keptOnly, context).size, 0);
+  assert.equal(detectSettledPeriodErrors(keptOnly, context)[0].fix, null);
+  // Three people were charged: the balance is between two, so no exact correction.
+  const three = [{ personId: "person-tim", amountMinor: 30_000 }, { personId: "person-joyce", amountMinor: 30_000 }, { personId: "person-sam", amountMinor: 45_184 }];
+  assert.equal(planSettledCorrections(flightPair({ shares: three }, { shares: three }), context).size, 0);
+  assert.equal(detectSettledPeriodErrors(flightPair({ shares: three }, { shares: three }), context)[0].fix, null);
+  // Two payments counted twice are not an expense: no correction.
+  const payments = pair(
+    splitRecord("pay-1", { kind: "settlement", toPersonId: "person-joyce", shares: [], coveredBy: settled, description: "Payment" }),
+    splitRecord("pay-2", { kind: "settlement", toPersonId: "person-joyce", shares: [], coveredBy: settled, description: "Payment", createdAt: "2026-06-12T11:00:00Z" })
+  );
+  assert.equal(planSettledCorrections(payments, context).size, 0);
+});
+
+test("settled correction: a live correction resolves the finding, and it is reported again when the correction is undone", () => {
+  const facts = flightPair();
+  assert.deepEqual(kinds(detectSettledPeriodErrors(facts, context)), ["settled_period_error:high"]);
+  // Corrected: silent (the extra copy's id is what the correction names).
+  assert.deepEqual(detectSettledPeriodErrors({ ...facts, correctedSourceIds: ["exp-manual"] }, context), []);
+  assert.equal(planSettledCorrections({ ...facts, correctedSourceIds: ["exp-manual"] }, context).size, 0);
+  // A correction for some other expense changes nothing; undone = no live correction.
+  assert.deepEqual(kinds(detectSettledPeriodErrors({ ...facts, correctedSourceIds: ["exp-other"] }, context)), ["settled_period_error:high"]);
+  assert.deepEqual(kinds(detectSettledPeriodErrors({ ...facts, correctedSourceIds: [] }, context)), ["settled_period_error:high"]);
+  // The deleted-copy shape is resolved the same way.
+  const deleted = { record: splitRecord("exp-deleted", { coveredBy: settled, deletedAt: "2026-10-22 08:11:33" }), twin: null, twinCount: 0 };
+  assert.deepEqual(kinds(detectSettledPeriodErrors({ pairs: [], deletedInSettled: [deleted] }, context)), ["settled_period_error:check"]);
+  assert.deepEqual(detectSettledPeriodErrors({ pairs: [], deletedInSettled: [deleted], correctedSourceIds: ["exp-deleted"] }, context), []);
 });
 
 test("duplicate split: shares that differ by a rounding cent are the same shares", () => {

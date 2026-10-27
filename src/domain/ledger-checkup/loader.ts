@@ -37,7 +37,7 @@ import { todayInAppTimeZone } from "../../lib/app-calendar";
 import type { DuplicateEntryPair } from "./duplicate-entries";
 import { addDays, daysBetween } from "./helpers";
 import type { CheckupFacts } from "./registry";
-import type { DeletedSettledFact, SplitPairFact, SplitRecordFact } from "./split-duplicates";
+import type { DeletedSettledFact, SplitPairFact, SplitPairFacts, SplitRecordFact } from "./split-duplicates";
 import { STATEMENT_CHAIN_LENGTH, accountsNeedingMismatchCause, type LaterEntriesFact } from "./statements";
 import type { EstimateFact } from "./stale-estimates";
 import type { PlanCandidateFact, PlanRowFact } from "./plan-problems";
@@ -210,10 +210,11 @@ export const SPLIT_SETTLEMENT_PAIRS_SQL = `
   INNER JOIN split_settlements AS b ON b.household_id = a.household_id AND b.id > a.id AND b.settlement_date = a.settlement_date
     AND b.amount_minor = a.amount_minor AND b.currency = a.currency AND b.from_person_id = a.from_person_id AND b.to_person_id = a.to_person_id
     AND COALESCE(b.split_group_id, '') = COALESCE(a.split_group_id, '') AND b.deleted_at IS NULL
+    AND b.correction_source_id IS NULL
   LEFT JOIN split_groups AS g ON g.id = a.split_group_id
   LEFT JOIN split_batches AS ba ON ba.id = a.split_batch_id
   LEFT JOIN split_batches AS bb ON bb.id = b.split_batch_id
-  WHERE a.household_id = ? AND a.deleted_at IS NULL AND a.settlement_date >= ?
+  WHERE a.household_id = ? AND a.deleted_at IS NULL AND a.correction_source_id IS NULL AND a.settlement_date >= ?
     AND NOT EXISTS (
       SELECT 1 FROM split_settlements AS c
       WHERE c.household_id = a.household_id AND c.deleted_at IS NULL AND c.id <> a.id AND c.id <> b.id
@@ -384,101 +385,15 @@ function parseShares(text: unknown) {
     });
 }
 
-function coveredBy(cover: unknown, batchId: unknown, closedOn: unknown): SplitRecordFact["coveredBy"] {
-  if (cover) {
-    const [id, date] = str(cover).split("|");
-    return { kind: "checkpoint", id, date };
-  }
-  return closedOn ? { kind: "batch", id: str(batchId), date: str(closedOn) } : null;
-}
-
-function toWrongCardAccountFacts(accounts: Map<string, AccountFact>) {
-  return new Map(Array.from(accounts.values(), (account): [string, WrongCardAccountFact] => [account.id, {
-    id: account.id,
-    name: account.name,
-    ownerPersonId: account.ownerPersonId,
-    isJoint: account.isJoint,
-    currency: account.currency
-  }]));
-}
-
-export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZone()): Promise<CheckupFacts> {
-  const household = DEFAULT_HOUSEHOLD_ID;
-  const since = addDays(today, -LOOKBACK_DAYS);
-  const [currentMonth, nextMonth] = planMonths(today);
-  const [currentYear, currentNumber] = currentMonth.split("-").map(Number);
-  const [nextYear, nextNumber] = nextMonth.split("-").map(Number);
-  const incomplete = new Set<FindingKind>();
-
-  // ---- Round trip 1 -------------------------------------------------------
-  const [
-    accountRows, peopleRows, applePayRows, statementRows, segmentRows, activityRows, breakRows,
-    duplicateRows, splitExpenseRows, splitSettlementRows, transferRows, estimateRows, planRows, otherRows, oddRows, deletedSettledRows
-  ] = (await db.batch([
-    db.prepare(ACCOUNTS_SQL).bind(household),
-    db.prepare("SELECT id, display_name FROM people WHERE household_id = ?").bind(household),
-    db.prepare(APPLE_PAY_ENTRIES_SQL).bind(household, addDays(today, -APPLE_PAY_LOOKBACK_DAYS), today),
-    db.prepare(STATEMENTS_SQL).bind(household),
-    db.prepare(STATEMENT_SEGMENTS_SQL).bind(household, household),
-    db.prepare(MONTH_ACTIVITY_SQL).bind(household, since, household),
-    db.prepare("SELECT account_id, missing_checkpoint_month FROM statement_chain_breaks WHERE household_id = ? LIMIT 200").bind(household),
-    db.prepare(DUPLICATE_ENTRIES_SQL).bind(household, addDays(today, -DUPLICATE_ENTRY_LOOKBACK_DAYS)),
-    db.prepare(SPLIT_EXPENSE_PAIRS_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS)),
-    db.prepare(SPLIT_SETTLEMENT_PAIRS_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS)),
-    db.prepare(UNMATCHED_TRANSFERS_SQL).bind(household, addDays(today, -TRANSFER_LOOKBACK_DAYS), addDays(today, -7), household),
-    db.prepare(STALE_ESTIMATES_SQL).bind(household, since, addDays(today, -17)),
-    db.prepare(PLAN_ROWS_SQL).bind(household, currentYear, currentNumber, nextYear, nextNumber),
-    db.prepare(OTHER_ENTRIES_SQL).bind(household, since, addDays(today, -60)),
-    db.prepare(ODD_ENTRIES_SQL).bind(household, since, addDays(today, 14)),
-    db.prepare(DELETED_SETTLED_EXPENSES_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS))
-  ])).map(rowsOf);
-
-  const accounts = new Map<string, AccountFact>(accountRows.map((row): [string, AccountFact] => [str(row.id), {
-    id: str(row.id),
-    name: str(row.account_name),
-    kind: str(row.account_kind) as AccountFact["kind"],
-    ownerPersonId: nullable(row.owner_person_id),
-    isJoint: Boolean(num(row.is_joint)),
-    isActive: Boolean(num(row.is_active)),
-    currency: str(row.currency) || "SGD",
-    openingBalanceMinor: num(row.opening_balance_minor),
-    lastEntryDate: nullable(row.last_entry_date)
-  }]));
-  const people = new Map(peopleRows.map((row): [string, string] => [str(row.id), str(row.display_name)]));
-  const context: CheckupContext = { today, accounts, people };
-
-  const applePayEntries: ApplePayEntryFact[] = applePayRows.slice(0, WRONG_CARD_MAX_ENTRIES).map((row) => ({
-    id: str(row.id),
-    accountId: str(row.account_id),
-    date: str(row.transaction_date),
-    description: str(row.description),
-    amountMinor: num(row.amount_minor),
-    currency: str(row.currency),
-    originalCurrency: nullable(row.original_currency),
-    ownerPersonId: nullable(row.owner_person_id),
-    hasLinks: Boolean(num(row.has_links))
-  }));
-  if (applePayRows.length > WRONG_CARD_MAX_ENTRIES) incomplete.add("wrong_card_duplicate");
-
-  const duplicatePairs: DuplicateEntryPair[] = duplicateRows.slice(0, LIST_LIMIT).map((row) => {
-    const side = (prefix: "a" | "b") => ({
-      id: str(row[`${prefix}_id`]),
-      accountId: str(row.account_id),
-      date: str(row.date),
-      description: str(row[`${prefix}_description`]),
-      amountMinor: num(row.amount_minor),
-      currency: str(row.currency),
-      entryType: str(row.entry_type) as "expense" | "income" | "transfer",
-      importId: nullable(row[`${prefix}_import_id`]),
-      rowHash: nullable(row[`${prefix}_hash`]),
-      importedAt: nullable(row[`${prefix}_imported_at`]),
-      createdAt: str(row[`${prefix}_created_at`]),
-      ownerPersonId: nullable(row[`${prefix}_owner`])
-    });
-    return { a: side("a"), b: side("b") };
-  });
-  if (duplicateRows.length > LIST_LIMIT) incomplete.add("duplicate_entry");
-
+// The split facts the settled-period and duplicate-split detectors read, built
+// from the three split reads (and the list of expenses a live correction
+// already corrects). Shared by the whole check-up and by the Split Correction
+// command, which must offer a correction only for a finding the detector reports.
+export function buildSplitPairFacts(
+  rows: { expenseRows: Row[]; settlementRows: Row[]; deletedRows: Row[]; correctedRows: Row[] },
+  incomplete: Set<FindingKind>
+): SplitPairFacts {
+  const { expenseRows: splitExpenseRows, settlementRows: splitSettlementRows, deletedRows: deletedSettledRows, correctedRows } = rows;
   const splitPairs: SplitPairFact[] = [
     ...splitExpenseRows.slice(0, LIST_LIMIT).map((row): SplitPairFact => {
       const side = (prefix: "a" | "b"): SplitRecordFact => ({
@@ -578,6 +493,134 @@ export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZon
     incomplete.add("duplicate_split");
     incomplete.add("settled_period_error");
   }
+  return { pairs: splitPairs, deletedInSettled, correctedSourceIds: correctedRows.map((row) => str(row.correction_source_id)) };
+}
+
+// The live split expenses a correction already corrects (their settled
+// mistake is resolved until the correction is undone).
+export const CORRECTED_SOURCES_SQL = `
+  SELECT correction_source_id FROM split_settlements
+  WHERE household_id = ? AND correction_source_id IS NOT NULL AND deleted_at IS NULL`;
+
+// Only the split reads, for the Split Correction preview and command: the
+// same facts the check-up builds, in one round trip.
+export async function loadSplitPairFacts(db: D1Database, today = todayInAppTimeZone()): Promise<{ facts: SplitPairFacts; context: CheckupContext; incomplete: FindingKind[] }> {
+  const household = DEFAULT_HOUSEHOLD_ID;
+  const since = addDays(today, -SPLIT_LOOKBACK_DAYS);
+  const [peopleRows, expenseRows, settlementRows, deletedRows, correctedRows] = (await db.batch([
+    db.prepare("SELECT id, display_name FROM people WHERE household_id = ?").bind(household),
+    db.prepare(SPLIT_EXPENSE_PAIRS_SQL).bind(household, since),
+    db.prepare(SPLIT_SETTLEMENT_PAIRS_SQL).bind(household, since),
+    db.prepare(DELETED_SETTLED_EXPENSES_SQL).bind(household, since),
+    db.prepare(CORRECTED_SOURCES_SQL).bind(household)
+  ])).map(rowsOf);
+  const incomplete = new Set<FindingKind>();
+  const facts = buildSplitPairFacts({ expenseRows, settlementRows, deletedRows, correctedRows }, incomplete);
+  const context: CheckupContext = {
+    today,
+    accounts: new Map(),
+    people: new Map(peopleRows.map((row): [string, string] => [str(row.id), str(row.display_name)]))
+  };
+  return { facts, context, incomplete: [...incomplete] };
+}
+
+function coveredBy(cover: unknown, batchId: unknown, closedOn: unknown): SplitRecordFact["coveredBy"] {
+  if (cover) {
+    const [id, date] = str(cover).split("|");
+    return { kind: "checkpoint", id, date };
+  }
+  return closedOn ? { kind: "batch", id: str(batchId), date: str(closedOn) } : null;
+}
+
+function toWrongCardAccountFacts(accounts: Map<string, AccountFact>) {
+  return new Map(Array.from(accounts.values(), (account): [string, WrongCardAccountFact] => [account.id, {
+    id: account.id,
+    name: account.name,
+    ownerPersonId: account.ownerPersonId,
+    isJoint: account.isJoint,
+    currency: account.currency
+  }]));
+}
+
+export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZone()): Promise<CheckupFacts> {
+  const household = DEFAULT_HOUSEHOLD_ID;
+  const since = addDays(today, -LOOKBACK_DAYS);
+  const [currentMonth, nextMonth] = planMonths(today);
+  const [currentYear, currentNumber] = currentMonth.split("-").map(Number);
+  const [nextYear, nextNumber] = nextMonth.split("-").map(Number);
+  const incomplete = new Set<FindingKind>();
+
+  // ---- Round trip 1 -------------------------------------------------------
+  const [
+    accountRows, peopleRows, applePayRows, statementRows, segmentRows, activityRows, breakRows,
+    duplicateRows, splitExpenseRows, splitSettlementRows, transferRows, estimateRows, planRows, otherRows, oddRows, deletedSettledRows, correctedRows
+  ] = (await db.batch([
+    db.prepare(ACCOUNTS_SQL).bind(household),
+    db.prepare("SELECT id, display_name FROM people WHERE household_id = ?").bind(household),
+    db.prepare(APPLE_PAY_ENTRIES_SQL).bind(household, addDays(today, -APPLE_PAY_LOOKBACK_DAYS), today),
+    db.prepare(STATEMENTS_SQL).bind(household),
+    db.prepare(STATEMENT_SEGMENTS_SQL).bind(household, household),
+    db.prepare(MONTH_ACTIVITY_SQL).bind(household, since, household),
+    db.prepare("SELECT account_id, missing_checkpoint_month FROM statement_chain_breaks WHERE household_id = ? LIMIT 200").bind(household),
+    db.prepare(DUPLICATE_ENTRIES_SQL).bind(household, addDays(today, -DUPLICATE_ENTRY_LOOKBACK_DAYS)),
+    db.prepare(SPLIT_EXPENSE_PAIRS_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS)),
+    db.prepare(SPLIT_SETTLEMENT_PAIRS_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS)),
+    db.prepare(UNMATCHED_TRANSFERS_SQL).bind(household, addDays(today, -TRANSFER_LOOKBACK_DAYS), addDays(today, -7), household),
+    db.prepare(STALE_ESTIMATES_SQL).bind(household, since, addDays(today, -17)),
+    db.prepare(PLAN_ROWS_SQL).bind(household, currentYear, currentNumber, nextYear, nextNumber),
+    db.prepare(OTHER_ENTRIES_SQL).bind(household, since, addDays(today, -60)),
+    db.prepare(ODD_ENTRIES_SQL).bind(household, since, addDays(today, 14)),
+    db.prepare(DELETED_SETTLED_EXPENSES_SQL).bind(household, addDays(today, -SPLIT_LOOKBACK_DAYS)),
+    db.prepare(CORRECTED_SOURCES_SQL).bind(household)
+  ])).map(rowsOf);
+
+  const accounts = new Map<string, AccountFact>(accountRows.map((row): [string, AccountFact] => [str(row.id), {
+    id: str(row.id),
+    name: str(row.account_name),
+    kind: str(row.account_kind) as AccountFact["kind"],
+    ownerPersonId: nullable(row.owner_person_id),
+    isJoint: Boolean(num(row.is_joint)),
+    isActive: Boolean(num(row.is_active)),
+    currency: str(row.currency) || "SGD",
+    openingBalanceMinor: num(row.opening_balance_minor),
+    lastEntryDate: nullable(row.last_entry_date)
+  }]));
+  const people = new Map(peopleRows.map((row): [string, string] => [str(row.id), str(row.display_name)]));
+  const context: CheckupContext = { today, accounts, people };
+
+  const applePayEntries: ApplePayEntryFact[] = applePayRows.slice(0, WRONG_CARD_MAX_ENTRIES).map((row) => ({
+    id: str(row.id),
+    accountId: str(row.account_id),
+    date: str(row.transaction_date),
+    description: str(row.description),
+    amountMinor: num(row.amount_minor),
+    currency: str(row.currency),
+    originalCurrency: nullable(row.original_currency),
+    ownerPersonId: nullable(row.owner_person_id),
+    hasLinks: Boolean(num(row.has_links))
+  }));
+  if (applePayRows.length > WRONG_CARD_MAX_ENTRIES) incomplete.add("wrong_card_duplicate");
+
+  const duplicatePairs: DuplicateEntryPair[] = duplicateRows.slice(0, LIST_LIMIT).map((row) => {
+    const side = (prefix: "a" | "b") => ({
+      id: str(row[`${prefix}_id`]),
+      accountId: str(row.account_id),
+      date: str(row.date),
+      description: str(row[`${prefix}_description`]),
+      amountMinor: num(row.amount_minor),
+      currency: str(row.currency),
+      entryType: str(row.entry_type) as "expense" | "income" | "transfer",
+      importId: nullable(row[`${prefix}_import_id`]),
+      rowHash: nullable(row[`${prefix}_hash`]),
+      importedAt: nullable(row[`${prefix}_imported_at`]),
+      createdAt: str(row[`${prefix}_created_at`]),
+      ownerPersonId: nullable(row[`${prefix}_owner`])
+    });
+    return { a: side("a"), b: side("b") };
+  });
+  if (duplicateRows.length > LIST_LIMIT) incomplete.add("duplicate_entry");
+
+  const splitPairs = buildSplitPairFacts({ expenseRows: splitExpenseRows, settlementRows: splitSettlementRows, deletedRows: deletedSettledRows, correctedRows }, incomplete);
 
   // One row per transfer and possible partner: the transfers newest first (the
   // sentinel one past the limit says there are more), the partners beside them.
@@ -776,7 +819,7 @@ export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZon
     context,
     wrongCard: { input: wrongCardInput },
     duplicateEntries: { pairs: duplicatePairs },
-    splitPairs: { pairs: splitPairs, deletedInSettled },
+    splitPairs,
     transfers: { transfers, candidates: transferCandidates },
     statements: {
       statements,

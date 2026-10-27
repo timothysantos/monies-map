@@ -181,6 +181,7 @@ export async function loadSplitGroupFacets(db: D1Database, viewId: string): Prom
     s AS (
       SELECT COALESCE(split_settlements.split_group_id, 'split-group-none') AS group_id,
         split_settlements.settlement_date AS d, split_settlements.amount_minor AS amount, split_settlements.currency AS cur,
+        split_settlements.correction_source_id IS NOT NULL AS is_correction,
         CASE WHEN split_batches.closed_on IS NOT NULL
           OR split_settlements.id IN (SELECT record_id FROM covered WHERE record_kind = 'settlement') THEN 1 ELSE 0 END AS is_covered
       FROM split_settlements
@@ -239,7 +240,7 @@ export async function loadSplitGroupFacets(db: D1Database, viewId: string): Prom
     SELECT 'covered', group_id, NULL, NULL, SUM(is_covered), NULL, NULL, NULL
       FROM (SELECT group_id, is_covered FROM e UNION ALL SELECT group_id, is_covered FROM s) GROUP BY group_id
     UNION ALL
-    SELECT 'settle', group_id, NULL, cur, COUNT(*), MAX(amount), d, NULL FROM s WHERE amount > 0 GROUP BY group_id, d, cur
+    SELECT 'settle', group_id, NULL, cur, COUNT(*), MAX(amount), d, NULL FROM s WHERE amount > 0 AND is_correction = 0 GROUP BY group_id, d, cur
     `,
   ];
   const results = await db.batch<FacetRow>(facetSelects.map((select) => db.prepare(`${facetCte}${select}`).bind(...facetBinds)));
