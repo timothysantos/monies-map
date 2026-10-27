@@ -17,7 +17,8 @@ import type { ImportPreviewRowDto, StatementFixDto, StatementNoticeDto } from ".
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
-import { handleLedgerCheckupWrite, isLedgerCheckupWritePath } from "./server/ledger-checkup-route";
+import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
+import { handleLedgerCheckupWrite, isLedgerCheckupWritePath, LEDGER_CHECKUP_CLEAR_PAIRS_PATH } from "./server/ledger-checkup-route";
 import { handleSplitCorrectionRoute, isSplitCorrectionPath } from "./server/split-corrections-route";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
@@ -551,6 +552,16 @@ export default {
       }
       return apiPageResponse("Ledger check-up", request, url, () =>
         buildLedgerCheckupDto(env.DB, { view, includeDismissed: url.searchParams.get("dismissed") === "1" }), timing);
+    }
+
+    // The clear transfer pairs "Link these N clear pairs" would link
+    // (read-only; the POST on the same path is the link).
+    if (url.pathname === LEDGER_CHECKUP_CLEAR_PAIRS_PATH && request.method === "GET") {
+      const view = readLedgerCheckupView(url.searchParams.get("view"));
+      if (view === null) {
+        return json({ ok: false, error: "Unknown view." }, 400);
+      }
+      return apiPageResponse("Clear transfer pairs", request, url, () => buildClearPairsPreviewDto(env.DB, { view }), timing);
     }
 
     if (isLedgerCheckupWritePath(url.pathname)) {

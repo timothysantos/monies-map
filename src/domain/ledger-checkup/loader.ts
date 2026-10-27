@@ -42,7 +42,7 @@ import { STATEMENT_CHAIN_LENGTH, accountsNeedingMismatchCause, type LaterEntries
 import type { EstimateFact } from "./stale-estimates";
 import type { PlanCandidateFact, PlanRowFact } from "./plan-problems";
 import { planMonths } from "./plan-problems";
-import type { TransferCandidateFact, TransferFact } from "./unmatched-transfers";
+import type { TransferCandidateFact, TransferFact, UnmatchedTransferFacts } from "./unmatched-transfers";
 import type { AccountFact, CheckupContext, FindingKind } from "./types";
 
 // How far back entry-based detectors look.
@@ -542,6 +542,80 @@ function toWrongCardAccountFacts(accounts: Map<string, AccountFact>) {
   }]));
 }
 
+// One row per transfer and possible partner: the transfers newest first (the
+// sentinel one past the limit says there are more), the partners beside them.
+// When the read hit its row limit the last transfer may have lost partners, so
+// its id is listed in `unreliableIds` (a clear pair never relies on it).
+export function buildUnmatchedTransferFacts(transferRows: Row[], incomplete: Set<FindingKind>): UnmatchedTransferFacts {
+  const transferById = new Map<string, TransferFact>();
+  const partnerById = new Map<string, TransferCandidateFact>();
+  for (const row of transferRows) {
+    if (transferById.size >= TRANSFER_LIMIT && !transferById.has(str(row.id))) {
+      incomplete.add("unmatched_transfer");
+      continue;
+    }
+    transferById.set(str(row.id), {
+      id: str(row.id),
+      accountId: str(row.account_id),
+      date: str(row.transaction_date),
+      description: str(row.description),
+      amountMinor: num(row.amount_minor),
+      currency: str(row.currency),
+      direction: (nullable(row.transfer_direction) as "in" | "out" | null),
+      ownerPersonId: nullable(row.owner_person_id)
+    });
+    if (row.c_id) {
+      partnerById.set(str(row.c_id), {
+        id: str(row.c_id),
+        accountId: str(row.c_account_id),
+        date: str(row.c_date),
+        description: str(row.c_description),
+        amountMinor: num(row.amount_minor),
+        currency: str(row.c_currency),
+        entryType: str(row.c_type) as TransferCandidateFact["entryType"],
+        direction: (nullable(row.c_direction) as "in" | "out" | null),
+        ownerPersonId: nullable(row.c_owner)
+      });
+    }
+  }
+  const cutShort = transferRows.length >= TRANSFER_LIMIT * 8;
+  if (cutShort) incomplete.add("unmatched_transfer");
+  return {
+    transfers: [...transferById.values()],
+    candidates: [...partnerById.values()],
+    unreliableIds: cutShort && transferRows.length ? [str(transferRows[transferRows.length - 1].id)] : []
+  };
+}
+
+function accountFactsFrom(accountRows: Row[]) {
+  return new Map<string, AccountFact>(accountRows.map((row): [string, AccountFact] => [str(row.id), {
+    id: str(row.id),
+    name: str(row.account_name),
+    kind: str(row.account_kind) as AccountFact["kind"],
+    ownerPersonId: nullable(row.owner_person_id),
+    isJoint: Boolean(num(row.is_joint)),
+    isActive: Boolean(num(row.is_active)),
+    currency: str(row.currency) || "SGD",
+    openingBalanceMinor: num(row.opening_balance_minor),
+    lastEntryDate: nullable(row.last_entry_date)
+  }]));
+}
+
+// Only the transfer reads, for the preview and command that link clear pairs:
+// the check-up's own unlinked transfers with their possible partners, and the
+// accounts they sit on, in one round trip of two statements.
+export async function loadTransferPairFacts(db: D1Database, today = todayInAppTimeZone()): Promise<{ facts: UnmatchedTransferFacts; context: CheckupContext }> {
+  const household = DEFAULT_HOUSEHOLD_ID;
+  const [accountRows, transferRows] = (await db.batch([
+    db.prepare(ACCOUNTS_SQL).bind(household),
+    db.prepare(UNMATCHED_TRANSFERS_SQL).bind(household, addDays(today, -TRANSFER_LOOKBACK_DAYS), addDays(today, -7), household)
+  ])).map(rowsOf);
+  return {
+    facts: buildUnmatchedTransferFacts(transferRows, new Set()),
+    context: { today, accounts: accountFactsFrom(accountRows), people: new Map() }
+  };
+}
+
 export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZone()): Promise<CheckupFacts> {
   const household = DEFAULT_HOUSEHOLD_ID;
   const since = addDays(today, -LOOKBACK_DAYS);
@@ -574,17 +648,7 @@ export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZon
     db.prepare(CORRECTED_SOURCES_SQL).bind(household)
   ])).map(rowsOf);
 
-  const accounts = new Map<string, AccountFact>(accountRows.map((row): [string, AccountFact] => [str(row.id), {
-    id: str(row.id),
-    name: str(row.account_name),
-    kind: str(row.account_kind) as AccountFact["kind"],
-    ownerPersonId: nullable(row.owner_person_id),
-    isJoint: Boolean(num(row.is_joint)),
-    isActive: Boolean(num(row.is_active)),
-    currency: str(row.currency) || "SGD",
-    openingBalanceMinor: num(row.opening_balance_minor),
-    lastEntryDate: nullable(row.last_entry_date)
-  }]));
+  const accounts = accountFactsFrom(accountRows);
   const people = new Map(peopleRows.map((row): [string, string] => [str(row.id), str(row.display_name)]));
   const context: CheckupContext = { today, accounts, people };
 
@@ -624,40 +688,7 @@ export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZon
 
   // One row per transfer and possible partner: the transfers newest first (the
   // sentinel one past the limit says there are more), the partners beside them.
-  const transferById = new Map<string, TransferFact>();
-  const partnerById = new Map<string, TransferCandidateFact>();
-  for (const row of transferRows) {
-    if (transferById.size >= TRANSFER_LIMIT && !transferById.has(str(row.id))) {
-      incomplete.add("unmatched_transfer");
-      continue;
-    }
-    transferById.set(str(row.id), {
-      id: str(row.id),
-      accountId: str(row.account_id),
-      date: str(row.transaction_date),
-      description: str(row.description),
-      amountMinor: num(row.amount_minor),
-      currency: str(row.currency),
-      direction: (nullable(row.transfer_direction) as "in" | "out" | null),
-      ownerPersonId: nullable(row.owner_person_id)
-    });
-    if (row.c_id) {
-      partnerById.set(str(row.c_id), {
-        id: str(row.c_id),
-        accountId: str(row.c_account_id),
-        date: str(row.c_date),
-        description: str(row.c_description),
-        amountMinor: num(row.amount_minor),
-        currency: str(row.c_currency),
-        entryType: str(row.c_type) as TransferCandidateFact["entryType"],
-        direction: (nullable(row.c_direction) as "in" | "out" | null),
-        ownerPersonId: nullable(row.c_owner)
-      });
-    }
-  }
-  if (transferRows.length >= TRANSFER_LIMIT * 8) incomplete.add("unmatched_transfer");
-  const transfers = [...transferById.values()];
-  const transferCandidates = [...partnerById.values()];
+  const transferFacts = buildUnmatchedTransferFacts(transferRows, incomplete);
 
   const estimates: EstimateFact[] = estimateRows.slice(0, SMALL_LIMIT).map((row) => ({
     id: str(row.id),
@@ -820,7 +851,7 @@ export async function loadCheckupFacts(db: D1Database, today = todayInAppTimeZon
     wrongCard: { input: wrongCardInput },
     duplicateEntries: { pairs: duplicatePairs },
     splitPairs,
-    transfers: { transfers, candidates: transferCandidates },
+    transfers: transferFacts,
     statements: {
       statements,
       segments,

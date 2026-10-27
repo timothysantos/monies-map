@@ -53,7 +53,7 @@ function readFinding(item) {
 
 /**
  * The report as the page reads it, or null when the answer is not one.
- * @returns {{ generatedAt: string, tierCounts: Record<string, number>, kindCounts: Record<string, Record<string, number>>, dismissedCount: number, findings: any[], moreByKind: Record<string, number>, incompleteKinds: string[], unavailableKinds: string[] } | null}
+ * @returns {{ generatedAt: string, tierCounts: Record<string, number>, kindCounts: Record<string, Record<string, number>>, dismissedCount: number, findings: any[], moreByKind: Record<string, number>, incompleteKinds: string[], unavailableKinds: string[], clearTransferPairCount: number } | null}
  */
 export function readCheckupReport(body) {
   if (!isObject(body) || body.ok !== true || !Array.isArray(body.findings) || !isObject(body.tierCounts)) {
@@ -73,7 +73,8 @@ export function readCheckupReport(body) {
     findings: body.findings.map(readFinding).filter((finding) => finding !== null),
     moreByKind: isObject(body.moreByKind) ? body.moreByKind : {},
     incompleteKinds: names(body.incompleteKinds),
-    unavailableKinds: names(body.unavailableKinds)
+    unavailableKinds: names(body.unavailableKinds),
+    clearTransferPairCount: Number.isFinite(body.clearTransferPairCount) ? Math.max(0, Math.trunc(body.clearTransferPairCount)) : 0
   };
 }
 
@@ -115,4 +116,76 @@ export function postHide({ id, evidenceKey }, fetchImpl = fetch) {
 
 export function postShowAgain({ id }, fetchImpl = fetch) {
   return postJson("/api/ledger-checkup/undo-dismiss", { id }, fetchImpl);
+}
+
+// ---- Link clear pairs (docs/flows/check-flow.md, "Link clear pairs") --------
+
+/**
+ * The preview of the clear pairs as the dialog reads it, or null when the
+ * answer is not one.
+ * @returns {{ total: number, cap: number, linkCount: number, remaining: number, firstMonth: string | null, lastMonth: string | null, pairs: Array<{ fromEntryId: string, toEntryId: string }>, rows: Array<{ fromEntryId: string, toEntryId: string, date: string, amountMinor: number, currency: string, fromAccountName: string, toAccountName: string }> } | null}
+ */
+export function readClearPairsPreview(body) {
+  if (!isObject(body) || body.ok !== true || !Array.isArray(body.pairs) || !Array.isArray(body.rows)) {
+    return null;
+  }
+  const count = (value) => (Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0);
+  const pairs = body.pairs
+    .filter((pair) => isObject(pair) && typeof pair.fromEntryId === "string" && typeof pair.toEntryId === "string")
+    .map((pair) => ({ fromEntryId: pair.fromEntryId, toEntryId: pair.toEntryId }));
+  const rows = body.rows
+    .filter((row) => isObject(row) && typeof row.fromEntryId === "string" && typeof row.toEntryId === "string" && typeof row.date === "string" && Number.isFinite(row.amountMinor))
+    .map((row) => ({
+      fromEntryId: row.fromEntryId,
+      toEntryId: row.toEntryId,
+      date: row.date,
+      amountMinor: row.amountMinor,
+      currency: typeof row.currency === "string" ? row.currency : "SGD",
+      fromAccountName: typeof row.fromAccountName === "string" ? row.fromAccountName : "",
+      toAccountName: typeof row.toAccountName === "string" ? row.toAccountName : ""
+    }));
+  return {
+    total: count(body.total),
+    cap: count(body.cap),
+    linkCount: pairs.length,
+    remaining: count(body.remaining),
+    firstMonth: typeof body.firstMonth === "string" ? body.firstMonth : null,
+    lastMonth: typeof body.lastMonth === "string" ? body.lastMonth : null,
+    pairs,
+    rows
+  };
+}
+
+export function buildClearPairsPath({ viewId }) {
+  const params = new URLSearchParams();
+  if (viewId && viewId !== "household") params.set("view", viewId);
+  const query = params.toString();
+  return `/api/ledger-checkup/clear-pairs${query ? `?${query}` : ""}`;
+}
+
+// Throws on any failure: a preview that could not be read is never shown.
+export async function requestClearPairsPreview({ viewId, signal = undefined, fetchImpl = fetch }) {
+  const response = await fetchImpl(buildClearPairsPath({ viewId }), { cache: "no-store", signal, headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`The pairs request failed (${response.status}).`);
+  }
+  const preview = readClearPairsPreview(await response.json().catch(() => null));
+  if (!preview) {
+    throw new Error("The pairs answered with something this page cannot read.");
+  }
+  return preview;
+}
+
+/**
+ * Links the pairs the person was shown. Resolves with how many were linked and
+ * how many were skipped because they changed; throws when nothing was linked.
+ * @returns {Promise<{ linked: number, skipped: number }>}
+ */
+export async function postLinkClearPairs(pairs, fetchImpl = fetch) {
+  const response = await fetchImpl("/api/ledger-checkup/clear-pairs", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ pairs }) });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !isObject(body) || body.ok !== true || !Array.isArray(body.linked) || !Array.isArray(body.skipped)) {
+    throw new Error(`The link failed (${response.status}).`);
+  }
+  return { linked: body.linked.length, skipped: body.skipped.length };
 }

@@ -69,6 +69,34 @@ export const checkCopy = {
     planNeutralTitle: "The plan needs a look"
   },
 
+  // "Link these N clear pairs" on the group "Transfers waiting for their other
+  // side" (docs/flows/check-flow.md, "Link clear pairs"). A pair is two
+  // entries that are the same money moving between two of the person's own
+  // accounts; "clear" is explained once, in the group.
+  clear: {
+    explain: "Only pairs with exactly one possible match on each side.",
+    button: (count) => (count === 1 ? "Link this clear pair" : `Link these ${count} clear pairs`),
+    buttonFor: (count) => (count === 1 ? "Link this clear pair of transfers" : `Link these ${count} clear pairs of transfers`),
+    title: (count) => (count === 1 ? "Link 1 clear pair" : `Link ${count} clear pairs`),
+    loading: "Looking at the pairs…",
+    summary: (count, first, last) => `${count} ${plural(count, "pair", "pairs")}${first ? (first === last ? ` in ${first}` : `, ${first} to ${last}`) : ""}`,
+    rowFrom: (from, to) => `${from} → ${to}`,
+    more: (count) => `and ${count} more`,
+    effect: "Each pair will become one move between your accounts. Nothing is deleted. You can unlink a pair from its details.",
+    noUndoAll: "There is no undo for all of them at once.",
+    capNote: (shown, remaining) => `This links the first ${shown}. ${remaining} more ${plural(remaining, "pair is", "pairs are")} still waiting afterwards.`,
+    confirm: (count) => `Link ${count} ${plural(count, "pair", "pairs")}`,
+    working: "Linking…",
+    cancel: "Cancel",
+    close: "Close",
+    none: "There are no clear pairs to link any more.",
+    result: (linked, skipped) => (skipped === 0
+      ? `Linked ${linked} ${plural(linked, "pair", "pairs")}. 0 skipped.`
+      : `Linked ${linked} ${plural(linked, "pair", "pairs")}. ${skipped} changed since you looked and ${plural(skipped, "was", "were")} skipped.`),
+    loadFailed: "Could not look at the pairs. Nothing was changed. Try again.",
+    linkFailed: "Nothing was linked. Check your connection and try again."
+  },
+
   hidden: {
     toggle: (count) => `Show hidden (${count})`,
     toggleOff: (count) => `Hide hidden (${count})`,

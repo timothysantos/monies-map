@@ -47,6 +47,9 @@ export interface TransferCandidateFact extends TransferFact {
 export interface UnmatchedTransferFacts {
   transfers: TransferFact[];
   candidates: TransferCandidateFact[];
+  // Transfers whose partner list the read may have cut short (it hit its row
+  // limit); the findings ignore this, a clear pair never relies on one.
+  unreliableIds?: string[];
 }
 
 function transferEvidence(entry: TransferFact | TransferCandidateFact, context: CheckupContext, note?: string): CheckupEvidence {

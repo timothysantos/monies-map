@@ -16,7 +16,7 @@
 //   already running when a write landed is read again, so it can never bring
 //   back what the person just hid.
 import { applyHiddenChange } from "./check-model.js";
-import { postHide, postShowAgain, requestCheckup } from "./check-api.js";
+import { postHide, postLinkClearPairs, postShowAgain, requestCheckup, requestClearPairsPreview } from "./check-api.js";
 
 // An aborted or cancelled read is superseded, not a failure. A cancellation is
 // recognised by its message instead of importing TanStack's `isCancelledError`
@@ -178,6 +178,23 @@ export function createCheckOwner({ fetchRequiredQuery, fetchImpl = fetch }) {
         setState({ report: applyHiddenChange(state.report, finding, true), writeError: "show" });
       }
       return ok;
+    },
+
+    // "Link these N clear pairs": the preview the dialog shows (read fresh, never
+    // kept) and the one write behind its button. Both throw on failure. A check
+    // that was already running when the link landed is read again, so it can
+    // never bring back a pair that is linked now.
+    loadClearPairs({ viewId, signal = undefined }) {
+      return requestClearPairsPreview({ viewId, signal, fetchImpl });
+    },
+
+    async linkClearPairs(pairs) {
+      writeEpoch += 1;
+      try {
+        return await postLinkClearPairs(pairs, fetchImpl);
+      } finally {
+        writeEpoch += 1;
+      }
     },
 
     clearWriteError() {

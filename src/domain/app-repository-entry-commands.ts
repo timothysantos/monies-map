@@ -6,6 +6,7 @@
 // refreshed after it (see app-repository-snapshots.ts).
 
 import { buildStalePurposeClearStatement, buildTransferPurposeLinkStatements } from "./transfer-purpose-links";
+import { buildTransferLinkStatements } from "./transfer-link-statements";
 import {
   buildMonthlySnapshotRefreshMarkers,
   recalculateMonthlySnapshots,
@@ -1251,60 +1252,20 @@ export async function linkTransferPair(
   }
 
   const staleGroupIds = [fromEntry.transfer_group_id, toEntry.transfer_group_id].filter((id): id is string => Boolean(id));
-  const statements: D1PreparedStatement[] = [];
-  for (const groupId of staleGroupIds) {
-    statements.push(
-      db
-        .prepare("UPDATE transactions SET transfer_group_id = NULL WHERE household_id = ? AND transfer_group_id = ?")
-        .bind(DEFAULT_HOUSEHOLD_ID, groupId),
-      db
-        .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-        .bind(DEFAULT_HOUSEHOLD_ID, groupId)
-    );
-  }
-
   const groupId = `tg-${crypto.randomUUID()}`;
   const months = new Set([fromEntry.transaction_date.slice(0, 7), toEntry.transaction_date.slice(0, 7)]);
-  // A purpose on the sending side follows the link (transfer-purpose-links.ts).
-  statements.push(...await buildTransferPurposeLinkStatements(db, input));
-  statements.push(
-    db
-      .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
-      .bind(groupId, DEFAULT_HOUSEHOLD_ID, "Linked from entries editor", 1),
-    db
-      .prepare(`
-        UPDATE transactions
-        SET
-          transfer_group_id = ?,
-          entry_type = 'transfer',
-          transfer_direction = 'out',
-          category_id = ?,
-          offsets_category = 0,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND household_id = ?
-      `)
-      .bind(groupId, transferCategory.id, input.fromEntryId, DEFAULT_HOUSEHOLD_ID),
-    db
-      .prepare(`
-        UPDATE transactions
-        SET
-          transfer_group_id = ?,
-          entry_type = 'transfer',
-          transfer_direction = 'in',
-          category_id = ?,
-          offsets_category = 0,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND household_id = ?
-      `)
-      .bind(groupId, transferCategory.id, input.toEntryId, DEFAULT_HOUSEHOLD_ID),
-    buildAuditEventStatement(db, {
-      entityType: "transfer_group",
-      entityId: groupId,
-      action: "transfer_linked",
-      detail: `Linked transfer pair ${input.fromEntryId} -> ${input.toEntryId}.`
+  const statements = [
+    ...buildTransferLinkStatements(db, {
+      groupId,
+      fromEntryId: input.fromEntryId,
+      toEntryId: input.toEntryId,
+      transferCategoryId: transferCategory.id,
+      note: "Linked from entries editor",
+      staleGroupIds,
+      purposeStatements: await buildTransferPurposeLinkStatements(db, input)
     }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
-  );
+  ];
   await db.batch(statements);
   await refreshMonthlySnapshotsAfterWrite(db, months);
 

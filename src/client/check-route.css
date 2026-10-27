@@ -310,6 +310,56 @@
   margin-top: 4px;
 }
 
+/* "Link these N clear pairs": a plain line, then the one button. The group's
+   height does not change when it opens, so nothing moves under a finger. */
+.check-clear-pairs {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin-bottom: 8px;
+}
+
+.check-clear-pairs .check-note {
+  margin: 0;
+}
+
+/* The confirmation lists the first pairs: date, amount (hidden with money),
+   and the two accounts, wrapping on a phone. */
+.check-pairs-summary {
+  margin: 0;
+  font-weight: 700;
+}
+
+.check-pairs-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-pairs-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.check-pairs-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.check-pairs-date,
+.check-pairs-accounts {
+  color: var(--muted);
+}
+
+.check-pairs-result {
+  margin: 0;
+  font-weight: 700;
+}
+
 .check-unavailable {
   display: grid;
   gap: 8px;

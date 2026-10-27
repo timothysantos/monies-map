@@ -101,6 +101,48 @@ async function loadCounterpart(db: D1Database, entry: PurposeEntryRow) {
     .first<PurposeEntryRow>();
 }
 
+// D1 allows 100 bound values in a statement; the household takes one.
+const PURPOSE_ID_CHUNK = 50;
+
+// The same reads for many entries at once (one query per 50 ids).
+async function loadPurposeEntries(db: D1Database, entryIds: string[]) {
+  const found = new Map<string, PurposeEntryRow>();
+  for (let start = 0; start < entryIds.length; start += PURPOSE_ID_CHUNK) {
+    const chunk = entryIds.slice(start, start + PURPOSE_ID_CHUNK);
+    const result = await db.prepare(`${ENTRY_SELECT} AND transactions.id IN (${chunk.map(() => "?").join(", ")})`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<PurposeEntryRow>();
+    for (const row of result.results) {
+      found.set(row.id, row);
+    }
+  }
+  return found;
+}
+
+// The other side of each entry's pair (what `loadCounterpart` answers one at
+// a time), keyed by the entry's id.
+async function loadCounterparts(db: D1Database, entries: PurposeEntryRow[]) {
+  const groupIds = [...new Set(entries.map((entry) => entry.transfer_group_id).filter((id): id is string => Boolean(id)))];
+  const byGroup = new Map<string, PurposeEntryRow[]>();
+  for (let start = 0; start < groupIds.length; start += PURPOSE_ID_CHUNK) {
+    const chunk = groupIds.slice(start, start + PURPOSE_ID_CHUNK);
+    const result = await db.prepare(`${ENTRY_SELECT} AND transactions.transfer_group_id IN (${chunk.map(() => "?").join(", ")}) ORDER BY transactions.id`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<PurposeEntryRow>();
+    for (const row of result.results) {
+      byGroup.set(row.transfer_group_id as string, [...(byGroup.get(row.transfer_group_id as string) ?? []), row]);
+    }
+  }
+  const counterparts = new Map<string, PurposeEntryRow>();
+  for (const entry of entries) {
+    const other = entry.transfer_group_id ? byGroup.get(entry.transfer_group_id)?.find((row) => row.id !== entry.id) : undefined;
+    if (other) {
+      counterparts.set(entry.id, other);
+    }
+  }
+  return counterparts;
+}
+
 function subjectOf(entry: PurposeEntryRow, counterpart: PurposeEntryRow | null) {
   return {
     entryType: entry.entry_type,
@@ -290,28 +332,42 @@ function shiftDays(date: string, days: number) {
 // the person cleared by hand is never given one again. One batch for all of
 // them; nothing when none apply. Applied at those moments only, never when
 // an entry opens: existing rows are not changed behind the person's back.
-export async function applyRememberedTransferPurposes(db: D1Database, entryIds: string[]): Promise<string[]> {
+//
+// `chronological` is for linking many pairs at once (the bulk link of clear
+// pairs): the transfers are taken oldest first and each one that gets a
+// purpose counts as history for the ones after it, exactly as if the pairs had
+// been linked one at a time in date order. Without it every transfer is judged
+// on the history as it was before this call (an import commit).
+export async function applyRememberedTransferPurposes(
+  db: D1Database,
+  entryIds: string[],
+  options: { chronological?: boolean } = {}
+): Promise<string[]> {
   const ids = [...new Set(entryIds.filter(Boolean))];
   if (!ids.length) {
     return [];
   }
-  const subjects = (await db
-    .prepare(`
-      SELECT id, account_id, amount_minor, currency, transaction_date, description, owner_person_id
-      FROM transactions
-      WHERE household_id = ?
-        AND entry_type = 'transfer'
-        AND transfer_direction = 'out'
-        AND transfer_purpose_category_id IS NULL
-        AND id IN (${ids.map(() => "?").join(", ")})
-        AND NOT EXISTS (
-          SELECT 1 FROM audit_events
-          WHERE audit_events.entity_type = 'transaction' AND audit_events.entity_id = transactions.id
-            AND audit_events.action = 'transfer_purpose_cleared'
-        )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, ...ids)
-    .all<{ id: string; account_id: string; amount_minor: number; currency: string | null; transaction_date: string; description: string; owner_person_id: string | null }>()).results;
+  const subjects: Array<{ id: string; account_id: string; amount_minor: number; currency: string | null; transaction_date: string; description: string; owner_person_id: string | null }> = [];
+  for (let start = 0; start < ids.length; start += PURPOSE_ID_CHUNK) {
+    const chunk = ids.slice(start, start + PURPOSE_ID_CHUNK);
+    subjects.push(...(await db
+      .prepare(`
+        SELECT id, account_id, amount_minor, currency, transaction_date, description, owner_person_id
+        FROM transactions
+        WHERE household_id = ?
+          AND entry_type = 'transfer'
+          AND transfer_direction = 'out'
+          AND transfer_purpose_category_id IS NULL
+          AND id IN (${chunk.map(() => "?").join(", ")})
+          AND NOT EXISTS (
+            SELECT 1 FROM audit_events
+            WHERE audit_events.entity_type = 'transaction' AND audit_events.entity_id = transactions.id
+              AND audit_events.action = 'transfer_purpose_cleared'
+          )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<(typeof subjects)[number]>()).results);
+  }
   if (!subjects.length) {
     return [];
   }
@@ -320,7 +376,7 @@ export async function applyRememberedTransferPurposes(db: D1Database, entryIds: 
   // Earlier transfers out of the same accounts with, for each, the other
   // side of its pair (when matched) and whether the person cleared its
   // purpose by hand.
-  const history = [...new Map((await db
+  const historyById = new Map((await db
     .prepare(`
       SELECT
         transactions.id,
@@ -366,18 +422,24 @@ export async function applyRememberedTransferPurposes(db: D1Database, entryIds: 
       receiverPersonId: row.receiver_person_id,
       receiverAccountId: row.receiver_account_id,
       clearedByHand: Boolean(row.cleared_by_hand)
-    }])).values()];
+    }]));
+  const history = [...historyById.values()];
 
+  if (options.chronological) {
+    subjects.sort((left, right) => left.transaction_date.localeCompare(right.transaction_date) || left.id.localeCompare(right.id));
+  }
+  const entries = await loadPurposeEntries(db, subjects.map((subject) => subject.id));
+  const counterparts = await loadCounterparts(db, [...entries.values()]);
   const statements: D1PreparedStatement[] = [];
   const applied: string[] = [];
   const months = new Set<string>();
   for (const subject of subjects) {
     // The same checks as setting it by hand; a refused one is skipped.
-    const entry = await loadPurposeEntry(db, subject.id);
+    const entry = entries.get(subject.id);
     if (!entry) {
       continue;
     }
-    const counterpart = await loadCounterpart(db, entry);
+    const counterpart = counterparts.get(entry.id) ?? null;
     const remembered = rememberedTransferPurpose({
       id: subject.id,
       accountId: subject.account_id,
@@ -415,6 +477,11 @@ export async function applyRememberedTransferPurposes(db: D1Database, entryIds: 
       })
     );
     applied.push(subject.id);
+    const learned = options.chronological ? historyById.get(subject.id) : undefined;
+    if (learned) {
+      learned.purposeCategoryId = remembered.categoryId;
+      learned.purposePersonId = receiverPersonId;
+    }
     for (const month of monthsOf(entry, counterpart)) {
       months.add(month);
     }

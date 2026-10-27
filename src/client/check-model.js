@@ -96,7 +96,7 @@ function rowFor(finding, context) {
   };
 }
 
-function groupFor({ key, headingId, tier, count, rows, expanded, openState, defaultOpen, incompleteHeadings }) {
+function groupFor({ key, headingId, tier, count, rows, expanded, openState, defaultOpen, incompleteHeadings, clearPairCount = 0 }) {
   const isExpanded = expanded.has(key);
   const shownRows = isExpanded ? rows : rows.slice(0, INITIAL_ROWS);
   const moreCount = rows.length - shownRows.length;
@@ -115,6 +115,11 @@ function groupFor({ key, headingId, tier, count, rows, expanded, openState, defa
     showing: allShown && loaded > 0 && loaded < count ? checkCopy.group.showing(loaded, count) : null,
     notListed: loaded === 0 && count > 0 ? checkCopy.group.notListed(count) : null,
     incomplete: incompleteHeadings.has(headingId),
+    // "Link these N clear pairs", on the group of transfers waiting for their
+    // other side only, and only while the server counts some.
+    clearPairs: clearPairCount > 0
+      ? { count: clearPairCount, explain: checkCopy.clear.explain, label: checkCopy.clear.button(clearPairCount), ariaLabel: checkCopy.clear.buttonFor(clearPairCount) }
+      : null,
     // The row just hidden keeps its group open, so the Undo is in view.
     isOpen: rows.some((row) => row.justHidden) || (openState[key] ?? defaultOpen)
   };
@@ -183,7 +188,8 @@ export function buildCheckView({ report, openState = {}, expanded = new Set(), s
         expanded,
         openState,
         defaultOpen: false,
-        incompleteHeadings
+        incompleteHeadings,
+        clearPairCount: tier === "high" && headingId === "transfers" ? report.clearTransferPairCount ?? 0 : 0
       }))
       // Money first: the report already orders rows by section, money at
       // stake and recency, so a group sorts by its first row; groups with no
@@ -257,6 +263,43 @@ export function buildCheckView({ report, openState = {}, expanded = new Set(), s
       : null,
     unavailable: unavailableHeadings.map((headingId) => ({ headingId, heading: checkCopy.headings[headingId] }))
   };
+}
+
+// "2025-07" as "Jul 2025".
+function monthLabel(month) {
+  const [year, number] = String(month ?? "").split("-").map(Number);
+  return year && number ? `${MONTHS[number - 1]} ${year}` : "";
+}
+
+/**
+ * What the "Link clear pairs" dialog shows for a preview: the count and month
+ * range, the first rows, what the confirming button says. With money hidden
+ * a row carries no amount at all.
+ * @param {{ preview: any, areTotalsVisible: boolean, formatMoney: (minor: number, currency: string) => string, thisYear: number }} input
+ */
+export function buildClearPairsView({ preview, areTotalsVisible, formatMoney, thisYear }) {
+  const count = preview.linkCount;
+  const rows = preview.rows.map((row) => ({
+    key: `${row.fromEntryId}>${row.toEntryId}`,
+    date: formatShortDay(row.date, thisYear),
+    amount: areTotalsVisible ? formatMoney(row.amountMinor, row.currency) : "",
+    accounts: checkCopy.clear.rowFrom(row.fromAccountName, row.toAccountName)
+  }));
+  return {
+    count,
+    isEmpty: count === 0,
+    title: checkCopy.clear.title(count),
+    summary: checkCopy.clear.summary(count, monthLabel(preview.firstMonth), monthLabel(preview.lastMonth)),
+    rows,
+    moreText: count > rows.length ? checkCopy.clear.more(count - rows.length) : "",
+    capNote: preview.remaining > 0 ? checkCopy.clear.capNote(count, preview.remaining) : "",
+    confirmLabel: checkCopy.clear.confirm(count)
+  };
+}
+
+// The line the dialog ends on.
+export function describeClearPairsResult({ linked, skipped }) {
+  return checkCopy.clear.result(linked, skipped);
 }
 
 // The report after "This is fine" or its undo, worked out on the page so the

@@ -48,18 +48,48 @@ export function buildStalePurposeClearStatement(db: D1Database, entryId: string)
     .bind(DEFAULT_HOUSEHOLD_ID, entryId);
 }
 
+export interface PurposeLinkRow {
+  owner_person_id: string | null;
+  transfer_purpose_category_id: string | null;
+  transfer_purpose_person_id: string | null;
+}
+
+// D1 allows 100 bound values in a statement; the household takes one.
+const PURPOSE_LINK_ID_CHUNK = 50;
+
 export async function buildTransferPurposeLinkStatements(
   db: D1Database,
   input: { fromEntryId: string; toEntryId: string }
 ): Promise<D1PreparedStatement[]> {
-  const from = await db
-    .prepare("SELECT owner_person_id, transfer_purpose_category_id, transfer_purpose_person_id FROM transactions WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.fromEntryId)
-    .first<{ owner_person_id: string | null; transfer_purpose_category_id: string | null; transfer_purpose_person_id: string | null }>();
-  const to = await db
-    .prepare("SELECT owner_person_id, transfer_purpose_category_id FROM transactions WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.toEntryId)
-    .first<{ owner_person_id: string | null; transfer_purpose_category_id: string | null }>();
+  const rows = await loadPurposeLinkRows(db, [input.fromEntryId, input.toEntryId]);
+  return buildTransferPurposeLinkStatementsFromRows(db, input, rows);
+}
+
+// The rows the purpose rules read for each entry of some pairs, in as few
+// reads as D1's bound-value limit allows (a bulk link reads them all at once).
+export async function loadPurposeLinkRows(db: D1Database, entryIds: string[]): Promise<Map<string, PurposeLinkRow>> {
+  const ids = [...new Set(entryIds)];
+  const found = new Map<string, PurposeLinkRow>();
+  for (let start = 0; start < ids.length; start += PURPOSE_LINK_ID_CHUNK) {
+    const chunk = ids.slice(start, start + PURPOSE_LINK_ID_CHUNK);
+    const result = await db
+      .prepare(`SELECT id, owner_person_id, transfer_purpose_category_id, transfer_purpose_person_id FROM transactions WHERE household_id = ? AND id IN (${chunk.map(() => "?").join(", ")})`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<PurposeLinkRow & { id: string }>();
+    for (const row of result.results) {
+      found.set(row.id, row);
+    }
+  }
+  return found;
+}
+
+export function buildTransferPurposeLinkStatementsFromRows(
+  db: D1Database,
+  input: { fromEntryId: string; toEntryId: string },
+  rows: ReadonlyMap<string, PurposeLinkRow>
+): D1PreparedStatement[] {
+  const from = rows.get(input.fromEntryId);
+  const to = rows.get(input.toEntryId);
   const statements: D1PreparedStatement[] = [];
   // The receiving side becomes a transfer in: a purpose stored there (it
   // was a sending side before) no longer counts.

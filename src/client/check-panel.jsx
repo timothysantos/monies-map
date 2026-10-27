@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import "./ui/lead-support-detail.css";
 import "./check-route.css";
 import { buildCheckView } from "./check-model";
+import { CheckLinkPairsDialog } from "./check-link-pairs-dialog";
 import { createCheckOwner } from "./check-data-owner";
 import { checkCopy } from "./copy/check-copy";
 import { formatDate, moneyWithCurrency } from "./formatters";
@@ -37,7 +38,9 @@ function writeOpenGroups(value) {
   }
 }
 
-const groupDomId = (key) => `check-group-${key.replace(/[^a-z0-9_]+/gi, "-")}`;
+const formatMoney = (minor, currency) => moneyWithCurrency(minor, currency);
+
+const groupDomId =(key) => `check-group-${key.replace(/[^a-z0-9_]+/gi, "-")}`;
 
 export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
   const navigate = useNavigate();
@@ -75,7 +78,7 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
       showHidden,
       justHiddenId: state.lastHidden?.id ?? "",
       areTotalsVisible,
-      formatMoney: (minor, currency) => moneyWithCurrency(minor, currency),
+      formatMoney,
       formatTime: formatDate,
       thisYear: new Date().getFullYear()
     })
@@ -139,6 +142,25 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
 
   const openFix = useCallback((row) => navigate(row.fix.path), [navigate]);
 
+  // "Link these N clear pairs": the dialog lives here, not in the group, so it
+  // stays open with its result when the linked pairs leave the list.
+  const [linkPairsCount, setLinkPairsCount] = useState(0);
+  const openLinkPairs = useCallback((count) => setLinkPairsCount(count), []);
+  const closeLinkPairs = useCallback(() => {
+    setLinkPairsCount(0);
+    // The button that opened it may be gone (everything was linked): focus
+    // goes to the page title instead of the top of the document.
+    window.requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        panelRef.current?.querySelector("#check-title")?.focus();
+      }
+    });
+  }, []);
+  const afterLinkPairs = useCallback(() => {
+    void runBackgroundRefresh(() => owner.refresh());
+  }, [owner, runBackgroundRefresh]);
+
   const viewing = view.id === "household" ? checkCopy.viewingHousehold : checkCopy.viewingPerson(view.label);
   const hasReport = Boolean(checkView);
   const firstFailure = state.failed && !hasReport;
@@ -152,7 +174,7 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
     <article className="panel check-panel" aria-labelledby="check-title" aria-busy={isChecking} ref={panelRef}>
       <div className="panel-head check-head">
         <div>
-          <h2 id="check-title">{checkCopy.title}</h2>
+          <h2 id="check-title" tabIndex={-1}>{checkCopy.title}</h2>
           <span className="panel-context">{viewing}</span>
         </div>
         <button type="button" className="check-again" onClick={checkAgain} disabled={isChecking || state.status === "idle"}>
@@ -217,6 +239,7 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
                   group={group}
                   onToggle={toggleGroup}
                   onToggleExpanded={toggleExpanded}
+                  onLinkPairs={openLinkPairs}
                   renderRow={(row) => (
                     <CheckRow
                       key={row.id}
@@ -276,6 +299,17 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
           ) : null}
         </div>
       ) : null}
+      {linkPairsCount > 0 ? (
+        <CheckLinkPairsDialog
+          owner={owner}
+          viewId={view.id}
+          pairCount={linkPairsCount}
+          areTotalsVisible={areTotalsVisible}
+          formatMoney={formatMoney}
+          onClose={closeLinkPairs}
+          onLinked={afterLinkPairs}
+        />
+      ) : null}
     </article>
   );
 }
@@ -294,7 +328,7 @@ function CheckSkeleton() {
   );
 }
 
-function CheckGroup({ group, onToggle, onToggleExpanded, renderRow }) {
+function CheckGroup({ group, onToggle, onToggleExpanded, renderRow, onLinkPairs = undefined }) {
   const id = groupDomId(group.key);
   return (
     <div className="check-group" data-group={group.key} data-open={group.isOpen ? "true" : "false"}>
@@ -310,6 +344,12 @@ function CheckGroup({ group, onToggle, onToggleExpanded, renderRow }) {
           <>
             {group.incomplete ? <p className="check-note">{checkCopy.group.incomplete}</p> : null}
             {group.notListed ? <p className="check-note">{group.notListed}</p> : null}
+            {group.clearPairs && onLinkPairs ? (
+              <div className="check-clear-pairs">
+                <p className="check-note">{group.clearPairs.explain}</p>
+                <button type="button" className="check-fix check-link-pairs-button" aria-label={group.clearPairs.ariaLabel} onClick={() => onLinkPairs(group.clearPairs.count)}>{group.clearPairs.label}</button>
+              </div>
+            ) : null}
             <ul className="check-items">{group.shownRows.map(renderRow)}</ul>
             {group.moreCount > 0 ? (
               <button type="button" className="lsd-quiet check-more" onClick={() => onToggleExpanded(group.key)}>{checkCopy.group.showMore(group.moreCount)}</button>
