@@ -16,6 +16,8 @@ import {
 import type { ImportPreviewRowDto, StatementFixDto, StatementNoticeDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
+import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
+import { handleLedgerCheckupWrite, isLedgerCheckupWritePath } from "./server/ledger-checkup-route";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSkewCandidatesDto } from "./domain/pages/skew-candidates";
@@ -533,6 +535,25 @@ export default {
 
     if (url.pathname === "/api/imports-page") {
       return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB), timing);
+    }
+
+    // The Ledger check-up (DOMAIN.md "Ledger Check-up"): one explicit,
+    // read-only report; only "This is fine" and its undo write (a setting
+    // and an audit event). No AI, no schedule.
+    if (url.pathname === "/api/ledger-checkup") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "The Ledger check-up only answers GET." }, 405, { Allow: "GET" });
+      }
+      const view = readLedgerCheckupView(url.searchParams.get("view"));
+      if (view === null) {
+        return json({ ok: false, error: "Unknown view." }, 400);
+      }
+      return apiPageResponse("Ledger check-up", request, url, () =>
+        buildLedgerCheckupDto(env.DB, { view, includeDismissed: url.searchParams.get("dismissed") === "1" }), timing);
+    }
+
+    if (isLedgerCheckupWritePath(url.pathname)) {
+      return handleLedgerCheckupWrite(request, url, env);
     }
 
     // Ask's habits, suggestions and Done for you: no AI, deterministic

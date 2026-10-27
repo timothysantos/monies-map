@@ -42,7 +42,7 @@ const POSTED_LANE_MARGIN_DAYS = 7;
 
 // A split, a settlement, a settlement check or a plan row that points at
 // the entry: removing it would cut those loose.
-const linkExists = (entryId: string) => `(
+export const linkExists = (entryId: string) => `(
   EXISTS (SELECT 1 FROM monthly_plan_entry_links WHERE transaction_id = ${entryId})
   OR EXISTS (SELECT 1 FROM split_expenses WHERE linked_transaction_id = ${entryId})
   OR EXISTS (SELECT 1 FROM split_settlements WHERE linked_transaction_id = ${entryId})
@@ -250,14 +250,14 @@ export async function loadWrongCardEvidence(db: D1Database, input: {
   return { assessments, entries: new Map(entries.map((entry) => [entry.id, entry])), accounts, isCapped };
 }
 
-type NearbyRow = {
+export type NearbyRow = {
   id: string; account_id: string; transaction_date: string; post_date: string | null; description: string; amount_minor: number;
   currency: string; entry_type: "expense" | "income" | "transfer"; transfer_group_id: string | null; import_id: string | null;
   external_reference: string | null; original_currency: string | null; bank_certification_status: string;
   import_source_type: string | null; imported_at: string | null; promotes_manual_entry: number; certified_over_manual: number;
 };
 
-function toLedgerFact(row: NearbyRow): LedgerEntryFact {
+export function toLedgerFact(row: NearbyRow): LedgerEntryFact {
   const isApplePay = typeof row.external_reference === "string" && /^shortcut:./.test(row.external_reference);
   return {
     id: row.id,

@@ -41,7 +41,18 @@ export function countingDatabase(db) {
       if (property === "batch") {
         return async (statements) => {
           const results = await target.batch(statements);
-          calls.push({ sql: `BATCH of ${statements.length}`, kind: "batch", rows: 0, rowsRead: 0, bytes: 0 });
+          // rowsRead and bytes stay 0 so every existing budget counts as before;
+          // what the batch's statements read is kept beside them.
+          calls.push({
+            sql: `BATCH of ${statements.length}`,
+            kind: "batch",
+            rows: 0,
+            rowsRead: 0,
+            bytes: 0,
+            statements: statements.length,
+            batchRowsRead: results.reduce((sum, item) => sum + Number(item?.meta?.rows_read ?? 0), 0),
+            batchBytes: results.reduce((sum, item) => sum + (Array.isArray(item?.results) ? JSON.stringify(item.results).length : 0), 0)
+          });
           return results;
         };
       }
@@ -56,7 +67,11 @@ export function countingDatabase(db) {
       return {
         statements: calls.length,
         rowsRead: calls.reduce((sum, call) => sum + call.rowsRead, 0),
-        rowBytes: calls.reduce((sum, call) => sum + call.bytes, 0)
+        rowBytes: calls.reduce((sum, call) => sum + call.bytes, 0),
+        // SQL statements, a batch counting each of its own, and what batches read.
+        sqlStatements: calls.reduce((sum, call) => sum + (call.statements ?? 1), 0),
+        batchRowsRead: calls.reduce((sum, call) => sum + (call.batchRowsRead ?? 0), 0),
+        batchBytes: calls.reduce((sum, call) => sum + (call.batchBytes ?? 0), 0)
       };
     },
     reset() {
