@@ -931,3 +931,50 @@ button.split-activity-card:hover {
     width: 100%;
   }
 }
+
+/* Correct a settled mistake (use-split-correction.jsx): the optional reason,
+   the "also remove the duplicate" choice, and the link on a settled card. */
+.split-correction-fields {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.split-correction-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.split-correction-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.split-correction-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+
+.split-correction-check input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--accent-strong);
+}
+
+.split-correction-check small {
+  display: block;
+}
+
+.settled-correction-link {
+  margin-top: 6px;
+}

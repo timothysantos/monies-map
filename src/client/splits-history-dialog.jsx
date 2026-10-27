@@ -12,6 +12,13 @@ import { useKeyboardInset } from "./use-keyboard-inset";
 
 const { format: formatService } = moniesClient;
 
+// A correction's own events read as "Correction added" and "Correction undone".
+function historyActionText(item) {
+  if (item.detail === "correction") return splitsMessages.correction.historyAdded;
+  if (item.detail === "correction undone") return splitsMessages.correction.historyUndone;
+  return splitHistoryActionLabel(item.action);
+}
+
 function formatHistoryMoney(item) {
   return formatService.moneyWithCurrency(Math.abs(item.amountMinor), item.currency ?? "SGD");
 }
@@ -45,7 +52,7 @@ export function SplitHistoryDialog({ open, history = [], error = "", isSubmittin
                   <article className="split-history-row" key={item.id}>
                     <div>
                       <strong>{item.description}</strong>
-                      <small>{item.groupName ?? "Non-group expenses"} · {formatHistoryMoney(item)} · {splitHistoryActionLabel(item.action)} · {item.occurredAt}</small>
+                      <small>{item.groupName ?? "Non-group expenses"} · {formatHistoryMoney(item)} · {historyActionText(item)} · {item.occurredAt}</small>
                     </div>
                     {item.canRestore ? <button type="button" className="lsd-quiet split-history-restore" disabled={isSubmitting} onClick={() => onRestore(item)}><RotateCcw size={15} aria-hidden="true" /> Restore</button> : null}
                   </article>

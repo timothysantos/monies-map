@@ -58,6 +58,8 @@ export function SplitsMainSection({
   onRequestDeleteSplit,
   onViewLinkedEntry,
   onRefreshActivity,
+  onUndoCorrection = undefined,
+  undoingCorrectionId = "",
   viewId,
   isRefreshingDerived = false,
   readOnly = false,
@@ -153,6 +155,8 @@ export function SplitsMainSection({
             onRequestDeleteSplit={onRequestDeleteSplit}
             onViewLinkedEntry={onViewLinkedEntry}
             onRefreshActivity={onRefreshActivity}
+            onUndoCorrection={onUndoCorrection}
+            undoingCorrectionId={undoingCorrectionId}
             viewId={viewId}
             readOnly={readOnly}
             archiveControl={

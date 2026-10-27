@@ -98,6 +98,8 @@ export function SplitsActivitySection({
   onRequestDeleteSplit,
   onViewLinkedEntry,
   onRefreshActivity,
+  onUndoCorrection = undefined,
+  undoingCorrectionId = "",
   viewId,
   readOnly = false,
   archiveControl = null
@@ -132,6 +134,8 @@ export function SplitsActivitySection({
       onEditSettlement={onEditSettlement}
       onViewLinkedEntry={onViewLinkedEntry}
       onRefreshActivity={onRefreshActivity}
+      onUndoCorrection={onUndoCorrection}
+      undoingCorrectionId={undoingCorrectionId}
       viewId={viewId}
       readOnly={readOnly}
     />

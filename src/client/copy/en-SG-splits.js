@@ -96,5 +96,30 @@ export const splitsMessages = {
   viewSplit: "View split",
   viewLinkedEntry: "View entry",
   linkedEntry: "Linked entry",
-  categoryBreakdown: "Category breakdown"
+  categoryBreakdown: "Category breakdown",
+  // A settled-period correction (DOMAIN.md "Split Correction"): a mistake found
+  // inside a settle-up, fixed with a record in the current period.
+  correction: {
+    link: "Correct this settled mistake",
+    title: "Correct a settled mistake",
+    loading: "Checking what needs correcting...",
+    // The sentence that says what Add correction does, with the amount the app worked out.
+    effect: (amount, favouredName, settledDate) => `This adds a ${amount} correction in ${favouredName}’s favour to the current period. The ${settledDate} settle-up stays as it is.`,
+    reasonLabel: "Reason",
+    reasonHint: "Optional. Shown on the correction.",
+    removeDuplicate: "Also remove the duplicate",
+    removeDuplicateHint: "The extra copy moves to History, where it can be restored.",
+    add: "Add correction",
+    adding: "Adding...",
+    cancel: "Cancel",
+    close: "Close",
+    added: "Correction added.",
+    favour: (name) => `In ${name}’s favour`,
+    undo: "Undo correction",
+    undoing: "Undoing...",
+    undone: "Correction undone.",
+    historyAdded: "Correction added",
+    historyUndone: "Correction undone",
+    failed: "The correction could not be added."
+  }
 };

@@ -86,6 +86,8 @@ export function SplitActivityGroups({
   onEditSettlement,
   onViewLinkedEntry,
   onRefreshActivity = undefined,
+  onUndoCorrection = undefined,
+  undoingCorrectionId = "",
   viewId = "household"
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
@@ -222,11 +224,13 @@ export function SplitActivityGroups({
         {group.items.map((item, index) => {
           const theme = categoryService.getTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
           const isEditable = !archived && !readOnly;
-          const canOpen = !archived && Boolean(item.kind === "expense" ? onEditExpense : onEditSettlement);
+          // A correction is a record, not a form: it is undone, never edited.
+          const isCorrection = Boolean(item.correction);
+          const canOpen = !archived && !isCorrection && Boolean(item.kind === "expense" ? onEditExpense : onEditSettlement);
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
           // Who lent or borrowed is the sign of the viewer's share: hidden with money.
-          const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly && areTotalsVisible;
+          const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly && areTotalsVisible && !isCorrection;
           // Lent or received is money coming to the viewer, borrowed a debt,
           // a settle-up they paid a plain outflow (src/domain/money-tone.ts).
           const amountToneClass = moneyToneClass(showDirectionLabel ? item.viewerTone : "neutral");
@@ -346,9 +350,23 @@ export function SplitActivityGroups({
               </div>
               <div className="split-activity-copy">
                 <strong>{item.description}</strong>
-                <p>{item.kind === "expense" ? formatExpensePaidLine(item, viewId) : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
+                <p>{item.kind === "expense"
+                  ? formatExpensePaidLine(item, viewId)
+                  : isCorrection ? splitsMessages.correction.favour(item.fromPersonName) : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
                 {item.settlementCheckpointId ? <span className="split-settlement-marker">Included in simplified settlement</span> : null}
+                {isCorrection && item.settlementStatus === "open" && onUndoCorrection ? (
+                  <div className="split-card-actions">
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={undoingCorrectionId === item.id}
+                      onClick={() => onUndoCorrection(item)}
+                    >
+                      {undoingCorrectionId === item.id ? splitsMessages.correction.undoing : splitsMessages.correction.undo}
+                    </button>
+                  </div>
+                ) : null}
                 {item.paymentStatus === "awaiting_statement" ? <span className="split-payment-marker">Card statement pending</span> : null}
                 {item.paymentStatus === "certified" ? <span className="split-payment-marker is-certified">Statement certified</span> : null}
                 {archived && !readOnly ? (
@@ -389,9 +407,11 @@ export function SplitActivityGroups({
                   <span className="share-row-meta">
                     {isPendingDerived
                       ? messages.common.loadingLatest
-                      : item.matched
-                        ? splitsMessages.linked
-                        : splitsMessages.manual}
+                      : isCorrection
+                        ? null
+                        : item.matched
+                          ? splitsMessages.linked
+                          : splitsMessages.manual}
                   </span>
                 </span>
               </div>

@@ -37,7 +37,8 @@ export function sanitizeTabParams(params, tabId) {
       "split_group",
       "split_mode",
       "split_action",
-      "editing_split_expense"
+      "editing_split_expense",
+      "correct_settled"
     ].forEach((key) => params.delete(key));
   }
 

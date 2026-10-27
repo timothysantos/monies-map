@@ -1,3 +1,4 @@
+import { splitsMessages } from "./copy/en-SG-splits";
 import { InlineError } from "./ui-states";
 
 export const SPLIT_SETTLEMENT_LOCKED = "split_settlement_locked";
@@ -44,13 +45,21 @@ export function SettlementLockNotice({ lock, isUndoing = false, onUndo }) {
     );
   }
   return (
-    <InlineError
-      className="form-error settlement-lock-error"
-      message={lock.message}
-      retryLabel={isGroupSettleUp ? "Undo settle-up" : "Undo simplification"}
-      retryingLabel="Undoing..."
-      isRetrying={isUndoing}
-      onRetry={onUndo}
-    />
+    <>
+      <InlineError
+        className="form-error settlement-lock-error"
+        message={lock.message}
+        retryLabel={isGroupSettleUp ? "Undo settle-up" : "Undo simplification"}
+        retryingLabel="Undoing..."
+        isRetrying={isUndoing}
+        onRetry={onUndo}
+      />
+      {/* Only on a settled shared cost the check-up flags as a settled mistake. */}
+      {lock.onCorrect ? (
+        <button type="button" className="subtle-action settled-correction-link" onClick={lock.onCorrect}>
+          {splitsMessages.correction.link}
+        </button>
+      ) : null}
+    </>
   );
 }
