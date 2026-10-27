@@ -2952,6 +2952,60 @@ Relationships:
 - may point to one `account`
 - may point to one `ledger entry`
 
+### Ledger Check-up
+
+One explicit, read-only report that lists problems in the household's own data
+in plain words, each with the evidence behind it, how sure the app is, who it
+touches and, where the app already has a fix, a link to that fix (owner
+decision, 2026-10-27; `docs/proposals/ledger-checkup.md`,
+`docs/audits/ledger-checkup.md`). User-facing name "Check my books". Phase 1
+is the engine and the API; the screen is phase 2.
+
+Canonical terms:
+- `ledger check-up` (the report), `finding` (one problem in it)
+- `tier`: `high` ("Needs fixing"), `check` ("Worth checking"), `note`
+  ("Good to know")
+- `kind`: `wrong_card_duplicate`, `duplicate_split`, `duplicate_entry`,
+  `unmatched_transfer`, `statement_gap`, `statement_join`, `stale_estimate`,
+  `balance_mismatch`, `plan_overspent`, `plan_line_unpaid`,
+  `plan_line_no_category`, `settled_period_error`, `other_category`,
+  `odd_entry`, `quiet_account`
+- `evidence key`: the hash of the facts that make a finding true
+- `dismissal` ("This is fine")
+
+Code and storage:
+- `src/domain/ledger-checkup/` (one module per detector, `registry.ts`,
+  `loader.ts`, `runner.ts`), `src/domain/pages/ledger-checkup.ts`,
+  `src/server/ledger-checkup-route.ts`
+- `GET /api/ledger-checkup[?view=&dismissed=1]`,
+  `POST /api/ledger-checkup/dismiss`, `POST /api/ledger-checkup/undo-dismiss`
+- a dismissal is one `app_settings` row `ledger_checkup:dismissed:<finding id>`
+  (`{ evidenceKey, kind, dismissedAt }`) and an audit event; no new table
+
+Important distinctions:
+- A finding is shown only when its rule can be proven from the household's
+  records. False positives are worse than misses, so a near miss is a lower
+  tier, never a louder one. `high`: every gate of the rule holds, the records
+  themselves prove it. `check`: the premise holds but a soft gate failed, or the
+  rule can say "this does not add up" and not why. `note`: a tidy-up.
+- The report never changes data. The one write is the person's "This is fine"
+  (and its undo): all-or-nothing with its audit event. A dismissed finding stays
+  hidden for the same evidence and comes back when the evidence changes.
+- It runs only when the person opens it: no schedule, no background job, no
+  cache, no AI. It reuses the matchers the app already trusts (the wrong-card
+  rules, the transfer candidate ranking, the Splits matcher, the open-period and
+  settle-up coverage rules, the statement balance functions, the Month link
+  dialog's reasons) and never defines a second meaning of "the same purchase".
+- A finding names the existing fix (a link into Entries, Splits, Imports,
+  Settings or Month) or says "No fix yet" (a settled period, until phase 3).
+- A `settled_period_error` is a settle-up that counted something twice, or a cost
+  that was removed after it counted it. Its effect is stated per person: each
+  person who owed the payer a share of the extra copy was charged that much too
+  much, and the payer was paid that much too much.
+- Money moving between the household's own accounts misstates no total, so an
+  unlinked transfer pair is `high` for confidence and carries no money at stake;
+  the report counts findings per kind so a screen can set many of them apart.
+
 ## Relationship Map
 
 At a high level:
@@ -2996,6 +3050,9 @@ Use these terms consistently in future work:
   rollups.
 - Say `statement fix` for an approved correction from the statement check,
   not `auto-fix` or `auto-correction`: nothing is applied without approval.
+- Say `finding` for one problem the ledger check-up lists, not `alert`,
+  `warning` or `issue`; say `dismissal` ("This is fine"), not `ignore` (the
+  category rule `ignore` is another thing).
 
 ## Current Canonical Boundaries
 
@@ -3018,6 +3075,10 @@ These boundaries are important enough to preserve explicitly:
 - Skew candidate vs transfer group:
   a `skew candidate` only flags entries that look like an unlinked transfer
   or settlement; it never links, refiles or matches anything itself
+- Ledger check-up vs repair:
+  a `finding` only says what is wrong and how sure the app is; it never changes
+  a ledger, split, plan or statement row. The fix is an existing, explicit
+  action the finding links to, or "No fix yet"
 - Planning vs actuals:
   `month plan row` != `ledger entry`
 - Proof vs balance anchor:

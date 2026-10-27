@@ -116,6 +116,11 @@ a doc here in the same change.
 - [`audits/wrong-card-apple-pay-duplicate.md`](audits/wrong-card-apple-pay-duplicate.md):
   Apple Pay entries on the wrong card: confidence rules, false-positive
   analysis, measured reads and the real case.
+- [`proposals/ledger-checkup.md`](proposals/ledger-checkup.md) and
+  [`audits/ledger-checkup.md`](audits/ledger-checkup.md): the Ledger check-up
+  ("Check my books"): the finding model, the fifteen detectors and their
+  rules, false-positive analysis, measured read budgets, and the phase 2
+  handoff (phase 1 is the API only).
 - [`audits/month-lead-spacing/README.md`](audits/month-lead-spacing/README.md):
   the Month and Summary lead's vertical rhythm and the legend share rule,
   with before and after screenshots (15 October 2026).

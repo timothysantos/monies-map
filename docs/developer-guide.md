@@ -2660,6 +2660,23 @@ found and its description names nobody is `medium` confidence and hidden
 by default; add `&include=medium` to see those too. `tests/skew-candidates.test.mjs` and
 `tests/skew-candidates-api.test.mjs` hold the rules and their refusals.
 
+## What is the Ledger check-up?
+
+`GET /api/ledger-checkup` (DOMAIN.md "Ledger Check-up") is one explicit,
+read-only report of problems in the household's own data: a wrong-card Apple Pay
+purchase counted twice, a shared cost entered twice (and a settle-up that
+counted it twice), unlinked transfers, a missing statement, a statement that no
+longer matches, an estimate nobody confirmed, a plan that spends more than comes
+in, and a few tidy-ups. Each finding has evidence, a tier (`high`, `check`,
+`note`), the people it touches and a link to the fix the app already has. It
+runs only when asked (no schedule, no AI, no cache) and the only write is
+`POST /api/ledger-checkup/dismiss` ("This is fine", with an undo) which stores
+one setting and an audit event. The detectors are pure functions in
+`src/domain/ledger-checkup/`; `tests/ledger-checkup-detectors.test.mjs` holds
+their rules and negatives, `tests/ledger-checkup-budget.test.mjs` the read
+budget. The screen is not built yet; the rules and measured reads are in
+`docs/audits/ledger-checkup.md`.
+
 ## Why do notes matter so much?
 
 The app should not treat notes as decoration. Notes explain why a month is

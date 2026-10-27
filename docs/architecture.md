@@ -349,6 +349,37 @@ write routes that resolve each candidate (`/api/transfers/link`,
 `/api/entries/update-classification`, `/api/splits/checkpoints/match`,
 `/api/splits/settlements/create`); it never calls them. No AI is involved.
 
+### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
+
+The household asks "Check my books" and gets a list of problems in its own data
+with evidence, a confidence tier and, where the app already has one, a link to
+the fix (DOMAIN.md "Ledger Check-up"; `docs/proposals/ledger-checkup.md`,
+`docs/audits/ledger-checkup.md`). Phase 1 is the engine and the API; the screen
+and the correction of a settled period come later.
+
+```text
+GET /api/ledger-checkup[?view=&dismissed=1]
+  pages/ledger-checkup.ts            loader + stored dismissals + runner
+  ledger-checkup/loader.ts           3 db.batch round trips, <= 25 statements,
+                                     every read indexed, windowed and limited
+  ledger-checkup/registry.ts         one list of pure detectors, one fact slice each
+  ledger-checkup/*.ts (pure)         wrong-card, split duplicates and settled-period
+                                     errors, duplicate entries, unmatched transfers,
+                                     statement gaps / joins / balance mismatch, stale
+                                     estimates, plan problems, data hygiene
+  ledger-checkup/runner.ts           order (tier, money, recency), 50 a kind, person view
+POST /api/ledger-checkup/dismiss | undo-dismiss
+  app-repository-ledger-checkup.ts   one app_settings row + audit event, one batch
+```
+
+The report reuses the matchers the app already trusts rather than defining a
+second meaning of "the same purchase": the wrong-card rules
+(`assessWrongCardDuplicates`), the transfer candidate ranking, the Splits
+matcher (`findBestSplitExpenseMatch`), the settle-up coverage rules, the
+statement balance functions Settings uses, and the Month link dialog's reasons.
+It is read-only (the one write is "This is fine"), runs only when the person
+opens it, and uses no AI, no schedule and no cache.
+
 ### Transfer purpose: person views of a transfer (current, 2026-10)
 
 A transfer between two people of the household can say what it pays for

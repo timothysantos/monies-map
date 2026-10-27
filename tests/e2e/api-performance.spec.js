@@ -14,7 +14,8 @@ const PAGE_APIS = [
   ["Month page", "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared"],
   ["Splits page", "/api/splits-page?view=household&month=2026-05"],
   ["Imports page", "/api/imports-page"],
-  ["Settings page", "/api/settings-page?view=household"]
+  ["Settings page", "/api/settings-page?view=household"],
+  ["Ledger check-up", "/api/ledger-checkup?view=household"]
 ];
 
 function readServerTiming(header) {
@@ -62,7 +63,12 @@ const PAYLOAD_APIS = [
   ["summary-account-pills", "/api/summary-account-pills?view=household"],
   ["month-page", "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared"],
   ["splits-page", "/api/splits-page?view=person-tim&month=2025-10"],
-  ["settings-page", "/api/settings-page?view=household"]
+  ["settings-page", "/api/settings-page?view=household"],
+  // The Ledger check-up (DOMAIN.md "Ledger Check-up"): one explicit read-only
+  // report, at most 50 findings of each kind. On the demo household it is the
+  // quiet accounts and a few unmatched transfers; a real household's size is
+  // bounded by the same cap (tests/ledger-checkup-budget.test.mjs).
+  ["ledger-checkup", "/api/ledger-checkup?view=household"]
 ];
 
 // The Splits page once a settlement covered part of a group: the covered

@@ -144,6 +144,7 @@ chunk.
 | `splitsPage` | `<= 300ms` | `500ms` | slice-owned |
 | `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
 | `skewCandidates` (`GET /api/skew-candidates`) | `<= 250ms` | `400ms` | read-only, 16 D1 reads, no writes; entries for the month ±14 days, not a page DTO, at most 50 candidates |
+| `ledgerCheckup` (`GET /api/ledger-checkup`) | `<= 150ms` | `400ms` | read-only, runs only when opened: 3 round trips, at most 25 statements, about 129,000 rows read and 40 ms of CPU on the 10k fixture with problems of every kind; not a page DTO, at most 50 findings per kind (`tests/ledger-checkup-budget.test.mjs`, "Ledger check-up reads" below) |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
 Measured at the 10k stress fixture after the macro performance work
@@ -684,6 +685,33 @@ else:
   refetchAndReconcile()
 ```
 
+## Ledger check-up reads
+
+The check-up (`GET /api/ledger-checkup`, DOMAIN.md "Ledger Check-up") reads a
+whole household's problems in one request, so its reads are held to the cold
+start and page read rules above, measured in `tests/ledger-checkup-budget.test.mjs`:
+
+- one shared loader (`src/domain/ledger-checkup/loader.ts`) in at most 3
+  `db.batch()` round trips (independent reads, then reads that depend on them,
+  then the cause read for an account whose statement no longer matches) and at
+  most 25 statements, never one read per detector or per finding;
+- every read is an indexed range or key read, a SQL aggregate or an indexed
+  self-join, with a date window and a `LIMIT` (400 days; 180 for duplicate
+  entries; 800 for transfers; 1,100 for split records); EXPLAIN is asserted for
+  all of them, and a list that reaches its limit says so (`incompleteKinds`);
+- a self-join over `transactions` must be pinned to its probe index
+  (`INDEXED BY idx_transactions_account_date`): left to the planner the
+  duplicate-entry join read 31 million rows on the 10k fixture;
+- a "held by a split" test uses the partial indexes on live records
+  (`linked_transaction_id = ? AND deleted_at IS NULL`), never a bare
+  `linked_transaction_id = ?` that scans the split tables;
+- at most 250,000 rows read, 600 KB of row bytes, 400 ms median Node CPU and a
+  120 KB response at 50 findings a kind; the demo payload is budgeted in
+  `tests/e2e/api-payload-budget.json` (`ledger-checkup`);
+- the detectors are pure functions over the loaded facts
+  (`tests/ledger-checkup-detectors.test.mjs`), so a rule changes without
+  touching a read, and a read changes without touching a rule.
+
 ## Persistence Atomicity Contract
 
 A persistence command is all-or-nothing:
@@ -705,6 +733,11 @@ A persistence command is all-or-nothing:
   `refreshMonthlySnapshotsAfterWrite`; one month's scopes and the marker clear
   commit together, and a refresh failure is logged, not returned as a write
   failure, because the markers let the next Summary or Month read repair it
+- the Ledger check-up's "This is fine" and its undo
+  (`src/domain/app-repository-ledger-checkup.ts`) check first (a known kind and
+  a safe id, a hex evidence key, at most 500 dismissals), then write the
+  `app_settings` row and its audit event in one batch
+  (`tests/atomic-writes-ledger-checkup.test.mjs`)
 - the optional AI cost-control aggregates (the daily allowance counter in
   `src/domain/ai-assistance.ts` and the AI provider status row in
   `src/domain/ai-provider-status.ts`) are not household data and have no
