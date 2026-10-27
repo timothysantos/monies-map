@@ -1666,7 +1666,12 @@ Rules (`src/domain/transfer-purpose.ts`, `readEntryForPerson`):
   description, digits ignored), and it is tried again the moment the pair is
   first matched (the link route, and an import that matches an earlier
   entry). It is applied at those moments only, never when an entry opens, and
-  existing rows are not changed. Deterministic, no AI.
+  existing rows are not changed. Deterministic, no AI. Linking many clear
+  pairs at once ("Link these N clear pairs", see "Ledger Check-up") is the
+  same moment: the pairs' purposes are learned after the batch in date order
+  (oldest sending side first, ties by id), and each pair that earns one counts
+  as an earlier repeat for the pairs after it, exactly as if they had been
+  linked one at a time.
 
 Code:
 - `src/domain/transfer-purpose.ts` (reading, refusals; shared with the
@@ -3011,6 +3016,9 @@ Canonical terms:
   `odd_entry`, `quiet_account`
 - `evidence key`: the hash of the facts that make a finding true
 - `dismissal` ("This is fine")
+- `clear transfer pair`: two unlinked transfer entries that can be linked with
+  no doubt (rules below; user-facing "clear pairs", "Link these N clear
+  pairs")
 
 What the page calls them (user-facing names; the canonical terms above never
 reach the screen, `src/client/copy/check-copy.js`): a `finding` is "a problem"
@@ -3036,6 +3044,13 @@ Code and storage:
   report), `check-api.js`, `copy/check-copy.js`, `check-route.css`
 - `GET /api/ledger-checkup[?view=&dismissed=1]`,
   `POST /api/ledger-checkup/dismiss`, `POST /api/ledger-checkup/undo-dismiss`
+- clear pairs: `src/domain/ledger-checkup/clear-transfer-pairs.ts` (the pure
+  rule), `src/domain/pages/ledger-checkup-clear-pairs.ts` (preview),
+  `src/domain/app-repository-transfer-bulk-link.ts` (the command),
+  `src/domain/transfer-link-statements.ts` (the writes it shares with the
+  single link), `GET /api/ledger-checkup/clear-pairs[?view=]` (preview) and
+  `POST /api/ledger-checkup/clear-pairs` (link), the report's
+  `clearTransferPairCount`; client `check-link-pairs-dialog.jsx`
 - a dismissal is one `app_settings` row `ledger_checkup:dismissed:<finding id>`
   (`{ evidenceKey, kind, dismissedAt }`) and an audit event; no new table
 
@@ -3065,6 +3080,30 @@ Important distinctions:
 - Money moving between the household's own accounts misstates no total, so an
   unlinked transfer pair is `high` for confidence and carries no money at stake;
   the report counts findings per kind so a screen can set many of them apart.
+- A `clear transfer pair` (owner approval, 2026-10-27) is the one fix the
+  check-up can make in bulk, and only for zero doubt. Both sides are unlinked
+  transfers the check-up's own read weighed (not held by a settle-up or a
+  settlement check, not dismissed in the transfer review, at least 7 days old,
+  on a known account that is not an investment account), one out and one in,
+  on different accounts, the same amount to the cent in the same currency, at
+  most 7 days apart, and the finding for the pair is not marked "This is
+  fine". Each side must have exactly one possible match on another account and
+  it must be the other side: the possible matches are every unlinked entry of
+  the same amount and currency within 7 days on another account, of any type
+  (stricter than the check-up's own "plausible partner", so a lookalike is
+  never argued away). Fourteen monthly $450 transfers are therefore fourteen
+  clear pairs (a month apart is no rival), and a same-amount entry a few days
+  away keeps both pairs out. Every clear pair is also a `high` finding.
+- "Link these N clear pairs" links the pairs the person was shown that are
+  still clear when they confirm: the server recomputes the clear pairs, refuses
+  any id that no longer qualifies (named in the result as changed since they
+  looked, never guessed at) and links at most 100 per request. The writes are
+  the single link's own (`buildTransferLinkStatements`: one transfer group per
+  pair, sender a transfer out and receiver a transfer in, Transfer category, a
+  `transfer_linked` audit event per pair) in one `db.batch()` with one refresh
+  marker per affected month: all-or-nothing for the whole request. There is no
+  bulk undo; each pair is unlinked from its details like any other. Linking is
+  the moment a pair's transfer purpose is learned (see "Transfer Purpose").
 
 ## Relationship Map
 

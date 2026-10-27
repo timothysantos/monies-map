@@ -168,6 +168,12 @@ Every string the page shows (all in `check-copy.js`):
   from before.") with "Try again".
 - Hidden money and a plan problem: "Money is hidden. Show money totals to read
   this.", "The plan needs a look".
+- Link clear pairs (all in `check-copy.js`, `clear`): "Only pairs with exactly
+  one possible match on each side.", "Link these N clear pairs" ("Link this
+  clear pair" for one), the dialog's title, summary, rows, "and N more", the
+  sentence, "There is no undo for all of them at once.", the cap note, "Link N
+  pairs", "Linking…", "Cancel", "Close", the result line, and the two failure
+  lines. Listed in full under "Link clear pairs".
 - Screen readers: a polite status line says "Checking your books." then "Check
   finished. <summary>."; group buttons carry `aria-expanded` and
   `aria-controls`; every button names its problem ("This is fine: <title>");
@@ -178,18 +184,72 @@ rows as Detail; every control at least 44px; the skeleton reserves 460px (520px
 on a phone) so the result lands without a layout shift; reduced motion turns the
 group arrow's turn off.
 
+## Link clear pairs
+
+The group "Transfers waiting for their other side" (Needs fixing) can hold a
+hundred pairs that are plainly the same money moving between the household's
+own accounts (card payments, a monthly $450). When the report counts any
+`clearTransferPairCount`, that group shows, above its rows, the line "Only pairs
+with exactly one possible match on each side." and the button "Link these N
+clear pairs" (owner approval, 2026-10-27). The rules for a clear pair and why
+each is zero doubt are in `docs/audits/ledger-checkup.md`, "Clear pairs";
+pairs that are not clear stay as ordinary rows with their own "Open the
+transfer and link them".
+
+1. The button opens one dialog (a sheet on a phone, a dialog on a wide screen:
+   `SheetDialog`, hosted by `check-panel.jsx`, not the group, so it survives
+   the group emptying). It reads `GET /api/ledger-checkup/clear-pairs[?view=]`
+   fresh and shows: "Link N clear pairs", "N pairs, Jul 2025 to Aug 2026", the
+   first ten pairs (date, amount, from account to account; no amount while
+   money is hidden), "and N more", "Each pair will become one move between your
+   accounts. Nothing is deleted. You can unlink a pair from its details.",
+   "There is no undo for all of them at once.", and, when more than 100 are
+   clear, "This links the first 100. N more pairs are still waiting
+   afterwards."
+2. Cancel (or Escape, or the close button) does nothing. "Link N pairs" is the
+   only thing that writes: one `POST /api/ledger-checkup/clear-pairs` with the
+   pairs listed (at most 100), the button reading "Linking…" and the dialog
+   locked meanwhile.
+3. The server recomputes the clear pairs and links only the requested pairs
+   that still qualify; the rest come back as skipped ("changed"). The dialog
+   ends on "Linked 92 pairs. 0 skipped." or "Linked 90 pairs. 2 changed since
+   you looked and were skipped." and the page refreshes in the background
+   (`runBackgroundRefresh(owner.refresh)`): the group and the counts update.
+   Focus goes back to the button, or to the page title when the button is gone.
+4. A failure (the whole request is one batch) says "Nothing was linked. Check
+   your connection and try again." and keeps the same pairs ready; a preview
+   that cannot be read says "Could not look at the pairs. Nothing was changed.
+   Try again." An empty preview says "There are no clear pairs to link any
+   more."
+
+Proved by `tests/e2e/check-link-clear-pairs.spec.js` (desktop and 390px: the
+group line and button, the preview, Cancel changes nothing, no layout shift,
+confirm, the result line and the refreshed page, a pair that changed while the
+dialog was open, hidden money, the keyboard, a failed link and its retry),
+`tests/check-clear-pairs-client.test.mjs` and the server tests listed in the
+audit.
+
 ## Persisted And Query Contract
 
 - Reads: `GET /api/ledger-checkup[?view=<id>][&dismissed=1]`, query key
   `["ledger-checkup", viewId, "visible" | "hidden"]`, always fetched fresh
   (`bypassCache`). The payload budget key `ledger-checkup` (3,360 bytes at demo
   scale; at most about 49 KB with 50 findings of a kind) is the audit's.
-- Writes: only `POST /api/ledger-checkup/dismiss` and `undo-dismiss`, each
-  all-or-nothing with its audit event (`docs/audits/ledger-checkup.md`).
+  The report carries one more number, `clearTransferPairCount`, worked out
+  from the facts it already loaded (no further statement).
+- `GET /api/ledger-checkup/clear-pairs[?view=]`: the preview, read when the
+  dialog opens, never kept: two round trips, three statements.
+- Writes: `POST /api/ledger-checkup/dismiss` and `undo-dismiss`, each
+  all-or-nothing with its audit event (`docs/audits/ledger-checkup.md`), and
+  `POST /api/ledger-checkup/clear-pairs` (the bulk link, one batch for the
+  whole request, one audit event per pair, one marker per month).
 - Browser storage: only `monies-map:check-open-groups`.
 - No AI, no schedule, no speculative read, no new table.
 
 ## Audit Status
+
+Link clear pairs built and proved (2026-10-27): see "Link clear pairs" and the
+audit's "Clear pairs".
 
 Phase 2 built and proved: `tests/check-model.test.mjs`,
 `tests/check-data-owner.test.mjs`, `tests/check-copy-lint.test.mjs`,

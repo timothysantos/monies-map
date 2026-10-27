@@ -1458,12 +1458,52 @@ Choose a person at the top left to see the problems that touch them and
 anything shared, or Household for all of them. With money totals hidden, no
 amount shows: the counts and the words stay.
 
+### Link the clear pairs at once
+
+A card payment leaves your bank on one day and arrives on the card the same
+day, and a monthly transfer to your partner leaves one account and lands in
+another. When both sides are recorded but were never matched up, each pair
+waits in **Transfers waiting for their other side**. Matching a hundred of
+them one by one is slow, so when some pairs leave no doubt at all, that group
+says **Only pairs with exactly one possible match on each side.** and offers
+**Link these N clear pairs**.
+
+A pair counts as clear only when the two entries are the same amount to the
+cent, one going out of one account and one coming into another, within a week
+of each other, and nothing else of that amount sits within a week of either of
+them. If anything else could be the other side, the pair is left in the list
+for you to look at yourself.
+
+![The confirmation: how many pairs, the first ones, and Link N pairs](/faq/guide/desktop/thumbs/check-link-pairs.webp)
+
+1. Select **Link these N clear pairs**. A window shows how many pairs there
+   are, which months they cover and the first ten (the date, the amount and
+   which account to which). With money totals hidden, the amounts do not show.
+2. Read the line under the list: each pair becomes one move between your
+   accounts, nothing is deleted, and you can unlink a pair from its details.
+   There is no undo for all of them at once.
+3. Select **Link N pairs** to go ahead, or **Cancel** to leave everything as it
+   was. If more than 100 pairs are clear, this links the first 100 and says how
+   many are left; do it again for the rest.
+4. The window ends on a line such as **Linked 92 pairs. 0 skipped.** If
+   something changed while the window was open, those pairs are skipped and
+   the line says so, for example **Linked 90 pairs. 2 changed since you looked
+   and were skipped.** Select **Close**; the group updates behind it.
+
+Either all the pairs are linked or none are. If linking fails, it says
+**Nothing was linked** and you can try again.
+
 ### On a phone
 
 Check my books is under the **•••** button. The page is one column; the
 buttons are as tall as a thumb.
 
 ![Check my books on a phone](/faq/guide/phone/thumbs/phone-check-books.webp)
+
+The confirmation for linking clear pairs opens as a sheet from the bottom, with
+**Cancel** and **Link N pairs** under your thumb.
+
+![On a phone, the confirmation for linking clear pairs](/faq/guide/phone/thumbs/phone-check-link-pairs.webp)
 
 # How do I…
 

@@ -111,11 +111,94 @@ required.
 | A rule or habit that is only a guess | only the household's own rules or a habit confirmed three times; never history or words |
 | Dismissed, then the evidence changes | the evidence key (a hash of ids, amounts, dates and tier) changes and it returns |
 | A settled-period cost that is not an error | high needs exactly one live twin, held by the same settle-up, with agreeing shares; otherwise a check |
+| Bulk linking two entries that are not the same move | clear pairs only: mutual and unique within 7 days against every same-amount entry, never a lookalike; the server re-judges each shown pair at confirm time and skips the rest by name (see "Clear pairs") |
 
 Residual risk: a monthly series of unlinked transfer pairs (card payments) is
 many true findings that change no figure. They are `high` for confidence, carry
 no money, and the report counts them by kind (`kindCounts`) so the screen can
 set them apart.
+
+## Clear pairs (the one bulk fix)
+
+Owner approval, 2026-10-27: "Link these N clear pairs" on the group of transfers
+waiting for their other side. The real household has about 92 such pairs,
+mostly same-day equal-amount card payments and fourteen monthly $450
+transfers whose two sides exist but were never linked. This is the only write
+the check-up makes beyond "This is fine", so it is held to zero doubt.
+
+The rule (`src/domain/ledger-checkup/clear-transfer-pairs.ts`, pure, proved in
+`tests/clear-transfer-pairs.test.mjs`). A pair is clear only when all hold:
+
+| Rule | Why it removes doubt |
+| --- | --- |
+| both sides are unlinked transfers the check-up's own read weighed: not held by a settle-up, a settlement check or an import transfer link, not dismissed in the transfer review, from a completed import, at least 7 days old, on a known account that is not an investment account | the same gates as the finding itself; nothing that another feature holds is touched |
+| one out and one in (a transfer with no direction never qualifies), different accounts, same amount to the cent, same currency | the pair is the same money leaving one account and arriving in another |
+| at most 7 days apart | the window the check-up's own "two sides of one transfer" finding uses (`PARTNER_WINDOW_DAYS`); not loosened |
+| each side has exactly one possible match on another account and it is the other side (mutual and unique) | if either side could be matched to anything else, linking would be a guess |
+| "possible match" means any unlinked entry of the same amount and currency within 7 days on another account, whatever its type | stricter than the finding's plausible partner: a purchase or money in of the same amount next to the pair keeps it out, so a lookalike is never argued away |
+| a month apart is not a rival | fourteen monthly $450 transfers are fourteen clear pairs; but a $450 entry a few days away keeps both pairs out |
+| the pair's finding is not marked "This is fine" for its current evidence | a decision the person made is respected until the evidence changes |
+| the read was not cut short for a side | the loader's row limit drops the last transfer from the rule rather than trust a partial partner list |
+
+Every clear pair is also a `high` finding (the rule is strictly narrower),
+proved in the same test. The single link command refuses nothing except a
+missing entry, different amounts and a missing Transfer category; a clear pair
+already has both sides as transfers out and in, so linking changes only the
+group, the Transfer category and the offset flag, never an amount, date,
+direction, account or bank fact. A statement-certified pair therefore keeps its
+bank facts (asserted in `tests/transfer-bulk-link.test.mjs`), and an entry held
+by a settle-up, a settlement check or a live split is never in the set.
+
+The command (`src/domain/app-repository-transfer-bulk-link.ts`, route
+`POST /api/ledger-checkup/clear-pairs`):
+
+- the server, not the client, recomputes the clear pairs at confirm time
+  (`loadClearTransferPairs`) and links only the requested pairs that are in that
+  set; any other pair is returned as skipped with reason `changed`, and nothing
+  about it is read or written. A request may name at most 100 pairs (413-style
+  refusal is a 400), may not name an entry twice and may not be empty;
+- all writes of all pairs go into one `db.batch()` with the single link's own
+  statements (`buildTransferLinkStatements`, shared with `linkTransferPair`
+  and never one command importing the other), one `transfer_linked` audit event
+  per pair and one refresh marker per affected month, then one
+  `refreshMonthlySnapshotsAfterWrite`. If any statement fails, nothing is
+  linked (`failingStatement` at the first and last group, sending and
+  receiving side, first and last audit event and the markers);
+- the transfer purposes the pairs earn (`set like last month`, the receiver-key
+  rule) are learned after the batch by the route, exactly where the single link
+  route learns them, as a best-effort second step, in date order: oldest
+  sending side first, ties by entry id, and each pair that earns a purpose
+  counts as an earlier repeat for the next
+  (`applyRememberedTransferPurposes(..., { chronological: true })`). A failure
+  there keeps the links and is reported (`purposesFailed`);
+- the time-of-check gap between recomputing the set and the batch is the same
+  as the single link's (it checks nothing atomically either); a pair changed in
+  that instant is linked as it was shown, which is what the person confirmed.
+
+Equivalence with linking one at a time
+(`tests/transfer-bulk-link-equivalence.test.mjs`): two databases start from the
+same seed (a monthly series 80 days apart, a pair whose sender carries a
+purpose for the wrong person, a pair between two of Tim's own accounts whose
+sender carries one, a certified pair and a pair dated two days apart). One
+takes a single bulk request listing the pairs in reverse; the other takes the
+single link route for each pair, oldest first. Every table is then equal and so
+are the Entries and Summary page projections for every affected month, with
+only what cannot match dropped: generated ids (a transfer group's id stands for
+its sending entry), wall-clock timestamps and refresh tokens, and the transfer
+group's note (the bulk link says "Linked from Check my books"; the single
+link says "Linked from entries editor"). The purposes learned, re-pointed and
+cleared are asserted by value, and a mutation that drops the date order makes
+the series test fail.
+
+Unlinking: there is no bulk undo; each pair has the existing unlink in its
+details (an entry update that dissolves its group; asserted in the command
+test).
+
+Residual risk, stated plainly: the 250-transfer, 800-day window of the
+check-up's read bounds the set (newer first), so a household with more than 250
+unlinked transfers links the newest first and the rest appear after the next
+check. Pairs that need judgement stay with their own "Open the transfer and
+link them".
 
 ## Measured budgets
 
@@ -136,6 +219,29 @@ On the demo household: 3 round trips, 8 ms in the handler, 3,360 bytes
 the owner's production export (7,549 entries, 452 split records, 212
 statements): 125 ms of Node CPU in process, 57.7 KB with the cap.
 
+Clear pairs (`tests/transfer-bulk-link-scale.test.mjs`, the 10k household with
+100 clear pairs over 24 months and 10 lookalikes that are not clear). The
+preview reuses the check-up's own `UNMATCHED_TRANSFERS_SQL` (already
+EXPLAIN-asserted) and the accounts read:
+
+| Measure | Value | Bound in the test |
+| --- | --- | --- |
+| preview: round trips / statements | 2 / 3 | 4 / 6 |
+| preview: rows read, response, median node CPU | 56,410, 8.4 KB (100 pair ids and 10 rows), 37 ms | 250,000, n/a, 400 ms |
+| link 100 pairs: write batches | 1 batch of 424 statements (100 pairs x 4, one marker for each of 24 months) | one batch of at least 400, at most 700 statements |
+| link 100 pairs: round trips | 281, of which 264 are the month totals refresh after the write (about 11 reads for each affected month, the same refresh every write makes) and about 17 are the set, the category, the purpose rows and the purposes | 13 per month + 25 (a read per pair would add 100) |
+| link 100 pairs: node CPU | about 2 s locally, most of it the local SQLite engine and the refresh | 5 s |
+| bound values in any statement | at most 100 (reads in chunks of 50 ids) | 100 |
+
+A single batch of about 4 statements a pair at the cap (424 here; about 500 if
+every sender already carried a purpose) was kept: the import commit already
+writes larger single batches, so no chunking was needed and nothing is
+reported as partly done. The affected months are at most about 27 (the
+check-up reads 800 days of transfers), which bounds the refresh at roughly 320
+reads, inside Workers' paid-plan 1,000-subrequest limit. If a refresh fails
+the links stay and the markers repair the months on the next Summary or Month
+read (the contract of every write).
+
 Every read is answered from an index (EXPLAIN asserted for all of them; the
 accounts read is the one small-table scan). The entry reads are a date window
 (400 days; 180 for duplicates; 800 for transfers; 1,100 for split records) with
@@ -150,7 +256,9 @@ table is tolerated, never an error.
 
 ## Writes and boundaries
 
-The only writes are the person's "This is fine" and its undo. One
+The writes are the person's "This is fine" and its undo, and the bulk link of
+clear pairs (see "Clear pairs": one batch, one audit event per pair, no schema
+change, no new table). "This is fine" first: one
 `app_settings` row per dismissal (`ledger_checkup:dismissed:<finding id>`,
 value `{ evidenceKey, kind, dismissedAt }`), plus an audit event
 (`ledger_checkup_dismissed` / `ledger_checkup_dismissal_undone`), in one

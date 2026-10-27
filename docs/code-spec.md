@@ -687,6 +687,14 @@ else:
 
 ## Ledger check-up reads
 
+The preview of the bulk link of clear pairs (`GET /api/ledger-checkup/clear-pairs`)
+reuses the check-up's `UNMATCHED_TRANSFERS_SQL` and accounts read through
+`loadTransferPairFacts`: 2 round trips, 3 statements, about 56,000 rows read and
+37 ms on the 10k fixture with 100 clear pairs waiting (bounds 4, 6, 250,000 and
+400 ms in `tests/transfer-bulk-link-scale.test.mjs`). The link request is one
+write batch plus the month totals refresh: about 11 reads for each affected
+month (at most about 27: 800 days of transfers) and no read per pair.
+
 The check-up (`GET /api/ledger-checkup`, DOMAIN.md "Ledger Check-up") reads a
 whole household's problems in one request, so its reads are held to the cold
 start and page read rules above, measured in `tests/ledger-checkup-budget.test.mjs`:
@@ -744,6 +752,22 @@ A persistence command is all-or-nothing:
   a safe id, a hex evidence key, at most 500 dismissals), then write the
   `app_settings` row and its audit event in one batch
   (`tests/atomic-writes-ledger-checkup.test.mjs`)
+- the bulk link of clear transfer pairs
+  (`src/domain/app-repository-transfer-bulk-link.ts`, DOMAIN.md "Ledger
+  Check-up") takes the clear pairs the route recomputed on the ledger as it is,
+  skips (by name) every requested pair that is not among them, then writes every
+  pair's statements (`buildTransferLinkStatements`, shared with the single link
+  in `src/domain/transfer-link-statements.ts`), one audit event per pair and ONE
+  marker for each affected month in one batch of at most 100 pairs (about 4
+  statements a pair); it never imports the single link's command module. The
+  transfer purposes the pairs earn are learned after the batch by the route in
+  date order (`applyRememberedTransferPurposes(..., { chronological: true })`,
+  best effort like the single link). Reads are chunked at 50 ids so no
+  statement binds more than D1's 100 values, and the request makes no read per
+  pair (`tests/transfer-bulk-link.test.mjs`, `failingStatement` at every
+  write; `tests/transfer-bulk-link-equivalence.test.mjs`;
+  `tests/transfer-bulk-link-scale.test.mjs`: preview 2 round trips and 3
+  statements, 100 pairs one batch of 424 statements)
 - a Split Correction (`src/domain/app-repository-split-corrections.ts`,
   DOMAIN.md "Split Correction") reads its plan first (the check-up's split
   facts in one batch), then writes the correction, the optional archive of the

@@ -2683,6 +2683,20 @@ design.md "Check My Books Page"): `check-model.js` is the pure view-model
 `tests/e2e/check-my-books.spec.js` the browser proof at desktop and 390px. The rules
 and measured reads are in `docs/audits/ledger-checkup.md`.
 
+The one bulk fix is "Link these N clear pairs" (`POST /api/ledger-checkup/clear-pairs`,
+preview `GET` on the same path). `src/domain/ledger-checkup/clear-transfer-pairs.ts`
+is the pure rule (mutual and unique within 7 days against every same-amount
+entry; `tests/clear-transfer-pairs.test.mjs`);
+`app-repository-transfer-bulk-link.ts` links at most 100 shown pairs that are
+still clear in one `db.batch()` using `transfer-link-statements.ts`, the writes
+it shares with `linkTransferPair`; the route then learns transfer purposes in
+date order (`applyRememberedTransferPurposes(..., { chronological: true })`).
+Proof: `tests/transfer-bulk-link.test.mjs` (commands, refusals, `failingStatement`
+at every write), `tests/transfer-bulk-link-equivalence.test.mjs` (bulk equals
+one by one, table by table), `tests/transfer-bulk-link-scale.test.mjs` (the 10k
+household's budget), `tests/check-clear-pairs-client.test.mjs` and
+`tests/e2e/check-link-clear-pairs.spec.js`.
+
 A settled-period finding's fix is a Split Correction (DOMAIN.md "Split
 Correction", `docs/proposals/settled-correction.md`): a `split_settlements` row
 with `correction_source_id` and `correction_reason`, added by

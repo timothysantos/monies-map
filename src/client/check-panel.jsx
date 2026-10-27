@@ -15,7 +15,9 @@ import { useRouteWorkReport } from "./use-route-work-status";
 
 // The "Check my books" page (docs/flows/check-flow.md). It opens, runs the
 // check once and shows what it found in plain words, grouped by what went
-// wrong. Read-only: the one thing it writes is "This is fine" (and its undo).
+// wrong. It only looks: its writes are "This is fine" (and its undo) and, on
+// the person's confirmation, the link of clear transfer pairs
+// (check-link-pairs-dialog.jsx).
 // Nothing runs in the background and nothing is preloaded: the check starts
 // because the person opened the page or pressed "Check again".
 

@@ -3679,6 +3679,16 @@ again.
   sent fewer than exist, "There may be more than shown" when a read hit its
   limit. The first group of the highest section starts open; the open groups are
   remembered per device.
+- "Link these N clear pairs": in the open group "Transfers waiting for their
+  other side" of "Needs fixing", above the rows, a muted line ("Only pairs with
+  exactly one possible match on each side.") and one `check-fix` button. It
+  opens the shared `SheetDialog` (a sheet on a phone, a dialog on a wide
+  screen), hosted by the panel so it outlives the group: the count and month
+  range, the first ten pairs (date, amount, from account to account; no amount
+  while money is hidden), the plain sentence, no-bulk-undo note, an optional cap
+  note, Cancel and "Link N pairs". It ends on a result line and Close, and the
+  page refreshes behind it. The group's height does not change when the dialog
+  opens or closes, and focus returns to the button (or the page title).
 - "This is fine" hides a row in place ("Hidden." with "Undo", focus on Undo) and
   moves the counts at once; "Show hidden (N)" lists what was hidden with "Show
   again". A refused write puts the row back and says so.
