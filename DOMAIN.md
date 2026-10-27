@@ -2959,7 +2959,8 @@ in plain words, each with the evidence behind it, how sure the app is, who it
 touches and, where the app already has a fix, a link to that fix (owner
 decision, 2026-10-27; `docs/proposals/ledger-checkup.md`,
 `docs/audits/ledger-checkup.md`). User-facing name "Check my books". Phase 1
-is the engine and the API; the screen is phase 2.
+is the engine and the API; phase 2 is the page (`/check`,
+`docs/flows/check-flow.md`); phase 3 is the correction of a settled period.
 
 Canonical terms:
 - `ledger check-up` (the report), `finding` (one problem in it)
@@ -2973,10 +2974,28 @@ Canonical terms:
 - `evidence key`: the hash of the facts that make a finding true
 - `dismissal` ("This is fine")
 
+What the page calls them (user-facing names; the canonical terms above never
+reach the screen, `src/client/copy/check-copy.js`): a `finding` is "a problem"
+or "a thing"; `high`, `check` and `note` are the three sections "Needs fixing",
+"Worth checking" and "Good to know"; the fifteen `kind`s sit under nine
+headings, one group each: "Purchases that may be on the wrong card"
+(`wrong_card_duplicate`), "Possible duplicates" (`duplicate_entry`,
+`duplicate_split`), "Transfers waiting for their other side"
+(`unmatched_transfer`), "Missing statements" (`statement_gap`), "Estimates the
+bank never confirmed" (`stale_estimate`), "Balances that don't match"
+(`balance_mismatch`, `statement_join`), "Plan problems" (`plan_overspent`,
+`plan_line_unpaid`, `plan_line_no_category`), "Settle-up mistakes"
+(`settled_period_error`) and "Tidy-ups" (`other_category`, `odd_entry`,
+`quiet_account`); a dismissal is "This is fine" (hidden, with "Undo" and "Show
+again"); the evidence is "the entries or statements behind it".
+
 Code and storage:
 - `src/domain/ledger-checkup/` (one module per detector, `registry.ts`,
   `loader.ts`, `runner.ts`), `src/domain/pages/ledger-checkup.ts`,
   `src/server/ledger-checkup-route.ts`
+- the page: `src/client/check-panel.jsx` (lazy route `/check`),
+  `check-model.js` (view-model), `check-data-owner.js` (the one owner of the
+  report), `check-api.js`, `copy/check-copy.js`, `check-route.css`
 - `GET /api/ledger-checkup[?view=&dismissed=1]`,
   `POST /api/ledger-checkup/dismiss`, `POST /api/ledger-checkup/undo-dismiss`
 - a dismissal is one `app_settings` row `ledger_checkup:dismissed:<finding id>`

@@ -25,7 +25,7 @@ proves the numbers are right.
 
 ## Take the 3-minute tour
 
-The navigation at the top (on a phone, at the bottom) has six screens. They
+The navigation at the top (on a phone, at the bottom) has seven screens. They
 appear in this order:
 
 1. **Summary**: the big picture for a range of months: planned versus actual
@@ -53,6 +53,9 @@ appear in this order:
    the tools that keep balances trustworthy.
    ![Settings groups everything into sections you open one at a time](/faq/guide/desktop/thumbs/settings-overview.webp)
 6. **FAQ**: this guide.
+7. **Check my books**: looks over your entries, statements, shared expenses
+   and plans for things that seem wrong, and says what to do about each one
+   ([Check my books](#check-my-books)).
 
 On a phone there is one more: **Ask**, where you add an entry by typing it,
 from a receipt photo, or by filling in a card, and find entries by asking
@@ -63,7 +66,8 @@ opens beside the screen you are on ([Ask on a computer](#ask-on-a-computer)).
 At the top left you choose whose money you are looking at (Household, or one
 person). At the top right you move the range of months (on Entries, the
 month) and hide or show money totals. Imports, Settings and FAQ do not
-depend on a month, so they show no month or range controls there.
+depend on a month, so they show no month or range controls there. Check my
+books does not depend on a month either.
 
 ## The core idea: plan, record, import, reconcile, split
 
@@ -185,8 +189,8 @@ The app is designed for phones as well as desktops. The differences:
 
 - **Bottom navigation.** Summary, Entries, Splits and Ask sit at the
   bottom, with Ask in your accent colour and bolder so it is easy to find.
-  The **•••** button opens Imports, Settings and FAQ.
-  ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
+  The **•••** button opens Imports, Settings, FAQ and Check my books.
+  ![On a phone, the ••• button opens Imports, Settings, FAQ and Check my books](/faq/guide/phone/thumbs/phone-more.webp)
 - **View and scope bar.** On Summary, Month and Entries, a floating bar above
   the navigation shows who and what you are viewing (for example
   `Ethan · Direct + Shared`), with the person in their own colour. Tap it to
@@ -1385,6 +1389,80 @@ is one row under them: tap it to open the list, so the guide starts straight
 away. Tap a picture to open it full size.
 
 ![The FAQ screen on a phone](/faq/guide/phone/thumbs/phone-faq.webp)
+
+## Check my books
+
+Check my books looks over everything you have recorded and tells you, in
+plain words, where something seems wrong: a purchase that was counted twice,
+a transfer whose other side was never matched, a bank statement that is
+missing, a plan that does not add up. It only looks. Nothing changes unless
+you choose to fix something, and it never runs by itself: it checks when you
+open the page or press **Check again**.
+
+### What you see
+
+At the top, one line says what it found, for example **2 things need fixing
+· 2 worth checking · 1 good to know**. If nothing looks wrong it says
+**Everything checks out**, with the time it checked.
+
+![Check my books on a computer: a summary, then Needs fixing with the problems under it](/faq/guide/desktop/thumbs/check-books.webp)
+
+Under it, three sections:
+
+- **Needs fixing**: your records show a problem here. Every one of these is
+  clear from the records themselves.
+- **Worth checking**: something does not add up. It is often fine, and it is
+  worth a look.
+- **Good to know**: tidy-ups and heads-ups. Nothing urgent.
+
+Inside each section, problems are grouped by what went wrong, so a hundred
+transfers waiting for their other side are one group, not a hundred lines.
+The groups are:
+
+- **Purchases that may be on the wrong card**
+- **Possible duplicates**
+- **Transfers waiting for their other side**
+- **Missing statements**
+- **Estimates the bank never confirmed**
+- **Balances that don't match**
+- **Plan problems**
+- **Settle-up mistakes**
+- **Tidy-ups**
+
+Select a group's name to open or close it. The first group starts open and
+the rest start closed; the app remembers which you opened on this device. A
+group shows its first five problems, then **Show more** for the rest. If more
+exist than the page can list, it says so, for example **Showing 50 of 137**,
+and a group that may be missing some says **There may be more than shown**.
+
+Each problem says what happened to your money in a sentence, lists the entries
+or statements behind it (the date, the account and the amount), and says how
+much money it involves.
+
+### What each control does
+
+- **Check again** runs the check again. While it works the button says
+  **Checking…**.
+- The button on each problem (for example **Open the transfer and link
+  them**) opens the place where you can put it right. Some problems have no
+  button yet; they say so instead.
+- **This is fine** hides a problem you have looked at and are happy with. The
+  line **Hidden.** takes its place with **Undo**. A hidden problem stays
+  hidden until the records behind it change.
+- **Show hidden** opens the list of what you hid, with **Show again** on each.
+- If one of the checks could not run, the page names it and says **Could not
+  check this**, with **Try again**.
+
+Choose a person at the top left to see the problems that touch them and
+anything shared, or Household for all of them. With money totals hidden, no
+amount shows: the counts and the words stay.
+
+### On a phone
+
+Check my books is under the **•••** button. The page is one column; the
+buttons are as tall as a thumb.
+
+![Check my books on a phone](/faq/guide/phone/thumbs/phone-check-books.webp)
 
 # How do I…
 

@@ -2674,8 +2674,14 @@ runs only when asked (no schedule, no AI, no cache) and the only write is
 one setting and an audit event. The detectors are pure functions in
 `src/domain/ledger-checkup/`; `tests/ledger-checkup-detectors.test.mjs` holds
 their rules and negatives, `tests/ledger-checkup-budget.test.mjs` the read
-budget. The screen is not built yet; the rules and measured reads are in
-`docs/audits/ledger-checkup.md`.
+budget. The screen is the lazy route `/check` ("Check my books",
+`src/client/check-panel.jsx`; contract in `docs/flows/check-flow.md`, look in
+design.md "Check My Books Page"): `check-model.js` is the pure view-model
+(`tests/check-model.test.mjs`), `check-data-owner.js` the one owner of the report
+(`tests/check-data-owner.test.mjs`; it must not import TanStack Query,
+`query-leases.js` or `refresh-notice.js`, which would split the entry chunk), and
+`tests/e2e/check-my-books.spec.js` the browser proof at desktop and 390px. The rules
+and measured reads are in `docs/audits/ledger-checkup.md`.
 
 ## Why do notes matter so much?
 

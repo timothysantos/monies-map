@@ -2986,8 +2986,8 @@ layout tokens the same in every preset),
   white. The Summary month row (`.summary-focus-button`) uses the same track
   chips with a raised white selected one, and wraps to a second line instead
   of clipping at the page edge.
-- A period that does not apply to the page (Splits, Settings, Imports, FAQ;
-  `.period-nav-cluster.is-passive`) reads as a plain label with dimmed,
+- A period that does not apply to the page (Splits, Settings, Imports, FAQ, Check my
+  books; `.period-nav-cluster.is-passive`) reads as a plain label with dimmed,
   inert arrows, not as a disabled box. A page that uses the period keeps the
   bordered box and live arrows.
 - Totals: the Entries top and its search bar are "Entries top"'s
@@ -3438,20 +3438,24 @@ rules win over base rules of the same specificity.
   Before, they widened the page up to 960 px and slid under the tabs from
   961 px, covering Settings and FAQ.
   From 1,100 px the header is one row (pills, tabs, period controls), with
-  no second row, hidden tab or sideways scroll. At desktop spacing the row
-  needs about 1,160 px and fits from 1,200 px (the shell's content width
-  stops growing there). From 1,100 to 1,199 px
-  (`@container shell (min-width: 840px) and (max-width: 1163px)`, a 1,100
-  to 1,199 px window without the Ask panel) the header
-  gap, view pill and tab padding, tab and period gaps and the period box
-  (padding, gap, `min-width` 236 px, still wider than the Summary range)
-  tighten by about 125 px, leaving about 30 px spare at 1,100 px; the text
-  size is unchanged. 1,200 px and wider, and phones, are pixel-identical to
-  before. `tests/e2e/header-tab-fit.spec.js` checks every page at 1,100,
+  no second row, hidden tab or sideways scroll. The seven page tabs (Check my
+  books, 27 October 2026, is the longest) need the tight spacing at every
+  width: at the old desktop spacing the row needed about 1,160 px for six tabs
+  and about 1,280 px for seven, and the page never grows past 1,164 px (the
+  shell's content width stops growing at a 1,200 px window). From 840 px
+  (`@container shell (min-width: 840px)`; it was `(max-width: 1163px)` too,
+  a 1,100 to 1,199 px window, until the seventh tab) the header
+  gap, view pill and tab padding (5 px a side, it was 7), tab and period gaps
+  and the period box (padding, gap, `min-width` 236 px, still wider than the
+  Summary range) tighten by about 125 px, leaving about 5 px spare at 1,100 px
+  with seven tabs; the text size is unchanged. A wide desktop (1,200 px and
+  wider) now has this spacing too, where it had the looser one before
+  (before and after screenshots: `docs/audits/ledger-checkup-screen/`);
+  phones are pixel-identical to before. `tests/e2e/header-tab-fit.spec.js` checks every page at 1,100,
   1,120, 1,200 and 1,279 px: `elementFromPoint` at each tab's edges and
   centre and each period control, one shared vertical centre for the row,
-  and the 1,440 px header height; it also pins the 1,440 and 390 px header
-  spacing. A two-row header here (period controls below the tabs) was
+  and the 1,440 px header height; it also pins the 1,440 (the tight one) and
+  390 px header spacing. A two-row header here (period controls below the tabs) was
   tried and rejected because it pushed the page down.
   A page 840 to 1,063 px wide (an 876 to 1,099 px window, or the docked Ask
   panel beside a 1,280 to 1,499 px one) keeps one row too: the same tighter
@@ -3653,3 +3657,45 @@ The FAQ route renders two Markdown guides as tabs: `docs/user-guide.md`
   (`.faq-guide-status`); a failed download is the shared rose `ErrorPanel`
   with "Try again".
 
+## Check My Books Page
+
+The Ledger check-up's screen (`/check`; DOMAIN.md "Ledger Check-up",
+`docs/flows/check-flow.md`). It is a lazy route (`check-panel.jsx`); the first
+screen carries only the tab's name and the registration (about 100 bytes of the
+entry chunk and the header's spacing change). It runs only when opened or asked
+again.
+
+- Placement: the seventh page tab after FAQ on a wide screen, the fourth item of
+  the `•••` "More pages" menu on a phone and in a narrow window. No badge.
+- Lead · Support · Detail: the lead is one summary line ("3 things need fixing
+  · 5 worth checking · 12 good to know", or "Everything checks out" as the
+  shared empty card); the support is three sections (rose "Needs fixing", butter
+  "Worth checking", sky "Good to know", the state-banner tones with their
+  `-ink`) holding one collapsible group per heading with its count; the detail
+  is a row per problem (title, sentence, its lines, the money involved as plain
+  text, one fix button or a quiet note, "This is fine").
+- A big household (a hundred unlinked transfer pairs) is never a flat list: a
+  group shows five rows and "Show N more", "Showing 50 of N" when the report
+  sent fewer than exist, "There may be more than shown" when a read hit its
+  limit. The first group of the highest section starts open; the open groups are
+  remembered per device.
+- "This is fine" hides a row in place ("Hidden." with "Undo", focus on Undo) and
+  moves the counts at once; "Show hidden (N)" lists what was hidden with "Show
+  again". A refused write puts the row back and says so.
+- States: a skeleton that reserves 460 px (520 px on a phone) with a disabled
+  "Checking…" button; the shared rose `ErrorPanel` with "Try again" when the
+  first check fails; a butter `StateBanner` with "Try again" when "Check again"
+  fails (the earlier result stays); "Could not check this" with "Try again" for a
+  check that could not run, which also stops the page saying "Everything checks
+  out".
+- Hidden money: every amount in a sentence, line or note is `••••`, the amount
+  lines and "$N involved" are dropped, and a sentence that says which way money
+  went is replaced; counts, headings and buttons stay.
+- Accessibility: landmarks per section, group buttons with `aria-expanded` and
+  `aria-controls`, every button 44 px or more and named for its problem, a polite
+  status line for results, reduced motion turns off the group arrow's turn.
+- Data: `check-data-owner.js` is the one owner (see "Page, Summary And Shell
+  Owners"); it takes the shell's required read with `bypassCache`, a generation
+  per read, and re-reads a read that a write overtook. It must not import
+  TanStack Query, `query-leases.js` or `refresh-notice.js` (an import from a route
+  chunk splits the entry chunk; `tests/client-route-chunks.test.mjs`).

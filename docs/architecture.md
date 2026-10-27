@@ -354,8 +354,10 @@ write routes that resolve each candidate (`/api/transfers/link`,
 The household asks "Check my books" and gets a list of problems in its own data
 with evidence, a confidence tier and, where the app already has one, a link to
 the fix (DOMAIN.md "Ledger Check-up"; `docs/proposals/ledger-checkup.md`,
-`docs/audits/ledger-checkup.md`). Phase 1 is the engine and the API; the screen
-and the correction of a settled period come later.
+`docs/audits/ledger-checkup.md`). Phase 1 is the engine and the API; phase 2 is
+the page (`/check`, `docs/flows/check-flow.md`: a lazy route with its own data
+owner, `check-data-owner.js`, that runs only when opened); the correction of a
+settled period is phase 3.
 
 ```text
 GET /api/ledger-checkup[?view=&dismissed=1]

@@ -20,6 +20,8 @@ auditing. This is a navigation index, not a mega-doc.
 - [`docs/flows/splits-flow.md`](./flows/splits-flow.md)
 - [`docs/flows/settings-flow.md`](./flows/settings-flow.md)
 - [`docs/flows/ask-flow.md`](./flows/ask-flow.md)
+- [`docs/flows/check-flow.md`](./flows/check-flow.md) (Check my books, the
+  Ledger check-up page)
 
 ## Audit Rule
 

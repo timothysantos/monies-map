@@ -1,8 +1,8 @@
 # Ledger check-up audit (phase 1: detectors and API)
 
 Status: complete for phase 1 (the engine, the fifteen kinds of finding, the
-read API and "This is fine"). Phase 2 is the screen, phase 3 the correction of
-a settled period; neither is built. The design note is
+read API and "This is fine") and phase 2 (the "Check my books" page, below).
+Phase 3, the correction of a settled period, is not built. The design note is
 [`docs/proposals/ledger-checkup.md`](../proposals/ledger-checkup.md);
 DOMAIN.md "Ledger Check-up" is the vocabulary.
 
@@ -184,3 +184,59 @@ unlinked card payments has about a hundred) want a collapsed group with its
 count from `kindCounts`, not a flat list. Finding titles and summaries are
 already plain words and linted (`findAppJargon`, retired names); money in
 `summary` is formatted with `$` for SGD and the currency code otherwise.
+
+## Phase 2: the screen ("Check my books")
+
+The page at `/check` ([`docs/flows/check-flow.md`](../flows/check-flow.md),
+design.md "Check My Books Page", before and after screenshots in
+[`ledger-checkup-screen/`](ledger-checkup-screen/README.md)). It shows what phase
+1's API returns and adds no detector, no read and no write.
+
+What it does, as built:
+
+- Runs only when opened or asked again: the page opening, "Check again", a
+  change of the header's person, or opening "Show hidden". Nothing else reads the
+  report, nothing polls it, and no route warmup row exists for it (a measured
+  admission row is needed for speculative data; there is none and none is
+  wanted). Its route code is never warmed automatically.
+- Groups the report: three sections (Needs fixing, Worth checking, Good to know)
+  and nine headings over the fifteen kinds, with the report's `kindCounts` as the
+  totals, five rows at first, "Show N more", "Showing 50 of N" when more exist than
+  the 50 sent per kind, "There may be more than shown" for `incompleteKinds`, and
+  "Could not check this" with a retry for `unavailableKinds`. The first group of the
+  highest section starts open; open groups are remembered per device.
+- "This is fine" hides a row in place with "Undo", through the existing dismiss
+  and undo routes, moves the counts at once and puts the row back if the server
+  refuses; the refresh that follows goes through `runBackgroundRefresh`.
+- Hidden money: no amount anywhere; a sentence that says which way money went
+  (`settled_period_error`, `balance_mismatch`, `plan_overspent`) is replaced, not
+  just masked.
+- An all-clear is never claimed when a check could not run ("Nothing found in the
+  checks that ran").
+
+Measured and proved:
+
+| Check | Result |
+| --- | --- |
+| first-screen JS (`npm run check:bundle`) | 161,518 B before (7 files), 161,626 B after (7 files): +108 B (the tab's name, the route registration, the tab entry, the nav-intent id) |
+| first-screen CSS | the header rules only; route CSS ships with the lazy chunk |
+| the new route chunk | `check-panel` and its modules, loaded when the page opens |
+| payload | unchanged (phase 1's `ledger-checkup` key) |
+| new requests while another page is open | none (`tests/e2e/check-my-books.spec.js` records every `/api/ledger-checkup` request) |
+| layout shift while the result lands | below 0.05 on desktop and at 390px (a skeleton reserves 460px, 520px on a phone) |
+| contrast | every preset, light and dark (`tests/colour-contrast.test.mjs`, "Check my books reads AA") |
+
+A lesson recorded: the owner imported TanStack's `isCancelledError` and, in turn,
+`refresh-notice.js` and `query-leases.js` split the entry chunk the first time they
+were imported from a route chunk (a first-screen file more, +440 B). The owner reads a
+cancellation by its message instead; `tests/check-data-owner.test.mjs` proves it reads
+a real one and `tests/client-route-chunks.test.mjs` fails if a file of the page imports
+the package.
+
+The header: seven page tabs need the tight header spacing at every width (see the
+screenshots README). `tests/e2e/header-tab-fit.spec.js` pins it.
+
+Not done on purpose: no figure on the page is openable (a problem's amount is the
+problem's, not an Entries total); no badge or count on any other screen; no link to
+Check my books from another page; no automatic run on a schedule or after an
+import.

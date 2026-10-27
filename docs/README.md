@@ -88,6 +88,8 @@ a doc here in the same change.
 - [`flows/settings-flow.md`](flows/settings-flow.md): Settings page.
 - [`flows/ask-flow.md`](flows/ask-flow.md): Ask page (the entry card, its
   readers and the Apple Pay Shortcut's link).
+- [`flows/check-flow.md`](flows/check-flow.md): Check my books page (the
+  Ledger check-up: sections, groups, "This is fine", hidden money).
 
 ## Audits and evidence
 
@@ -120,7 +122,10 @@ a doc here in the same change.
   [`audits/ledger-checkup.md`](audits/ledger-checkup.md): the Ledger check-up
   ("Check my books"): the finding model, the fifteen detectors and their
   rules, false-positive analysis, measured read budgets, and the phase 2
-  handoff (phase 1 is the API only).
+  page (its UI section and the header change it needed).
+- [`audits/ledger-checkup-screen/README.md`](audits/ledger-checkup-screen/README.md):
+  the Check my books page and the header's seventh tab, before and after
+  screenshots (27 October 2026).
 - [`audits/month-lead-spacing/README.md`](audits/month-lead-spacing/README.md):
   the Month and Summary lead's vertical rhythm and the legend share rule,
   with before and after screenshots (15 October 2026).
