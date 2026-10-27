@@ -145,17 +145,23 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
   // "Link these N clear pairs": the dialog lives here, not in the group, so it
   // stays open with its result when the linked pairs leave the list.
   const [linkPairsCount, setLinkPairsCount] = useState(0);
-  const openLinkPairs = useCallback((count) => setLinkPairsCount(count), []);
+  const linkPairsOpenerRef = useRef(null);
+  const openLinkPairs = useCallback((count) => {
+    linkPairsOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setLinkPairsCount(count);
+  }, []);
   const closeLinkPairs = useCallback(() => {
     setLinkPairsCount(0);
-    // The button that opened it may be gone (everything was linked): focus
-    // goes to the page title instead of the top of the document.
-    window.requestAnimationFrame(() => {
-      const active = document.activeElement;
-      if (!active || active === document.body) {
-        panelRef.current?.querySelector("#check-title")?.focus();
+    // Focus goes back to the button that opened it; if that button is gone
+    // (everything was linked) it goes to the page title instead of the top of
+    // the document. Waits for the dialog's own focus handling to finish.
+    const opener = linkPairsOpenerRef.current;
+    window.setTimeout(() => window.requestAnimationFrame(() => {
+      const target = opener?.isConnected ? opener : panelRef.current?.querySelector("#check-title");
+      if (target instanceof HTMLElement) {
+        target.focus();
       }
-    });
+    }), 0);
   }, []);
   const afterLinkPairs = useCallback(() => {
     void runBackgroundRefresh(() => owner.refresh());

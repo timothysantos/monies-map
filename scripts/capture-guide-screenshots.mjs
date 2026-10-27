@@ -845,6 +845,31 @@ const SHOTS = [
       await page.waitForTimeout(500);
     }
   },
+  // "Link these N clear pairs": the confirmation, before anything is linked.
+  {
+    name: "check-link-pairs", device: "desktop", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.getByRole("button", { name: /^Link these \d+ clear pairs of transfers$/ }).click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.locator(".check-pairs-list li").first().waitFor();
+      await page.waitForTimeout(500);
+    }
+  },
+  {
+    name: "phone-check-link-pairs", device: "phone", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.getByRole("button", { name: /^Link these \d+ clear pairs of transfers$/ }).click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.locator(".check-pairs-list li").first().waitFor();
+      await page.waitForTimeout(500);
+    }
+  },
   {
     // The check before an answer: the settle-up Serene still owes, paid by
     // PayNow and filed as spending and income, is asked about first.
