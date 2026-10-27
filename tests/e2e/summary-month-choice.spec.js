@@ -281,7 +281,7 @@ test.describe("Summary tab month choice on a desktop", () => {
     await page.goto(SUMMARY_URL);
     await waitUsable(page);
     const tabs = page.locator("nav.tab-strip");
-    await expect(tabs.locator("> a.tab:visible")).toHaveText(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
+    await expect(tabs.locator("> a.tab:visible")).toHaveText(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ", "Check my books"]);
 
     const row = page.getByRole("group", { name: "Month" });
     await expect(row.getByRole("button")).toHaveText(["All months", ...rangeMonths.slice().reverse().map(monthLabel)]);

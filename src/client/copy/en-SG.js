@@ -71,6 +71,7 @@ export const messages = {
     imports: "Imports",
     settings: "Settings",
     faq: "FAQ",
+    check: "Check my books",
     ariaLabel: "Dashboard sections",
     // The copy of the page links that floats at the bottom of a long
     // desktop page: its own landmark name, so a screen reader never lists

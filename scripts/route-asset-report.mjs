@@ -12,6 +12,7 @@ const ROUTE_ENTRIES = {
   imports: "imports-panel.jsx",
   settings: "settings-panel.jsx",
   faq: "faq-panel.jsx",
+  check: "check-panel.jsx",
   ask: "ask-panel.jsx"
 };
 

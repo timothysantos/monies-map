@@ -157,6 +157,24 @@ async function sampleCardExport() {
 const splitsUrl = (view = "person-ethan", extra = "") => `/splits?view=${view}&month=${MONTH}${extra}`;
 
 // ---------------------------------------------------------------------------
+// The problems the Check my books shots show, made through the public routes
+// on the showcase household (today is the real today, so dates are relative).
+async function seedCheckProblems(page) {
+  const day = (offset) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const create = async (entry) => {
+    const response = await page.request.post("/api/entries/create", { data: { ownershipType: "direct", ...entry } });
+    if (!response.ok()) throw new Error(`Could not add "${entry.description}": ${await response.text()}`);
+  };
+  for (const [index, amountMinor] of [[1, 80_000], [2, 45_000]]) {
+    await create({ date: day(-(20 + index)), description: `FAST to Serene ${index}`, accountName: "UOB One Account", categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor, ownerName: "Ethan" });
+    await create({ date: day(-(20 + index)), description: `FAST from Ethan ${index}`, accountName: "OCBC 360 Account", categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor, ownerName: "Serene" });
+  }
+  for (let copy = 0; copy < 2; copy += 1) {
+    await create({ date: day(-12), description: "Kopi and kaya toast", accountName: "UOB One Account", categoryName: "Other", entryType: "expense", amountMinor: 680, ownerName: "Ethan" });
+  }
+  await create({ date: day(40), description: "Concert tickets", accountName: "UOB One Account", categoryName: "Other", entryType: "expense", amountMinor: 18_000, ownerName: "Ethan" });
+}
+
 // The shots. `reseed: true` restores the demo first, because the shot (or the
 // one before it) changes data. Read-only shots come first.
 
@@ -762,6 +780,27 @@ const SHOTS = [
       await message.blur();
       await waitUsable(page);
       await hideCaret(page);
+    }
+  },
+  // Check my books, with a few problems made on purpose: two transfers whose
+  // other side is not linked, a purchase entered twice and an entry dated far
+  // ahead. They add entries, so each reseeds first.
+  {
+    name: "check-books", device: "desktop", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.waitForTimeout(500);
+    }
+  },
+  {
+    name: "phone-check-books", device: "phone", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.waitForTimeout(500);
     }
   },
   {

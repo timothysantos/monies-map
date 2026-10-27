@@ -242,8 +242,8 @@ test("already-loaded is reported before any budget check, so it is never charged
   assert.equal(evaluateWarmup(input({ candidate: dataCandidate({ alreadyLoaded: true }), visit: { dataStarts: 2 } })).reason, "already-loaded");
 });
 
-test("automatic warmup never picks imports, settings or FAQ code, but explicit intent may", () => {
-  for (const routeId of ["imports", "settings", "faq"]) {
+test("automatic warmup never picks imports, settings, FAQ or Check my books code, but explicit intent may", () => {
+  for (const routeId of ["imports", "settings", "faq", "check"]) {
     assert.equal(evaluateWarmup(input({ candidate: moduleCandidate({ routeId }) })).reason, "forbidden-route");
     assert.equal(evaluateWarmup(input({ candidate: moduleCandidate({ routeId, trigger: "focus" }) })).allowed, true);
   }
@@ -335,7 +335,7 @@ test("exact link intent comes first and deduplicates route code; forbidden route
   for (const mode of ["desktop", "mobile"]) {
     for (const identity of [summaryTim, monthHousehold]) {
       const automatic = selectWarmupCandidates({ mode, identity, availableMonths: months, summaryRange: { startMonth: "2025-07", endMonth: "2025-09" } });
-      assert.equal(automatic.some((candidate) => candidate.kind === "module" && ["imports", "settings", "faq"].includes(candidate.routeId)), false);
+      assert.equal(automatic.some((candidate) => candidate.kind === "module" && ["imports", "settings", "faq", "check"].includes(candidate.routeId)), false);
     }
   }
   const recentImports = selectWarmupCandidates({

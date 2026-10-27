@@ -9,6 +9,7 @@ import { loadSummaryInsights } from "./money-insights-loader";
 // (money-insights-loader.js).
 const loaders = {
   ask: () => import("./ask-panel.jsx"),
+  check: () => import("./check-panel.jsx"),
   entries: () => import("./entries-panel.jsx"),
   faq: () => import("./faq-panel.jsx"),
   imports: () => import("./imports-panel.jsx"),

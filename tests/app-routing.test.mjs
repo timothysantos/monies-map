@@ -3,10 +3,23 @@ import test from "node:test";
 
 import {
   buildPageViewFromRouteData,
+  buildRoutePageRequest,
   getAppShellAvailableViewIds,
+  getSelectedTabId,
   resolveRouteViewId,
   sanitizeTabParams
 } from "../src/client/app-routing.js";
+
+test("/check is the Check my books page; it has no page request of its own and takes the shell's person", () => {
+  assert.equal(getSelectedTabId("/check"), "check");
+  // Only the exact path: no other page is read as Check my books.
+  assert.equal(getSelectedTabId("/checkout"), "summary");
+  assert.equal(getSelectedTabId("/entries"), "entries");
+  assert.equal(buildRoutePageRequest({ tabId: "check", viewId: "person-tim", month: "2026-05", scope: "direct" }), null);
+  const shell = { household: { people: [{ id: "person-joyce", name: "Joyce" }] } };
+  assert.deepEqual(buildPageViewFromRouteData("check", null, "person-joyce", shell), { id: "person-joyce", label: "Joyce" });
+  assert.deepEqual(buildPageViewFromRouteData("check", null, "household", shell), { id: "household", label: "Household" });
+});
 
 test("getAppShellAvailableViewIds reads the explicit shell route list", () => {
   assert.deepEqual(getAppShellAvailableViewIds({

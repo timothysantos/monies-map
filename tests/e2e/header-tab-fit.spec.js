@@ -3,12 +3,13 @@ import { expect, test } from "@playwright/test";
 import { reseedDemo } from "./helpers";
 
 // From 1,100 px the header is one row: view pills, page tabs and period
-// controls side by side, as on a wide desktop. At desktop spacing that row
-// needs about 1,160 px, so below 1,200 px its spacing tightens instead of
-// the tab strip running under the "‹" button or the period controls moving
-// to a second row (which pushed the page down). Every page has the same
-// header; on Imports, Settings and FAQ the period controls are disabled but
-// keep their place. A wide desktop and a phone keep their own header
+// controls side by side, as on a wide desktop. Seven page tabs (Check my books
+// is the longest) need the tighter spacing at every desktop width: at the old
+// desktop spacing the row needs about 1,280 px and the page never grows past
+// 1,164 px, so the tab strip would run under the "‹" button, or the period
+// controls would move to a second row (which pushed the page down). Every page
+// has the same header; on Imports, Settings, FAQ and Check my books the period
+// controls are disabled but keep their place. A phone keeps its own header
 // unchanged.
 
 const PAGES = [
@@ -18,7 +19,8 @@ const PAGES = [
   "/splits?view=household&month=2026-05",
   "/imports?view=household&month=2026-05",
   "/settings?view=household&month=2026-05",
-  "/faq"
+  "/faq",
+  "/check"
 ];
 
 async function openPage(page, path) {
@@ -113,7 +115,7 @@ test.describe("header on a narrow desktop window", () => {
         await openPage(page, path);
         const where = `${path} at ${width} px`;
         const header = await readHeader(page);
-        expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
+        expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ", "Check my books"]);
         expect(header.tabHits.filter((tab) => !tab.left || !tab.centre || !tab.right), where).toEqual([]);
         expect(header.controls, where).toEqual([true, true, true, true]);
         // One row: the pills, the tabs and every period control share one
@@ -211,19 +213,21 @@ test.describe("header on a narrow desktop window", () => {
     }
   });
 
-  test("a 1,440 px desktop and a 390 px phone keep their own header spacing", async ({ page }) => {
+  test("a 1,440 px desktop and a 390 px phone keep their own header spacing, the desktop's the tight one", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await openPage(page, "/summary?view=household&month=2026-05");
+    // The tighter spacing of the 1,100 to 1,199 px band, kept on a wide desktop
+    // too since Check my books made seven page tabs (they need it to fit).
     expect(await readHeaderSpacing(page)).toEqual({
-      barGap: "16px",
-      pillPadding: "14px",
-      stripGap: "4px",
-      tabPadding: "10px",
+      barGap: "10px",
+      pillPadding: "12px",
+      stripGap: "2px",
+      tabPadding: "5px",
       tabFontSize: "14px",
-      periodGap: "6px",
-      displayMinWidth: "260px",
-      displayPadding: "12px",
-      displayGap: "10px"
+      periodGap: "4px",
+      displayMinWidth: "236px",
+      displayPadding: "10px",
+      displayGap: "8px"
     });
     expect((await readHeader(page)).headerHeight).toBe(57);
 

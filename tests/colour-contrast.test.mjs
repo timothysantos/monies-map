@@ -363,7 +363,9 @@ test("small accent text on the page is written with the darker accent", () => {
     ["src/client/ui/lead-support-detail.css", ".lsd-row-more .lsd-row-label"],
     ["src/client/ui/lead-support-detail.css", ".lsd-row-value.is-action"],
     ["src/client/ui/lead-support-detail.css", ".lsd-quiet"],
-    ["src/client/splits-group-strip.css", ".splits-strip-half"]
+    ["src/client/splits-group-strip.css", ".splits-strip-half"],
+    ["src/client/check-route.css", ".check-again"],
+    ["src/client/check-route.css", ".check-fix"]
   ]) {
     assert.match(rule(file, selector), /color: var\(--accent\);/, `${selector} uses --accent`);
     assert.doesNotMatch(rule(file, selector), /color: var\(--accent-strong\)/, `${selector} is not --accent-strong`);
@@ -371,6 +373,28 @@ test("small accent text on the page is written with the darker accent", () => {
   const lead = DEFAULT.rgb("--accent-strong");
   assert.ok(contrast(lead, DEFAULT.rgb("--page")) < AA, "70s Warm Light's strong accent on the page is why");
 });
+
+// "Check my books" (src/client/check-route.css): the three sections read in
+// rose, butter and sky with their -ink, the count chip sits on the section's
+// tint, the hidden list on the neutral tint, and the quiet lines on the card.
+for (const preset of PRESETS) {
+  test(`${preset.id}: Check my books reads AA on its section tints, count chips, hidden list and card`, () => {
+    const { rgb } = preset;
+    const PAPER = rgb("--paper-rgb");
+    for (const hue of ["rose", "butter", "sky"]) {
+      const tint = rgb(`--pastel-${hue}`);
+      const ink = rgb(`--pastel-${hue}-ink`);
+      assertAA(ink, tint, `${hue} ink on the ${hue} section head`);
+      assertAA(ink, mix(PAPER, 0.6, tint), `${hue} ink on its count chip (60% paper over the tint)`);
+    }
+    assertAA(rgb("--text"), rgb("--pastel-neutral"), "text on the hidden list's head");
+    assertAA(rgb("--text"), mix(PAPER, 0.6, rgb("--pastel-neutral")), "text on the hidden list's count chip");
+    assertAA(rgb("--text"), rgb("--chip"), "text on a group's count chip");
+    assertAA(rgb("--text"), rgb("--card"), "text on a group card");
+    assertAA(rgb("--muted"), rgb("--card"), "the quiet evidence and note lines on a group card");
+    assertAA(rgb("--accent"), rgb("--card"), "the fix and 'This is fine' buttons on a group card");
+  });
+}
 
 test("the guard catches a failing pair: a mid harvest gold as text on cream fails AA", () => {
   const PANEL = DEFAULT.rgb("--panel");

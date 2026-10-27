@@ -4,7 +4,7 @@
 // cost is null, never zero, so a missing block disables automatic warmup
 // instead of making every route look free.
 
-export const WARMUP_COST_ROUTE_IDS = Object.freeze(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"]);
+export const WARMUP_COST_ROUTE_IDS = Object.freeze(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check"]);
 const WARMUP_COSTS_ELEMENT_ID = "monies-warmup-costs";
 
 // Shared with the build scripts; any missing or invalid route makes the

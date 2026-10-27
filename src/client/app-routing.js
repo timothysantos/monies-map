@@ -89,6 +89,10 @@ export function getSelectedTabId(pathname) {
     return "faq";
   }
 
+  if (pathname === "/check") {
+    return "check";
+  }
+
   if (pathname === "/ask") {
     return "ask";
   }
@@ -152,8 +156,8 @@ export function buildEntriesPageParams({ viewId, month }) {
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
   // Shape the route-page response into the minimal view object the UI needs.
-  // FAQ and Ask have no page request: their view is the shell's person.
-  if (tabId === "faq" || tabId === "ask") {
+  // FAQ, Ask and Check my books have no page request: their view is the shell's person.
+  if (tabId === "faq" || tabId === "ask" || tabId === "check") {
     const fallbackLabel = selectedViewId === "household"
       ? "Household"
       : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";

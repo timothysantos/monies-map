@@ -26,7 +26,7 @@ export const WARMUP_LIMITS = Object.freeze({
 const SLOW_CONNECTIONS = new Set(["slow-2g", "2g", "3g"]);
 // Routes whose code is never warmed automatically: large, rarely next, or
 // workflow-heavy. Explicit link intent may still warm them.
-const NO_AUTOMATIC_MODULE_ROUTES = new Set(["imports", "settings", "faq"]);
+const NO_AUTOMATIC_MODULE_ROUTES = new Set(["imports", "settings", "faq", "check"]);
 const INTENT_TRIGGERS = new Set(["hover", "focus", "pointerdown"]);
 const TRIGGERS = new Set(["auto", ...INTENT_TRIGGERS]);
 

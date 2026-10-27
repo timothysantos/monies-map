@@ -1,0 +1,361 @@
+/* "Check my books" page styles. Imported by check-panel.jsx, so they ship with
+   the lazy Check route and stay out of the first-screen stylesheet. Colours are
+   the pastel tokens (state-banner tones from ui/states.css): Needs fixing is
+   rose, Worth checking butter, Good to know sky; text on a tint is that hue's
+   -ink. Every control is 44px or more. No colour is written here. */
+
+.check-panel {
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+.check-head {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.check-again {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.check-again:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.check-again:focus-visible,
+.check-fix:focus-visible,
+.check-group-toggle:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.check-intro {
+  max-width: 62ch;
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Loading: the height of a typical first result, so nothing moves when it lands. */
+.check-skeleton {
+  min-height: 460px;
+  align-content: start;
+}
+
+.check-skeleton-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.check-skeleton .state-detail {
+  margin: 0;
+  color: var(--muted);
+}
+
+.check-results {
+  display: grid;
+  gap: 14px;
+}
+
+.check-results.is-checking {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* The summary is plain ink on a card: the colour belongs to the three sections
+   below it, one strength per element. */
+.check-summary {
+  padding: 14px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  color: var(--text);
+}
+
+.check-summary-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.check-summary-detail {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+
+.check-tier {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.check-tier[data-tone="neutral"] {
+  --state-tint: var(--pastel-neutral);
+  --state-ink: var(--text);
+  --state-line: var(--line);
+}
+
+.check-tier-head {
+  padding: 10px 14px;
+  border: 1px solid var(--state-line);
+  border-radius: 14px;
+  background: var(--state-tint);
+  color: var(--state-ink);
+}
+
+.check-tier-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.check-tier-head p {
+  margin: 2px 0 0;
+  font-size: 0.88rem;
+}
+
+.check-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.check-tier-head .check-count {
+  background: rgb(var(--paper-rgb) / 0.6);
+  color: var(--state-ink);
+}
+
+.check-group {
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.check-group-heading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.check-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.check-group-title {
+  min-width: 0;
+}
+
+.check-chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.check-group-toggle[aria-expanded="true"] .check-chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .check-chevron {
+    transition: transform 160ms ease;
+  }
+}
+
+.check-group-body {
+  padding: 0 14px 12px;
+}
+
+.check-group-body[hidden] {
+  display: none;
+}
+
+.check-items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.check-item-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.check-item-summary {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.check-evidence {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.check-evidence li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  overflow-wrap: anywhere;
+}
+
+.check-evidence-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.check-evidence-note::before {
+  content: "– ";
+}
+
+/* The money a problem is about: plain text, not an openable figure (its amount
+   is the problem's, not an Entries total). */
+.check-item-money {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.check-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 4px;
+}
+
+.check-fix {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.check-item-note {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.check-item-hidden {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.check-note {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.check-more {
+  margin-top: 4px;
+}
+
+.check-unavailable {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--pastel-butter-line);
+  border-radius: 14px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.check-unavailable-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.check-unavailable-row p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.check-hidden-toggle {
+  display: flex;
+}
+
+.check-error.is-screen,
+.check-empty.is-screen {
+  min-height: 0;
+}
+
+@media (max-width: 760px) {
+  .check-head {
+    align-items: flex-start;
+  }
+
+  .check-intro {
+    margin-bottom: 12px;
+  }
+
+  .check-skeleton {
+    min-height: 520px;
+  }
+
+  .check-fix,
+  .check-fine {
+    flex: 1 1 auto;
+  }
+}

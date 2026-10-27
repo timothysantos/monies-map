@@ -115,7 +115,7 @@ export function findMissingChunks(manifest, fileExists, routePanelKeys = []) {
 }
 
 const ROUTE_PANEL_KEYS = [
-  "ask", "entries", "faq", "imports", "month", "settings", "splits", "summary"
+  "ask", "check", "entries", "faq", "imports", "month", "settings", "splits", "summary"
 ].map((route) => `src/client/${route}-panel.jsx`);
 
 async function main(argv) {

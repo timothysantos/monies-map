@@ -125,6 +125,7 @@ import { publishAppShell } from "./app-shell-watch";
 const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: module.AskPanel })));
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
+const CheckPanel = lazy(() => loadRouteModule("check").then((module) => ({ default: module.CheckPanel })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -151,7 +152,8 @@ const routeTabs = [
   { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask", phoneOnly: true, primary: true },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
-  { id: "faq", path: "/faq", label: messages.tabs.faq }
+  { id: "faq", path: "/faq", label: messages.tabs.faq },
+  { id: "check", path: "/check", label: messages.tabs.check }
 ];
 const primaryRouteTabs = routeTabs.filter((tab) => tab.primary);
 const secondaryRouteTabs = routeTabs.filter((tab) => !tab.primary);
@@ -1924,7 +1926,7 @@ export function App() {
   // the active request; a previous page kept on screen never does.
   const routeDataReady = selectedTabId === "summary"
     ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
-    : selectedTabId === "faq" || selectedTabId === "ask" || Boolean(currentRoutePageData);
+    : selectedTabId === "faq" || selectedTabId === "ask" || selectedTabId === "check" || Boolean(currentRoutePageData);
   const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
   const requiredWorkCount = useRequiredWorkCount(requiredWork);
   const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
@@ -2030,7 +2032,7 @@ export function App() {
   const isSplitsTab = renderedTabId === "splits";
   // Imports, Settings and FAQ do not depend on a period, so the header keeps
   // the period control in place but greyed out and disabled there.
-  const routeUsesPeriod = !["imports", "settings", "faq", "ask"].includes(renderedTabId);
+  const routeUsesPeriod = !["imports", "settings", "faq", "ask", "check"].includes(renderedTabId);
   const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
   const selectedPageLabel = routePageLabels[selectedTabId] ?? "";
@@ -2247,6 +2249,10 @@ export function App() {
 
     if (renderedTabId === "faq") {
       return <FaqPanel viewLabel={pageView.label} categories={categories} />;
+    }
+
+    if (renderedTabId === "check") {
+      return <CheckPanel view={pageView} runBackgroundRefresh={runBackgroundRefresh} fetchRequiredQuery={fetchRequiredQuery} />;
     }
 
     if (renderedTabId === "ask") {

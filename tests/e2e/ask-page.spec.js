@@ -44,7 +44,7 @@ test.describe("the Ask page on a phone", () => {
     expect(visibleTabs.map((text) => text.trim())).toEqual(["Summary", "Entries", "Splits", "Ask"]);
     await page.getByRole("button", { name: "More pages" }).click();
     const overflow = page.locator(".tab-overflow-popover");
-    await expect(overflow.getByRole("link")).toHaveText(["Imports", "Settings", "FAQ"]);
+    await expect(overflow.getByRole("link")).toHaveText(["Imports", "Settings", "FAQ", "Check my books"]);
     await expect(overflow.getByRole("link", { name: "Month" })).toHaveCount(0);
 
     await page.keyboard.press("Escape");

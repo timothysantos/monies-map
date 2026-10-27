@@ -519,6 +519,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   background: transparent;
   color: var(--muted);
   font-size: 0.92rem;
+  white-space: nowrap;
 }
 
 .tab.is-active {
@@ -6623,9 +6624,12 @@ th {
   }
 }
 
-/* One header row from 1,100 px: tighter spacing below 1,200 px (and on a
-   narrower page, with the changes further down). */
-@container shell (min-width: 840px) and (max-width: 1163px) {
+/* One header row from 1,100 px, with this tighter spacing on every page at
+   least 840 px wide (it was below 1,200 px only, until Check my books made
+   seven page tabs: at the old desktop spacing they need about 1,280 px and the
+   page never grows past 1,164 px; tabs are padded 5 px a side so the seven fit
+   from 1,100 px). The narrower page changes are further down. */
+@container shell (min-width: 840px) {
   .control-bar {
     gap: 10px;
   }
@@ -6643,7 +6647,7 @@ th {
   }
 
   .tab {
-    padding-inline: 7px;
+    padding-inline: 5px;
   }
 
   .period-display {

@@ -18,7 +18,7 @@ const MID_WIDTHS = [
     name: "820x1180 portrait tablet",
     layout: "sheet",
     // Every page tab shows; the period controls wrap below the tabs.
-    tabs: ["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ"],
+    tabs: ["Summary", "Entries", "Splits", "Imports", "Settings", "FAQ", "Check my books"],
     use: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }
   },
   {
