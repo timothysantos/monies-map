@@ -758,6 +758,7 @@ open.
 - [Split an expense](#split-an-expense)
 - [Track a trip in another currency](#track-a-trip-in-another-currency)
 - [Settle up a group](#settle-up-a-group)
+- [Correct a mistake in a settle-up](#correct-a-mistake-in-a-settle-up)
 - [Restore a deleted split](#restore-a-deleted-split)
 
 ### On a phone
@@ -2240,6 +2241,40 @@ top says when it was settled or simplified and the button under it undoes it:
 
 If a change reaches a settled split another way (for example an entry on
 Entries), it is refused with the same message and button, and nothing changes.
+
+## Correct a mistake in a settle-up
+
+Say a flight was entered twice, and the settle-up counted both, so one of you
+paid too much. The settle-up is locked and may already be paid, so you do not
+undo it. Add a **correction** instead: one line in the current period that
+puts the difference right. The old settle-up stays exactly as it was.
+
+When the check of your books finds this, it offers **Correct this settled
+mistake**. The same link is on the card of the settled expense when you open
+it from Splits.
+
+1. Select **Correct this settled mistake**. A box says what will happen, with
+   the amount worked out for you, for example: "This adds a $525.93
+   correction in Serene's favour to the current period. The 10 Aug settle-up
+   stays as it is." You cannot type an amount; it is exactly the share that
+   was charged too much.
+2. If you like, write a reason. If the extra copy of the expense is still in
+   the list, tick **Also remove the duplicate** to move it to History in the
+   same step.
+3. Select **Add correction**.
+
+![The box that adds a correction, with the amount worked out](/faq/guide/desktop/thumbs/splits-settled-correction.webp)
+
+The correction shows in the group's list with its reason, and the group's
+balance changes by that amount: here Ethan now owes Serene $525.93. It is not
+spending, so **Spent since last settle-up** does not change. The next time you
+settle up, the amount to pay includes it.
+
+![The correction in the list, with Undo correction](/faq/guide/desktop/thumbs/splits-correction-row.webp)
+
+Added it by mistake? Select **Undo correction** on its line, any time before
+the next settle-up. After that it is locked like any settled line. History
+shows when a correction was added or undone.
 
 ## Restore a deleted split
 

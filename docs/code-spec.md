@@ -710,7 +710,13 @@ start and page read rules above, measured in `tests/ledger-checkup-budget.test.m
   `tests/e2e/api-payload-budget.json` (`ledger-checkup`);
 - the detectors are pure functions over the loaded facts
   (`tests/ledger-checkup-detectors.test.mjs`), so a rule changes without
-  touching a read, and a read changes without touching a rule.
+  touching a read, and a read changes without touching a rule;
+- the settled-period fix (a Split Correction, DOMAIN.md) reads the check-up's
+  split facts alone (`loadSplitPairFacts`: five statements in one batch) when a
+  correction is previewed or added, never the whole check-up; the Splits page's
+  balance read only gained two selected columns, and a cold start gained no
+  round trip (the columns are repaired from the `PRAGMA table_info` it already
+  reads).
 
 ## Persistence Atomicity Contract
 
@@ -738,6 +744,13 @@ A persistence command is all-or-nothing:
   a safe id, a hex evidence key, at most 500 dismissals), then write the
   `app_settings` row and its audit event in one batch
   (`tests/atomic-writes-ledger-checkup.test.mjs`)
+- a Split Correction (`src/domain/app-repository-split-corrections.ts`,
+  DOMAIN.md "Split Correction") reads its plan first (the check-up's split
+  facts in one batch), then writes the correction, the optional archive of the
+  extra copy, the history events, the audit event and the linked-entry month
+  markers in one batch behind a guard that fails it when a live correction for
+  the same expense exists; Undo correction is one batch too
+  (`tests/settled-correction.test.mjs`, `failingStatement` at every write)
 - the optional AI cost-control aggregates (the daily allowance counter in
   `src/domain/ai-assistance.ts` and the AI provider status row in
   `src/domain/ai-provider-status.ts`) are not household data and have no

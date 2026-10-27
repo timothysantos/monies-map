@@ -69,7 +69,7 @@ interface CheckupFinding {
   personIds: string[];
   // The fix the app already has: a path the screen can open, or null.
   fix: { label: string; path: string } | null;
-  // Said when fix is null: "No fix yet" (phase 3 for settled periods).
+  // Said when fix is null: "No fix yet".
   fixNote: string | null;
   // Resurface key: a hash of the facts that make the finding true. A change in
   // the evidence changes it and brings a dismissed finding back.
@@ -407,8 +407,13 @@ settle-up itself is wrong because of it.
 - silent: as detector 2a, and a shared cost nobody but the payer shares (no
   balance moved).
 
-Fix: none yet (the correction of a settled period is phase 3), so the finding
-says "No fix yet". Person scope: the people in the shares.
+Fix (phase 3, built): `Correct this settled mistake`, a Split Correction in the
+open period (docs/proposals/settled-correction.md), for an extra expense the
+settle-up held where exactly one other person was charged. A live correction
+resolves the finding (it is silent) and it is reported again if the correction
+is undone. Otherwise (two payments counted twice, three people charged, an
+extra copy the settle-up did not hold) the finding still says "No fix yet".
+Person scope: the people in the shares.
 
 ### 9. Data hygiene (`other_category`, `odd_entry`, `quiet_account`)
 

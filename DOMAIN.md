@@ -2000,6 +2000,44 @@ Rules:
   re-links its split: a split whose amount was changed while it was unlinked
   would follow the entry, so a settled one refuses the rollback
 
+### Split Correction
+
+A record in a split group's current (open) period that carries the exact
+amount a settled period over- or under-charged, so a mistake found inside a
+settle-up is fixed without undoing the settle-up. It moves the group's
+balance (who owes whom) and is not spending. Offered only for a settled-period
+error the Ledger check-up reports (docs/proposals/settled-correction.md).
+
+Storage: a `split_settlements` row with `correction_source_id` (the split
+expense whose settled effect it corrects) and `correction_reason` (its
+plain-words label, "Correction: ..."); both NULL on an ordinary payment.
+Code: `src/domain/app-repository-split-corrections.ts` (commands),
+`planSettledCorrections` in `src/domain/ledger-checkup/split-duplicates.ts`
+(what a correction would record), `src/server/split-corrections-route.ts`.
+DTO: `SplitSettlementDto.correction` and `SplitActivityDto.correction`
+(`SplitCorrectionDto`: `sourceRecordId`, `reason`).
+
+Rules:
+- the amount and the two people are worked out on the server and never typed:
+  the person charged too much pays the person paid too much, for exactly that
+  person's stored share of the extra copy, in the group's own currency, so the
+  balance moves by the settled over-charge and by nothing else
+- it joins the group's open batch and is open activity until a simplification
+  or Settle group covers it; then it is locked like any settled record, and
+  the next settle-up's amount includes it
+- it is not an expense: the lead chip ("Spent since last settle-up"), the
+  donut, the entry count of costs, the money insight and the fun facts never
+  count it, and it is not a settle-up in the "settle-ups" fun-fact count
+- it is not a payment: no bank row is ever offered for it, it is not edited,
+  matched, deleted or restored; its one undo is `Undo correction` while it is
+  open. History reads "Correction added" and "Correction undone"
+- one live correction per extra copy (a second is refused, `correction_exists`);
+  refused too: a cost that is not flagged by the check-up, a cost no settle-up
+  covers, a cost whose extra share is more than one person's
+- with `alsoRemoveDuplicate` the live extra copy is archived in the same
+  all-or-nothing request (it stays in the settle-up's fixed list of records)
+- undoing a correction brings the check-up's finding back
+
 ### Split Activity History
 
 A chronological audit trail for consequential split changes. Deleting a split
@@ -2997,11 +3035,14 @@ Important distinctions:
   settle-up coverage rules, the statement balance functions, the Month link
   dialog's reasons) and never defines a second meaning of "the same purchase".
 - A finding names the existing fix (a link into Entries, Splits, Imports,
-  Settings or Month) or says "No fix yet" (a settled period, until phase 3).
+  Settings or Month) or says "No fix yet" (a settled-period error gets
+  "Correct this settled mistake", a Split Correction, where one can be recorded).
 - A `settled_period_error` is a settle-up that counted something twice, or a cost
   that was removed after it counted it. Its effect is stated per person: each
   person who owed the payer a share of the extra copy was charged that much too
-  much, and the payer was paid that much too much.
+  much, and the payer was paid that much too much. The finding is silent while a
+  live Split Correction names the extra copy, and is reported again when the
+  correction is undone.
 - Money moving between the household's own accounts misstates no total, so an
   unlinked transfer pair is `high` for confidence and carries no money at stake;
   the report counts findings per kind so a screen can set many of them apart.

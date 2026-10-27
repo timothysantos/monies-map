@@ -121,6 +121,10 @@ a doc here in the same change.
   ("Check my books"): the finding model, the fifteen detectors and their
   rules, false-positive analysis, measured read budgets, and the phase 2
   handoff (phase 1 is the API only).
+- [`proposals/settled-correction.md`](proposals/settled-correction.md): the
+  Split Correction (phase 3 of the Ledger check-up): a record in the open
+  period that fixes a mistake inside a settle-up, its model (a flagged
+  payment record), migration, API, integration and budgets.
 - [`audits/month-lead-spacing/README.md`](audits/month-lead-spacing/README.md):
   the Month and Summary lead's vertical rhythm and the legend share rule,
   with before and after screenshots (15 October 2026).

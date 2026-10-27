@@ -1,8 +1,8 @@
 # Ledger check-up audit (phase 1: detectors and API)
 
 Status: complete for phase 1 (the engine, the fifteen kinds of finding, the
-read API and "This is fine"). Phase 2 is the screen, phase 3 the correction of
-a settled period; neither is built. The design note is
+read API and "This is fine"). Phase 2 is the screen (not built here); phase 3, the correction of
+a settled period, is built: see "Phase 3" below. The design note is
 [`docs/proposals/ledger-checkup.md`](../proposals/ledger-checkup.md);
 DOMAIN.md "Ledger Check-up" is the vocabulary.
 
@@ -184,3 +184,18 @@ unlinked card payments has about a hundred) want a collapsed group with its
 count from `kindCounts`, not a flat list. Finding titles and summaries are
 already plain words and linted (`findAppJargon`, retired names); money in
 `summary` is formatted with `$` for SGD and the currency code otherwise.
+
+## Phase 3: the settled-period fix
+
+`settled_period_error` findings now carry a fix, `Correct this settled mistake`
+(`/splits?view=household&month=<this month>&split_group=<id>&correct_settled=<expense id>`),
+where a Split Correction can be recorded (an extra expense a settle-up held,
+exactly one other person charged). The detector reads one more list in its
+first round trip, the expenses a live correction names (`CORRECTED_SOURCES_SQL`),
+and is silent for them; an undone correction brings the finding back. The same
+facts feed the correction's preview and command (`loadSplitPairFacts`,
+`planSettledCorrections`), so a correction is only offered for what the
+detector reports. A correction row is never read as a duplicate payment.
+Design, model and budgets: [`docs/proposals/settled-correction.md`](../proposals/settled-correction.md).
+Tests: `tests/ledger-checkup-detectors.test.mjs` ("settled correction"),
+`tests/ledger-checkup-api.test.mjs`, `tests/settled-correction.test.mjs`.

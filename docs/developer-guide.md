@@ -2677,6 +2677,16 @@ their rules and negatives, `tests/ledger-checkup-budget.test.mjs` the read
 budget. The screen is not built yet; the rules and measured reads are in
 `docs/audits/ledger-checkup.md`.
 
+A settled-period finding's fix is a Split Correction (DOMAIN.md "Split
+Correction", `docs/proposals/settled-correction.md`): a `split_settlements` row
+with `correction_source_id` and `correction_reason`, added by
+`POST /api/splits/corrections` (the amount is worked out on the server from the
+same facts the detector reads) and removed by `POST /api/splits/corrections/undo`.
+Migration: two `ALTER TABLE split_settlements ADD COLUMN` statements
+(`SPLIT_CORRECTION_COLUMN_STATEMENTS`), applied to production and demo before
+the code is deployed; `ensureDemoSchema` also repairs an older database.
+Tests: `tests/settled-correction.test.mjs`, `tests/e2e/splits-settled-correction.spec.js`.
+
 ## Why do notes matter so much?
 
 The app should not treat notes as decoration. Notes explain why a month is
