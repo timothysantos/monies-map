@@ -142,18 +142,20 @@ test("a check that was running when the link landed is read again, so it cannot 
   const stale = { ok: true, generatedAt: "2026-10-27T07:42:00.000Z", tierCounts: { high: 1, check: 0, note: 0 }, kindCounts: { unmatched_transfer: { high: 1, check: 0, note: 0 } }, dismissedCount: 0, findings: [transferFinding("unmatched_transfer:1")], moreByKind: {}, incompleteKinds: [], unavailableKinds: [], clearTransferPairCount: 1 };
   const fresh = { ...stale, tierCounts: { high: 0, check: 0, note: 0 }, kindCounts: {}, findings: [], clearTransferPairCount: 0 };
   let reads = 0;
-  let releaseFirst;
+  let releaseFirst = () => {};
+  let firstStarted;
+  const started = new Promise((resolve) => { firstStarted = resolve; });
   const { owner } = ownerWith(async (url, init) => {
     if (init.method === "POST") return { body: { ok: true, linked: [{}], skipped: [] } };
     reads += 1;
     if (reads === 1) {
-      await new Promise((resolve) => { releaseFirst = resolve; });
+      await new Promise((resolve) => { releaseFirst = resolve; firstStarted(); });
       return { body: stale };
     }
     return { body: fresh };
   });
   const running = owner.run({ viewId: "household" });
-  while (!releaseFirst) await new Promise((resolve) => setTimeout(resolve, 1));
+  await started;
   await owner.linkClearPairs([{ fromEntryId: "o1", toEntryId: "i1" }]);
   releaseFirst();
   await running;
