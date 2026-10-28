@@ -39,10 +39,11 @@ function singaporeToday(offsetDays = 0) {
 }
 
 // Stubs the route; `current.reminders` can change mid-test, `current.status` too.
-async function stubReminders(page, reminders, { status = 200 } = {}) {
+async function stubReminders(page, reminders, { status = 200, delayMs = 0 } = {}) {
   const current = { reminders, status, reads: 0 };
-  await page.route("**/api/reminders**", (route) => {
+  await page.route("**/api/reminders**", async (route) => {
     current.reads += 1;
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
     if (current.status !== 200) {
       return route.fulfill({ status: current.status, contentType: "application/json", body: JSON.stringify({ ok: false, error: "Reminders failed" }) });
     }
@@ -234,14 +235,18 @@ test.describe("reminders in Ask on a phone @webkit", () => {
   });
 
   test("nothing shows, and nothing moves, when there is nothing to remind", async ({ page }) => {
-    const current = await stubReminders(page, []);
+    const current = await stubReminders(page, [], { delayMs: 1500 });
     await openAsk(page);
+    // The thread's first block (the greeting, opened straight onto Ask) is on screen before the answer lands.
+    const label = page.locator(".ask-thread > *").first();
+    await expect(label).toBeVisible({ timeout: 30_000 });
+    await page.evaluate(() => document.fonts.ready);
+    const top = () => label.evaluate((node) => Math.round(node.getBoundingClientRect().top * 10) / 10);
+    const before = await top();
     await expect.poll(() => current.reads).toBeGreaterThan(0);
+    await page.waitForTimeout(2200);
     await expect(region(page)).toHaveCount(0);
-    const before = await page.locator(".ask-thread").evaluate((node) => node.firstElementChild?.getBoundingClientRect().top);
-    await page.waitForTimeout(500);
-    const after = await page.locator(".ask-thread").evaluate((node) => node.firstElementChild?.getBoundingClientRect().top);
-    expect(after).toBe(before);
+    expect(await top()).toBe(before);
   });
 
   test("a failed read shows nothing and Ask still works", async ({ page }) => {
