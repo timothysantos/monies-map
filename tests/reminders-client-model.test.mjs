@@ -352,7 +352,7 @@ test("'Since you last looked' skips the card bill a reminder card already says, 
   assert.notEqual(covered.key, "card-bill:uob:2026-09");
   assert.doesNotMatch(covered.fact, /527|UOB/);
   // Never a false "sorted", even when an earlier visit remembered the bill.
-  window.localStorage.setItem("monies-map:checkin:v1:summary:person-serene", JSON.stringify({
+  globalThis.window.localStorage.setItem("monies-map:checkin:v1:summary:person-serene", JSON.stringify({
     lastVisitAt: Date.parse("2026-10-11T04:00:00Z"), lastVisitDay: "2026-10-11", lastContextKey: "ctx", lastMode: "signal",
     quickFixes: { "card-bill:uob:2026-09": { fact: "Pay it.", think: "" } }
   }));

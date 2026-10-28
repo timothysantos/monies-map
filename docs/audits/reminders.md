@@ -176,6 +176,24 @@ sentence. Cost: one read of a few small queries when Ask opens and when a save
 invalidates a page, nothing scheduled, no allowance. Writes: none on the
 server; the device writes its own `monies.reminders.v1`.
 
+## Before and after
+
+Showcase household (Ethan, Serene), the real route and the built app. "Before"
+is the app with no reminders (the route answered an empty list), which is what
+`origin/master` shows; "after" is the app as shipped. The showcase has no
+statement after August, so today's reminders are its late September
+statements. The dot pictures use a Later whose day has come (the cache has the
+answer, one reminder is new again).
+
+| | Before | After |
+| --- | --- | --- |
+| Phone: Ask opens | ![](reminders-screenshots/phone-ask-before.webp) | ![](reminders-screenshots/phone-ask-after.webp) |
+| Phone: Later, then the folded line | | ![](reminders-screenshots/phone-later-after.webp) ![](reminders-screenshots/phone-folded-after.webp) |
+| Phone: the Ask tab | ![](reminders-screenshots/phone-tab-before-dot.webp) | ![](reminders-screenshots/phone-tab-after-dot.webp) |
+| Computer: docked Ask | ![](reminders-screenshots/desktop-dock-before.webp) | ![](reminders-screenshots/desktop-dock-after.webp) |
+| Computer: Later menu | | ![](reminders-screenshots/desktop-later-after.webp) |
+| Computer: the Ask field | ![](reminders-screenshots/desktop-field-before-dot.webp) | ![](reminders-screenshots/desktop-field-after-dot.webp) |
+
 ## Tests
 
 | Test | Proves |

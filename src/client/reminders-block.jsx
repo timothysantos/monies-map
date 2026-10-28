@@ -236,7 +236,7 @@ function LaterControl({ card, onChoose }) {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content className="reminder-later-popover" side="top" align="end" sideOffset={6} aria-label={copy.laterSheet.title}>
+        <Popover.Content className="reminder-later-popover" side="bottom" align="end" sideOffset={6} aria-label={copy.laterSheet.title}>
           <p className="reminder-later-title">{copy.laterSheet.title}</p>
           {choices}
         </Popover.Content>
