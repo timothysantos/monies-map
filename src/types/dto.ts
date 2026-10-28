@@ -1990,3 +1990,107 @@ export interface TransferOptionDto {
   amountMinor: number;
   categoryName: string;
 }
+
+// Reminders in Ask (DOMAIN.md "Reminder", GET /api/reminders): what a fixed
+// rule says is worth a look today, as keys, kinds, dates and minor amounts
+// only. The words come from a fixed template file on the client. Read-only
+// and deterministic; no AI decides anything (docs/flows/reminders-flow.md).
+export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close";
+
+interface ReminderBaseDto {
+  // Stable per occurrence (kind, subject, occurrence): snoozing and "seen"
+  // on a device are about this one key, so next month's statement is new.
+  key: string;
+  kind: ReminderKind;
+}
+
+export interface CardBillReminderDto extends ReminderBaseDto {
+  kind: "card_bill";
+  accountId: string;
+  accountName: string;
+  statementMonth: string;
+  dueDate: string;
+  // Whole days from today to the due date; negative once overdue.
+  daysUntilDue: number;
+  // What is left to pay: the statement balance less payments seen since.
+  leftMinor: number;
+  paidMinor: number;
+  currency: string;
+}
+
+export interface StatementMissingReminderDto extends ReminderBaseDto {
+  kind: "statement_missing";
+  accountId: string;
+  accountName: string;
+  // The statement's month, and the day the account's usual closing day puts it.
+  statementMonth: string;
+  expectedOn: string;
+  daysSinceExpected: number;
+}
+
+export interface SplitsWaitingReminderDto extends ReminderBaseDto {
+  kind: "splits_waiting";
+  // An open settle-up, or a group's open balance.
+  variant: "settle_up" | "group_balance";
+  // Who pays whom, and the viewer's side of it ("between" in the household view).
+  fromName: string;
+  toName: string;
+  direction: "you_owe" | "owed_to_you" | "between";
+  amountMinor: number;
+  currency: string;
+  // The settle-up's date, or the oldest open record's date.
+  sinceDate: string;
+  weeks: number;
+  // The group's name (group balances only).
+  groupName?: string;
+}
+
+export interface PriceChangeReminderDto extends ReminderBaseDto {
+  kind: "price_change";
+  payeeName: string;
+  period: "monthly" | "yearly";
+  fromMinor: number;
+  toMinor: number;
+  firstNewChargeDate: string;
+  // The old price held for this many charges before the change.
+  priorChargeCount: number;
+  currency: string;
+}
+
+export interface MonthCloseCheckDto {
+  id: "statements" | "other" | "splits" | "note";
+  done: boolean;
+  // statements: how many statement accounts are in; other: entries still in
+  // Other; splits: open settle-ups and records waiting.
+  count: number;
+  // splits only, when the open balance is one amount with one person.
+  amountMinor?: number;
+  currency?: string;
+  withName?: string;
+}
+
+export interface MonthCloseReminderDto extends ReminderBaseDto {
+  kind: "month_close";
+  month: string;
+  // Statements, Other, Splits, Month note, in that order.
+  checks: MonthCloseCheckDto[];
+  // Every check done: the device shows one "all in" line once, then nothing.
+  allDone: boolean;
+}
+
+export type ReminderDto =
+  | CardBillReminderDto
+  | StatementMissingReminderDto
+  | SplitsWaitingReminderDto
+  | PriceChangeReminderDto
+  | MonthCloseReminderDto;
+
+export interface RemindersDto {
+  viewId: string;
+  // The household's day, so a device counts days the way the rules did.
+  today: string;
+  // In the order they show: overdue bills, bills due soonest, month close,
+  // statements (oldest first), Splits (longest waiting first), price changes.
+  // At most REMINDERS_MAX (20).
+  reminders: ReminderDto[];
+}

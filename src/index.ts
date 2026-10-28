@@ -16,6 +16,7 @@ import {
 import type { ImportPreviewRowDto, StatementFixDto, StatementNoticeDto } from "./types/dto";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
+import { buildRemindersDto } from "./domain/pages/reminders";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
 import { handleLedgerCheckupWrite, isLedgerCheckupWritePath, LEDGER_CHECKUP_CLEAR_PAIRS_PATH } from "./server/ledger-checkup-route";
@@ -537,6 +538,15 @@ export default {
 
     if (url.pathname === "/api/imports-page") {
       return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB), timing);
+    }
+
+    // Reminders in Ask (DOMAIN.md "Reminder"): what the fixed rules say is
+    // coming up for a view. Read-only, no AI, not part of any page payload.
+    if (url.pathname === "/api/reminders") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "Reminders only answer GET." }, 405, { Allow: "GET" });
+      }
+      return apiPageResponse("Reminders", request, url, () => buildRemindersDto(env.DB, url.searchParams.get("view") ?? "household"), timing);
     }
 
     // The Ledger check-up (DOMAIN.md "Ledger Check-up"): one explicit,
