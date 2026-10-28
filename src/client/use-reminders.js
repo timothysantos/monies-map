@@ -26,10 +26,9 @@ export function shouldFetchReminders({ enabled, hasData, updatedAt, now }) {
   return enabled && (!hasData || now - updatedAt > REMINDERS_MAX_AGE_MS);
 }
 
-/**
- * @param {{ queryClient: any, viewId: string, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, fetchImpl?: typeof fetch }} options
- */
-export function useReminders({ queryClient, viewId, enabled, fetchRequiredQuery, fetchImpl = undefined }) {
+// The kept answer for a view and when it was read, without reading anything
+// (the "Since you last looked" card uses it to leave out what a reminder says).
+export function useCachedReminders(queryClient, viewId) {
   const queryKey = useMemo(() => queryKeys.reminders(viewId), [viewId]);
   const hash = hashKey(queryKey);
   const subscribe = useCallback((listener) => queryClient.getQueryCache().subscribe((event) => {
@@ -41,6 +40,14 @@ export function useReminders({ queryClient, viewId, enabled, fetchRequiredQuery,
   const readUpdatedAt = useCallback(() => queryClient.getQueryState(queryKey)?.dataUpdatedAt ?? 0, [queryClient, queryKey]);
   const answer = useSyncExternalStore(subscribe, readAnswer, readAnswer);
   const updatedAt = useSyncExternalStore(subscribe, readUpdatedAt, readUpdatedAt);
+  return { queryKey, answer, updatedAt };
+}
+
+/**
+ * @param {{ queryClient: any, viewId: string, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, fetchImpl?: typeof fetch }} options
+ */
+export function useReminders({ queryClient, viewId, enabled, fetchRequiredQuery, fetchImpl = undefined }) {
+  const { queryKey, answer, updatedAt } = useCachedReminders(queryClient, viewId);
 
   const read = useCallback((signal) => fetchRequiredQuery({
     queryKey,

@@ -24,7 +24,9 @@ import {
   reminderDeviceState,
   unseenReminders
 } from "../src/client/reminders-device-state.js";
-import { PHONE_CARD_LIMIT, DOCK_CARD_LIMIT, buildReminderList, cardLimitFor, laterChoices, nextMondayAfter, reminderTarget } from "../src/client/reminders-model.js";
+import { PHONE_CARD_LIMIT, DOCK_CARD_LIMIT, buildReminderList, cardLimitFor, coveredSignalKeys, laterChoices, nextMondayAfter, reminderTarget } from "../src/client/reminders-model.js";
+import { composeCheckInHeadline } from "../src/client/check-in-headline.js";
+import { cardBillSignal } from "../src/domain/money-signals/shared-signals.ts";
 
 const TODAY = "2026-10-12"; // a Monday
 
@@ -326,4 +328,37 @@ test("the answer reader keeps what it understands and refuses what it does not",
   assert.equal(readReminders({ reminders: [] }), null);
   const answer = readReminders({ viewId: "household", today: TODAY, reminders: [cardBill(), { key: "x", kind: "something_new" }, null, { kind: "card_bill" }] });
   assert.deepEqual(answer.reminders.map((reminder) => reminder.key), ["card_bill:uob:2026-09"]);
+});
+
+test("'Since you last looked' skips the card bill a reminder card already says, and gives it back when the card is put away", () => {
+  installStorage();
+  const pill = {
+    accountId: "uob", accountName: "UOB PRVI Miles", ownerLabel: "Serene",
+    cardBill: { statementMonth: "2026-09", statementEndDate: "2026-09-28", paymentDueDate: "2026-10-18", owedMinor: 52773, paidSinceMinor: 0 }
+  };
+  const signals = [cardBillSignal({ accountPills: [pill], audience: "person", viewLabel: "Serene", today: TODAY, formatMoney: format })];
+  assert.equal(signals[0].key, "card-bill:uob:2026-09");
+  const compose = (coveredKeys) => composeCheckInHeadline({
+    memoryKey: "summary:person-serene", contextKey: "ctx", signals, period: "2026-09", calmLines: ["Nothing needs you."],
+    clock: { nowMs: Date.parse("2026-10-12T04:00:00Z"), today: TODAY }, coveredKeys
+  });
+  assert.equal(compose([]).key, "card-bill:uob:2026-09");
+  assert.ok(compose([]).fact.includes("$527.73"));
+
+  // A visible card bill reminder covers its own signal and no other.
+  assert.deepEqual(coveredSignalKeys([cardBill()], EMPTY_REMINDER_STATE, TODAY), ["card-bill:uob:2026-09"]);
+  assert.deepEqual(coveredSignalKeys([statement(), settleUp(), price()], EMPTY_REMINDER_STATE, TODAY), []);
+  const covered = compose(coveredSignalKeys([cardBill()], EMPTY_REMINDER_STATE, TODAY));
+  assert.notEqual(covered.key, "card-bill:uob:2026-09");
+  assert.doesNotMatch(covered.fact, /527|UOB/);
+  // Never a false "sorted", even when an earlier visit remembered the bill.
+  window.localStorage.setItem("monies-map:checkin:v1:summary:person-serene", JSON.stringify({
+    lastVisitAt: Date.parse("2026-10-11T04:00:00Z"), lastVisitDay: "2026-10-11", lastContextKey: "ctx", lastMode: "signal",
+    quickFixes: { "card-bill:uob:2026-09": { fact: "Pay it.", think: "" } }
+  }));
+  assert.doesNotMatch(compose(coveredSignalKeys([cardBill()], EMPTY_REMINDER_STATE, TODAY)).key, /^sorted:/);
+
+  // Put away with Later: the headline speaks for the bill again.
+  const hiddenState = { v: 1, items: { "card_bill:uob:2026-09": { until: "2026-10-15", at: TODAY } } };
+  assert.deepEqual(coveredSignalKeys([cardBill()], hiddenState, TODAY), []);
 });

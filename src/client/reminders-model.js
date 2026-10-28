@@ -273,6 +273,15 @@ export function buildReminderList({ reminders, state, today, hidden, formatMoney
   return { entries: shown, total: entries.length, more: entries.length - shown.length };
 }
 
+// The check-in signals a visible reminder already says, so "Since you last
+// looked" skips them: a card bill with a reminder card is not also its
+// headline. (A Later or "not for this one" on the card gives the headline back.)
+export function coveredSignalKeys(reminders, state, today) {
+  return reminders
+    .filter((reminder) => reminder.kind === "card_bill" && !isReminderHidden(state.items[reminder.key], today))
+    .map((reminder) => `card-bill:${reminder.accountId}:${reminder.statementMonth}`);
+}
+
 // The checklist's own keys that are finished and about to show their line:
 // the hook freezes them for the visit, so the line stays after it is marked.
 export function allInKeysToShow(reminders, state, today) {

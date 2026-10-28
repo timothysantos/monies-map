@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { spendTone } from "../domain/money-tone";
@@ -12,6 +12,10 @@ import { money, unmaskedMoney } from "./formatters";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
+import { reminderDeviceState } from "./reminders-device-state";
+import { coveredSignalKeys } from "./reminders-model";
+import { useCachedReminders } from "./use-reminders";
+import { todayInAppTimeZone } from "../lib/app-calendar";
 
 // "Since you last looked" (design.md "Ask page"): the Summary check-in's
 // headline for this view, read from the Summary page and wallet pills that
@@ -25,6 +29,13 @@ export function AskBriefCard({ queryClient, view, scope, month, accounts, params
   const summary = useCachedSummary(queryClient, { viewId: view.id, scope, month, enabled: true });
   const insights = useSummaryInsights();
   const clock = useCheckInClock();
+  // What a reminder card above already says (a card bill) is not repeated here.
+  const { answer: remindersAnswer } = useCachedReminders(queryClient, view.id);
+  const deviceState = useSyncExternalStore(reminderDeviceState.subscribe, reminderDeviceState.getSnapshot, reminderDeviceState.getSnapshot);
+  const coveredKeys = useMemo(
+    () => (remindersAnswer ? coveredSignalKeys(remindersAnswer.reminders, deviceState, todayInAppTimeZone()) : []),
+    [deviceState, remindersAnswer]
+  );
 
   const headline = useMemo(() => {
     if (!summary || !insights) {
@@ -52,10 +63,11 @@ export function AskBriefCard({ queryClient, view, scope, month, accounts, params
       period: month,
       triviaRotation: insights.SUMMARY_TRIVIA_ROTATION,
       calmLines: insights.SUMMARY_CALM_LINES,
-      clock
+      clock,
+      coveredKeys
     });
     return composed?.fact ? composed : null;
-  }, [accounts, clock, insights, month, scope, summary, view.id, view.label]);
+  }, [accounts, clock, coveredKeys, insights, month, scope, summary, view.id, view.label]);
 
   const monthFigures = summary?.summaryPage?.months?.find((item) => item.month === month) ?? null;
   if (!summary || (!headline && !monthFigures)) {
