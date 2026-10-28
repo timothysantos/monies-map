@@ -58,6 +58,7 @@ function openFromField(file = null) {
 /**
  * @param {{
  *   besideFab: boolean,
+ *   remindersCount?: number,
  *   intentProps?: Record<string, Function>,
  *   canLoad: boolean,
  *   onMounted?: () => void,
@@ -65,7 +66,7 @@ function openFromField(file = null) {
  *   renderConversation: (dock: { layout: "docked" | "popup", canExpand: boolean, intent: import("./ask-dock-state").AskIntent, visit: number }) => import("react").ReactNode
  * }} props
  */
-export default function AskDockPanel({ besideFab, intentProps = undefined, canLoad, onMounted = undefined, takeOver = undefined, renderConversation }) {
+export default function AskDockPanel({ besideFab, remindersCount = 0, intentProps = undefined, canLoad, onMounted = undefined, takeOver = undefined, renderConversation }) {
   const store = getAskDockStore();
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const { layout, canExpand } = selectAskDockLayout({
@@ -151,6 +152,7 @@ export default function AskDockPanel({ besideFab, intentProps = undefined, canLo
       {open && state.ready ? null : (
         <AskDockField
           besideFab={besideFab}
+          remindersCount={remindersCount}
           intentProps={intentProps}
           inputRef={fieldRef}
           quietFocusRef={quietFocusRef}

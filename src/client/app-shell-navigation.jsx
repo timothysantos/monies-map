@@ -25,6 +25,7 @@ export function ShellRouteTabs({
   getNavIntentProps,
   pendingCategorySuggestionCount,
   askInProgress = false,
+  remindersCount = 0,
   className = "",
   showPhoneOnly = false,
   includeOverflow = true,
@@ -35,10 +36,15 @@ export function ShellRouteTabs({
       ? messages.shell.categorySuggestionBadgeTitle(pendingCategorySuggestionCount)
       : undefined
   );
-  // A conversation left in progress on Ask: a small accent dot on its tab,
-  // named in the link's label for screen readers.
-  const showsAskDot = (tab) => tab.id === "ask" && askInProgress;
-  const ariaLabelFor = (tab) => (showsAskDot(tab) ? messages.tabs.askInProgress : undefined);
+  // A conversation left in progress on Ask, or a reminder this device has not
+  // seen: one small accent dot on its tab (the same dot for both), named in
+  // the link's label for screen readers.
+  const showsAskDot = (tab) => tab.id === "ask" && (askInProgress || remindersCount > 0);
+  const askDotLabel = () => {
+    if (askInProgress) return remindersCount > 0 ? messages.tabs.askInProgressAndReminders(remindersCount) : messages.tabs.askInProgress;
+    return messages.tabs.askReminders(remindersCount);
+  };
+  const ariaLabelFor = (tab) => (showsAskDot(tab) ? askDotLabel() : undefined);
   const renderTabLabel = (tab) => (
     <span className="tab-label-with-badge">
       {tab.icon === "ask" ? <Sparkles size={15} aria-hidden="true" className="tab-icon" /> : null}

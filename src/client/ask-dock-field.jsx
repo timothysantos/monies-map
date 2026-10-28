@@ -13,6 +13,7 @@ const imageFrom = (files) => [...(files ?? [])].find((file) => file?.type?.start
 /**
  * @param {{
  *   besideFab: boolean,
+ *   remindersCount?: number,
  *   intentProps?: Record<string, Function>,
  *   inputRef: import("react").Ref<HTMLInputElement>,
  *   quietFocusRef?: { current: boolean },
@@ -21,7 +22,7 @@ const imageFrom = (files) => [...(files ?? [])].find((file) => file?.type?.start
  *   onOpen: (file?: File | null) => void
  * }} props
  */
-export function AskDockField({ besideFab, intentProps = undefined, inputRef, quietFocusRef = undefined, value = undefined, onText = undefined, onOpen }) {
+export function AskDockField({ besideFab, remindersCount = 0, intentProps = undefined, inputRef, quietFocusRef = undefined, value = undefined, onText = undefined, onOpen }) {
   const takePhoto = (event, files) => {
     const file = imageFrom(files);
     if (file) {
@@ -38,11 +39,13 @@ export function AskDockField({ besideFab, intentProps = undefined, inputRef, qui
       onDrop={(event) => takePhoto(event, event.dataTransfer?.files)}
     >
       <Sparkles size={18} aria-hidden="true" className="ask-dock-field-icon" />
+      {/* A reminder this device has not seen: the tab's dot, on the sparkle. */}
+      {remindersCount > 0 ? <span className="tab-dot ask-dock-field-dot" aria-hidden="true" /> : null}
       <input
         ref={inputRef}
         className="ask-dock-field-input"
         type="text"
-        aria-label={messages.askDock.fieldLabel}
+        aria-label={remindersCount > 0 ? messages.tabs.askReminders(remindersCount) : messages.askDock.fieldLabel}
         aria-keyshortcuts="/"
         placeholder={messages.askDock.placeholder}
         autoComplete="off"

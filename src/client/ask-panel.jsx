@@ -57,6 +57,7 @@ import { AskPlanDraftCard } from "./ask-plan-draft-card";
 import { useMoneyPrivacy } from "./money-privacy";
 import { moneyWithCurrency } from "./formatters";
 import { AskBriefCard } from "./ask-brief-card";
+import { RemindersBlock } from "./reminders-block";
 import { AskClaudeCreditNotice } from "./claude-credit-notice";
 import { getAskConversationStore } from "./ask-conversation-store";
 import { getAskDockStore } from "./ask-dock-state";
@@ -2110,6 +2111,16 @@ function AskConversation({
 
       <div ref={threadBoxRef} className="ask-thread" role="log" aria-live="polite" aria-relevant="additions text" aria-label={askCopy.threadLabel}>
         <AskClaudeCreditNotice queryClient={queryClient} enabled={creditStatusEnabled} fetchRequiredQuery={fetchRequiredQuery} />
+        {!isAddMode && !isShortcut ? (
+          <RemindersBlock
+            queryClient={queryClient}
+            view={view}
+            enabled={creditStatusEnabled}
+            placement={placement}
+            fetchRequiredQuery={fetchRequiredQuery}
+            onOpen={(target) => goTo(target.pathname, target.extra)}
+          />
+        ) : null}
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}

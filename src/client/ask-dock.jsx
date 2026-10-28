@@ -31,12 +31,13 @@ export function openAskDock(options = {}) {
 /**
  * @param {{
  *   besideFab: boolean,
+ *   remindersCount?: number,
  *   intentProps?: Record<string, Function>,
  *   canLoad: boolean,
  *   renderConversation: (dock: { layout: "docked" | "popup", canExpand: boolean, intent: import("./ask-dock-state").AskIntent, visit: number }) => import("react").ReactNode
  * }} props
  */
-export function AskDock({ besideFab, intentProps = undefined, canLoad, renderConversation }) {
+export function AskDock({ besideFab, remindersCount = 0, intentProps = undefined, canLoad, renderConversation }) {
   const phone = useIsMobileLayout();
   const wide = useIsAskDockWide();
   // A panel left open in this tab shows its frame at once; its code waits for canLoad.
@@ -79,6 +80,7 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
       {mounted || phone ? null : (
         <AskDockField
           besideFab={besideFab}
+          remindersCount={remindersCount}
           intentProps={intentProps}
           inputRef={fieldRef}
           onOpen={(file = null) => requestAskDock(file ? { open: true, file } : { open: true })}
@@ -100,6 +102,7 @@ export function AskDock({ besideFab, intentProps = undefined, canLoad, renderCon
         <Suspense fallback={null}>
           <AskDockPanel
             besideFab={besideFab}
+            remindersCount={remindersCount}
             intentProps={intentProps}
             canLoad={canLoad}
             renderConversation={renderConversation}

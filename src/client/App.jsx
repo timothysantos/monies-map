@@ -52,6 +52,7 @@ import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ErrorPanel, StateBanner } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { askConversationPresence } from "./ask-conversation-presence";
+import { useRemindersCue } from "./reminders-cue";
 import { AskDock, openAskDock } from "./ask-dock";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { slugify } from "./category-utils";
@@ -308,6 +309,9 @@ export function App() {
   // loaded with Ask); the shell only reads whether one is in progress, for
   // the Ask tab's dot and the way back in.
   const askConversation = useSyncExternalStore(askConversationPresence.subscribe, askConversationPresence.getSnapshot, askConversationPresence.getSnapshot);
+  // New reminders for this view, from the answer Ask already kept (no request
+  // of its own): the Ask tab's dot and the desktop Ask field's.
+  const newReminderCount = useRemindersCue({ queryClient, viewId: routeViewId ?? "household" });
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
@@ -2845,6 +2849,7 @@ export function App() {
       getNavIntentProps={getNavIntentProps}
       pendingCategorySuggestionCount={pendingCategorySuggestionCount}
       askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
+      remindersCount={selectedTabId !== "ask" ? newReminderCount : 0}
       showPhoneOnly
       includeOverflow={false}
     />
@@ -3212,6 +3217,7 @@ export function App() {
             getNavIntentProps={getNavIntentProps}
             pendingCategorySuggestionCount={pendingCategorySuggestionCount}
             askInProgress={askConversation.inProgress && selectedTabId !== "ask"}
+            remindersCount={selectedTabId !== "ask" ? newReminderCount : 0}
           />
           <div className={`period-nav-cluster ${isPeriodPassive ? "is-passive" : ""}`} aria-disabled={isPeriodPassive || undefined}>
             <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isPeriodPassive}>‹</button>
@@ -3526,6 +3532,7 @@ export function App() {
         <AskDock
           besideFab={renderedTabId === "entries" || (renderedTabId === "splits" && pageView.id !== "household")}
           intentProps={getNavIntentProps("ask")}
+          remindersCount={newReminderCount}
           canLoad={routeWork.usable}
           renderConversation={renderAskDockConversation}
         />

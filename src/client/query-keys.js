@@ -141,5 +141,9 @@ export const queryKeys = {
   // not per view or month.
   claudeCreditStatus() {
     return ["claude-credit-status"];
+  },
+  // The reminders shown at the top of Ask (reminders-api.js), one per view.
+  reminders(viewId) {
+    return ["reminders", viewId || "household"];
   }
 };

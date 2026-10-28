@@ -68,6 +68,8 @@ export const messages = {
     splits: "Splits",
     ask: "Ask",
     askInProgress: "Ask, conversation in progress",
+    askReminders: (count) => `Ask, ${count} ${count === 1 ? "reminder" : "reminders"}`,
+    askInProgressAndReminders: (count) => `Ask, conversation in progress and ${count} ${count === 1 ? "reminder" : "reminders"}`,
     imports: "Imports",
     settings: "Settings",
     faq: "FAQ",
