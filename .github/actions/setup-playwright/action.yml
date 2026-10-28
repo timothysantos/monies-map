@@ -1,0 +1,22 @@
+name: Set up Playwright Chromium
+description: >
+  Chromium for the installed @playwright/test, with the browser download
+  cached per Playwright version. The system libraries come from apt on every
+  run (they are not in the cache). Run after setup-deps.
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      run: echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+    - id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.version.outputs.playwright }}-chromium
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install --with-deps chromium
+    - if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: npx playwright install-deps chromium

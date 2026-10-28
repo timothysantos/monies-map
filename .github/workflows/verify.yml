@@ -1,25 +1,61 @@
 name: Verify
 
+# Runs on pull requests, on every push to master, on pushes to a `ci/**`
+# branch, and by hand (Actions tab > Verify > Run workflow, on any branch). A
+# full run costs about 70 runner minutes and the private-repo free tier is
+# 2,000 a month (docs/developer-guide.md, "How does CI run?").
+# To test a branch in CI without a pull request: `git push origin HEAD:ci/<name>`.
 on:
   pull_request:
   push:
     branches:
       - master
+      - "ci/**"
+  workflow_dispatch:
 
+# A newer push to the same pull request or branch cancels the older run. A run
+# on master is never cancelled, so every master commit keeps its own result.
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+# The same checks as `npm run verify` (audit, both typechecks, lint, unit and
+# contract tests, build, bundle budget) and `npm run test:e2e:sharded`, split
+# into parallel jobs on two-vCPU runners. The smoke bundle is not run on its
+# own: every smoke spec file is part of the full browser suite below.
 jobs:
-  verify:
+  static:
+    name: audit, types, lint, build, bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run verify
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-deps
+      - run: npm run audit
+      - run: npm run typecheck
+      - run: npm run typecheck:client
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run check:bundle
+
+  # `npm run test:unit` split by file across runners: the same runner script
+  # (scripts/run-unit-tests.mjs, which seeds the shared D1 template and picks
+  # every unit test file) with node --test's shard and concurrency options.
+  # It also covers `npm run test:contracts`, whose files are in tests/. Each
+  # runner has two vCPUs, where node --test would run one file at a time by
+  # default.
+  unit:
+    name: unit ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-deps
+      - run: node --import tsx scripts/run-unit-tests.mjs --test-concurrency=2 --test-shard=${{ matrix.shard }}/3
 
   # The full browser suite runs as four shards on separate runners. Each shard
   # starts its own Vite + Wrangler + local D1 stack and runs its spec files
@@ -28,22 +64,17 @@ jobs:
   full-e2e-shard:
     name: full-e2e shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-deps
+      - uses: ./.github/actions/setup-playwright
       - run: node scripts/run-e2e-sharded.mjs --shards 4 --shard ${{ matrix.shard }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
         with:
           name: e2e-blob-report-${{ matrix.shard }}
@@ -59,20 +90,15 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-deps
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: e2e-blob-report-*
           path: all-blob-reports
       - run: node scripts/run-e2e-sharded.mjs --merge all-blob-reports
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
         with:
           name: e2e-html-report
@@ -83,3 +109,17 @@ jobs:
         run: |
           echo "A full-e2e shard job ended with '${{ needs.full-e2e-shard.result }}'."
           exit 1
+
+  # The one check to require: green only when every job above passed.
+  verify:
+    needs: [static, unit, full-e2e]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed
+        run: |
+          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, full-e2e: ${{ needs.full-e2e.result }}"
+          test "${{ needs.static.result }}" = success
+          test "${{ needs.unit.result }}" = success
+          test "${{ needs.full-e2e.result }}" = success

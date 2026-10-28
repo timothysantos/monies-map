@@ -15,7 +15,10 @@ const stop = () => {
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 try {
-  const supplied = process.argv.slice(2);
+  // `--flag` arguments (CI passes --test-shard and --test-concurrency) go to
+  // node --test; the rest name the files to run, or every unit test file.
+  const flags = process.argv.slice(2).filter((argument) => argument.startsWith("--"));
+  const supplied = process.argv.slice(2).filter((argument) => !argument.startsWith("--"));
   const targets = supplied.length ? supplied : (await Promise.all(["tests", "tests/performance"].map(async (dir) =>
     (await readdir(dir)).filter((file) => file.endsWith(".test.mjs")).sort().map((file) => `${dir}/${file}`)
   ))).flat();
@@ -30,7 +33,7 @@ try {
   }
   if (interrupted) process.exitCode = 130;
   else process.exitCode = await new Promise((resolve, reject) => {
-    child = spawn(process.execPath, ["--import", "tsx", "--test", ...targets], {
+    child = spawn(process.execPath, ["--import", "tsx", "--test", ...flags, ...targets], {
       stdio: "inherit",
       env: { ...process.env, ...(template ? { MONIES_TEST_D1_TEMPLATE: template.persistTo } : {}) }
     });

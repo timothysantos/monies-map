@@ -81,6 +81,24 @@ and parallel sessions kept colliding on those ports.
     `/api/splits/expenses/update` response. No assertion changed.
     `--repeat-each=3` passed. A scan found no other click-then-read without
     a response wait.
+  - `import-stepper.spec.js:303` (J and K) timed out once in CI (150 s,
+    shard 3). The import bar has two Change buttons and shows one: in the
+    step summary while the bar sits in the page, in the step's first line
+    once it is stuck. The test clicked Change straight after a K jump whose
+    smooth scroll was still moving the page. Playwright found the summary's
+    button, the bar then stuck and hid it, and the click kept retrying that
+    same hidden button (the failure snapshot shows the bar stuck). Fixed in
+    the test: it scrolls to the top and waits for the bar to let go before
+    it clicks Change. Five repeats passed on Linux CI.
+  - `picker-scroll.spec.js` failed every test on Linux CI and passed on
+    macOS. Its Chromium swipe used CDP `Input.synthesizeScrollGesture` with a
+    touch source. On Linux headless Chromium that sends touchstart and
+    touchend but no touchmove, so the list never scrolled (same layout on
+    both: list 451 px tall, 1,728 px of options, DPR 3). It now sends CDP
+    `Input.dispatchTouchEvent` start, move and end, which scrolled the list
+    on both systems. It still fails, on Linux and macOS, when the list
+    cannot scroll (`overflow: hidden`) and when a scroll lock cancels the
+    real touch moves.
   - `mobile-sheet-focus.spec.js:305` (900x1200) failed once. The sheet
     reopened straight after a save showed 1800 instead of 1825, although
     the save had returned 200. This is an app race, queued separately: a
@@ -151,10 +169,20 @@ about 130–145 s), so two shards match four.
   and the weighted plan applies as measured (about 180 s of tests per shard
   plus setup). The merge job keeps the `full-e2e` check name. It fails when a
   shard job failed, a test failed, or the merged count differs from the
-  listing, and it uploads the HTML report. `verify` is unchanged apart from
-  the faster smoke step. I checked the merge path locally, including a
-  missing shard (count mismatch, exit 1). I have not run the workflow on
-  GitHub.
+  listing, and it uploads the HTML report. I checked the merge path
+  locally, including a missing shard (count mismatch, exit 1).
+- **CI, 12 October 2026 (branch `ci-health`):** the single `verify` job ran
+  `npm run verify` on a two-vCPU runner, where `node --test` runs one file at
+  a time. With 1,678 unit tests (each D1 test starts workerd) the unit step
+  alone took 20.6 minutes and the job hit its 30-minute limit during the
+  smoke bundle. The workflow now runs `static` (audit, types, lint, build,
+  bundle), `unit` (three runners, `--test-shard`, two files at a time; one
+  quarter of the files took 379 s one at a time and 291 s two at a time),
+  the four browser shards and the merge, and a final `verify` job that
+  passes only when all of them did. The smoke bundle no longer runs in CI:
+  its 14 spec files are all in the full suite. The workflow runs on pull
+  requests, `ci/**` pushes and by hand, not on every push to master
+  (minutes: developer guide, "How does CI run?").
 
 ## wrangler dev proxy (removed workaround)
 
