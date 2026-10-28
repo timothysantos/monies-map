@@ -627,6 +627,33 @@ Rules:
 - multi-file intake may keep parsed rows, checkpoints, and generic CSV text in
   browser memory only until cleared, reloaded, or loaded into review
 
+### Locked Statement
+
+A statement PDF that needs a password to open (banks lock the PDF with part of
+the card number or ID). The app asks for the password in an in-app dialog,
+"This statement is locked", before it reads the file, and the password is
+typed on this device only. It is a transient fact about one file's read, never
+a record.
+
+Storage:
+- none. The password lives in memory (a closure per file, plus an optional
+  batch keeper the person asks for with "Use this password for my other locked
+  files in this import") and is forgotten when the file's read ends, the
+  batch ends or the page is left. It is never in state that is saved, a query
+  key, a URL, a request, storage, a log line, an error message or an error
+  diagnostic (`memory-secrets.js` redacts it from both reports).
+
+Rules:
+- detected from pdf.js's password refusal before any text reading, OCR or AI
+  step; a corrupt file is not a locked statement
+- a wrong password is said inline and asked again; after 5 wrong tries only
+  skipping is offered (a courtesy stop, not a security control)
+- skipping (button, Escape, tap outside, swipe down) ends that file only; the
+  other files of the drop carry on and the file shows as "Skipped: locked"
+- a file locked only against printing or copying opens without a question
+- AI never receives a password or a file that was not opened first
+- see `docs/audits/locked-statements.md`
+
 ### Error Diagnostic
 
 A bounded support record created when a browser request fails in a way the app

@@ -289,6 +289,33 @@ Imports owns:
   `docs/audits/wrong-card-apple-pay-duplicate.md`,
   `tests/e2e/wrong-card-apple-pay-duplicate.spec.js`.
 
+## Locked Statements
+
+A PDF that needs a password is detected in its first read (`openPdfDocument`
+in `import-helpers.js` catches pdf.js's `PasswordException`), before any text
+extraction, OCR or AI step. The lazy `pdf-unlock.js` then asks through
+`LockedStatementDialog` (the shared `SheetDialog`; a sheet above the keyboard
+on a phone):
+
+- state: the panel holds only the question (`lockedPrompt`: file name, wrong
+  or not, tries) and the names of skipped files (`skippedLockedFiles`, shown
+  as "Skipped: locked" chips); never a password. Questions queue
+  (`askLockedStatementPassword`), so dialogs never stack.
+- one unlocker per file read (`createLockedStatementUnlocker`, attached to
+  the `File` in a WeakMap while it is read and released in `finally`); the
+  OCR passes that reopen the file reuse its password without asking.
+- a password kept for "my other locked files in this import" lives in
+  `batchPasswordRef` (a `createBatchPasswordKeeper`) and is cleared when the
+  batch ends (no file in review, queued, committed or being read) and on
+  unmount.
+- skipping (button, Escape, backdrop, swipe) throws `LockedStatementSkipped`:
+  in a multi-file drop that file is passed over and the rest carry on; a
+  single file gets the error-toned status "{file} is locked, so it was
+  skipped."
+- no request, storage or URL carries the password; the AI statement fallback
+  never runs for a locked file; the original file is still never uploaded or
+  stored. Details and the threat model: `docs/audits/locked-statements.md`.
+
 ## Audit Status
 
 Current status: aligned with tests and runtime behavior.

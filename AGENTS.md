@@ -388,6 +388,14 @@ Details and the reasons are in `docs/code-spec.md` and
   PDF binaries, full account/card numbers, or unbounded notes to AI. For a
   statement fallback, require explicit consent and send only bounded,
   redacted browser-extracted text after local parsers and in-browser OCR fail.
+- A locked statement's password (DOMAIN.md "Locked Statement",
+  `docs/audits/locked-statements.md`) is typed on the device and lives in
+  memory only, for one file's read (`pdf-unlock.js`): never sent in any
+  request, stored (storage, URL, IndexedDB), put in React state, a query key,
+  a log line, an error message or an error report (`memory-secrets.js`
+  redacts it), and never given to AI. A locked file stops at the first read,
+  so it cannot reach OCR or the statement fallback undecrypted. Do not add
+  logging around the unlock path.
 - The one image exception: a receipt image, or one rendered page of a PDF
   receipt, that the user explicitly pastes, drops, scans or shares may be
   sent to the AI provider. The browser downscales it (at most 1.5 MiB) and

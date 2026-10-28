@@ -1833,6 +1833,31 @@ split matches** (or **Later**).
 Select **Start over** at any time to clear the draft. Your original file is
 never stored; only the rows you commit are saved.
 
+## Statements locked with a password
+
+Some banks send a statement PDF that opens only with a password. Drop it on
+**Imports** like any other file. A box called **This statement is locked**
+asks for the password, and shows the file's name so you know which one it is.
+
+- Banks usually lock statements with part of your card number or ID. Your
+  bank's own message or website says exactly which part.
+- Type the password and select **Open statement**. The eye button, **Show
+  password**, lets you check what you typed.
+- If it is wrong, the box says **That password didn't work. Try again.** After
+  5 wrong tries it only offers **Skip this file**; add the file again when you
+  have the right password.
+- **Skip this file**, the Escape key, or closing the box skips that file only.
+  The other files you dropped carry on, and the skipped one shows as **Skipped:
+  locked** among your files.
+- Several locked files ask one after the other. If they all use the same
+  password, tick **Use this password for my other locked files in this
+  import** and the app does not ask again until this import is finished.
+
+The password is never sent or saved. It stays on this device, only while the
+file is being read, and is forgotten after that. The app also never stores
+your original file. A statement that is only blocked from printing or copying
+opens without asking.
+
 ## Import an investment statement (iFAST and StashAway)
 
 An iFAST monthly statement (the "Wrap" PDF) does two things when you import

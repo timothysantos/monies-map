@@ -1972,6 +1972,23 @@ Rules:
   the import review's `FixGroup`, writes on approval (never automatically)
   and keeps the last correction's ids in `SettingsPanel` for its Undo
 
+## Locked statements
+
+A statement PDF that needs a password asks for it in the app's one dialog
+frame (`SheetDialog`: a centred dialog on a wide screen, a sheet that lifts
+above the keyboard on a phone; "Sheets and the keyboard" applies). The title is
+"This statement is locked"; the lead names the file; the field is a password
+field with `autocomplete="off"`, a name and data attributes that keep password
+managers out, and a 44px show/hide button; the checkbox "Use this password for
+my other locked files in this import" is off by default. Open statement is the
+primary, Skip this file the quiet one; Escape, a tap outside and the swipe
+down skip. A wrong password shows "That password didn't work. Try again." as an
+alert, empties the field and refocuses it; after 5 wrong tries only Skip
+remains. The typed value is read from the input when answered and cleared at
+once: it is never React state. The dialog code and its CSS are lazy with the
+Imports route; the first screen carries only `memory-secrets.js` (the
+redaction used by the crash report). See `docs/audits/locked-statements.md`.
+
 ## Import Page Stages
 
 The Imports page is three steps (`src/client/import-stages.jsx`): Bring

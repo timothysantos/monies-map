@@ -103,6 +103,9 @@ a doc here in the same change.
   audit.
 - [`import-inbox-task-list.md`](import-inbox-task-list.md): import inbox goals
   and remaining task.
+- [`audits/locked-statements.md`](audits/locked-statements.md): password-protected
+  statement PDFs: flow, memory-only password rules, threat model, fixtures,
+  bank password rules from the intake research, before and after screenshots.
 - [`audits/island-context.md`](audits/island-context.md): phone filter context,
   scope visibility, scroll continuity, screenshots and closure evidence.
 - [`audits/macro-loading-baseline.md`](audits/macro-loading-baseline.md): macro
