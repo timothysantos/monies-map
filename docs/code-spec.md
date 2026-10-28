@@ -172,6 +172,20 @@ or a page query) must pass, with no regression, before it merges:
 Raise a budget only for a deliberate, measured reason, and say why in the
 commit.
 
+Two recording specs sit beside the built-client ones and never assert timing
+(they run with `npm run test:performance`, or one at a time with
+`npx playwright test --config=playwright.performance.config.js <spec>`;
+`PERFORMANCE_ARTIFACTS_DIR` picks where the JSON reports go, and generated
+reports are not committed):
+
+- `tests/performance/page-loads.spec.js`: a cold load of each route (Summary,
+  Month, Entries, Splits, Settings, Ask) and the Ask opens, on the desktop and
+  mobile profiles: time until usable, bytes and requests before it, and the
+  idle traffic after. Compare reports from two trees as cohorts.
+- `tests/performance/api-cost.spec.js`: bytes, handler time and, for a Worker
+  copy wrapped by `scripts/wrap-d1-counter.mjs` (never a checkout), D1
+  statements, time and rows read for every request a screen makes.
+
 Budget rules:
 
 - visible page queries over `750ms` are a design smell

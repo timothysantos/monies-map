@@ -8,7 +8,9 @@ import { parseServerTiming, summarizeSamples, totalsByType } from "./performance
 // Page-by-page cold loads and the Ask opens, on the built client. Records,
 // never asserts timing (noise must not fail it, budgets must not be inflated
 // to pass it); it asserts only that the harness is valid. Run it per tree and
-// compare cohorts with `node scripts/compare-performance.mjs --pages`.
+// compare the JSON reports it writes (`PERFORMANCE_ARTIFACTS_DIR`, one file per
+// project) between trees as cohorts; scripts/compare-performance.mjs does not
+// read this report yet.
 //
 // Per route, one fresh browser context per sample (empty HTTP cache, warm
 // Worker): the time until the route is usable, the requests started before
@@ -34,16 +36,19 @@ const PROFILES = {
 // `api` lists the page APIs the route reads before it can show its data.
 const ROUTES = [
   { key: "summary", url: `/summary?view=household&month=${MONTH}`, heading: "Summary", api: ["/api/summary-page", "/api/summary-account-pills"] },
-  { key: "month", url: `/month?view=household&month=${MONTH}`, heading: "Month", api: ["/api/month-page"] },
+  { key: "month", url: `/month?view=household&month=${MONTH}`, heading: "Month", phoneMarker: ".month-panel-head", api: ["/api/month-page"] },
   { key: "entries", url: `/entries?view=household&month=${MONTH}`, heading: "Entries", api: ["/api/entries-page"] },
-  { key: "splits", url: `/splits?view=household&month=${MONTH}`, heading: "Splits", api: ["/api/splits-page"] },
+  { key: "splits", url: `/splits?view=household&month=${MONTH}`, heading: "Splits", phoneMarker: ".panel-splits", api: ["/api/splits-page"] },
   { key: "settings", url: "/settings?view=household", heading: "Settings", api: ["/api/settings-page"] },
   { key: "ask", url: "/ask?view=household", heading: "Ask", api: [] }
 ];
 
 // In-page predicate: returns performance.now() once the route is usable.
-const USABLE = ({ heading, api }) => {
-  const title = [...document.querySelectorAll("h1, h2")].some((node) => node.textContent.trim() === heading && node.offsetParent !== null);
+// A phone hides some headings (Month), so `phoneMarker` names a visible element instead.
+const USABLE = ({ heading, api, marker }) => {
+  const title = marker
+    ? (document.querySelector(marker)?.getClientRects().length ?? 0) > 0
+    : [...document.querySelectorAll("h1, h2")].some((node) => node.textContent.trim() === heading && node.offsetParent !== null);
   if (!title) return false;
   const finished = performance.getEntriesByType("resource").filter((entry) => entry.responseEnd > 0).map((entry) => new URL(entry.name).pathname);
   if (!api.every((needed) => finished.includes(needed))) return false;
@@ -99,7 +104,7 @@ async function coldLoad(browser, project, profile, route) {
     let usableMs;
     try {
       // A route an older build lacks never gets its heading; do not wait a minute for it.
-      const handle = await page.waitForFunction(USABLE, { heading: route.heading, api: route.api }, { polling: "raf", timeout: route.key === "ask" ? 15_000 : READY_TIMEOUT_MS });
+      const handle = await page.waitForFunction(USABLE, { heading: route.heading, api: route.api, marker: project.use.isMobile ? route.phoneMarker : undefined }, { polling: "raf", timeout: route.key === "ask" ? 15_000 : READY_TIMEOUT_MS });
       usableMs = await handle.jsonValue();
     } catch (error) {
       if (route.key === "ask") {
