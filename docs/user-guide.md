@@ -1109,6 +1109,72 @@ In **Settings**, **What Ask remembers** has the switch **Let Ask handle safe
 things** (on to start with), lists everything Ask has learned, lets you
 change or forget any of it, and has **Forget everything**.
 
+### Reminders
+
+When you open Ask to chat, a few short cards can sit at the very top, above
+**Since you last looked**. Each one is something coming up or waiting for you:
+
+- **A card bill due soon.** From a week before the due date, and for a month
+  after it while less than the minimum is paid. It says what is due, when, and
+  what has been paid since the statement.
+- **A statement that should be out.** The bank usually closes a statement
+  around the same day each month. About five days after that day, if the
+  statement is not imported yet, the card says so. Cards and accounts with
+  fewer than two statements are left alone.
+- **A settle-up that has been waiting.** A settle-up on Splits that nobody has
+  paid for more than two weeks, or shared costs of $20 or more that have sat
+  open for four weeks, in whole weeks.
+- **A subscription that costs more now.** A bill that was the same amount for
+  three months (two years, for a yearly one) and then went up or down by $1 and
+  5% or more. It stays for 45 days. Spending in another currency is never
+  compared, because rates move every month.
+- **A month ready to close.** Once every statement for the month is in, you get
+  a short checklist: statements imported, nothing left in Other (no category),
+  Splits to settle, and a month note. Each open line opens the page where you
+  finish it. When all four are done, the next time you open Ask you see one
+  line, "September is all in", and then nothing.
+
+![Ask on a phone with two reminders at the top](/faq/guide/phone/thumbs/phone-ask-reminders.webp)
+
+A phone shows two cards and then **N more reminders**, which opens the rest
+where they are. The wide panel on a computer shows three. The big button on a
+card opens the page that settles it: **Open card** shows that card's entries,
+**Import statement** opens Imports, **Open Splits** opens Splits, and **Open
+September** opens the month. Reminders are worked out with fixed rules from the
+records you already have. Nothing is sent to you, nothing is saved on the
+server, and nothing here is written by Claude.
+
+**Later** puts a card away. On a phone it opens a sheet; on a computer, a small
+menu. You choose **Tomorrow**, **In 3 days** or **Next week** (the coming
+Monday), each shown with its date, or the line that says never for this one:
+**Not for this bill**, **Not for this statement**, **Not for this balance**,
+**Not for this month**, or on a card bill **Paid from another account** (for a
+payment made from a bank you have not imported yet). The card turns into one
+line, "Back on Thu 15 Oct", with **Undo**. A subscription change has **Got it**
+instead.
+
+![The Later sheet on a phone: Tomorrow, In 3 days, Next week and Not for this statement](/faq/guide/phone/thumbs/phone-ask-reminders-later.webp)
+
+Good to know:
+
+- Later only hides a card **on the phone or computer you used**. It does not
+  hide it on your other devices or for the other person.
+- You never need to mark one done. A card goes away by itself when the
+  statement is imported, the payment shows in your records, the settle-up is
+  paid, or the note is written.
+- Reminders show only when you chat with Ask, not when you add an entry. With
+  money hidden they show **••••**, and they do not say who owes whom.
+- The Ask button (the sparkle box on a computer) shows the small orange dot for
+  a reminder you have not seen yet, the same dot as a conversation waiting.
+  The dot does not ask the server anything on its own, so it lights only after
+  Ask has read your reminders in this visit: when a card you put off comes
+  back, or when a refresh finds a new one. A reminder that appeared while the
+  app was closed is simply on the cards the next time you open Ask.
+- These are about what is coming up. Problems with your records, such as a
+  month with a missing statement, are on **Check my books**.
+
+![Ask beside Entries on a computer with three reminders](/faq/guide/desktop/thumbs/desktop-ask-reminders.webp)
+
 ### Ask on a computer
 
 On a computer there is no Ask tab. Every screen has a box at the bottom

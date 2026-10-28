@@ -604,6 +604,44 @@ const SHOTS = [
     }
   },
   {
+    // Reminders at the top of Ask (docs/flows/reminders-flow.md): whatever the
+    // fixed rules raise for the showcase household today, read from the real
+    // route. Opened after Summary, as the Ask tab is.
+    name: "phone-ask-reminders", device: "phone",
+    run: async (page) => {
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click();
+      await page.getByRole("heading", { name: "Ask", exact: true }).waitFor();
+      await page.locator(".reminders .reminder-card").first().waitFor({ timeout: 20_000 });
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
+    // Later on a phone: the bottom sheet over the card.
+    name: "phone-ask-reminders-later", device: "phone",
+    run: async (page) => {
+      await open(page, `/summary?view=person-ethan&month=${MONTH}`);
+      await page.locator("nav.tab-strip").getByRole("link", { name: "Ask" }).click();
+      await page.locator(".reminders .reminder-card").first().waitFor({ timeout: 20_000 });
+      await page.locator(".reminders .reminder-card").first().getByRole("button", { name: "Later" }).click();
+      await page.getByRole("dialog", { name: "Remind me later" }).waitFor();
+      await page.waitForTimeout(500);
+      await hideCaret(page);
+    }
+  },
+  {
+    // The same cards in the docked panel beside Entries (up to three).
+    name: "desktop-ask-reminders", device: "desktop",
+    run: async (page) => {
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      await page.getByRole("textbox", { name: "Ask", exact: true }).click();
+      await page.locator(".ask-dock .reminders .reminder-card").first().waitFor({ timeout: 20_000 });
+      await waitUsable(page);
+      await hideCaret(page);
+    }
+  },
+  {
     // A question answered on Ask: the total, the count and the filters,
     // with Open in Entries first in the chips.
     name: "phone-ask-answer", device: "phone",

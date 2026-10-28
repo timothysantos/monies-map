@@ -22,6 +22,8 @@ auditing. This is a navigation index, not a mega-doc.
 - [`docs/flows/ask-flow.md`](./flows/ask-flow.md)
 - [`docs/flows/check-flow.md`](./flows/check-flow.md) (Check my books, the
   Ledger check-up page)
+- [`docs/flows/reminders-flow.md`](./flows/reminders-flow.md) (Reminders in
+  Ask: the cards at the top of Ask and the Ask tab's dot)
 
 ## Audit Rule
 

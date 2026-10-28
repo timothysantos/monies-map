@@ -1311,6 +1311,9 @@ Canonical terms:
 - `add mode`: opened to add one entry, with an `entry card` from the start
 - `since you last looked`: the Summary check-in's headline for the view,
   read from data already loaded; never a fetch or AI call on open
+- `reminders`: up to two (phone) or three (docked panel) short cards above
+  `since you last looked` in chat mode, then `N more reminders`; see
+  "Reminder"
 - `chip row`: the one row of suggestion buttons above the composer
 - `composer`: the message field, holding a `+` (take or choose a photo,
   or paste) and the mic, with the send (or Save) button beside it
@@ -3104,6 +3107,57 @@ Important distinctions:
   marker per affected month: all-or-nothing for the whole request. There is no
   bulk undo; each pair is unlinked from its details like any other. Linking is
   the moment a pair's transfer purpose is learned (see "Transfer Purpose").
+
+### Reminder
+
+What is coming up or waiting for the person, shown as a short card at the top
+of Ask (chat mode) and as a dot on the Ask tab. Computed by fixed rules from
+data the app already holds (`src/domain/reminders/`, one function per kind),
+never by AI, never pushed, emailed or sent anywhere. Read through
+`GET /api/reminders[?view=]` (read-only; at most 20; kinds, dates, minor
+amounts and names only; the words are fixed templates in
+`src/client/copy/reminders-copy.js`). Flow: `docs/flows/reminders-flow.md`;
+rules, false-positive analysis and budgets: `docs/audits/reminders.md`.
+
+Canonical terms:
+- `reminder`: one occurrence of one kind for one subject, with a stable key
+  (`card_bill:<account>:<statement month>`, `statement:<account>:<month>`,
+  `splits:settle_up:<checkpoint>` or `splits:group:<group>:<oldest open
+  date>`, `price:<period>|<payee>:<first new charge date>`,
+  `month_close:<month>`). Next month's statement is a new reminder.
+- five kinds: `card bill due`, `statement not imported yet`, `Splits balance
+  waiting`, `subscription price change`, `month ready to close`
+- `Later`: put one reminder away until a day (Tomorrow, In 3 days, Next week
+  (the coming Monday)), or for good with the kind's own words ("Not for this
+  bill / statement / balance / month", "Paid from another account" on a card
+  bill, "Got it" on a price change). Kept on this device only
+  (`localStorage` `monies.reminders.v1`, versioned, pruned after 90 days,
+  every access in `try/catch`); never the server, never the other person's
+  device
+- `month checklist`: the `month ready to close` card: four checks (statements
+  imported, nothing left in Other, Splits to settle, a month note), each open
+  one opening its page. Guidance only: nothing records a month as closed
+- `new reminder`: one this device has not shown in Ask yet, or one back from
+  Later; the only thing that lights the Ask dot (the `conversation in
+  progress` dot, one dot for both)
+
+Important distinctions:
+- A reminder is what is coming up or what to do next; the Ledger check-up
+  ("Check my books") is what looks wrong. A reminder never repeats a
+  finding: the missing-statement reminder is the next statement not yet in,
+  the check-up's `statement_gap` is a month between two statements.
+- Reminders clear themselves when the thing is done (the statement imported,
+  the payment recorded, the settle-up paid, the note written); there is no
+  manual "done".
+- `Card bill due` is the `card bill` rule (see "Card Bill"): from 7 days
+  before the due date, and for 30 days after it while less than the minimum
+  is paid. A payment from a bank not imported yet is not seen; "Paid from
+  another account" hides that bill on this device.
+- While a `card bill due` card is shown, "Since you last looked" leaves out
+  the same bill's headline; while a month checklist still asks about Splits,
+  its Splits row replaces the standalone Splits reminder.
+- With money hidden the cards show `••••`, no tone and no words that say
+  who owes whom.
 
 ## Relationship Map
 

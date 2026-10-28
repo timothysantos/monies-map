@@ -2693,6 +2693,29 @@ found and its description names nobody is `medium` confidence and hidden
 by default; add `&include=medium` to see those too. `tests/skew-candidates.test.mjs` and
 `tests/skew-candidates-api.test.mjs` hold the rules and their refusals.
 
+## What are reminders in Ask?
+
+`GET /api/reminders[?view=]` (DOMAIN.md "Reminder") answers what the fixed rules
+say is coming up for a view: a card bill due, a statement that should be out, a
+Splits settle-up that has waited, a subscription price change and a month ready
+to close. Each reminder has a stable key (kind, subject, occurrence) and carries
+dates, minor amounts and names only; the words are fixed templates in
+`src/client/copy/reminders-copy.js` (linted by
+`tests/reminders-copy-lint.test.mjs`). The rules are pure functions in
+`src/domain/reminders/` with every number in `thresholds.ts`; the loader is
+`src/domain/pages/reminders.ts`. The route is read-only, runs only when Ask
+opens (or a save invalidates a page while Ask is open), uses no AI and writes
+nothing. The cards are the lazy `reminders-block.jsx` at the top of Ask's chat
+mode (`reminders-model.js` is the pure view-model); Later and Got it live in
+this browser's `localStorage` (`monies.reminders.v1`, `reminders-device-state.js`,
+`reminders-actions.js`, every access in `try/catch`), never on the server.
+The only first-screen code is that device state and `reminders-cue.js`, which
+reads the answer Ask kept in the query cache for the Ask tab's dot. Tests:
+`tests/reminders-rules.test.mjs`, `tests/reminders-api.test.mjs`,
+`tests/reminders-budget.test.mjs`, `tests/reminders-client-model.test.mjs` and
+the browser spec `tests/e2e/reminders-in-ask.spec.js`. Rules, false positives,
+budgets and the dot's limit: `docs/audits/reminders.md`.
+
 ## What is the Ledger check-up?
 
 `GET /api/ledger-checkup` (DOMAIN.md "Ledger Check-up") is one explicit,

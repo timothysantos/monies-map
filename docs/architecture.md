@@ -349,6 +349,17 @@ write routes that resolve each candidate (`/api/transfers/link`,
 `/api/entries/update-classification`, `/api/splits/checkpoints/match`,
 `/api/splits/settlements/create`); it never calls them. No AI is involved.
 
+### Reminders in Ask: what is coming up (current, 2026-10)
+
+Up to a few short cards at the top of Ask's chat mode and a dot on the Ask tab:
+a card bill due, a statement that should be out, a Splits settle-up that has
+waited, a subscription price change and a month ready to close. Fixed rules
+(`src/domain/reminders/`, pure) over data the app already holds, one read-only
+route (`GET /api/reminders`) read when Ask opens, words in a fixed copy file,
+Later and Got it kept on the device. No AI, no write, no new table. The
+Ledger check-up is what looks wrong; reminders are what is coming up and never
+repeat it. See `docs/flows/reminders-flow.md` and `docs/audits/reminders.md`.
+
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
 The household asks "Check my books" and gets a list of problems in its own data

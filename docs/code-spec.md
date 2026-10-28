@@ -145,6 +145,7 @@ chunk.
 | `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
 | `skewCandidates` (`GET /api/skew-candidates`) | `<= 250ms` | `400ms` | read-only, 16 D1 reads, no writes; entries for the month ±14 days, not a page DTO, at most 50 candidates |
 | `ledgerCheckup` (`GET /api/ledger-checkup`) | `<= 150ms` | `400ms` | read-only, runs only when opened: 3 round trips, at most 25 statements, about 129,000 rows read and 40 ms of CPU on the 10k fixture with problems of every kind; not a page DTO, at most 50 findings per kind (`tests/ledger-checkup-budget.test.mjs`, "Ledger check-up reads" below) |
+| `reminders` (`GET /api/reminders`) | `<= 150ms` | `400ms` | read-only, read when Ask opens (never on the first screen): at most 16 statements (13 without a month checklist), about 21,000 to 30,000 rows read and 80 to 110 ms of CPU on the 10k fixture, at most 20 reminders and about 2 KB (`tests/reminders-budget.test.mjs`, payload key `reminders`) |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
 Measured at the 10k stress fixture after the macro performance work
@@ -717,6 +718,19 @@ if workflowLock.isActive(slice, workflowId):
 else:
   refetchAndReconcile()
 ```
+
+## Reminders reads
+
+`GET /api/reminders` (DOMAIN.md "Reminder", `src/domain/pages/reminders.ts`) is
+held to the same page read rules and measured in
+`tests/reminders-budget.test.mjs`: it loads people (never the app shell's
+context: categories and every tracked month were 3 statements and 30,000 rows),
+accounts and statement checkpoints, card payments, subscription charges (about
+13 months, 26 for yearly), the Splits page's own loaders, and, only for a month
+a checklist can show for (every statement account has its statement), that
+month's entries and note. Every read is answered from an index
+(`EXPLAIN QUERY PLAN` pinned) and nothing runs at cold start. The pure rules in
+`src/domain/reminders/` read only those facts and `today`.
 
 ## Ledger check-up reads
 

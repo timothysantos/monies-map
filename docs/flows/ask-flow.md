@@ -1279,6 +1279,20 @@ shell's `broadcastEntryMutation` / `broadcastSplitMutation`, and refreshes
 that month's Entries page DTO through `runBackgroundRefresh`: a failure keeps
 the saved card and shows the retryable refresh notice.
 
+### Reminders
+
+Chat mode starts with the reminder cards (`reminders-block.jsx`), above "Since
+you last looked": up to 2 on a phone and 3 in the docked panel, then "N more
+reminders". They are computed by fixed rules (no AI, no allowance, no model
+call) and read through `GET /api/reminders` once Ask is usable
+(`fetchRequiredQuery`, joining a kept answer for a minute); add mode and the
+Apple Pay Shortcut's card show none. A card's action opens its page with the
+view, month and scope Ask already carries (`goTo`); Later and Got it are kept
+on the device (`monies.reminders.v1`). While a card bill reminder shows,
+"Since you last looked" leaves out that bill's headline. The Ask tab's dot is
+the conversation dot, also lit by a reminder this device has not seen. Full
+flow: [`reminders-flow.md`](./reminders-flow.md).
+
 ## Ownership Notes
 
 Ask owns:

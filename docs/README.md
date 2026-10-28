@@ -90,6 +90,8 @@ a doc here in the same change.
   readers and the Apple Pay Shortcut's link).
 - [`flows/check-flow.md`](flows/check-flow.md): Check my books page (the
   Ledger check-up: sections, groups, "This is fine", hidden money).
+- [`flows/reminders-flow.md`](flows/reminders-flow.md): Reminders in Ask (the
+  cards at the top of Ask, Later on this device, the Ask tab's dot).
 
 ## Audits and evidence
 
@@ -126,6 +128,11 @@ a doc here in the same change.
 - [`audits/ledger-checkup-screen/README.md`](audits/ledger-checkup-screen/README.md):
   the Check my books page and the header's seventh tab, before and after
   screenshots (27 October 2026).
+- [`proposals/reminders/README.md`](proposals/reminders/README.md) and
+  [`audits/reminders.md`](audits/reminders.md): Reminders in Ask: the proposal
+  with its before and after mockups, then the rules as built, false-positive
+  analysis, measured budgets, the dot decision and the answers to the
+  proposal's open questions.
 - [`proposals/settled-correction.md`](proposals/settled-correction.md): the
   Split Correction (phase 3 of the Ledger check-up): a record in the open
   period that fixes a mistake inside a settle-up, its model (a flagged

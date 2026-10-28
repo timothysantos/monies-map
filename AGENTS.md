@@ -363,6 +363,13 @@ Details and the reasons are in `docs/code-spec.md` and
   is Ask's listed safe set, applied by the app's deterministic rules, gated
   and logged with Undo; see "AI in Ask"), and the numbers
   shown come from the app's own validation, not from model prose.
+- Reminders in Ask (`GET /api/reminders`, DOMAIN.md "Reminder") are fixed rules
+  over the household's own data with fixed wording: no AI, no write, no
+  scheduled or pushed message. Later and Got it live on the device
+  (`monies.reminders.v1`), never the server. Their code is lazy with Ask; the
+  Ask tab's dot is the only first-screen part and makes no request of its own
+  (`docs/audits/reminders.md`, "The dot"). Rule changes need their adversarial
+  negatives in `tests/reminders-rules.test.mjs`.
 - Money insights are a deterministic, read-only projection. They may show
   recorded cash flow, plan variance, a same-season comparison that is
   already loaded, and explicit bank-proof gaps. They never predict

@@ -757,6 +757,44 @@ data in `claude-credit-status.js`. Flow:
   (state unknown, no failure recorded), only "Claude hasn't been used
   yet."
 
+## Reminders In Ask
+
+`reminders-block.jsx` (its own `reminders.css`, so it ships with Ask only),
+words in `copy/reminders-copy.js`, the cards as data in `reminders-model.js`,
+what the device remembers in `reminders-device-state.js` and
+`reminders-actions.js`, data in `use-reminders.js`. Flow:
+[`docs/flows/reminders-flow.md`](docs/flows/reminders-flow.md); rules and
+decisions: `docs/audits/reminders.md`; the approved mockups are in
+`docs/proposals/reminders/`.
+
+- Placement: the first thing in Ask's chat conversation after the Claude credit
+  notice and before "Since you last looked", under a "Reminders" eyebrow with
+  the count at its right. Inline and scrolling with the thread: never a modal,
+  a banner over a page or a browser alert; none in add mode.
+- Cards: the brief card's paper, edge and shadow, a 40 px round bubble in a
+  pastel pair (butter for a card bill, sky for a statement and a month, the
+  person's own colour (`getPersonColourVars`) for Splits, lavender for a price
+  change), a bold title, one muted sentence, the amount at the right in plain
+  ink (rose for a late bill or what you owe, mint for what is owed to you:
+  text only), then the main action (accent text and a chevron) and Later
+  (muted, a clock), both 44 px high. At most 2 cards on a phone, 3 in the
+  docked panel, then a 44 px accent text button "N more reminders".
+- Month checklist: a progress bar of four segments (mint ink for done, sky for
+  open) and four rows (a check or a dashed circle, the label, its value, a
+  chevron where the row opens a page); an open row is a button.
+- Later: on a phone the shared `SheetDialog` (bottom sheet, grab handle, swipe
+  down): "Remind me later", the card's name, the three days with their dates,
+  the kind's "not for this one" in its own group, a note that it only hides the
+  card on this device, Cancel. On a wide screen a small popover above the
+  button with the same choices. A choice folds the card into one dashed line,
+  "Back on Thu 15 Oct", with Undo (44 px), for the visit.
+- Hidden money: `••••` for every amount, no tone, no words that say who owes
+  whom. Reduced motion: nothing here animates.
+- The cue: the `.tab-dot` on the phone's Ask tab and, on desktop, the same dot
+  on the Ask field's sparkle (`.ask-dock-field-dot`) while the panel is closed;
+  no count badge, no new colour. The link's label names why ("Ask, 3
+  reminders").
+
 ## Lead · Support · Detail
 
 The owner-approved design language for sheets, dialogs and screen tops
