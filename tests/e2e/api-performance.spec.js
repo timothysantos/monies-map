@@ -15,7 +15,8 @@ const PAGE_APIS = [
   ["Splits page", "/api/splits-page?view=household&month=2026-05"],
   ["Imports page", "/api/imports-page"],
   ["Settings page", "/api/settings-page?view=household"],
-  ["Ledger check-up", "/api/ledger-checkup?view=household"]
+  ["Ledger check-up", "/api/ledger-checkup?view=household"],
+  ["Reminders", "/api/reminders?view=household"]
 ];
 
 function readServerTiming(header) {
@@ -68,7 +69,12 @@ const PAYLOAD_APIS = [
   // report, at most 50 findings of each kind. On the demo household it is the
   // quiet accounts and a few unmatched transfers; a real household's size is
   // bounded by the same cap (tests/ledger-checkup-budget.test.mjs).
-  ["ledger-checkup", "/api/ledger-checkup?view=household"]
+  ["ledger-checkup", "/api/ledger-checkup?view=household"],
+  // Reminders in Ask (docs/audits/reminders.md): at most 20 reminders of
+  // keys, kinds, dates, minor amounts and names, read once when Ask opens.
+  // The demo household raises a few of them; the bound is 20 (tests/
+  // reminders-budget.test.mjs measures the heavy household).
+  ["reminders", "/api/reminders?view=household"]
 ];
 
 // The Splits page once a settlement covered part of a group: the covered
