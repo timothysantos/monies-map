@@ -1,4 +1,6 @@
-const DIAGNOSTICS_PATH = "/settings?settings_section=errorDiagnostics";
+import { redactSecrets } from "./memory-secrets";
+
+const DIAGNOSTICS_PATH ="/settings?settings_section=errorDiagnostics";
 const RESPONSE_BODY_LIMIT = 20000;
 const RESPONSE_EXCERPT_LIMIT = 800;
 
@@ -111,7 +113,9 @@ async function recordImportDiagnostic({
     const diagnosticResponse = await fetch("/api/error-diagnostics/record", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      // Anything held in memory only (a statement's password) is hidden
+      // from the saved report (memory-secrets.js).
+      body: redactSecrets(JSON.stringify({
         source: diagnosticContext.source ?? "import_preview",
         action: diagnosticContext.action ?? "Preview import",
         previousAction: diagnosticContext.previousAction ?? "",
@@ -125,7 +129,7 @@ async function recordImportDiagnostic({
         requestContextJson: JSON.stringify(diagnosticContext.requestContext ?? {}),
         responseExcerpt: normalizeResponseText(responseText).slice(0, RESPONSE_EXCERPT_LIMIT),
         responseBody: responseText.slice(0, RESPONSE_BODY_LIMIT)
-      })
+      }))
     });
     const data = await diagnosticResponse.json().catch(() => ({}));
     return data?.diagnosticId;

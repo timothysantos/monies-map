@@ -15,11 +15,12 @@ const LABEL_LIMIT = 23;
  * @param {{ id: string, label: string, title?: string } | null} input.currentFile the file in review
  * @param {object[]} input.queue the intake queue items
  * @param {string | null} input.activeItemId the queue item in review, if any
+ * @param {{ id: string, name: string }[]} [input.skippedFiles] locked files the person skipped (chips only, not counted)
  * @returns {{ files: { id: string, label: string, title: string, state: string, item?: object, importId?: string }[], index: number, total: number }}
- *   state is "done", "reviewing" or "waiting"; index is the 1-based
+ *   state is "done", "reviewing", "waiting" or "skipped"; index is the 1-based
  *   position the count shows ("File 2 of 4"), 0 with no files
  */
-export function buildImportBatchFiles({ committedFiles, currentFile, queue, activeItemId }) {
+export function buildImportBatchFiles({ committedFiles, currentFile, queue, activeItemId, skippedFiles = [] }) {
   const committedIds = new Set(committedFiles.map((file) => file.id));
   const files = [
     ...committedFiles.map((file) => ({ id: file.id, label: file.label, title: file.title ?? file.label, state: "done", importId: file.importId })),
@@ -37,7 +38,10 @@ export function buildImportBatchFiles({ committedFiles, currentFile, queue, acti
   // With no file in review the count stays on the last one done, or on the
   // first one waiting.
   const index = reviewingIndex >= 0 ? reviewingIndex + 1 : Math.max(1, committedFiles.length);
-  return { files, index, total: files.length };
+  // Locked files the person skipped close the row; they are not part of the
+  // "File 2 of 4" count because they cannot be reviewed.
+  const skipped = skippedFiles.map((file) => ({ id: file.id, label: describeImportFileLabel({ fileName: file.name, sourceType: "pdf" }), title: file.name, state: "skipped" }));
+  return { files: [...files, ...skipped], index, total: files.length };
 }
 
 /**

@@ -1,5 +1,5 @@
 import * as Popover from "@radix-ui/react-popover";
-import { Check, Clock, FileText, ListChecks } from "lucide-react";
+import { Check, Clock, FileText, ListChecks, Lock } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -104,6 +104,16 @@ function ImportFileChip({ file, canShowDone, hasUnsavedReviewWork, inline = fals
         <Check size={14} aria-hidden="true" />
         <span>{file.label}</span>
       </button>
+    );
+  }
+  if (file.state === "skipped") {
+    // Not a button: a locked file the person skipped cannot be opened.
+    return (
+      <span className="import-file-chip is-skipped" title={file.title}>
+        <Lock size={14} aria-hidden="true" />
+        <span>{file.label}</span>
+        <span className="import-file-chip-state">{" · "}{importMessages.lockedSkippedChip}</span>
+      </span>
     );
   }
   if (file.state === "reviewing") {

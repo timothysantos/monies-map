@@ -7,6 +7,8 @@
 // query carries the person and month being viewed), and nothing here ever
 // blocks or breaks the crash screen: the post is fire and forget.
 
+import { redactSecrets } from "./memory-secrets";
+
 const MESSAGE_LIMIT = 1500;
 const STACK_LIMIT = 1500;
 const COMPONENT_STACK_LIMIT = 1500;
@@ -16,7 +18,8 @@ const ACTIONS = {
   "stylesheet-preload": { page: "A stylesheet failed to load (ridden out)" }
 };
 
-const trim = (value, limit) => String(value ?? "").slice(0, limit);
+// A statement password held in memory (memory-secrets.js) never reaches a report.
+const trim = (value, limit) => redactSecrets(String(value ?? "")).slice(0, limit);
 
 /**
  * @param {{ kind: string, level: string, error: unknown, componentStack?: string,

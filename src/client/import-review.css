@@ -731,6 +731,12 @@
   cursor: default;
 }
 
+/* A locked file the person skipped: a quiet label, not a control. */
+.import-file-chip.is-skipped {
+  cursor: default;
+  border-style: dashed;
+}
+
 .import-file-position {
   flex-shrink: 0;
   color: var(--muted);

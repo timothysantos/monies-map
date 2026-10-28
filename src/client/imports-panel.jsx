@@ -57,6 +57,15 @@ import { ImportStatementRecovery } from "./import-statement-recovery";
 import { buildInferredAmountKeys, InferredAmountsContext } from "./import-inferred-amounts";
 import { buildRecoveryImportRow, buildStatementRecovery } from "./import-statement-recovery-model";
 import { moniesClient } from "./monies-client-service";
+import { LockedStatementDialog } from "./locked-statement-dialog";
+import {
+  LockedStatementError,
+  LockedStatementSkipped,
+  attachPdfUnlocker,
+  createBatchPasswordKeeper,
+  createPdfUnlocker,
+  detachPdfUnlocker
+} from "./pdf-unlock";
 import { AccountDialog } from "./account-dialog";
 import { inferStatementAccountKind, inferStatementInstitution } from "./statement-account-hints";
 import { formatAccountSelectLabel } from "./account-display";
@@ -232,6 +241,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // chips), how many changes the file in review has that switching files
   // would drop, and a blocker jump waiting for its section to open.
   const [committedBatchFiles, setCommittedBatchFiles] = useState([]);
+  // Locked statements (pdf-unlock.js). The question on screen holds no
+  // password, only what is asked; `resolve` hands the answer to the file's
+  // read. Several files ask one after the other. The names of the files the
+  // person skipped stay as chips for this batch. A password kept "for my
+  // other locked files" lives in the keeper, in memory, until the batch ends
+  // or the page is left.
+  const [lockedPrompt, setLockedPrompt] = useState(null);
+  const [skippedLockedFiles, setSkippedLockedFiles] = useState([]);
+  const lockedPromptChainRef = useRef(Promise.resolve());
+  const lockedFileCountRef = useRef(0);
+  const batchPasswordRef = useRef(null);
+  batchPasswordRef.current ??= createBatchPasswordKeeper();
   // Whether the user typed the source label (or took one from the inbox).
   const isSourceLabelChosenRef = useRef(false);
   const [reviewChangeCount, setReviewChangeCount] = useState(0);
@@ -836,10 +857,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setUploadStatus({ tone: "active", message: importMessages.intakeParsing(files.length) });
     setIsParsingStatement(true);
     const nextItems = [];
+    const skippedFiles = [];
     const existingFingerprints = new Set(intakeQueue.map((item) => item.fingerprint));
     try {
       for (const file of files) {
-        const parsedImport = await parseImportFileForIntake(file);
+        let parsedImport;
+        try {
+          parsedImport = await parseImportFileForIntake(file);
+        } catch (error) {
+          // A locked file the person skipped: the others carry on.
+          if (error instanceof LockedStatementSkipped) {
+            skippedFiles.push(file);
+            continue;
+          }
+          throw error;
+        }
         const item = buildIntakeQueueItem({
           id: `${Date.now()}-${nextItems.length}-${file.name}`,
           fileName: file.name,
@@ -853,8 +885,16 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         nextItems.push(item);
       }
       setIntakeQueue((current) => [...current, ...nextItems]);
-      // Queued, not done: they wait for review.
-      setUploadStatus({ tone: "waiting", message: importMessages.intakeReady(nextItems.length) });
+      if (skippedFiles.length) {
+        rememberSkippedLockedFiles(skippedFiles);
+      }
+      if (!nextItems.length && skippedFiles.length) {
+        setUploadStatus({ tone: "error", message: importMessages.intakeLockedSkipped(skippedFiles.length) });
+      } else {
+        // Queued, not done: they wait for review.
+        const skippedNote = skippedFiles.length ? ` ${importMessages.intakeLockedSkipped(skippedFiles.length)}` : "";
+        setUploadStatus({ tone: "waiting", message: `${importMessages.intakeReady(nextItems.length)}${skippedNote}` });
+      }
     } catch (error) {
       const previewErrorDetail = buildImportPreviewError(error, importMessages.intakeFailed);
       setPreviewError(previewErrorDetail);
@@ -884,6 +924,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
+      if (error instanceof LockedStatementSkipped) {
+        rememberSkippedLockedFiles([file]);
+        setUploadStatus({ tone: "error", message: importMessages.uploadLockedSkipped(file.name) });
+        return;
+      }
       const previewErrorDetail = buildImportPreviewError(error, "Statement import failed.");
       setPreviewError(previewErrorDetail);
       setUploadStatus({ tone: "error", message: previewErrorDetail.message });
@@ -908,45 +953,16 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     if (fileKind === "pdf") {
-      setUploadStatus({ tone: "active", message: importMessages.uploadExtracting(file.name) });
-      const text = await importService.extractPdfText(file);
-      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
-      let parsed;
+      // A locked PDF asks for its password in the first read, before any text
+      // reading, OCR or AI step; the password is forgotten when the read ends.
+      const unlocker = createLockedStatementUnlocker(file);
+      attachPdfUnlocker(file, unlocker);
       try {
-        parsed = parseStatementText(text, file.name);
-      } catch (error) {
-        if (!importService.isExtractedPdfTextEmpty?.(text)) {
-          parsed = await tryAiStatementTextFallback(text, file.name, error);
-          return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
-        }
-        setUploadStatus({ tone: "active", message: importMessages.uploadOcr(file.name) });
-        const onOcrProgress = ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
-          setUploadStatus({
-            tone: "active",
-            message: importMessages.uploadOcrProgress({
-              fileName: file.name,
-              pageNumber,
-              pageCount,
-              status,
-              progress
-            })
-          });
-        };
-        const ocrText = await importService.extractPdfOcrText(file, onOcrProgress);
-        setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
-        try {
-          parsed = await importService.parseImageStatement({
-            file,
-            firstPass: ocrText,
-            parse: (text) => parseStatementText(text, file.name),
-            onProgress: onOcrProgress
-          });
-        } catch (error) {
-          // The optional AI fallback only ever sees the first pass's text.
-          parsed = await tryAiStatementTextFallback(ocrText, file.name, error);
-        }
+        return await parsePdfStatementFile(file);
+      } finally {
+        detachPdfUnlocker(file);
+        unlocker.release();
       }
-      return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
     }
 
     if (fileKind === "xls") {
@@ -995,6 +1011,99 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       csvText: nextText,
       fileName: file.name
     };
+  }
+
+  async function parsePdfStatementFile(file) {
+    setUploadStatus({ tone: "active", message: importMessages.uploadExtracting(file.name) });
+    const text = await importService.extractPdfText(file);
+    setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
+    let parsed;
+    try {
+      parsed = parseStatementText(text, file.name);
+    } catch (error) {
+      if (!importService.isExtractedPdfTextEmpty?.(text)) {
+        parsed = await tryAiStatementTextFallback(text, file.name, error);
+        return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
+      }
+      setUploadStatus({ tone: "active", message: importMessages.uploadOcr(file.name) });
+      const onOcrProgress = ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
+        setUploadStatus({
+          tone: "active",
+          message: importMessages.uploadOcrProgress({
+            fileName: file.name,
+            pageNumber,
+            pageCount,
+            status,
+            progress
+          })
+        });
+      };
+      const ocrText = await importService.extractPdfOcrText(file, onOcrProgress);
+      setUploadStatus({ tone: "active", message: importMessages.uploadParsing(file.name) });
+      try {
+        parsed = await importService.parseImageStatement({
+          file,
+          firstPass: ocrText,
+          parse: (text) => parseStatementText(text, file.name),
+          onProgress: onOcrProgress
+        });
+      } catch (error) {
+        // A locked file is never read without its password and never goes to
+        // the AI fallback.
+        if (error instanceof LockedStatementError) {
+          throw error;
+        }
+        // The optional AI fallback only ever sees the first pass's text.
+        parsed = await tryAiStatementTextFallback(ocrText, file.name, error);
+      }
+    }
+    return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
+  }
+
+  // The unlocker of one locked file's read: its question goes through the
+  // dialog below, one file at a time, and it can use the password kept for
+  // this batch.
+  function createLockedStatementUnlocker(file) {
+    lockedFileCountRef.current += 1;
+    const fileId = lockedFileCountRef.current;
+    const keeper = batchPasswordRef.current;
+    return createPdfUnlocker({
+      fileName: file.name,
+      askPassword: (request) => askLockedStatementPassword(fileId, request),
+      getBatchPassword: keeper.get,
+      setBatchPassword: keeper.set,
+      dismiss: () => setLockedPrompt((current) => (current?.fileId === fileId ? null : current))
+    });
+  }
+
+  // Questions queue: a second file asks only after the first was answered,
+  // so dialogs never stack (a drop while one is open waits its turn).
+  function askLockedStatementPassword(fileId, request) {
+    const show = () => new Promise((resolve) => {
+      setLockedPrompt({ fileId, request, isChecking: false, resolve });
+    });
+    const answered = lockedPromptChainRef.current.then(show);
+    lockedPromptChainRef.current = answered.then(() => undefined, () => undefined);
+    return answered;
+  }
+
+  function answerLockedPrompt(answer) {
+    const prompt = lockedPrompt;
+    if (!prompt || prompt.isChecking) {
+      return;
+    }
+    // Skipping closes it now; a password shows "Opening statement" until the
+    // file opens (the dialog then closes) or the password is refused (the
+    // same dialog asks again).
+    setLockedPrompt(answer ? { ...prompt, isChecking: true } : null);
+    prompt.resolve(answer);
+  }
+
+  function rememberSkippedLockedFiles(files) {
+    setSkippedLockedFiles((current) => [
+      ...current,
+      ...files.map((skipped, index) => ({ id: `skipped-${Date.now()}-${current.length + index}`, name: skipped.name }))
+    ]);
   }
 
   async function tryAiStatementTextFallback(text, fileName, parseError) {
@@ -2123,6 +2232,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function startBatchIfIdle() {
     if (!isBatchInProgress) {
       setCommittedBatchFiles([]);
+      setSkippedLockedFiles([]);
     }
   }
 
@@ -2232,13 +2342,25 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const previewAccountNames = [...new Set(previewRows.map((row) => row.accountName).filter(Boolean))];
   const singlePreviewAccountName = previewAccountNames.length === 1 ? previewAccountNames[0] : undefined;
   const importBatch = isBatchInProgress
-    ? buildImportBatchFiles({ committedFiles: committedBatchFiles, currentFile: currentBatchFile, queue: intakeQueue, activeItemId: activeIntakeItemId })
+    ? buildImportBatchFiles({ committedFiles: committedBatchFiles, currentFile: currentBatchFile, queue: intakeQueue, activeItemId: activeIntakeItemId, skippedFiles: skippedLockedFiles })
     : { files: [], index: 0, total: 0 };
   // Opening another file drops what the user changed in this one: row
   // edits, mappings and the statement fixes they approved.
   const hasUnsavedReviewWork = Boolean(preview) && reviewChangeCount > 0;
   const showImportBlockers = Boolean(preview) || importBlockers.blockers.length > 0;
   const isBatchBarStuck = useImportStickyBar(panelRef, batchBarRef, isBatchInProgress);
+  // A password kept for the other locked files is forgotten when the batch
+  // ends (nothing left to review and nothing being read) and when the page is
+  // left. It was never stored anywhere else.
+  useEffect(() => {
+    if (!isBatchInProgress && !isParsingStatement) {
+      batchPasswordRef.current.clear();
+    }
+  }, [isBatchInProgress, isParsingStatement]);
+  useEffect(() => {
+    const keeper = batchPasswordRef.current;
+    return () => keeper.clear();
+  }, []);
   useImportBlockerKeys({ hasPreview: Boolean(preview), blockers: importBlockers.blockers, cursorRef: blockerCursorRef, onJump: jumpToBlocker });
   // The file a commit opens next, opened from this render so it starts from
   // the reset form rather than the committed file's choices.
@@ -2687,6 +2809,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           onShowCurrentFile={afterClosingProgressSheet(showCurrentFile)}
           onShowDoneFile={afterClosingProgressSheet(showDoneFile)}
           onJump={afterClosingProgressSheet(jumpToBlocker)}
+        />
+      ) : null}
+      {lockedPrompt ? (
+        <LockedStatementDialog
+          key={lockedPrompt.fileId}
+          request={lockedPrompt.request}
+          isChecking={lockedPrompt.isChecking}
+          onAnswer={answerLockedPrompt}
         />
       ) : null}
       <AccountDialog

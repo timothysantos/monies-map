@@ -1,0 +1,43 @@
+/* The locked-statement question (locked-statement-dialog.jsx): the shared
+   dialog frame with one password field, its show/hide toggle and one
+   checkbox. Fields are 16px so iOS does not zoom; touch targets are 44px. */
+.locked-statement-field > label {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.locked-statement-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.locked-statement-input-row .table-edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.locked-statement-toggle {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.locked-statement-others {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.locked-statement-others input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-strong);
+}
