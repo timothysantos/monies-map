@@ -57,9 +57,9 @@ test("CI's unit shards run the script npm run test:unit runs", async () => {
 // `full-e2e` name; both stay and `verify` waits for every other job.
 test("CI keeps the verify and full-e2e checks and verify needs every job", async () => {
   const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
-  assert.match(workflow, /^  verify:\n    needs: \[static, unit, full-e2e\]/m);
-  assert.match(workflow, /^  full-e2e:\n    needs: full-e2e-shard/m);
-  assert.match(workflow, /^    branches:\n      - master\n/m);
+  assert.match(workflow, /^ {2}verify:\n {4}needs: \[static, unit, full-e2e\]/m);
+  assert.match(workflow, /^ {2}full-e2e:\n {4}needs: full-e2e-shard/m);
+  assert.match(workflow, /^ {4}branches:\n {6}- master\n/m);
   assert.match(workflow, /cancel-in-progress: \$\{\{ [a-z]+\.ref != 'refs\/heads\/master' \}\}/);
 });
 
