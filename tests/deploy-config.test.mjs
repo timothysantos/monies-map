@@ -59,7 +59,11 @@ test("CI keeps the verify and full-e2e checks and verify needs every job", async
   const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
   assert.match(workflow, /^ {2}verify:\n {4}needs: \[static, unit, full-e2e\]/m);
   assert.match(workflow, /^ {2}full-e2e:\n {4}needs: full-e2e-shard/m);
-  assert.match(workflow, /^ {4}branches:\n {6}- master\n/m);
+  // Owner decision 2026-10-28: no run on every master push (the free minutes ran out).
+  assert.match(workflow, /^ {2}push:\n {4}branches:\n {6}- "ci\/\*\*"\n/m);
+  assert.doesNotMatch(workflow, /^ {4}branches:\n(?: {6}.*\n)*? {6}- master\n/m);
+  assert.match(workflow, /^ {2}workflow_dispatch:/m);
+  assert.match(workflow, /^ {2}pull_request:/m);
   assert.match(workflow, /cancel-in-progress: \$\{\{ [a-z]+\.ref != 'refs\/heads\/master' \}\}/);
 });
 

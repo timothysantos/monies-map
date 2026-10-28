@@ -205,15 +205,19 @@ GitHub Actions (`.github/workflows/verify.yml`) runs the same checks as
 - **verify**: passes only when every job above passed. It is the one check to
   look at.
 
-It runs on pull requests, on every push to master, on pushes to a branch
-named `ci/...`, and by hand (Actions tab, Verify, Run workflow, on any
-branch). To test a branch without opening a pull request:
+It runs on pull requests, on pushes to a branch named `ci/...`, and by hand
+(Actions tab, Verify, Run workflow, on any branch, master included). It does
+not run on every push to master: on 28 October 2026 the free minutes ran
+out and every job failed to start with "recent account payments have failed
+or your spending limit needs to be increased", so the owner turned that
+trigger off. `npm run verify` on your computer stays the merge gate. To test
+a branch without opening a pull request:
 
 ```bash
 git push origin HEAD:ci/my-change
 ```
 
-A newer push to the same pull request or branch cancels the older run (a run on master is never cancelled). Runners have two
+A newer push to the same pull request or branch cancels the older run (a run started by hand on master is never cancelled). Runners have two
 vCPUs. The first green run (12 October 2026) took 13 minutes and billed
 about 67 runner minutes (GitHub rounds each job up to a whole minute): 1 for
 the static job, 20 for the three unit jobs (5.5 to 7.5 minutes each), 44 for
