@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadSplitsPage, openRecentImports, postJson, reseedDemo } from "./helpers";
+import { findSplitRow, loadSplitsPage, openRecentImports, postJson, reseedDemo } from "./helpers";
 
 const month = "2026-05";
 const sourceLabel = "Rollback linked split";
@@ -94,6 +94,8 @@ test("a rollback that would move a split in a simplified settlement is refused i
   await expect(popover).toContainText("Rolling back this import would change the amount and shares of a split expense in the simplified settlement");
   await expect(popover).toContainText("Undo the simplification first");
   await expect(importCard).toContainText(/completed/i);
-  const splitsData = await loadSplitsPage(page, { view: "person-tim", month });
-  expect(splitsData.splitsPage.activity.find((item) => item.id === splitExpenseId).totalAmountMinor).toBe(3500);
+  // The simplified settlement covers the expense, so its row is in the
+  // settled section (loaded on demand), not in the page's activity list.
+  const { row } = await findSplitRow(page, { view: "person-tim", month, recordId: splitExpenseId });
+  expect(row.totalAmountMinor).toBe(3500);
 });
