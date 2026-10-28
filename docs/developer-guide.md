@@ -195,8 +195,9 @@ GitHub Actions (`.github/workflows/verify.yml`) runs the same checks as
 
 - **audit, types, lint, build, bundle**: `npm audit`, both typechecks, lint,
   the production build and the bundle budget.
-- **unit 1/3 to 3/3**: the unit tests split by file
-  (`node --test --test-shard`), two files at a time per runner.
+- **unit 1/3 to 3/3**: the unit and contract tests split by file (the
+  `npm run test:unit` runner script with `--test-shard`), two files at a
+  time per runner.
 - **full-e2e shard 1/4 to 4/4**, then **full-e2e**: the browser suite on four
   isolated stacks, merged into one report (the HTML report is an artifact of
   the run). The smoke bundle does not run separately; all of its spec files
@@ -204,15 +205,15 @@ GitHub Actions (`.github/workflows/verify.yml`) runs the same checks as
 - **verify**: passes only when every job above passed. It is the one check to
   look at.
 
-It runs on pull requests, on pushes to a branch named `ci/...`, and by hand
-(Actions tab, Verify, Run workflow, on any branch). It does not run on every
-push to master. To test a branch without opening a pull request:
+It runs on pull requests, on every push to master, on pushes to a branch
+named `ci/...`, and by hand (Actions tab, Verify, Run workflow, on any
+branch). To test a branch without opening a pull request:
 
 ```bash
 git push origin HEAD:ci/my-change
 ```
 
-A newer push to the same branch cancels the older run. Runners have two
+A newer push to the same pull request or branch cancels the older run (a run on master is never cancelled). Runners have two
 vCPUs. The first green run (12 October 2026) took 13 minutes and billed
 about 67 runner minutes (GitHub rounds each job up to a whole minute): 1 for
 the static job, 20 for the three unit jobs (5.5 to 7.5 minutes each), 44 for

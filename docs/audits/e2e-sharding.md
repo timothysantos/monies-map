@@ -181,8 +181,8 @@ about 130–145 s), so two shards match four.
   the four browser shards and the merge, and a final `verify` job that
   passes only when all of them did. The smoke bundle no longer runs in CI:
   its 14 spec files are all in the full suite. The workflow runs on pull
-  requests, `ci/**` pushes and by hand, not on every push to master
-  (minutes: developer guide, "How does CI run?").
+  requests, pushes to master and `ci/**`, and by hand (minutes: developer
+  guide, "How does CI run?").
 
 ## wrangler dev proxy (removed workaround)
 
