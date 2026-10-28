@@ -101,7 +101,7 @@ a card bill, a late statement and last month's statements seeded
 | D1 statements | 16 (13 when no month checklist is possible) | 20 |
 | rows read | about 29,600 with a month checklist, about 21,000 without (the 26-month window of yearly subscriptions walks the date index: no index on category) | 250,000 |
 | response | 2.0 KB (0.6 KB on the demo household) | 8 KB; payload budget key `reminders` 581 B +10% |
-| CPU in the Worker's code (node) | 80 to 110 ms median | 150 ms |
+| CPU in the Worker's code (node) | 80 to 110 ms median | 150 ms target; the test bound is 250 ms so a busy machine does not trip it |
 | reads | every one from an index (EXPLAIN pinned) | no scan of the ledger |
 
 The app shell's context (categories and every tracked month) is not loaded:

@@ -5,14 +5,14 @@
 // Entries not touched for 90 days are dropped on every write, so the entry
 // stays small and an old choice cannot hide a reminder forever.
 
+import { addDaysToIsoDate } from "./app-dates";
 import { reminderDeviceState } from "./reminders-device-state";
 
 export const REMINDER_STATE_MAX_AGE_DAYS = 90;
 
 /** A day as YYYY-MM-DD, `days` after another. */
 export function shiftIsoDate(isoDate, days) {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+  return addDaysToIsoDate(isoDate, days);
 }
 
 /** @param {Record<string, import("./reminders-device-state").ReminderItem>} items */

@@ -21,7 +21,7 @@ export function cardLimitFor(placement) {
 
 const nextMonthOf = (month) => {
   const [year, number] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, number, 1)).toISOString().slice(0, 7);
+  return number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;
 };
 
 // The coming Monday: next week's first day, never today.
