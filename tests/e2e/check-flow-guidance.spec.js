@@ -132,6 +132,9 @@ for (const [label, viewport, phone] of [["desktop", DESKTOP, false], ["390 px ph
       const firstId = await first.getAttribute("data-finding-id");
       const secondId = await rows.nth(1).getAttribute("data-finding-id");
       await frame(page, `${phone ? "phone" : "desktop"}-1-list`);
+      await first.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      await frame(page, `${phone ? "phone" : "desktop"}-1b-row`);
 
       // Primary on its own, then the quiet page link and "This is fine".
       const primary = first.getByRole("button", { name: /^Link these two/ });
