@@ -212,11 +212,12 @@ for (const [label, viewport, phone] of [["desktop", DESKTOP, false], ["390 px ph
       await expect.poll(async () => (await readReport(page)).dismissedCount).toBe(0);
     });
 
-    test("the fix opens where the problem can be put right: a transfer opens its entry in the editor", async ({ page }) => {
+    test("a transfer's quiet 'Open in Entries' opens its entry in the editor (the main button links in place)", async ({ page }) => {
       await loadCheck(page);
       const first = rowsIn(page, "high:transfers").first();
       const title = await first.locator(".check-item-title").innerText();
-      const button = first.getByRole("button", { name: new RegExp(`^Open the transfer and link them: ${title}`) });
+      await expect(first.getByRole("button", { name: new RegExp(`^Link these two: ${title}`) })).toBeVisible();
+      const button = first.getByRole("button", { name: new RegExp(`^Open in Entries: ${title}`) });
       await button.click();
       await expect(page).toHaveURL(/\/entries\?.*editing_entry=txn-/);
       await expect(page.getByRole("button", { name: "Manage transfer" })).toBeVisible({ timeout: 60_000 });

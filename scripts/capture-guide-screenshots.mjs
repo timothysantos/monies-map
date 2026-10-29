@@ -908,6 +908,45 @@ const SHOTS = [
       await page.waitForTimeout(500);
     }
   },
+  // "Link these two": the small confirmation over Check my books, and the way
+  // back ("‹ Check my books") on the page a fix opened.
+  {
+    name: "check-link-two", device: "desktop", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.getByRole("button", { name: /^Link these two/ }).first().click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.locator(".check-two-list li").first().waitFor();
+      await page.waitForTimeout(500);
+    }
+  },
+  {
+    name: "phone-check-link-two", device: "phone", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.getByRole("button", { name: /^Link these two/ }).first().click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.locator(".check-two-list li").first().waitFor();
+      await page.waitForTimeout(500);
+    }
+  },
+  {
+    name: "phone-entries-from-check", device: "phone", reseed: true,
+    run: async (page) => {
+      await seedCheckProblems(page);
+      await open(page, "/check?view=household");
+      await page.locator("#check-summary-title").waitFor({ timeout: 60_000 });
+      await page.getByRole("button", { name: /^Open in Entries/ }).first().click();
+      await page.locator("a.return-to-check").waitFor({ timeout: 60_000 });
+      // The entry's sheet covers the page while it is open; close it to show the way back.
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+    }
+  },
   {
     // The check before an answer: the settle-up Serene still owes, paid by
     // PayNow and filed as spending and income, is asked about first.

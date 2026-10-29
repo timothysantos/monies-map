@@ -42,6 +42,7 @@ import {
   resolveRouteViewId,
   sanitizeTabParams
 } from "./app-routing";
+import { planReturnToCheck, useReturnToCheck } from "./return-to-check";
 import {
   AppLoadingOverlay,
   EnvironmentBanner,
@@ -281,6 +282,9 @@ export function App() {
   const [searchParams, setSearchParams] = useLiveSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  // "‹ Check my books" above a page that "Check my books" sent the person to
+  // (return-to-check.js); null for everyone else.
+  const returnToCheck = useReturnToCheck(location.pathname);
   // "Ask about this" on a Money insights line opens Ask with it.
   useInsightAskLauncher({ navigate, searchParams });
   const syncChannelRef = useRef(null);
@@ -2256,7 +2260,16 @@ export function App() {
     }
 
     if (renderedTabId === "check") {
-      return <CheckPanel view={pageView} runBackgroundRefresh={runBackgroundRefresh} fetchRequiredQuery={fetchRequiredQuery} />;
+      return (
+        <CheckPanel
+          view={pageView}
+          runBackgroundRefresh={runBackgroundRefresh}
+          fetchRequiredQuery={fetchRequiredQuery}
+          categories={categories}
+          onEntryMutation={broadcastEntryMutation}
+          onSplitMutation={broadcastSplitMutation}
+        />
+      );
     }
 
     if (renderedTabId === "ask") {
@@ -2419,6 +2432,27 @@ export function App() {
             primary: true
           }]}
         />
+      ) : null}
+      {returnToCheck && renderedTabId === selectedTabId ? (
+        <a
+          className="return-to-check"
+          href={`${returnToCheck.checkPath}`}
+          aria-label={messages.returnToCheck.aria}
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+              return;
+            }
+            event.preventDefault();
+            const plan = planReturnToCheck(returnToCheck, window.history.state?.idx);
+            if (plan.kind === "history") {
+              navigate(-1);
+            } else {
+              navigate(plan.to);
+            }
+          }}
+        >
+          {messages.returnToCheck.label}
+        </a>
       ) : null}
       <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
         <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>

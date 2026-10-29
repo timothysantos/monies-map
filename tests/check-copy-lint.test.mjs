@@ -39,7 +39,9 @@ function visibleStrings(value, path = "checkCopy", out = []) {
   return out;
 }
 
-const strings = visibleStrings(checkCopy);
+// The words on the way back above another page (first-screen copy) are linted
+// with the page's own.
+const strings = [...visibleStrings(checkCopy), ...visibleStrings(messages.returnToCheck, "messages.returnToCheck")];
 
 test("the walk reaches the copy: titles, headings, buttons and notices", () => {
   const paths = strings.map(([path]) => path);
@@ -69,6 +71,22 @@ test("the guard rejects what it should", () => {
   for (const good of ["Needs fixing", "Worth checking", "Good to know", "This is fine", "Show hidden (2)"]) {
     assert.ok(!BANNED.some(([pattern]) => pattern.test(good)) && findAppJargon(good).length === 0, good);
   }
+});
+
+test("fixing on the page and coming back use these words, and the lint walks them", () => {
+  const paths = strings.map(([path]) => path);
+  for (const expected of ["checkCopy.inPlace.label.link_pair", "checkCopy.inPlace.pair.title", "checkCopy.inPlace.transfer.loading", "checkCopy.change.fixed()", "checkCopy.change.unchanged", "messages.returnToCheck.label"]) {
+    assert.ok(paths.includes(expected), expected);
+  }
+  assert.deepEqual(checkCopy.inPlace.label, { link_pair: "Link these two", transfer: "Open transfer details", correct_settled: "Correct this" });
+  assert.equal(checkCopy.inPlace.openInEntries, "Open in Entries");
+  assert.equal(checkCopy.inPlace.openInSplits, "Open in Splits");
+  assert.equal(messages.returnToCheck.label, "‹ Check my books");
+  assert.equal(messages.returnToCheck.aria, "Back to Check my books");
+  assert.equal(checkCopy.change.fixed(3), "Fixed. 3 things left.");
+  assert.equal(checkCopy.change.fixed(1), "Fixed. 1 thing left.");
+  assert.equal(checkCopy.change.fixed(0), "Fixed. Nothing left.");
+  assert.equal(checkCopy.change.unchanged, "Nothing changed.");
 });
 
 test("the page and its three sections carry the owner's words", () => {

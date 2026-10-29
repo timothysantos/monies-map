@@ -360,6 +360,42 @@
   font-weight: 700;
 }
 
+/* "Link these two": the two entries, money out first. */
+.check-two-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-two-list li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.check-two-role {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.check-two-label {
+  font-weight: 700;
+}
+
+.check-two-detail {
+  color: var(--muted);
+}
+
+/* After a fix the line replaces "Checking ..." in the same place, so nothing
+   moves; it stays plain text (no animation, so reduced motion needs no rule). */
+.check-context[data-changed="true"] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .check-unavailable {
   display: grid;
   gap: 8px;
@@ -404,7 +440,13 @@
     min-height: 520px;
   }
 
-  .check-fix,
+  /* The fix is the full-width first line; the quiet page link and
+     "This is fine" share the second. */
+  .check-fix {
+    flex: 1 1 100%;
+  }
+
+  .check-open,
   .check-fine {
     flex: 1 1 auto;
   }

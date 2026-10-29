@@ -78,6 +78,7 @@ function evidenceLine(line, { areTotalsVisible, formatMoney, thisYear }) {
 function rowFor(finding, context) {
   const { areTotalsVisible, formatMoney } = context;
   const signRevealing = !areTotalsVisible && SIGN_REVEALING_KINDS.has(finding.kind);
+  const inPlace = inPlaceFor(finding);
   return {
     id: finding.id,
     kind: finding.kind,
@@ -90,6 +91,11 @@ function rowFor(finding, context) {
       ? checkCopy.item.involved(formatMoney(finding.amountMinor, finding.currency ?? "SGD"))
       : null,
     fix: finding.fix ?? null,
+    // What can be fixed right here, with its button's words, and the quiet way
+    // to the page instead (only where a fix here exists).
+    inPlace: inPlace ? { ...inPlace, label: checkCopy.inPlace.label[inPlace.type] } : null,
+    month: paramOf(finding.fix?.path ?? "", "month") || null,
+    openLabel: inPlace && finding.fix ? (finding.fix.path.startsWith("/splits") ? checkCopy.inPlace.openInSplits : checkCopy.inPlace.openInEntries) : null,
     fixNote: finding.fix ? null : finding.fixNote ?? null,
     evidenceKey: finding.evidenceKey,
     dismissed: Boolean(finding.dismissed)
@@ -317,4 +323,109 @@ export function applyHiddenChange(report, finding, dismissed) {
     dismissedCount: Math.max(0, (report.dismissedCount ?? 0) - step),
     findings: report.findings.map((item) => (item.id === finding.id ? { ...item, dismissed } : item))
   };
+}
+
+// ---- Fixing without leaving the page (docs/flows/check-flow.md, "Fixing and
+// coming back") --------------------------------------------------------------
+
+function paramOf(path, name) {
+  try {
+    return new URL(path, "https://app.invalid").searchParams.get(name) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * What a problem can be fixed with right on the page, from the report's own
+ * ids and fix path (no new field): two unlinked sides with exactly one
+ * possible match (the id names both), any other transfer that needs its other
+ * side, and a mistake in a settled period.
+ * @returns {{ type: "link_pair", entryIds: [string, string] } | { type: "transfer", entryId: string } | { type: "correct_settled", recordId: string } | null}
+ */
+export function inPlaceFor(finding) {
+  if (!finding?.fix) {
+    return null;
+  }
+  if (finding.kind === "unmatched_transfer") {
+    const subject = String(finding.id).slice("unmatched_transfer:".length);
+    const ids = subject.split("+");
+    if (!subject.startsWith("series:") && ids.length === 2 && ids.every(Boolean)) {
+      return { type: "link_pair", entryIds: [ids[0], ids[1]] };
+    }
+    const entryId = paramOf(finding.fix.path, "editing_entry");
+    return entryId ? { type: "transfer", entryId } : null;
+  }
+  if (finding.kind === "settled_period_error") {
+    const recordId = paramOf(finding.fix.path, "correct_settled");
+    return recordId ? { type: "correct_settled", recordId } : null;
+  }
+  return null;
+}
+
+/** How many problems the report lists in all three sections. */
+export function reportTotal(report) {
+  const counts = report?.tierCounts ?? {};
+  return (counts.high ?? 0) + (counts.check ?? 0) + (counts.note ?? 0);
+}
+
+// The report with one problem taken out: it is put right, so it leaves the
+// list and its section and group counts at once (the refresh that follows
+// brings the server's own). Not "hidden": nothing is marked as fine.
+export function applyResolved(report, finding) {
+  if (!report.findings.some((item) => item.id === finding.id)) {
+    return report;
+  }
+  const kindCounts = { ...report.kindCounts };
+  const counts = { high: 0, check: 0, note: 0, ...(kindCounts[finding.kind] ?? {}) };
+  counts[finding.tier] = Math.max(0, counts[finding.tier] - 1);
+  kindCounts[finding.kind] = counts;
+  return {
+    ...report,
+    tierCounts: { ...report.tierCounts, [finding.tier]: Math.max(0, report.tierCounts[finding.tier] - 1) },
+    kindCounts,
+    findings: report.findings.filter((item) => item.id !== finding.id)
+  };
+}
+
+// The rollback of `applyResolved`: the problem back in the place it stood.
+export function applyUnresolved(report, finding, index) {
+  if (report.findings.some((item) => item.id === finding.id)) {
+    return report;
+  }
+  const kindCounts = { ...report.kindCounts };
+  const counts = { high: 0, check: 0, note: 0, ...(kindCounts[finding.kind] ?? {}) };
+  counts[finding.tier] += 1;
+  kindCounts[finding.kind] = counts;
+  const findings = [...report.findings];
+  findings.splice(Math.min(Math.max(index, 0), findings.length), 0, finding);
+  return {
+    ...report,
+    tierCounts: { ...report.tierCounts, [finding.tier]: report.tierCounts[finding.tier] + 1 },
+    kindCounts,
+    findings
+  };
+}
+
+/**
+ * The short line after a fix, from how many problems the list had before and
+ * has now: "Fixed. 3 things left." when it shrank, "Nothing changed." when it
+ * did not, "" when there is nothing to compare.
+ */
+export function describeCheckChange(before, after) {
+  if (!Number.isFinite(before) || !Number.isFinite(after)) {
+    return "";
+  }
+  return after < before ? checkCopy.change.fixed(after) : checkCopy.change.unchanged;
+}
+
+// The row after (or else before) the one fixed among the rows a group shows,
+// so a person can work down a list: focus goes to it once the fixed row has
+// left. Returns that row's id, or "" when the group has no other row.
+export function nextRowIdAfter(rowIds, id) {
+  const index = rowIds.indexOf(id);
+  if (index === -1) {
+    return "";
+  }
+  return rowIds[index + 1] ?? rowIds[index - 1] ?? "";
 }

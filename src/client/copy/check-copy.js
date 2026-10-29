@@ -97,6 +97,50 @@ export const checkCopy = {
     linkFailed: "Nothing was linked. Check your connection and try again."
   },
 
+  // Fixing on the page itself (docs/flows/check-flow.md, "Fixing and coming
+  // back"): the button that does it, and the quiet one that opens the page.
+  inPlace: {
+    label: {
+      link_pair: "Link these two",
+      transfer: "Open transfer details",
+      correct_settled: "Correct this"
+    },
+    openInEntries: "Open in Entries",
+    openInSplits: "Open in Splits",
+    fixFailed: "Could not save that. Nothing was changed. Try again.",
+    // Only the words around the Transfer details dialog; the dialog's own
+    // words are the ones Entries shows.
+    transfer: {
+      title: "Transfer details",
+      loading: "Looking at this transfer…",
+      loadFailed: "Could not look at this transfer. Nothing was changed. Try again.",
+      notATransfer: "This is no longer a transfer, so there is nothing to match."
+    },
+    // The small dialog before two sides are linked.
+    pair: {
+      title: "Link these two?",
+      loading: "Looking at the two entries…",
+      effect: "They are the same money moving between your accounts, so they will become one move. Nothing is deleted. You can unlink them from their details.",
+      out: "Money out",
+      in: "Money in",
+      confirm: "Link these two",
+      working: "Linking…",
+      cancel: "Cancel",
+      close: "Close",
+      loadFailed: "Could not look at the two entries. Nothing was changed. Try again.",
+      changed: "These two cannot be linked from here any more. Open the transfer to choose.",
+      linkFailed: "Nothing was linked. Check your connection and try again."
+    }
+  },
+
+  // The line that replaces the "Checking ..." line for a few seconds after a
+  // fix, whether it was made on the page or on the page the person came back
+  // from. Worked out from how many problems the list had before and has now.
+  change: {
+    fixed: (left) => (left === 0 ? "Fixed. Nothing left." : `Fixed. ${left} ${plural(left, "thing", "things")} left.`),
+    unchanged: "Nothing changed."
+  },
+
   hidden: {
     toggle: (count) => `Show hidden (${count})`,
     toggleOff: (count) => `Hide hidden (${count})`,

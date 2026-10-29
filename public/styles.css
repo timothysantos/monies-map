@@ -553,6 +553,26 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   }
 }
 
+/* The way back above a page "Check my books" sent the person to: the standard
+   Back place, top left, a 44 px target in a short row (as Ask's back link). */
+.return-to-check {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0 0 4px 4px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: var(--accent-strong);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.return-to-check:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
 /* A route is the page: the tinted --page every card stands off. */
 .panel {
   padding: 20px;

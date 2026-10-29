@@ -61,6 +61,12 @@ export const messages = {
       direct_plus_shared: (name) => `${name}'s entries plus their share of split expenses.`
     }
   },
+  // The link above a page that "Check my books" sent the person to
+  // (return-to-check.js): the page's own name, as the Ask back link does.
+  returnToCheck: {
+    label: "‹ Check my books",
+    aria: "Back to Check my books"
+  },
   tabs: {
     summary: "Summary",
     month: "Month",

@@ -1,15 +1,19 @@
 import { ChevronRight, CircleCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useNavigate } from "react-router-dom";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import "./ui/lead-support-detail.css";
 import "./check-route.css";
-import { buildCheckView } from "./check-model";
+import { buildCheckView, describeCheckChange, nextRowIdAfter, reportTotal } from "./check-model";
 import { CheckLinkPairsDialog } from "./check-link-pairs-dialog";
+import { CheckLinkTwoDialog } from "./check-link-two-dialog";
 import { createCheckOwner } from "./check-data-owner";
+import { postTransferLink, postTransferSettle } from "./check-api";
 import { checkCopy } from "./copy/check-copy";
 import { formatDate, moneyWithCurrency } from "./formatters";
+import { todayInAppTimeZone } from "./app-dates";
 import { useMoneyPrivacy } from "./money-privacy";
+import { forgetReturnToCheck, readReturnToCheck, rememberReturnToCheck } from "./return-to-check";
 import { EmptyState, ErrorPanel, InlineError, StateBanner } from "./ui-states";
 import { useRouteWorkReport } from "./use-route-work-status";
 
@@ -20,6 +24,21 @@ import { useRouteWorkReport } from "./use-route-work-status";
 // (check-link-pairs-dialog.jsx).
 // Nothing runs in the background and nothing is preloaded: the check starts
 // because the person opened the page or pressed "Check again".
+//
+// A problem is fixed where it is when the app already has a dialog for it
+// (link two sides, the Transfer details dialog, the correction of a settled
+// mistake): the dialog opens over this page and closing it leaves the list
+// where it was. Any other fix opens its page, leaving a marker so that page
+// shows "‹ Check my books" and this page, when it opens again, puts the
+// scroll, the open rows and the line "Fixed. N things left." back
+// (docs/flows/check-flow.md, "Fixing and coming back").
+
+// Loaded only when the person opens them.
+const CheckTransferDialog = lazy(() => import("./check-transfer-dialog").then((module) => ({ default: module.CheckTransferDialog })));
+const SplitCorrectionDialog = lazy(() => import("./split-correction-dialog").then((module) => ({ default: module.SplitCorrectionDialog })));
+
+// How long "Fixed. 3 things left." replaces the "Checking ..." line.
+const CHANGE_LINE_MS = 6000;
 
 const OPEN_GROUPS_KEY = "monies-map:check-open-groups";
 
@@ -44,13 +63,27 @@ const formatMoney = (minor, currency) => moneyWithCurrency(minor, currency);
 
 const groupDomId =(key) => `check-group-${key.replace(/[^a-z0-9_]+/gi, "-")}`;
 
-export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
+function readStorage() {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery, categories = [], onEntryMutation = undefined, onSplitMutation = undefined }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { areTotalsVisible } = useMoneyPrivacy();
   const [owner] = useState(() => createCheckOwner({ fetchRequiredQuery }));
   const state = useSyncExternalStore(owner.subscribe, owner.getSnapshot, owner.getSnapshot);
+  // Coming back from a page a fix opened: the marker it left (read here, forgotten
+  // below, so it serves this one visit only).
+  const [returned, setReturned] = useState(() => readReturnToCheck(readStorage()));
+  const lastArrivalRef = useRef(returned?.id ?? "");
+  const returnHandledRef = useRef(false);
   const [openState, setOpenState] = useState(readOpenGroups);
-  const [expanded, setExpanded] = useState(() => new Set());
+  const [expanded, setExpanded] = useState(() => new Set(returned?.expanded ?? []));
   const [showHidden, setShowHidden] = useState(false);
   const showHiddenRef = useRef(false);
   showHiddenRef.current = showHidden;
@@ -59,6 +92,29 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
   const isChecking = state.status === "loading";
   // The route is ready once its check has answered, with a report or a failure.
   useRouteWorkReport({ ready: state.status === "ready", busy: isChecking });
+
+  // Arriving from the page a fix opened: forget the marker (it serves this one
+  // visit). When this page was never left on screen (the person went back before
+  // the other page had loaded) it is still mounted, so it reads again and puts
+  // itself back here; on a fresh mount the check below is that read.
+  useEffect(() => {
+    // Still mounted while another page loads: that is leaving, not arriving.
+    if (location.pathname !== "/check") {
+      return;
+    }
+    const marker = readReturnToCheck(readStorage());
+    if (!marker) {
+      return;
+    }
+    forgetReturnToCheck(readStorage());
+    if (marker.id !== lastArrivalRef.current) {
+      lastArrivalRef.current = marker.id;
+      returnHandledRef.current = false;
+      setExpanded(new Set(marker.expanded));
+      setReturned(marker);
+      void owner.run({ viewId: view.id, includeHidden: showHiddenRef.current });
+    }
+  }, [location.key, location.pathname, owner, view.id]);
 
   // The check starts because the page opened (or the person's view changed).
   useEffect(() => {
@@ -142,7 +198,125 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
     }
   });
 
-  const openFix = useCallback((row) => navigate(row.fix.path), [navigate]);
+  // Fixing means going to another page: keep where this one stood (scroll, the
+  // rows opened with "Show more", how many problems there are) so that page can
+  // offer the way back and this one can put itself back.
+  const openFix = useCallback((row) => {
+    const destination = new URL(row.fix.path, window.location.origin);
+    rememberReturnToCheck(readStorage(), {
+      id: `${Date.now()}`,
+      destPath: destination.pathname,
+      checkPath: location.pathname + location.search,
+      scrollY: window.scrollY,
+      before: state.report ? reportTotal(state.report) : null,
+      expanded: [...expanded],
+      checkIdx: Number.isFinite(window.history.state?.idx) ? window.history.state.idx : null
+    });
+    navigate(row.fix.path);
+  }, [expanded, location.pathname, location.search, navigate, state.report]);
+
+  // ---- The line after a fix: replaces "Checking ..." for a few seconds -------
+  const [changeLine, setChangeLine] = useState("");
+  const changeTimerRef = useRef(0);
+  const showChange = useCallback((text) => {
+    window.clearTimeout(changeTimerRef.current);
+    setChangeLine(text);
+    if (text) {
+      changeTimerRef.current = window.setTimeout(() => setChangeLine(""), CHANGE_LINE_MS);
+    }
+  }, []);
+  useEffect(() => () => window.clearTimeout(changeTimerRef.current), []);
+
+  // Back from another page: the list was read again on opening, so say what
+  // changed, and put the scroll back once the rows are there (never after the
+  // person scrolls themselves).
+  useEffect(() => {
+    if (!returned || returnHandledRef.current || state.status !== "ready" || !state.report) {
+      return;
+    }
+    returnHandledRef.current = true;
+    showChange(describeCheckChange(returned.before, reportTotal(state.report)));
+    if (!returned.scrollY) {
+      return;
+    }
+    let frames = 0;
+    let stopped = false;
+    const stop = () => { stopped = true; };
+    window.addEventListener("wheel", stop, { passive: true, once: true });
+    window.addEventListener("touchmove", stop, { passive: true, once: true });
+    window.addEventListener("keydown", stop, { once: true });
+    const settle = () => {
+      if (stopped || frames > 40) return;
+      window.scrollTo({ top: returned.scrollY, behavior: "instant" });
+      frames += 1;
+      if (Math.abs(window.scrollY - returned.scrollY) > 2) {
+        window.requestAnimationFrame(settle);
+      }
+    };
+    window.requestAnimationFrame(settle);
+  }, [returned, showChange, state.report, state.status]);
+
+  // ---- Fixing here: the dialog the app already has, over this page -----------
+  // `fixing` is { row } for the problem whose dialog is open.
+  const [fixing, setFixing] = useState(null);
+  const fixOpenerRef = useRef(null);
+  const openFixHere = useCallback((row) => {
+    fixOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setFixing({ row });
+  }, []);
+
+  // After a fix the dialog closes; focus goes to the next problem in the same
+  // group (so a person can work down a list), else the page title. Waits for
+  // the dialog's own focus handling to finish.
+  const focusAfterFix = useCallback((nextId) => {
+    window.setTimeout(() => window.requestAnimationFrame(() => {
+      const next = nextId ? panelRef.current?.querySelector(`[data-finding-id="${CSS.escape(nextId)}"] .check-fix`) : null;
+      const target = next ?? panelRef.current?.querySelector("#check-title");
+      if (target instanceof HTMLElement) {
+        target.focus();
+      }
+    }), 0);
+  }, []);
+
+  // Closing without a fix puts focus back on the button that opened it.
+  const closeFixHere = useCallback(() => {
+    setFixing(null);
+    const opener = fixOpenerRef.current;
+    window.setTimeout(() => window.requestAnimationFrame(() => {
+      if (opener?.isConnected) {
+        opener.focus();
+      }
+    }), 0);
+  }, []);
+
+  // Runs one existing command for a problem: the row leaves at once and comes
+  // back if the server refuses (check-data-owner.js `resolveInPlace`); on
+  // success the pages that show the same records are told, the list is read
+  // again quietly, and the line says what is left. Resolves true when kept.
+  const fixHere = useCallback(async (row, write, { mutation = "entry" } = {}) => {
+    const finding = state.report?.findings.find((item) => item.id === row.id);
+    if (!finding) {
+      return false;
+    }
+    const before = reportTotal(state.report);
+    const siblings = checkView?.tiers.flatMap((section) => section.groups).find((group) => group.rows.some((item) => item.id === row.id));
+    const nextId = nextRowIdAfter((siblings?.shownRows ?? []).filter((item) => !item.justHidden).map((item) => item.id), row.id);
+    const ok = await owner.resolveInPlace(finding, write);
+    if (!ok) {
+      return false;
+    }
+    showChange(describeCheckChange(before, reportTotal(owner.getSnapshot().report)));
+    const month = row.month ?? todayInAppTimeZone().slice(0, 7);
+    const invalidation = { month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true };
+    onEntryMutation?.(invalidation);
+    if (mutation === "split") {
+      onSplitMutation?.(invalidation);
+    }
+    void runBackgroundRefresh(() => owner.refresh());
+    setFixing(null);
+    focusAfterFix(nextId);
+    return true;
+  }, [checkView, focusAfterFix, onEntryMutation, onSplitMutation, owner, runBackgroundRefresh, showChange, state.report]);
 
   // "Link these N clear pairs": the dialog lives here, not in the group, so it
   // stays open with its result when the linked pairs leave the list.
@@ -176,14 +350,14 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
     ? checkCopy.announceChecking
     : firstFailure
       ? checkCopy.errors.loadFailedTitle
-      : checkView?.announcement ?? "";
+      : changeLine || (checkView?.announcement ?? "");
 
   return (
     <article className="panel check-panel" aria-labelledby="check-title" aria-busy={isChecking} ref={panelRef}>
       <div className="panel-head check-head">
         <div>
           <h2 id="check-title" tabIndex={-1}>{checkCopy.title}</h2>
-          <span className="panel-context">{viewing}</span>
+          <span className="panel-context check-context" data-changed={changeLine ? "true" : "false"}>{changeLine || viewing}</span>
         </div>
         <button type="button" className="check-again" onClick={checkAgain} disabled={isChecking || state.status === "idle"}>
           {isChecking ? checkCopy.checking : checkCopy.checkAgain}
@@ -214,7 +388,7 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
             />
           ) : null}
           {state.writeError ? (
-            <InlineError message={state.writeError === "hide" ? checkCopy.hidden.hideFailed : checkCopy.hidden.restoreFailed} className="check-write-error" />
+            <InlineError message={state.writeError === "hide" ? checkCopy.hidden.hideFailed : state.writeError === "fix" ? checkCopy.inPlace.fixFailed : checkCopy.hidden.restoreFailed} className="check-write-error" />
           ) : null}
 
           {checkView.isEmpty ? (
@@ -253,6 +427,7 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
                       key={row.id}
                       row={row}
                       onOpenFix={openFix}
+                      onFixHere={openFixHere}
                       onHide={hideRow}
                       onUndo={(item) => {
                         restoredIdRef.current = item.id;
@@ -306,6 +481,35 @@ export function CheckPanel({ view, runBackgroundRefresh, fetchRequiredQuery }) {
             </section>
           ) : null}
         </div>
+      ) : null}
+      {fixing?.row.inPlace?.type === "link_pair" ? (
+        <CheckLinkTwoDialog
+          entryIds={fixing.row.inPlace.entryIds}
+          areTotalsVisible={areTotalsVisible}
+          formatMoney={formatMoney}
+          onClose={closeFixHere}
+          onConfirm={(pair) => fixHere(fixing.row, () => postTransferLink(pair))}
+        />
+      ) : null}
+      {fixing?.row.inPlace?.type === "transfer" ? (
+        <Suspense fallback={null}>
+          <CheckTransferDialog
+            entryId={fixing.row.inPlace.entryId}
+            categories={categories}
+            onClose={closeFixHere}
+            onLink={(pair) => fixHere(fixing.row, () => postTransferLink(pair))}
+            onSettle={(body) => fixHere(fixing.row, () => postTransferSettle(body))}
+          />
+        </Suspense>
+      ) : null}
+      {fixing?.row.inPlace?.type === "correct_settled" ? (
+        <Suspense fallback={null}>
+          <SplitCorrectionDialog
+            sourceRecordId={fixing.row.inPlace.recordId}
+            onClose={closeFixHere}
+            onAdded={() => void fixHere(fixing.row, async () => true, { mutation: "split" })}
+          />
+        </Suspense>
       ) : null}
       {linkPairsCount > 0 ? (
         <CheckLinkPairsDialog
@@ -373,7 +577,7 @@ function CheckGroup({ group, onToggle, onToggleExpanded, renderRow, onLinkPairs 
   );
 }
 
-function CheckRow({ row, onOpenFix = undefined, onHide = undefined, onUndo = undefined, onShowAgain = undefined }) {
+function CheckRow({ row, onOpenFix = undefined, onFixHere = undefined, onHide = undefined, onUndo = undefined, onShowAgain = undefined }) {
   if (row.justHidden) {
     return (
       <li className="check-item check-item-hidden" data-hidden-now={row.id}>
@@ -403,7 +607,12 @@ function CheckRow({ row, onOpenFix = undefined, onHide = undefined, onUndo = und
           <button type="button" className="check-fix" aria-label={checkCopy.hidden.showAgainFor(row.title)} onClick={() => onShowAgain(row)}>{checkCopy.hidden.showAgain}</button>
         ) : (
           <>
-            {row.fix ? (
+            {row.inPlace ? (
+              <>
+                <button type="button" className="check-fix" aria-label={checkCopy.item.fixFor(row.inPlace.label, row.title)} onClick={() => onFixHere?.(row)}>{row.inPlace.label}</button>
+                <button type="button" className="lsd-quiet check-open" aria-label={checkCopy.item.fixFor(row.openLabel, row.title)} onClick={() => onOpenFix?.(row)}>{row.openLabel}</button>
+              </>
+            ) : row.fix ? (
               <button type="button" className="check-fix" aria-label={checkCopy.item.fixFor(row.fix.label, row.title)} onClick={() => onOpenFix?.(row)}>{row.fix.label}</button>
             ) : row.fixNote ? (
               <p className="check-item-note">{row.fixNote}</p>

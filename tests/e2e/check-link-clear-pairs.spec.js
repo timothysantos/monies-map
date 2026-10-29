@@ -66,8 +66,8 @@ for (const [label, viewport] of [["desktop", DESKTOP], ["390 px phone", PHONE]])
       await loadCheck(page);
       await expect(group(page).getByText("Only pairs with exactly one possible match on each side.")).toBeVisible();
       await expect(group(page).getByRole("button", { name: `Link these ${PAIRS} clear pairs of transfers` })).toHaveText(`Link these ${PAIRS} clear pairs`);
-      // The ordinary rows are still there with their own link.
-      await expect(group(page).locator(".check-item[data-finding-id]").first().getByRole("button", { name: /^Open the transfer and link them/ })).toBeVisible();
+      // The ordinary rows are still there, each with its own link in place.
+      await expect(group(page).locator(".check-item[data-finding-id]").first().getByRole("button", { name: /^Link these two/ })).toBeVisible();
     });
 
     test("the preview lists the pairs, Cancel changes nothing, and opening it shifts nothing", async ({ page }) => {

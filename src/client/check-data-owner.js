@@ -15,7 +15,7 @@
 //   server; if the server refuses, the page puts it back. A read that was
 //   already running when a write landed is read again, so it can never bring
 //   back what the person just hid.
-import { applyHiddenChange } from "./check-model.js";
+import { applyHiddenChange, applyResolved, applyUnresolved } from "./check-model.js";
 import { postHide, postLinkClearPairs, postShowAgain, requestCheckup, requestClearPairsPreview } from "./check-api.js";
 
 // An aborted or cancelled read is superseded, not a failure. A cancellation is
@@ -160,6 +160,33 @@ export function createCheckOwner({ fetchRequiredQuery, fetchImpl = fetch }) {
         writeEpoch += 1;
         hiddenRow = null;
         setState({ report: applyHiddenChange(state.report, finding, false), lastHidden: null, writeError: "hide" });
+      }
+      return ok;
+    },
+
+    // A problem put right on the page itself (a link, a correction). The row
+    // leaves the list and the counts move at once; `write` is the existing
+    // command's request (it resolves true when the server kept it, and may
+    // already have run, as with the correction dialog). If it is refused or
+    // throws, the row is put back where it stood. A check that was already
+    // running when this landed is read again, so it can never bring the row
+    // back. Resolves true when the change was kept.
+    async resolveInPlace(finding, write) {
+      if (!state.report) {
+        return false;
+      }
+      writeEpoch += 1;
+      const index = state.report.findings.findIndex((item) => item.id === finding.id);
+      setState({ report: applyResolved(state.report, finding), writeError: "" });
+      let ok = false;
+      try {
+        ok = (await write()) === true;
+      } catch {
+        ok = false;
+      }
+      writeEpoch += 1;
+      if (!ok && state.report) {
+        setState({ report: applyUnresolved(state.report, finding, index), writeError: "fix" });
       }
       return ok;
     },

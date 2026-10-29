@@ -118,6 +118,35 @@ export function postShowAgain({ id }, fetchImpl = fetch) {
   return postJson("/api/ledger-checkup/undo-dismiss", { id }, fetchImpl);
 }
 
+// ---- Fixing on the page (docs/flows/check-flow.md, "Fixing and coming back") -
+// Only the existing commands: the Entries transfer dialog's candidates read and
+// its link (`/api/transfers/link`), and the Settings review's settle
+// (`/api/transfers/settle`). No route of the page's own.
+
+/**
+ * The transfer and the entries that could be its other side, as the Entries
+ * transfer dialog reads them. Throws when the entry is gone or the read fails.
+ * @returns {Promise<{ entry: any, candidates: any[] }>}
+ */
+export async function requestTransferMatches(entryId, { signal = undefined, fetchImpl = fetch } = {}) {
+  const response = await fetchImpl(`/api/transfers/candidates?entryId=${encodeURIComponent(entryId)}`, { cache: "no-store", signal, headers: { Accept: "application/json" } });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !isObject(body) || !isObject(body.entry)) {
+    throw new Error(isObject(body) && typeof body.error === "string" ? body.error : `The transfer request failed (${response.status}).`);
+  }
+  return { entry: body.entry, candidates: Array.isArray(body.candidates) ? body.candidates.filter(isObject) : [] };
+}
+
+/** Links two entries as one transfer (the Transfer details dialog's own command). Resolves true when it was saved. */
+export async function postTransferLink({ fromEntryId, toEntryId }, fetchImpl = fetch) {
+  return (await postJson("/api/transfers/link", { fromEntryId, toEntryId }, fetchImpl)).ok;
+}
+
+/** "Convert entry" / "Break connection" in the Transfer details dialog. Resolves true when it was saved. */
+export async function postTransferSettle(body, fetchImpl = fetch) {
+  return (await postJson("/api/transfers/settle", body, fetchImpl)).ok;
+}
+
 // ---- Link clear pairs (docs/flows/check-flow.md, "Link clear pairs") --------
 
 /**
