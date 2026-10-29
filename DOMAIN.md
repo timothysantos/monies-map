@@ -3065,6 +3065,14 @@ bank never confirmed" (`stale_estimate`), "Balances that don't match"
 `quiet_account`); a dismissal is "This is fine" (hidden, with "Undo" and "Show
 again"); the evidence is "the entries or statements behind it".
 
+Fixing from the page (2026-10-29; `docs/flows/check-flow.md`, "Fixing and
+coming back"): a `fix in place` is a problem fixed over the page by a dialog
+the app already has ("Link these two", "Open transfer details", "Correct
+this"); a `return marker` is what Check leaves before it sends the person to
+another page, so that page offers "‹ Check my books" and Check puts itself back
+("Fixed. N things left." / "Nothing changed."). Neither adds a record, a table
+or a write path.
+
 Code and storage:
 - `src/domain/ledger-checkup/` (one module per detector, `registry.ts`,
   `loader.ts`, `runner.ts`), `src/domain/pages/ledger-checkup.ts`,

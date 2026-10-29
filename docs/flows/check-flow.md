@@ -21,7 +21,9 @@ settled period.
   like FAQ and Ask): it takes the shell's person (`buildPageViewFromRouteData`
   "check") and ignores the period (`routeUsesPeriod` is false, so the header's
   period controls stay in place, disabled).
-- A fix button navigates with the router to the finding's `fix.path` (an app
+- Three kinds of problem are fixed over the page itself, and every other fix
+  button leaves a way back ("Fixing and coming back", below). A fix button that
+  is a page navigates with the router to the finding's `fix.path` (an app
   path with its query: `/entries?...&editing_entry=<id>`, `/splits?...`,
   `/imports`, `/settings`, `/month?...#month-plan`). The page never calls a path
   as an API route and refuses a `fix.path` that does not start with `/`
@@ -228,6 +230,109 @@ confirm, the result line and the refreshed page, a pair that changed while the
 dialog was open, hidden money, the keyboard, a failed link and its retry),
 `tests/check-clear-pairs-client.test.mjs` and the server tests listed in the
 audit.
+
+## Fixing and coming back
+
+Owner feedback (2026-10-29): after settling a transfer the person opened
+Entries and had no way back to the list; the screen did not guide. Approved:
+fix in place wherever the app has a dialog for it, and a way back wherever a
+fix is a page. Frames and before/after shots:
+[`docs/audits/check-flow-guidance/`](../audits/check-flow-guidance/README.md).
+
+Which problems are fixed in place (`inPlaceFor` in `check-model.js`, from the
+report's own id and fix path; no new report field):
+
+| Problem | Primary button | Opens, over the page | Quiet secondary |
+| --- | --- | --- | --- |
+| two unlinked sides with exactly one match (`unmatched_transfer`, id names both entries) | **Link these two** | the small confirmation (`check-link-two-dialog.jsx`) | **Open in Entries** |
+| a transfer with several matches, or none (same kind, other ids, series) | **Open transfer details** | the Transfer details dialog (`EntryTransferTools`, `check-transfer-dialog.jsx`, lazy) | **Open in Entries** |
+| a mistake in a settled period (`settled_period_error`) | **Correct this** | the Correct a settled mistake dialog (`SplitCorrectionDialog`, lazy) | **Open in Splits** |
+
+Every other kind keeps the report's own button as a page to open (the entry,
+**Open Splits**, **Upload the missing statement in Imports**, the month's plan,
+**Open Settings**): duplicates, wrong-card purchases, statement gaps and joins,
+balance mismatches, stale estimates, the three plan problems and the tidy-ups.
+The plan has no sheet shared with Check (the row sheets belong to the Month
+page's own state), so plan problems navigate. Each row shows the primary on its
+own line, then the quiet secondary and **This is fine** (all at least 44px; on
+a phone the primary is full width and the other two share the next line).
+
+In place, the data flow is one existing command each, never a write path of
+Check's own:
+
+```text
+Link these two ──▶ GET /api/transfers/candidates?entryId=<a>   (fresh pair, both entries, direction)
+                   confirm ──▶ owner.resolveInPlace(finding, POST /api/transfers/link)
+Transfer details ─▶ GET /api/transfers/candidates; "Use match" ──▶ POST /api/transfers/link;
+                    "Convert entry" / "Break connection" ──▶ POST /api/transfers/settle
+Correct this ────▶ the dialog's own preview and POST /api/splits/corrections
+```
+
+- `owner.resolveInPlace` removes the row and moves the counts at once
+  (`applyResolved`), asks the command, and puts the row back where it stood
+  (`applyUnresolved`) with "Could not save that. Nothing was changed. Try
+  again." if the command is refused or throws. A check already running when it
+  lands is read again (`writeEpoch`), so it cannot bring the row back.
+- On success the dialog closes, the shell's entry (and, for a correction,
+  split) invalidation runs as it does after a change on Entries or Splits, the
+  list is read once more quietly (`runBackgroundRefresh`), and focus goes to the
+  next problem's primary button in the same group (else the one before, else
+  the page title) so a person can work down the list. On cancel, Escape or
+  close without a fix, focus goes back to the button that opened it.
+- The line "Fixed. N things left." (or "Fixed. Nothing left.", "Nothing
+  changed.") comes from the problem count before and after
+  (`describeCheckChange`, `reportTotal`) and takes the place of the "Checking
+  ..." line under the title for six seconds, so nothing moves; the polite
+  status line announces it; there is no animation, so reduced motion needs no
+  rule.
+- Hidden money: the confirmation shows no amount. The Transfer details and
+  correction dialogs are the existing components with their existing wording.
+
+When a fix is a page, `openFix` writes the return marker
+(`return-to-check.js`, `design.md` "Check origin") and navigates:
+
+- the shell shows **‹ Check my books** (44px, keyboard focusable, top left above
+  the page, on a phone and on a wide screen) on the destination page and on
+  that page only: not when Entries is opened normally, not after the person
+  goes to another page, and not in another browser tab. While an entry's own
+  sheet is open (Entries `editing_entry`) it covers the page, and closing it
+  leaves the link; the marker lives in sessionStorage because the pages rewrite
+  their own address while they open an entry or split, which drops history
+  state;
+- the link, like the phone's back gesture, lands on `/check` with the person's
+  view (the address kept in the marker), the groups the person opened, the rows
+  shown with "Show more" and the scroll position; Check reads the list again
+  (one request), the fixed problem is gone, and the line says "Fixed. N things
+  left." or "Nothing changed.";
+- if the person goes back before the other page was shown, Check is still
+  mounted: it notices the arrival (`location.key`), reads again and puts itself
+  back the same way.
+
+Strings added (all in `copy/check-copy.js` except the link, in `copy/en-SG.js`
+`returnToCheck`; linted by `tests/check-copy-lint.test.mjs`):
+"Link these two", "Open transfer details", "Correct this", "Open in Entries",
+"Open in Splits", "Could not save that. Nothing was changed. Try again.", the
+confirmation ("Link these two?", "Looking at the two entries…", "They are the
+same money moving between your accounts, so they will become one move. Nothing
+is deleted. You can unlink them from their details.", "Money out", "Money in",
+"Link these two", "Linking…", "Cancel", "Close", "Could not look at the two
+entries. Nothing was changed. Try again.", "These two cannot be linked from
+here any more. Open the transfer to choose.", "Nothing was linked. Check your
+connection and try again."), the transfer shell ("Transfer details", "Looking
+at this transfer…", "Could not look at this transfer. Nothing was changed. Try
+again.", "This is no longer a transfer, so there is nothing to match."), the
+line ("Fixed. N thing(s) left.", "Fixed. Nothing left.", "Nothing changed."),
+and the link ("‹ Check my books", label "Back to Check my books").
+
+Proved by `tests/check-guidance.test.mjs` (in-place choice per kind, optimistic
+removal and rollback, the line, the next row, the marker),
+`tests/e2e/check-flow-guidance.spec.js` (desktop and 390px: link in place with
+focus and counts, refused link rolled back, Transfer details over the page,
+the settled correction in place, the link and the browser's back with scroll,
+open rows and view kept and one re-read, a fix made on Entries gone on return,
+the link absent for everyone else and after leaving, Imports and Month
+marker, hidden money, the keyboard path, no layout shift) and the updated
+`check-my-books.spec.js`.
 
 ## Persisted And Query Contract
 

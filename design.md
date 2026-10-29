@@ -630,6 +630,34 @@ as the kept place whenever it is left another way, for a card the Ask tab
 reopens. Paths are checked against the way in's page, so a kept origin
 never leads outside the app.
 
+### Check origin
+
+"Check my books" is the second source of a way back (the first is "Ask
+origin"; `return-to-check.js`, pure and unit tested, in the first screen
+because the shell reads it; the words stay in the lazy route). A problem whose
+fix is another page (Entries, Splits, Imports, Month, Settings) writes a
+marker to sessionStorage (`monies.returnToCheck.v1`: an id, the destination's
+path, Check's own address with its view, the window's scroll, the problem
+count, the groups opened with "Show more", the history index) and then
+navigates. It is sessionStorage and not only the history entry's state because
+the shell and the pages rewrite their own address while they open an entry or a
+split, which drops a history entry's state. The shell shows "‹ Check my books"
+(`messages.returnToCheck`, accent text, a 44 px target in a short row above the
+page, the standard Back place) only while the marker is for the page on screen
+(`useReturnToCheck`, `renderedTabId`), so people who did not come from Check never see it. The
+hop ends when the person goes to any other page (the marker is forgotten) or
+arrives at Check, which reads it once and forgets it: the link goes back one
+history step when the page is the very next entry (the same way as the phone's
+back gesture), else opens Check's own address; Check, on opening, reads the
+list again (one request), puts the scroll back once the rows are there (never
+after the person scrolls) and says "Fixed. N things left." or "Nothing
+changed." in the place of its "Checking ..." line for a few seconds. While an
+entry's own sheet is open on Entries it covers the page (and the link): closing
+it, or the back gesture, leaves the way back. Fixes that have a dialog the app
+already owns open it over Check instead (`Link these two`, the Transfer
+details dialog through `EntryTransferTools`, the settled-correction dialog),
+with no marker.
+
 ### Ask conversation store
 
 `ask-conversation-store.js` owns the conversation, like the other `*-owner`

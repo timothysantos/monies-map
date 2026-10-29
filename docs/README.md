@@ -131,6 +131,10 @@ a doc here in the same change.
 - [`audits/ledger-checkup-screen/README.md`](audits/ledger-checkup-screen/README.md):
   the Check my books page and the header's seventh tab, before and after
   screenshots (27 October 2026).
+- [`audits/check-flow-guidance/README.md`](audits/check-flow-guidance/README.md):
+  Check my books, fix it there and find the way back: before and after
+  screenshots and frame sequences (29 October 2026; `flows/check-flow.md`,
+  "Fixing and coming back").
 - [`proposals/reminders/README.md`](proposals/reminders/README.md) and
   [`audits/reminders.md`](audits/reminders.md): Reminders in Ask: the proposal
   with its before and after mockups, then the rules as built, false-positive

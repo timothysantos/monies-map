@@ -1510,9 +1510,13 @@ much money it involves.
 
 - **Check again** runs the check again. While it works the button says
   **Checking…**.
-- The button on each problem (for example **Open the transfer and link
-  them**) opens the place where you can put it right. Some problems have no
-  button yet; they say so instead.
+- The main button on each problem puts it right. For most it fixes the
+  problem right there (**Link these two**, **Open transfer details**,
+  **Correct this**); for the rest it opens the page where you can (for
+  example **Open the entry** or **Upload the missing statement in Imports**).
+  Where you can fix it right there, a quieter **Open in Entries** or **Open in
+  Splits** button opens the page instead. Some problems have no button; they
+  say so instead.
 - **This is fine** hides a problem you have looked at and are happy with. The
   line **Hidden.** takes its place with **Undo**. A hidden problem stays
   hidden until the records behind it change.
@@ -1523,6 +1527,43 @@ much money it involves.
 Choose a person at the top left to see the problems that touch them and
 anything shared, or Household for all of them. With money totals hidden, no
 amount shows: the counts and the words stay.
+
+### Fix it right there, and come back
+
+You can fix most things without leaving Check my books:
+
+- **Link these two** (two sides of one transfer that were never matched, with
+  exactly one possible match) opens a small window that names the two entries,
+  with the date, the account and the amount of each, and which one is money out
+  and which is money in. Select **Link these two** to go ahead, or **Cancel**
+  to leave things as they were. With money totals hidden, no amount shows.
+  Nothing is deleted, and you can unlink them later from their details.
+- **Open transfer details** (a transfer with several possible matches, or none)
+  opens the same Transfer details window you see on Entries, over this page.
+  Pick the right match there, or change what the entry is.
+- **Correct this** (a mistake in a period you already settled up) opens the
+  **Correct a settled mistake** window over this page.
+
+![The confirmation for linking two entries](/faq/guide/desktop/thumbs/check-link-two.webp)
+
+When it is done the window closes and you are back on the same list. The
+problem you fixed has gone, the counts at the top have changed, and for a few
+seconds the line under the title says **Fixed. 3 things left.** (or **Fixed.
+Nothing left.**). Your place on the page moves to the next problem in the
+same group, so you can work down a list one after another, with the keyboard
+too. If something went wrong the problem
+comes back and the page says nothing was changed.
+
+Some fixes happen on another page: **Open the entry**, **Open Splits**,
+**Open Imports** and the plan. On that page, at the top left, a link says
+**‹ Check my books**. Select it, or use your phone's back gesture or the
+browser's back button, and you are back on the list exactly where you left it:
+the same place on the page, the same groups open, the same person chosen. The
+list is checked again, so a problem you fixed is gone, and the line says **Fixed.
+N things left.** or **Nothing changed.** The link only appears on the page
+Check my books sent you to, and goes away as soon as you go anywhere else.
+
+![On a phone, the ‹ Check my books link at the top of Entries](/faq/guide/phone/thumbs/phone-entries-from-check.webp)
 
 ### Link the clear pairs at once
 
@@ -1570,6 +1611,12 @@ The confirmation for linking clear pairs opens as a sheet from the bottom, with
 **Cancel** and **Link N pairs** under your thumb.
 
 ![On a phone, the confirmation for linking clear pairs](/faq/guide/phone/thumbs/phone-check-link-pairs.webp)
+
+Each problem's main button is a full-width line, with **Open in Entries** and
+**This is fine** side by side under it. Linking two entries opens as a sheet
+from the bottom.
+
+![On a phone, the confirmation for linking two entries](/faq/guide/phone/thumbs/phone-check-link-two.webp)
 
 # How do I…
 

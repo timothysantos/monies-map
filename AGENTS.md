@@ -447,6 +447,12 @@ Details and the reasons are in `docs/code-spec.md` and
   the owner to decide instead of shipping it silently. Check the existing
   pattern first (for example the mobile floating "View and scope" bar) before
   proposing a new control.
+- A screen that lists problems or answers offers the fix where it is when the
+  app already has a dialog for it, and gives a way back wherever a fix is
+  another page: "‹ Check my books" on the destination (design.md "Check
+  origin", `return-to-check.js`), "‹ Entries" from Ask (design.md "Ask
+  origin"). The link lives for that one hop only and never shows for people
+  who did not come from the source screen.
 - Every figure or money statement on a card is quietly openable (owner
   principle; design.md "Openable figures"). Give it `data-fig` and its
   period, never a button look: the text stays as it is, with a soft
