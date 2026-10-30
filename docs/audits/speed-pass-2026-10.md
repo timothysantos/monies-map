@@ -49,7 +49,12 @@ over all entries: 24,191 rows read and 13 ms of D1 time on production,
 asset report read a `<link>` written by the palette loader script as a
 stylesheet named `palettes/`, could not read it, and marked every route's
 cost unknown. The phone warmup policy needs that cost and refused every
-automatic route warmup ("unknown-cost").
+automatic route warmup ("unknown-cost"). The metadata is complete again,
+but phone warmup has a second, separate fault: five mobile warmup browser
+tests (`route-warmup.spec.js:64, :89`, `route-warmup-data.spec.js:159, :182,
+:203`), which inject their own costs, fail the same way on origin/master
+(7776aa74) and on this branch: the phone never starts the Entries code.
+Desktop warmup works. Filed as a separate task, not fixed here.
 
 ## How it was measured
 
@@ -234,10 +239,8 @@ Server-Timing `app` on desktop in the same runs (bytes on the wire):
 The +2 KB before usable is the warmup metadata block that is now filled in
 (`index.html`). The desktop warm Summary → Entries p95 (+16 ms, over the
 10% line) is one run's tail among 100 cached navigations of ~50 ms each;
-the medians are equal. The phone's idle warmup stays at 2 requests in this
-harness on both trees: the emulated phone reports a connection the policy
-does not admit, so the restored phone route warmup shows only on a real
-phone.
+the medians are equal. The phone's idle traffic stays at 2 requests on both
+trees: phone route warmup still does not start (the separate fault above).
 
 ## Budgets added (failing on origin/master, passing now)
 
