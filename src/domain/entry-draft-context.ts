@@ -33,24 +33,31 @@ export async function loadEntryDraftContext(
   db: D1Database,
   input: { today: string; viewId?: string; askerPersonId?: string }
 ): Promise<EntryDraftContext> {
-  const accounts = await loadShortcutAccountReferences(db);
-  const settings = await loadShortcutSettings(db, accounts);
-  const categoryMatchRules = await loadCategoryMatchRules(db);
-  const people = await db
+  // Every read starts at once (this runs before Ask's model call and on
+  // each entry draft); the Shortcut settings and payment ways finish when
+  // the accounts and people they resolve against arrive.
+  const accountsRead = loadShortcutAccountReferences(db);
+  const settingsRead = loadShortcutSettings(db, accountsRead);
+  const peopleRead = db
     .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
     .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ id: string; display_name: string }>();
-  const categories = await db
-    .prepare("SELECT name FROM categories WHERE household_id = ? ORDER BY sort_order, name")
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ name: string }>();
-
-  const householdPeople = people.results.map((person) => ({ id: person.id, name: person.display_name }));
-  const paymentWays = await loadPaymentWays(db, {
-    accounts,
-    people: householdPeople,
-    priorityIds: settings.defaultAccountPriorityIds
-  });
+    .all<{ id: string; display_name: string }>()
+    .then((people) => people.results.map((person) => ({ id: person.id, name: person.display_name })));
+  const [accounts, settings, categoryMatchRules, householdPeople, categories, paymentWays] = await Promise.all([
+    accountsRead,
+    settingsRead,
+    loadCategoryMatchRules(db),
+    peopleRead,
+    db
+      .prepare("SELECT name FROM categories WHERE household_id = ? ORDER BY sort_order, name")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ name: string }>(),
+    loadPaymentWays(db, Promise.all([accountsRead, peopleRead, settingsRead]).then(([accountList, people, shortcutSettings]) => ({
+      accounts: accountList,
+      people,
+      priorityIds: shortcutSettings.defaultAccountPriorityIds
+    })))
+  ]);
   // "I", "me" and "my": the person asking, else the person being viewed.
   const viewerName = householdPeople.find((person) => person.id === input.askerPersonId)?.name
     ?? householdPeople.find((person) => person.id === input.viewId)?.name;

@@ -29,13 +29,20 @@ export interface AskTurnRequestInput {
 }
 
 export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestInput, today: string): Promise<AskTurnContext> {
-  const [people, groups, categories] = await Promise.all([loadPeople(db), loadGroups(db), loadCategoryRecords(db)]);
+  // Every read starts at once: they all come before the model call. The
+  // draft context gets the view and asker as sent; it only names a person
+  // it finds among the household's own, as checking them first would.
+  const [people, groups, categories, entry, planRows, habits, focusEntry] = await Promise.all([
+    loadPeople(db),
+    loadGroups(db),
+    loadCategoryRecords(db),
+    loadEntryDraftContext(db, { today, viewId: input.viewId, askerPersonId: input.askerPersonId }),
+    loadMonthPlanRowsForDraft(db, input.month),
+    loadAskHabits(db),
+    loadSavedEntryFocus(db, input.focus)
+  ]);
   const viewId = input.viewId === "household" || people.some((person) => person.id === input.viewId) ? input.viewId : "household";
   const askerPersonId = people.some((person) => person.id === input.askerPersonId) ? input.askerPersonId : undefined;
-  const [entry, planRows] = await Promise.all([
-    loadEntryDraftContext(db, { today, viewId, askerPersonId }),
-    loadMonthPlanRowsForDraft(db, input.month)
-  ]);
   const planLines = [...new Set(planRows.map((row) => row.label.trim()).filter(Boolean))];
   const context: AskTurnContext = {
     today,
@@ -48,14 +55,24 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
     entry,
     groups,
     planLines,
-    nicknames: await loadNicknames(db, people),
+    nicknames: nicknamesFrom(habits.habits, people),
     categories,
     focus: null,
     history: input.history,
     text: input.text
   };
-  context.focus = await loadFocus(db, input.focus, context);
+  context.focus = focusEntry ?? readFocus(input.focus, context);
   return context;
+}
+
+// A saved entry in focus, read with the rest (null for any other focus).
+async function loadSavedEntryFocus(db: D1Database, value: unknown): Promise<AskTurnFocus> {
+  const focus = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  if (focus?.kind === "saved_entry" && typeof focus.entryId === "string" && focus.entryId.length <= MAX_ID_LENGTH) {
+    const entry = await loadFocusEntry(db, focus.entryId);
+    return entry ? { kind: "saved_entry", entry } : null;
+  }
+  return null;
 }
 
 async function loadPeople(db: D1Database): Promise<AskTurnPerson[]> {
@@ -79,14 +96,15 @@ async function loadGroups(db: D1Database): Promise<AskTurnGroup[]> {
   return result.results.map((group) => ({ id: group.id, name: group.group_name, currency: group.currency || "SGD" }));
 }
 
-async function loadFocus(db: D1Database, value: unknown, context: AskTurnContext): Promise<AskTurnFocus> {
+// Any other focus, read from what the page sent and the context (a saved
+// entry is read beside the context, loadSavedEntryFocus).
+function readFocus(value: unknown, context: AskTurnContext): AskTurnFocus {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
   const focus = value as Record<string, unknown>;
-  if (focus.kind === "saved_entry" && typeof focus.entryId === "string" && focus.entryId.length <= MAX_ID_LENGTH) {
-    const entry = await loadFocusEntry(db, focus.entryId);
-    return entry ? { kind: "saved_entry", entry } : null;
+  if (focus.kind === "saved_entry") {
+    return null;
   }
   if (focus.kind === "draft" && focus.draft && typeof focus.draft === "object") {
     return { kind: "draft", draft: readDraft(focus.draft as Record<string, unknown>, context) };
@@ -233,8 +251,7 @@ function readDraft(raw: Record<string, unknown>, context: AskTurnContext): AskTu
 
 // The nicknames the household confirmed ("J" means Joyce), from Ask's habits;
 // none when the table is missing.
-async function loadNicknames(db: D1Database, people: AskTurnPerson[]) {
-  const { habits } = await loadAskHabits(db);
+function nicknamesFrom(habits: Awaited<ReturnType<typeof loadAskHabits>>["habits"], people: AskTurnPerson[]) {
   return habits
     .filter((habit) => habit.kind === "alias")
     .flatMap((habit) => {
