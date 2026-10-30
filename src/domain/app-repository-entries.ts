@@ -12,7 +12,10 @@ import type { EntryDto, LinkedTransferDto, TransferPurposeDto } from "../types/d
 // Only the Entries page reads an entry's time of day (`withTime`); every other
 // page's entries stay as they were, so no response grows for a field its
 // screen never shows.
-export type EntryLoadOptions = { withTime?: boolean };
+// `figuresOnly` (Summary) reads only what the figures and charts count: an
+// entry's description, note, account name, import and split labels and
+// certification date are left empty, so never show such an entry.
+export type EntryLoadOptions = { withTime?: boolean; figuresOnly?: boolean };
 
 export async function loadEntries(db: D1Database, month = getCurrentMonthKey(), options: EntryLoadOptions = {}): Promise<EntryDto[]> {
   const [monthStart, nextMonth] = getMonthBounds(month);
@@ -132,38 +135,41 @@ export async function loadInvestmentAccountIds(db: D1Database): Promise<Set<stri
 // The ledger stays event-first. We still project post_date so the UI can show
 // when the bank cleared a row without moving it out of its planning month.
 export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string, options: EntryLoadOptions = {}): Promise<EntryDto[]> {
-  const entries = await db
+  // A figures-only read leaves the display columns out (and their joins:
+  // each joins at most one row by primary key, so the rows are the same).
+  const shown = (column: string) => (options.figuresOnly ? "" : `${column},`);
+  const entriesRead = db
     .prepare(`
       SELECT
         transactions.id,
         transactions.transaction_date,
-        transactions.post_date,
-        transactions.transaction_time,
-        transactions.description,
+        ${shown("transactions.post_date AS post_date")}
+        ${shown("transactions.transaction_time AS transaction_time")}
+        ${shown("transactions.description AS description")}
         transactions.entry_type,
         transactions.transfer_direction,
         transactions.amount_minor,
         transactions.offsets_category,
-        transactions.note,
+        ${shown("transactions.note AS note")}
         transactions.transfer_group_id,
         transactions.account_id,
         transactions.bank_certification_status,
-        transactions.statement_certified_at,
+        ${shown("transactions.statement_certified_at AS statement_certified_at")}
         transactions.import_id,
-        transactions.external_reference,
-        imports.source_type AS import_source_type,
-        imports.source_label AS import_source_label,
+        ${shown("transactions.external_reference AS external_reference")}
+        ${shown("imports.source_type AS import_source_type")}
+        ${shown("imports.source_label AS import_source_label")}
         split_expenses.id AS linked_split_expense_id,
-        split_groups.group_name AS linked_split_group_name,
-        split_categories.name AS linked_split_category_name,
-        split_expenses.note AS linked_split_note,
+        ${shown("split_groups.group_name AS linked_split_group_name")}
+        ${shown("split_categories.name AS linked_split_category_name")}
+        ${shown("split_expenses.note AS linked_split_note")}
         transactions.owner_person_id,
         people.display_name AS owner_name,
-        accounts.account_name AS account_name,
-        CASE
+        ${shown("accounts.account_name AS account_name")}
+        ${shown(`CASE
           WHEN accounts.is_joint = 1 THEN 'Shared'
           ELSE account_owners.display_name
-        END AS account_owner_label,
+        END AS account_owner_label`)}
         categories.name AS category_name,
         transactions.transfer_purpose_person_id,
         transactions.transfer_purpose_source,
@@ -172,7 +178,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN people ON people.id = transactions.owner_person_id
-      LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
+      ${options.figuresOnly ? "" : "LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id"}
       LEFT JOIN categories ON categories.id = transactions.category_id
       -- A transfer's purpose (transfer-purpose.ts): its category and the
       -- person the money went to, NULL for every other entry.
@@ -185,12 +191,12 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
         ON split_expenses.household_id = transactions.household_id
        AND split_expenses.linked_transaction_id = transactions.id
        AND split_expenses.deleted_at IS NULL
-      LEFT JOIN split_groups
+      ${options.figuresOnly ? "" : `LEFT JOIN split_groups
         ON split_groups.household_id = split_expenses.household_id
        AND split_groups.id = split_expenses.split_group_id
       LEFT JOIN categories AS split_categories
         ON split_categories.household_id = split_expenses.household_id
-       AND split_categories.id = split_expenses.category_id
+       AND split_categories.id = split_expenses.category_id`}
       WHERE transactions.household_id = ?
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
@@ -232,7 +238,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       transfer_purpose_person_name: string | null;
     }>();
 
-  const linkedSplitShares = await db
+  const linkedSplitSharesRead = db
     .prepare(`
       SELECT
         split_expenses.linked_transaction_id AS transaction_id,
@@ -269,6 +275,8 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
       person_rank: number;
       person_created_at: string;
     }>();
+  // Both reads at once: they share only the date range.
+  const [entries, linkedSplitShares] = await Promise.all([entriesRead, linkedSplitSharesRead]);
   const linkedSplitShareMap = buildLinkedSplitShareMap(linkedSplitShares.results);
   const entriesByTransferGroup = new Map<string, typeof entries.results>();
 

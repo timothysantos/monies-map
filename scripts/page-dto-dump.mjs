@@ -21,7 +21,10 @@ import { fileURLToPath } from "node:url";
 const args = process.argv.slice(2);
 
 if (args[0] === "--compare") {
-  const [before, after] = await Promise.all(args.slice(1, 3).map(async (file) => JSON.parse(await readFile(file, "utf8"))));
+  // Ids a write generates (a time and a UUID, as split batches get when a
+  // fixture is built) differ from build to build.
+  const generated = /-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+  const [before, after] = await Promise.all(args.slice(1, 3).map(async (file) => JSON.parse((await readFile(file, "utf8")).replace(generated, "-<generated>"))));
   // When a report was made or the demo seeded differs from run to run.
   const VOLATILE = new Set(["generatedAt", "lastSeededAt"]);
   const firstDifference = (left, right, at = "$") => {

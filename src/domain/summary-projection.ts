@@ -7,13 +7,15 @@ import { incomeMinor, spendingMinor } from "./category-offset";
 import { buildDonutChart } from "./donut-chart-projection";
 import { flowTone, signTone, spendTone } from "./money-tone";
 import { plannedInvestMinor } from "./money-job-plan";
-import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
+import { loadMonthIncomeRowsForMonths, loadMonthPlanRowsForMonths } from "./app-repository-months";
 import type {
   AccountDto,
   CategoryDto,
   EntryDto,
   InvestmentMovesDto,
   MetricCardDto,
+  MonthIncomeRowDto,
+  MonthPlanRowDto,
   SummaryAccountPillDto,
   SummaryDonutMonthDto,
   SummaryMonthDto
@@ -195,17 +197,29 @@ export async function loadPlannedSummaryMonthsForViews(
 ): Promise<Record<string, PlannedSummaryMonth[]>> {
   const uniqueViewIds = [...new Set(viewIds)].filter(Boolean);
   const uniqueMonths = [...new Set(months)].filter(Boolean).sort();
-  const monthPlanRowsByMonth = new Map(
-    await Promise.all(uniqueMonths.map(async (month) => [month, await loadMonthPlanRows(db, month)] as const))
-  );
-  const incomeRowsByViewMonth = new Map(
-    await Promise.all(
-      uniqueViewIds.flatMap((viewId) => uniqueMonths.map(async (month) => ([
-        `${viewId}:${month}`,
-        await loadMonthIncomeRows(db, viewId, month)
-      ] as const)))
-    )
-  );
+  // One plan read and one income read per view for the whole range, sent
+  // together (a read per month was 5 sequential-ish round trips per month).
+  const [monthPlanRowsByMonth, incomeByView] = await Promise.all([
+    loadMonthPlanRowsForMonths(db, uniqueMonths),
+    Promise.all(uniqueViewIds.map((viewId) => loadMonthIncomeRowsForMonths(db, viewId, uniqueMonths)))
+  ]);
+  const incomeRowsByViewMonth = new Map<string, MonthIncomeRowDto[]>();
+  uniqueViewIds.forEach((viewId, index) => {
+    for (const [month, rows] of incomeByView[index]) {
+      incomeRowsByViewMonth.set(`${viewId}:${month}`, rows);
+    }
+  });
+  return buildPlannedSummaryMonthsForViews(uniqueViewIds, uniqueMonths, monthPlanRowsByMonth, incomeRowsByViewMonth);
+}
+
+// The planned months from plan and income rows already read (the Month page
+// reads its month's rows for itself and passes them here).
+export function buildPlannedSummaryMonthsForViews(
+  uniqueViewIds: string[],
+  uniqueMonths: string[],
+  monthPlanRowsByMonth: ReadonlyMap<string, MonthPlanRowDto[]>,
+  incomeRowsByViewMonth: ReadonlyMap<string, MonthIncomeRowDto[]>
+): Record<string, PlannedSummaryMonth[]> {
   const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as PlannedSummaryMonth[]]));
 
   for (const viewId of uniqueViewIds) {

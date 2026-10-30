@@ -25,12 +25,13 @@ export async function buildSummaryPageDto(
   const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
-  const [summaryMonths, summaryEntries, investmentAccountIds] = await Promise.all([
+  const [summaryMonths, summaryEntries, investmentAccountIds, plannedSummaryMonthsByView] = await Promise.all([
     loadRepairedSummaryMonths(db, viewId),
-    loadEntriesForMonths(db, summaryRangeMonths),
-    loadInvestmentAccountIds(db)
+    // Summary shows totals and charts, never an entry's text.
+    loadEntriesForMonths(db, summaryRangeMonths, { figuresOnly: true }),
+    loadInvestmentAccountIds(db),
+    loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths)
   ]);
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths);
   // A person view counts only that person's entries in the scope, each at
   // their own amount, the same rule as the stored person month totals.
   const visibleSummaryEntries = filterEntriesForView(

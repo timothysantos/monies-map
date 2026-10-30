@@ -191,7 +191,10 @@ export async function refreshPendingMonthlySnapshots(db: D1Database) {
   if (!pending.length) {
     return;
   }
+  await repairMarkedMonths(db, pending);
+}
 
+async function repairMarkedMonths(db: D1Database, pending: RefreshMarker[]) {
   try {
     await refreshMarkedMonths(db, pending);
   } catch (error) {
@@ -201,8 +204,15 @@ export async function refreshPendingMonthlySnapshots(db: D1Database) {
 }
 
 // Summary months for a scope, after repairing any stale months.
+// The pending-marker check and the month totals are read together: nearly
+// always nothing is pending and the totals stand. Only when a month is
+// marked are the totals read again after the repair.
 export async function loadRepairedSummaryMonths(db: D1Database, personScope: string) {
-  await refreshPendingMonthlySnapshots(db);
+  const [pending, months] = await Promise.all([loadRefreshMarkers(db), loadSummaryMonths(db, personScope)]);
+  if (!pending.length) {
+    return months;
+  }
+  await repairMarkedMonths(db, pending);
   return loadSummaryMonths(db, personScope);
 }
 
