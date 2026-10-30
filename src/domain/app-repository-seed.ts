@@ -656,14 +656,25 @@ async function seedDemoData(db: D1Database, settings: DemoSettings, seedMonth?: 
   }
 }
 
+// Runs on every cold isolate of a demo database: the seed's entries and
+// plan links are read in a few statements up front (they were one round
+// trip per entry and two per link), and only what is missing or moved is
+// written.
 async function backfillDemoPlannedItemSeedData(db: D1Database) {
   let changed = false;
+  const linkPairs = demoMonthPlanRows.flatMap((row) => (row.linkedEntryIds ?? []).map((entryId) => ({ rowId: row.id, entryId })));
+  const [transactionRows, linkRows] = await Promise.all([
+    readInIdChunks(db, [...new Set([...demoMonthEntries.map((entry) => entry.id), ...linkPairs.map((pair) => pair.entryId)])], (placeholders) =>
+      `SELECT id, transaction_date FROM transactions WHERE id IN (${placeholders})`),
+    readInIdChunks(db, [...new Set(linkPairs.map((pair) => pair.rowId))], (placeholders) =>
+      `SELECT monthly_plan_row_id, transaction_id FROM monthly_plan_entry_links WHERE monthly_plan_row_id IN (${placeholders})`)
+  ]) as [Array<{ id: string; transaction_date: string }>, Array<{ monthly_plan_row_id: string; transaction_id: string }>];
+  const transactionDates = new Map(transactionRows.map((row) => [row.id, row.transaction_date]));
+  const existingLinks = new Set(linkRows.map((row) => `${row.monthly_plan_row_id}\u0000${row.transaction_id}`));
 
   for (const entry of demoMonthEntries) {
-    const existingTransaction = await db
-      .prepare("SELECT id, transaction_date FROM transactions WHERE id = ?")
-      .bind(entry.id)
-      .first<{ id: string; transaction_date: string }>();
+    const existingDate = transactionDates.get(entry.id);
+    const existingTransaction = existingDate === undefined ? null : { id: entry.id, transaction_date: existingDate };
     const seededDate = resolveSeededDemoTransactionDate(entry.id, entry.date);
     if (!existingTransaction) {
       const directOwnerId = entry.ownerName
@@ -694,6 +705,7 @@ async function backfillDemoPlannedItemSeedData(db: D1Database) {
           entry.note ?? null
         )
         .run();
+      transactionDates.set(entry.id, seededDate);
 
       changed = true;
     } else if (existingTransaction.transaction_date !== seededDate) {
@@ -707,23 +719,7 @@ async function backfillDemoPlannedItemSeedData(db: D1Database) {
 
   for (const row of demoMonthPlanRows) {
     for (const entryId of row.linkedEntryIds ?? []) {
-      const existingLink = await db
-        .prepare(`
-          SELECT id
-          FROM monthly_plan_entry_links
-          WHERE monthly_plan_row_id = ? AND transaction_id = ?
-        `)
-        .bind(row.id, entryId)
-        .first<{ id: string }>();
-      if (existingLink) {
-        continue;
-      }
-
-      const transactionExists = await db
-        .prepare("SELECT id FROM transactions WHERE id = ?")
-        .bind(entryId)
-        .first<{ id: string }>();
-      if (!transactionExists) {
+      if (existingLinks.has(`${row.id}\u0000${entryId}`) || !transactionDates.has(entryId)) {
         continue;
       }
 
@@ -735,12 +731,27 @@ async function backfillDemoPlannedItemSeedData(db: D1Database) {
         `)
         .bind(`${row.id}-${entryId}`, row.id, entryId)
         .run();
+      existingLinks.add(`${row.id}\u0000${entryId}`);
 
       changed = true;
     }
   }
 
   return changed;
+}
+
+// Rows for ids read 90 at a time (under D1's bound-parameter limit), the
+// chunks sent together.
+async function readInIdChunks(db: D1Database, ids: string[], sql: (placeholders: string) => string) {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += 90) {
+    chunks.push(ids.slice(index, index + 90));
+  }
+  const results = await Promise.all(chunks.map((chunk) => db
+    .prepare(sql(chunk.map(() => "?").join(", ")))
+    .bind(...chunk)
+    .all<Record<string, string>>()));
+  return results.flatMap((result) => result.results);
 }
 
 async function seedDemoSplitData(db: D1Database) {
