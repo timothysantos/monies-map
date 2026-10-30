@@ -1,11 +1,12 @@
 import type { SummaryAccountPillDto } from "../../types/dto";
 import { todayInAppTimeZone } from "../../lib/app-calendar";
-import { loadAccounts } from "../app-repository";
+import { loadAccounts, loadHousehold } from "../app-repository-settings";
 import { DEFAULT_HOUSEHOLD_ID } from "../app-repository-constants";
 import { accountRoutineWindowStart, buildAccountRoutineFacts, type RoutineEntryRow } from "../account-routines";
 import { buildCardBillFacts, cardBillWindowStart } from "../card-bill-projection";
 import { accountsForSummary } from "../summary-projection";
-import { loadRoutePageContext } from "../route-context";
+import { resolvePageViewId } from "../route-context";
+import { resolvePageLabel } from "../page-labels";
 import { loadLatestInvestmentValues } from "../import-investment-values";
 
 // Summary account pills are a separate slice query so note edits and range
@@ -18,15 +19,21 @@ export async function buildSummaryAccountPillsDto(
   db: D1Database,
   selectedViewId = "household"
 ): Promise<{ viewId: string; label: string; accountPills: SummaryAccountPillDto[] }> {
-  const { viewId, label } = await loadRoutePageContext(db, selectedViewId);
-  const accounts = await loadAccounts(db);
   const today = todayInAppTimeZone();
   const cardWindowStart = cardBillWindowStart(today);
   const routineWindowStart = accountRoutineWindowStart(today);
-  const entries = await loadAccountEntries(db, cardWindowStart, routineWindowStart);
-  // An investment account's latest statement value (investment statements
-  // only; a household without any adds nothing to the payload).
-  const investmentValues = await loadLatestInvestmentValues(db);
+  // Every read at once; the pills need only the people (for the view) from
+  // the page context, not its categories or tracked months.
+  const [household, accounts, entries, investmentValues] = await Promise.all([
+    loadHousehold(db),
+    loadAccounts(db),
+    loadAccountEntries(db, cardWindowStart, routineWindowStart),
+    // An investment account's latest statement value (investment statements
+    // only; a household without any adds nothing to the payload).
+    loadLatestInvestmentValues(db)
+  ]);
+  const viewId = resolvePageViewId(selectedViewId, household.people);
+  const label = resolvePageLabel(viewId, Object.fromEntries(household.people.map((person) => [person.id, person.name])));
   const cardFacts = buildCardBillFacts({ accounts, transactions: entries.filter((row) => row.account_kind === "credit_card" && row.transaction_date >= cardWindowStart), today });
   const routineFacts = buildAccountRoutineFacts({ accounts, transactions: entries.filter((row) => row.account_kind === "bank"), today });
 

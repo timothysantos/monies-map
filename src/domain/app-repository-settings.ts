@@ -21,15 +21,18 @@ type LoadUnresolvedTransfersOptions = {
 };
 
 export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
-  const row = await db
-    .prepare("SELECT id, name, base_currency FROM households WHERE id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .first<{ id: string; name: string; base_currency: string }>();
-
-  const people = await db
-    .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ id: string; display_name: string }>();
+  // Both reads at once: every page waits on this, and each sequential D1
+  // round trip is a network trip in production.
+  const [row, people] = await Promise.all([
+    db
+      .prepare("SELECT id, name, base_currency FROM households WHERE id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .first<{ id: string; name: string; base_currency: string }>(),
+    db
+      .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; display_name: string }>()
+  ]);
 
   return {
     id: row?.id ?? DEFAULT_HOUSEHOLD_ID,
@@ -40,7 +43,9 @@ export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
 }
 
 export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
-  const result = await db
+  // The five reads below are independent and are sent together (awaited at
+  // the end): each sequential D1 round trip is a network trip in production.
+  const accountsRead = db
     .prepare(`
       SELECT
         accounts.id,
@@ -80,7 +85,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   // each Imports, Settings and Summary-pills load. Rows count when they are
   // manual or belong to a completed import. A signed amount is money in
   // (income, or a transfer in) as plus, everything else as minus.
-  const [accountLedgerRows, clearedDayRows] = await Promise.all([
+  const ledgerReads = Promise.all([
     db
       .prepare(`
         WITH counted AS (
@@ -156,7 +161,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       .all<{ account_id: string; cleared_date: string; net_minor: number }>()
   ]);
 
-  const latestCheckpointRows = await db
+  const latestCheckpointRead = db
     .prepare(`
       SELECT
         account_id,
@@ -184,7 +189,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       note: string | null;
     }>();
 
-  const checkpointHistoryRows = await db
+  const checkpointHistoryRead = db
     .prepare(`
       SELECT
         account_id,
@@ -212,6 +217,12 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       statement_notices_json: string | null;
       note: string | null;
     }>();
+  const [result, [accountLedgerRows, clearedDayRows], latestCheckpointRows, checkpointHistoryRows] = await Promise.all([
+    accountsRead,
+    ledgerReads,
+    latestCheckpointRead,
+    checkpointHistoryRead
+  ]);
 
   const checkpointByAccountId = new Map(
     latestCheckpointRows.results.map((row) => [row.account_id, row])
