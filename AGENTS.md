@@ -227,6 +227,14 @@ Details and the reasons are in `docs/code-spec.md` and
   `LIMIT`). `tests/cold-start-statement-budget.test.mjs` and
   `tests/page-load-scale-guard.test.mjs` enforce it (`docs/code-spec.md`,
   "Cold Start And Page Read Budgets").
+- Production waits a network trip (~100 ms or more) for every D1 read made
+  after another, so send independent reads together (`Promise.all`; a
+  read that needs another's result only to finish takes a promise) and
+  keep a page read to three sequential steps; read several months in one
+  range read, never one per month. The scale guard pins each page's chain
+  and the cold isolate's; measure with `scripts/measure-page-reads.mjs` and
+  prove a read change with `scripts/page-dto-dump.mjs`
+  (`docs/audits/speed-pass-2026-10.md`).
 - Work in three passes: tests first, then runtime and failure behaviour in a
   real browser or Worker, then review and gates. A bug-fix test must fail on
   the old code before the fix counts.

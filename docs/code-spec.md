@@ -78,7 +78,43 @@ probes answered in milliseconds. Measured on a copy of production:
   imported transaction. It now reads none when no split record is waiting for
   a match, and otherwise only the date windows within a week of those records.
 
+Found 2026-10-30 (speed pass, `docs/audits/speed-pass-2026-10.md`): what a
+page costs in production is the length of its chain of sequential D1 round
+trips. The Worker waits a network trip for each (about 100 to 180 ms,
+calibrated from the production logs: Entries ~0.9 s over 5 sequential trips,
+the pills ~1.0 s over 8, Summary 0.9 to 1.4 s over 9), while D1's own time
+for the heaviest read is under 20 ms. Summary made 69 round trips (a plan
+read per month), Month waited on 15 steps, Settings 9, an Ask turn 12 before
+its model call, and a cold isolate ~25 (a PRAGMA per table) before any page
+read. Every page also read ~24,000 rows (13 ms of D1 time) to list its
+months. After the pass: Summary, Month, Entries and an Ask turn 2 to 3
+steps, the pills and Settings 1, a cold isolate's schema check 4.
+
 Rules that keep it so:
+
+- Send independent reads together. A page read is at most three
+  sequential D1 steps after `ensureDemoSchema`: the page context, then its
+  data, then at most one dependent read. A read that only needs another
+  read's result to finish (not to start its own SQL) takes a promise
+  (`loadShortcutSettings`, `loadPaymentWays`, `loadCategoryRuleBackfills`
+  accept one) and is started with the rest. Reads of several months are one
+  range read (`loadMonthPlanRowsForMonths`, `loadMonthIncomeRowsForMonths`),
+  never one per month. `tests/page-load-scale-guard.test.mjs` waits 30 ms
+  before every D1 call and pins each page's chain, round trips and rows.
+- Cold-path schema checks answer from one up-front read: `ensureDemoSchema`
+  reads `sqlite_master` and the checked tables' columns
+  (`json_each` joined to `pragma_table_info`: D1 refuses that function joined
+  to `sqlite_master` and a long `UNION`) together and answers `CREATE ... IF
+  NOT EXISTS`, `DROP ... IF EXISTS` and `PRAGMA table_info` from them until a
+  statement changes that table. Add a table whose columns the check reads to
+  `COLUMN_CHECKED_TABLES`. `tests/cold-start-statement-budget.test.mjs` pins
+  the schema check and seeding to 8 sequential steps.
+- Create a settings table once per isolate (`ensureAppSettingsTable`), or
+  read first and create only when missing (`loadDemoSettings`); never a
+  `CREATE TABLE IF NOT EXISTS` round trip on every request.
+- Summary reads its year of entries with `figuresOnly`: no description,
+  note, labels or names it never shows (~4 MB fewer bytes from D1 on the
+  production copy).
 
 - Cold-path code (`ensureDemoSchema`, the seeders, `ensureAppData`) reads once
   and writes only what is missing, in one `db.batch()`. Never a statement per
@@ -154,6 +190,15 @@ Entries ≈23 ms handler / 38 KB gzip, Month ≈31 ms / 47 KB, Summary (12
 months) ≈77 ms / 2 KB, Splits ≈31 ms / 3 KB, account pills and Imports
 ≈30–35 ms. Payload size, not handler time, is what grows with ledger size.
 
+Those local numbers hid the production cost: a local D1 answers in about a
+millisecond, production's in a network trip, so a chain of sequential reads
+costs ~100 ms or more per step there (speed pass 2026-10,
+`docs/audits/speed-pass-2026-10.md`). Judge a page by its sequential steps
+and round trips (`scripts/measure-page-reads.mjs`, the scale guard) and
+measure browser cohorts with `D1_COUNTER_LATENCY_MS=100` on the wrapped
+copy; with that, Summary's handler went from ~1,040 ms to ~280 ms and the
+pills from ~860 ms to ~150 ms.
+
 ### Performance gate for redesign PRs
 
 Every redesign PR (and any PR that touches a first-screen file, a page DTO
@@ -181,11 +226,15 @@ reports are not committed):
 
 - `tests/performance/page-loads.spec.js`: a cold load of each route (Summary,
   Month, Entries, Splits, Settings, Ask) and the Ask opens, on the desktop and
-  mobile profiles: time until usable, bytes and requests before it, and the
-  idle traffic after. Compare reports from two trees as cohorts.
+  mobile profiles: time until usable, layout shift and long tasks until then,
+  bytes and requests before it, and the idle traffic after. Compare reports
+  from two trees as cohorts.
 - `tests/performance/api-cost.spec.js`: bytes, handler time and, for a Worker
   copy wrapped by `scripts/wrap-d1-counter.mjs` (never a checkout), D1
-  statements, time and rows read for every request a screen makes.
+  statements, time and rows read for every request a screen makes. With
+  `D1_COUNTER_LATENCY_MS=<ms>` the wrapped copy also waits that long before
+  every D1 round trip of a GET, as production does, which is what makes a
+  chain of sequential reads show in either spec.
 
 Budget rules:
 

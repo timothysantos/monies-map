@@ -1930,6 +1930,38 @@ endpoint that is consistently too expensive. The durable fix is to keep broad
 reads split into route-specific payloads or move the Worker to a plan with more
 CPU/resource headroom if the production data size now requires it.
 
+## How do I measure what a page costs the server?
+
+In production the Worker waits a network trip (about 100 to 180 ms) for
+every D1 read it makes after another one, so a page is as slow as its
+longest chain of sequential reads. Send independent reads together
+(`Promise.all`) and keep each page to two or three steps; the page-load
+scale guard (`tests/page-load-scale-guard.test.mjs`) fails when a page's
+chain grows.
+
+```bash
+# Every page read through the real Worker on the 10k-entry test household:
+# round trips, sequential steps, rows read, bytes, CPU, the wall time with
+# 25 ms added per round trip, and a cold isolate (fresh Node process).
+node --import tsx scripts/measure-page-reads.mjs --runs 21 --cold 3 --explain
+
+# The same on a local copy of a database (for example an export loaded with
+# `wrangler d1 execute monies-map-test --config wrangler.test.jsonc --local
+# --persist-to <dir> --file <export.sql>`; it prints counts, never values).
+node --import tsx scripts/measure-page-reads.mjs --db <dir>
+
+# Prove a read-path change returns the same data: dump every page response
+# before and after on the same database and compare (prints only the
+# requests that differ and where).
+node --import tsx scripts/page-dto-dump.mjs before.json --fixture scale
+node scripts/page-dto-dump.mjs --compare before.json after.json
+```
+
+A browser cohort can wait on D1 the same way: wrap an extracted copy with
+`D1_COUNTER_LATENCY_MS=100 node scripts/wrap-d1-counter.mjs <copy>` before
+running `npm run test:performance` there. The numbers and the method of the
+last pass are in `docs/audits/speed-pass-2026-10.md`.
+
 ## How do the colour presets load?
 
 The 70s Warm light default is the only scheme in the first-screen

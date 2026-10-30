@@ -110,6 +110,10 @@ a doc here in the same change.
   scope visibility, scroll continuity, screenshots and closure evidence.
 - [`audits/macro-loading-baseline.md`](audits/macro-loading-baseline.md): macro
   loading baseline evidence (H00, H01).
+- [`audits/speed-pass-2026-10.md`](audits/speed-pass-2026-10.md): every page's
+  server and browser cost measured on the 10k household and a production
+  copy, the sequential D1 round-trip fixes, their equivalence proofs and
+  budgets, and what was not built.
 - [`audits/states-lsd.md`](audits/states-lsd.md): empty, loading and error
   states and the FAQ page in Lead · Support · Detail, with before and after
   screenshots.

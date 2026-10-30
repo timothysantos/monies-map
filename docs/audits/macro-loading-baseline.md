@@ -3125,3 +3125,17 @@ page is usable); the policy already refused warmup before the page was usable.
 Also noticed, not changed: `splits-linked-entry-dialog.jsx` reads a
 `splitsMessages.editLinkedEntry` key that does not exist and nothing mounts
 the dialog.
+
+## Speed pass: sequential D1 round trips (2026-10-30)
+
+The handler times above were measured against a local D1, which answers in
+about a millisecond. Production waits a network trip for each D1 read made
+after another (~100 ms or more), so the length of a page's chain of
+sequential reads, not its handler time locally, is what the owner felt:
+Summary 0.9 to 1.4 s (9 steps, 69 round trips), the pills ~1.0 s (8 steps),
+Entries ~0.9 s (5 steps). The speed pass measured every page on the 10k
+household and a production copy, cut the chains to 1 to 3 steps, made a
+cold isolate's schema check one up-front read, and pins both in the scale
+guard. Browser cohorts now run with `D1_COUNTER_LATENCY_MS=100` on the
+wrapped copy. Numbers, commits and equivalence proofs:
+`docs/audits/speed-pass-2026-10.md`.
