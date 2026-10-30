@@ -23,6 +23,18 @@ export async function buildSettingsPageDto(
   shortcutEndpoint?: string | null
 ): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
+  // Every read starts at once. The rule backfills, the Shortcut settings
+  // and the payment ways also need what other reads return; they read
+  // their own rows meanwhile and finish when those arrive.
+  const accountsRead = loadAccounts(db);
+  const rulesRead = loadCategoryMatchRules(db);
+  const householdRead = loadHousehold(db);
+  const shortcutSettingsRead = loadShortcutSettingsWithConnections(
+    db,
+    accountsRead,
+    environmentShortcutToken,
+    shortcutEndpoint?.trim() || undefined
+  );
   const [
     accounts,
     categoryMatchRules,
@@ -32,32 +44,28 @@ export async function buildSettingsPageDto(
     reconciliationExceptions,
     recentAuditEvents,
     errorDiagnostics,
-    household
+    categoryRuleBackfills,
+    shortcutSettings,
+    paymentWays
   ] = await Promise.all([
-    loadAccounts(db),
-    loadCategoryMatchRules(db),
+    accountsRead,
+    rulesRead,
     loadCategoryMatchRuleSuggestions(db),
     loadIgnoredCategoryMatchRuleIssueIds(db),
     loadUnresolvedTransfers(db, { limit: TRANSFER_REVIEW_PAGE_LIMIT }),
     loadReconciliationExceptions(db),
     loadAuditEvents(db),
     loadAppErrorDiagnostics(db),
-    loadHousehold(db)
+    loadCategoryRuleBackfills(db, rulesRead),
+    shortcutSettingsRead,
+    // The PayNow default follows Default account priority, so it is
+    // resolved with the Shortcut settings.
+    loadPaymentWays(db, Promise.all([accountsRead, householdRead, shortcutSettingsRead]).then(([accountList, household, shortcuts]) => ({
+      accounts: accountList,
+      people: household.people,
+      priorityIds: shortcuts.defaultAccountPriorityIds
+    })))
   ]);
-  const categoryRuleBackfills = await loadCategoryRuleBackfills(db, categoryMatchRules);
-  const shortcutSettings = await loadShortcutSettingsWithConnections(
-    db,
-    accounts,
-    environmentShortcutToken,
-    shortcutEndpoint?.trim() || undefined
-  );
-  // The PayNow default follows Default account priority, so it is resolved
-  // after the Shortcut settings.
-  const paymentWays = await loadPaymentWays(db, {
-    accounts,
-    people: household.people,
-    priorityIds: shortcutSettings.defaultAccountPriorityIds
-  });
   return {
     settingsPage: {
       accounts,

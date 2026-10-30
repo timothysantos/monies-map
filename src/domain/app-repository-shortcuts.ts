@@ -123,15 +123,18 @@ function buildConnectionDto(accounts: AccountDto[], record: ShortcutConnectionRe
 // read as the household's Default account order. One read of one row.
 export async function loadShortcutSettings(
   db: D1Database,
-  accounts: AccountDto[] = [],
+  // A promise is fine: the stored settings are read meanwhile.
+  accountsInput: AccountDto[] | Promise<AccountDto[]> = [],
   environmentToken?: string | null,
   endpointPath = SHORTCUT_ENDPOINT_PATH
 ): Promise<ShortcutSettingsDto> {
-  await ensureAppSettingsTable(db);
-  const row = await db
-    .prepare("SELECT value_json FROM app_settings WHERE key = ?")
-    .bind(SHORTCUT_SETTINGS_KEY)
-    .first<{ value_json: string }>();
+  const [row, accounts] = await Promise.all([
+    ensureAppSettingsTable(db).then(() => db
+      .prepare("SELECT value_json FROM app_settings WHERE key = ?")
+      .bind(SHORTCUT_SETTINGS_KEY)
+      .first<{ value_json: string }>()),
+    accountsInput
+  ]);
   const stored = parseStoredShortcutConnection(row?.value_json);
   const activeAccountIds = new Set(accounts.filter((account) => account.isActive).map((account) => account.id));
   const fallbackToken = stored.revoked ? "" : environmentToken?.trim() ?? "";
@@ -155,11 +158,12 @@ export async function loadShortcutSettings(
 // page never carries the same settings twice (payload budget).
 export async function loadShortcutSettingsWithConnections(
   db: D1Database,
-  accounts: AccountDto[],
+  // A promise is fine: the stored connections are read meanwhile.
+  accountsInput: AccountDto[] | Promise<AccountDto[]>,
   environmentToken?: string | null,
   endpointPath = SHORTCUT_ENDPOINT_PATH
 ): Promise<ShortcutSettingsDto> {
-  const records = await loadShortcutConnectionRecords(db, environmentToken);
+  const [records, accounts] = await Promise.all([loadShortcutConnectionRecords(db, environmentToken), accountsInput]);
   const connections = records.map((record) => buildConnectionDto(accounts, record));
   const first = connections[0];
   return {

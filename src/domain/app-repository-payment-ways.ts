@@ -15,15 +15,20 @@ import type { AccountDto, PaymentWayDto, PersonDto } from "../types/dto";
 
 // Every person's effective payment ways (defaults applied). Read-only apart
 // from creating the settings table on an older database.
+type PaymentWayInputs = { accounts: AccountDto[]; people: PersonDto[]; priorityIds: string[] };
+
 export async function loadPaymentWays(
   db: D1Database,
-  input: { accounts: AccountDto[]; people: PersonDto[]; priorityIds: string[] }
+  // A promise is fine: the stored choices are read meanwhile.
+  inputs: PaymentWayInputs | Promise<PaymentWayInputs>
 ): Promise<PaymentWayDto[]> {
-  await ensureAppSettingsTable(db);
-  const row = await db
-    .prepare("SELECT value_json FROM app_settings WHERE key = ?")
-    .bind(PAYMENT_WAYS_SETTINGS_KEY)
-    .first<{ value_json: string }>();
+  const [row, input] = await Promise.all([
+    ensureAppSettingsTable(db).then(() => db
+      .prepare("SELECT value_json FROM app_settings WHERE key = ?")
+      .bind(PAYMENT_WAYS_SETTINGS_KEY)
+      .first<{ value_json: string }>()),
+    inputs
+  ]);
   return resolvePaymentWays(parseStoredPaymentWays(row?.value_json), input);
 }
 

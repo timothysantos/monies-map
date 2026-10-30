@@ -72,7 +72,7 @@ function entriesOwnedBy(entries: UncategorisedEntry[], rules: CategoryMatchRuleD
 }
 
 // For Settings: each rule with uncategorised past entries it now matches.
-export async function loadCategoryRuleBackfills(db: D1Database, rules?: CategoryMatchRuleDto[]): Promise<CategoryMatchRuleBackfillDto[]> {
+export async function loadCategoryRuleBackfills(db: D1Database, rules?: CategoryMatchRuleDto[] | Promise<CategoryMatchRuleDto[]>): Promise<CategoryMatchRuleBackfillDto[]> {
   const [activeRules, entries] = await Promise.all([rules ?? loadCategoryMatchRules(db), loadUncategorisedEntries(db)]);
   const owned = entriesOwnedBy(entries, activeRules);
   return activeRules
