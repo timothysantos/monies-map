@@ -1068,40 +1068,106 @@ const ACTIVE_SPLIT_LINK_INDEXES = [
 ] as const;
 
 const CREATE_IF_MISSING_PATTERN = /^\s*CREATE\s+(?:UNIQUE\s+)?(TABLE|INDEX)\s+IF\s+NOT\s+EXISTS\s+("?)([A-Za-z0-9_]+)\2/i;
+const DROP_IF_EXISTS_PATTERN = /^\s*DROP\s+(TABLE|INDEX)\s+IF\s+EXISTS\s+("?)([A-Za-z0-9_]+)\2\s*$/i;
+const TABLE_INFO_PATTERN = /^\s*PRAGMA\s+table_info\(\s*([A-Za-z0-9_]+)\s*\)\s*$/i;
+// A statement that can change a table's columns: its cached columns are
+// dropped and the next PRAGMA table_info for it is read for real.
+const TABLE_CHANGE_PATTERN = /^\s*(?:ALTER\s+TABLE|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?)\s+("?)([A-Za-z0-9_]+)\1/i;
 
-// Wraps db so a "CREATE TABLE/INDEX IF NOT EXISTS x" for an object that was
-// already in the database when this ran resolves without a D1 round trip. An
-// object missing at that point is still created for real; everything else
-// passes straight through.
+// The tables whose columns the initialization checks (PRAGMA table_info
+// below). Their columns are read up front in one statement; a table not in
+// this list is still checked with its own PRAGMA.
+const COLUMN_CHECKED_TABLES = [
+  "ai_provider_status", "categories", "accounts", "transactions", "people", "login_identities",
+  "import_no_longer_listed_entries", "account_balance_checkpoints", "statement_reconciliation_certificates",
+  "import_rows", "split_groups", "monthly_snapshots", "split_expenses", "split_settlements",
+  "split_settlement_checkpoints", "split_settlement_checkpoint_matches"
+] as const;
+
+// The schema objects present when the initialization began, per wrapped
+// binding (ensureActiveSplitLinkIndexes reads it).
+const startingObjectsByDatabase = new WeakMap<D1Database, Set<string>>();
+
+// Wraps db so the cold-start checks of an up-to-date database cost two reads
+// sent together instead of a sequential D1 round trip each (~24 steps):
+// - "CREATE TABLE/INDEX IF NOT EXISTS x" for an object that was already in
+//   the database resolves without a round trip (one missing then is still
+//   created for real);
+// - "DROP TABLE/INDEX IF EXISTS x" for an object that was not there does too;
+// - "PRAGMA table_info(x)" for a table read up front answers from that read,
+//   until a statement that can change x's columns goes through.
+// Everything else passes straight through.
 async function skipExistingSchemaObjects(db: D1Database): Promise<D1Database> {
   // A failure here propagates: initialization is retried on the next request.
-  const result = await db
-    .prepare("SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index')")
-    .all<{ type: string; name: string }>();
+  const [result, columns] = await Promise.all([
+    db
+      .prepare("SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index')")
+      .all<{ type: string; name: string }>(),
+    // D1 allows pragma_table_info joined to a list of names (not to
+    // sqlite_master, and not a long UNION of them).
+    db
+      .prepare(`
+        SELECT tables.value AS table_name, columns.cid, columns.name, columns.type, columns."notnull", columns.dflt_value, columns.pk
+        FROM json_each(?) AS tables
+        JOIN pragma_table_info(tables.value) AS columns
+        ORDER BY table_name, columns.cid
+      `)
+      .bind(JSON.stringify(COLUMN_CHECKED_TABLES))
+      .all<{ table_name: string; cid: number; name: string; type: string; notnull: number; dflt_value: unknown; pk: number }>()
+  ]);
   const existing = new Set(
     (result?.results ?? []).map((row) => `${row.type}:${String(row.name).toLowerCase()}`)
   );
+  const columnsByTable = new Map<string, Array<Record<string, unknown>>>(COLUMN_CHECKED_TABLES.map((table) => [table, []]));
+  for (const { table_name: table, ...column } of columns?.results ?? []) {
+    columnsByTable.get(table)?.push(column);
+  }
 
   const alreadyApplied = (sql: string) => {
     const match = CREATE_IF_MISSING_PATTERN.exec(sql);
     return Boolean(match) && existing.has(`${match![1].toLowerCase()}:${match![3].toLowerCase()}`);
   };
-  const noop = {
-    bind: () => noop,
-    run: async () => ({ success: true, results: [], meta: {} }),
-    all: async () => ({ success: true, results: [], meta: {} }),
-    first: async () => null
-  } as unknown as D1PreparedStatement;
+  const nothingToDrop = (sql: string) => {
+    const match = DROP_IF_EXISTS_PATTERN.exec(sql);
+    return Boolean(match) && !existing.has(`${match![1].toLowerCase()}:${match![3].toLowerCase()}`);
+  };
+  const resolved = (results: unknown[]) => {
+    const statement = {
+      bind: () => statement,
+      run: async () => ({ success: true, results, meta: {} }),
+      all: async () => ({ success: true, results, meta: {} }),
+      first: async () => results[0] ?? null
+    } as unknown as D1PreparedStatement;
+    return statement;
+  };
+  const noop = resolved([]);
+  const answered = new WeakSet<D1PreparedStatement>([noop]);
 
-  return new Proxy(db, {
+  const proxy = new Proxy(db, {
     get(target, property) {
       if (property === "prepare") {
-        return (sql: string) => (alreadyApplied(sql) ? noop : target.prepare(sql));
+        return (sql: string) => {
+          if (alreadyApplied(sql) || nothingToDrop(sql)) {
+            return noop;
+          }
+          const tableInfo = TABLE_INFO_PATTERN.exec(sql);
+          const cached = tableInfo ? columnsByTable.get(tableInfo[1].toLowerCase()) : undefined;
+          if (cached) {
+            const statement = resolved(cached.map((column) => ({ ...column })));
+            answered.add(statement);
+            return statement;
+          }
+          const change = TABLE_CHANGE_PATTERN.exec(sql);
+          if (change) {
+            columnsByTable.delete(change[2].toLowerCase());
+          }
+          return target.prepare(sql);
+        };
       }
       if (property === "batch") {
-        // Skipped statements are not real D1 statements; leave them out.
+        // Answered statements are not real D1 statements; leave them out.
         return async (statements: D1PreparedStatement[]) => {
-          const real = statements.filter((statement) => statement !== noop);
+          const real = statements.filter((statement) => !answered.has(statement));
           return real.length ? target.batch(real) : [];
         };
       }
@@ -1109,10 +1175,14 @@ async function skipExistingSchemaObjects(db: D1Database): Promise<D1Database> {
       return typeof value === "function" ? value.bind(target) : value;
     }
   });
+  startingObjectsByDatabase.set(proxy, existing);
+  return proxy;
 }
 
 async function ensureActiveSplitLinkIndexes(db: D1Database) {
   for (const { table, index } of ACTIVE_SPLIT_LINK_INDEXES) {
+    // An index present when the initialization began is still there.
+    if (startingObjectsByDatabase.get(db)?.has(`index:${index.toLowerCase()}`)) continue;
     const existing = await db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?")
       .bind(index)

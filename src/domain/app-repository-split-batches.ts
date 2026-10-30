@@ -156,14 +156,17 @@ export async function closeSplitBatch(
 }
 
 export async function backfillSplitBatches(db: D1Database) {
-  const unassignedExpenseCount = await db
-    .prepare("SELECT COUNT(*) AS count FROM split_expenses WHERE household_id = ? AND split_batch_id IS NULL")
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .first<{ count: number }>();
-  const unassignedSettlementCount = await db
-    .prepare("SELECT COUNT(*) AS count FROM split_settlements WHERE household_id = ? AND split_batch_id IS NULL")
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .first<{ count: number }>();
+  // Both checks at once: this runs on every cold isolate.
+  const [unassignedExpenseCount, unassignedSettlementCount] = await Promise.all([
+    db
+      .prepare("SELECT COUNT(*) AS count FROM split_expenses WHERE household_id = ? AND split_batch_id IS NULL")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .first<{ count: number }>(),
+    db
+      .prepare("SELECT COUNT(*) AS count FROM split_settlements WHERE household_id = ? AND split_batch_id IS NULL")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .first<{ count: number }>()
+  ]);
 
   if ((unassignedExpenseCount?.count ?? 0) === 0 && (unassignedSettlementCount?.count ?? 0) === 0) {
     return;

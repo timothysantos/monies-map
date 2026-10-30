@@ -17,11 +17,19 @@ export async function ensureDemoSettingsTable(db: D1Database) {
 
 export async function loadDemoSettings(db: D1Database): Promise<DemoSettings> {
   try {
-    await ensureDemoSettingsTable(db);
-    const result = await db
+    // Read first and create the table only when it is missing: this runs on
+    // every cold isolate, and the table nearly always exists.
+    const read = () => db
       .prepare("SELECT value_json FROM demo_settings WHERE key = ?")
       .bind(DEMO_SETTINGS_KEY)
       .first<{ value_json: string }>();
+    const result = await read().catch(async (error: unknown) => {
+      if (!/no such table/i.test(String((error as Error)?.message ?? error))) {
+        throw error;
+      }
+      await ensureDemoSettingsTable(db);
+      return read();
+    });
 
     if (!result?.value_json) {
       await saveDemoSettings(db, defaultDemoSettings);

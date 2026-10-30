@@ -148,16 +148,25 @@ export async function reseedDemoData(db: D1Database, settings: DemoSettings, see
 export async function seedEmptyStateReferenceData(db: D1Database) {
   await ensureDemoSchema(db);
 
-  await db
-    .prepare(`
-      INSERT INTO households (id, name, base_currency)
-      VALUES (?, ?, ?)
-      ON CONFLICT(id) DO NOTHING
-    `)
-    .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
-    .run();
-
-  const existingPeople = await loadSeedPeople(db);
+  // This runs on every cold isolate, so its reads go with the household
+  // upsert: three steps in all (reads and upsert, missing rows, upkeep)
+  // instead of one round trip each. The upsert has finished before any
+  // person or category is inserted.
+  const [, existingPeople, existingCategoryRows] = await Promise.all([
+    db
+      .prepare(`
+        INSERT INTO households (id, name, base_currency)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `)
+      .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
+      .run(),
+    loadSeedPeople(db),
+    db
+      .prepare("SELECT id FROM categories WHERE household_id = ?")
+      .bind(defaultHousehold.id)
+      .all<{ id: string }>()
+  ]);
   if (existingPeople.length) {
     await repairAccidentalEmptyStatePeople(db, existingPeople);
   } else {
@@ -173,14 +182,9 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
     }
   }
 
-  // This runs on every cold isolate: one read, then one batch for only the
-  // categories that are missing, instead of one round trip per category.
-  const existingCategoryIds = new Set(
-    (await db
-      .prepare("SELECT id FROM categories WHERE household_id = ?")
-      .bind(defaultHousehold.id)
-      .all<{ id: string }>()).results.map((row) => row.id)
-  );
+  // One batch for only the categories that are missing, instead of one
+  // round trip per category.
+  const existingCategoryIds = new Set(existingCategoryRows.results.map((row) => row.id));
   const missingCategoryStatements = defaultCategories
     .filter((category) => !existingCategoryIds.has(category.id))
     .map((category) => db
@@ -206,8 +210,8 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
     await db.batch(missingCategoryStatements);
   }
 
-  await ensureDefaultCategoryMatchRules(db);
-  await ensureDefaultCategoryPalette(db);
+  // Independent upkeep: the default rules and the palette repair.
+  await Promise.all([ensureDefaultCategoryMatchRules(db), ensureDefaultCategoryPalette(db)]);
 }
 
 async function ensureDefaultCategoryPalette(db: D1Database) {
