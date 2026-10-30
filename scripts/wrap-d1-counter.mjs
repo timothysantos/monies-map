@@ -2,7 +2,11 @@
 // so every response carries `x-d1: <statements>;<D1 ms>;<rows read>`, which
 // tests/performance/api-cost.spec.js records per endpoint. The statement
 // count is the number of D1 round trips a request made (a batch counts its
-// statements); D1 ms and rows read come from each result's `meta`.
+// statements); D1 ms and rows read come from each result's `meta`. The
+// wrapped binding is kept per D1 binding, so the app's once-per-isolate
+// schema check stays once per isolate (a new wrapper per request made every
+// request pay it); counts are right for requests sent one at a time, as the
+// api-cost spec sends them.
 //
 //   extract a revision into <copy> (an archive of the commit, never your checkout)
 //   node scripts/wrap-d1-counter.mjs <copy>   edits <copy>/src/index.ts
@@ -11,10 +15,11 @@
 // checkout, and the header is never part of the product.
 //
 //   D1_COUNTER_LATENCY_MS=<ms> node scripts/wrap-d1-counter.mjs <copy>
-// also waits that long before every D1 round trip (a batch is one), the way
-// a deployed Worker waits on the network for D1, so a browser cohort on a
-// local Worker shows what each chain of sequential reads costs in
-// production (docs/audits/speed-pass-2026-10.md).
+// also waits that long before every D1 round trip (a batch is one) of a GET
+// request, the way a deployed Worker waits on the network for D1, so a
+// browser cohort on a local Worker shows what each chain of sequential
+// reads costs in production (docs/audits/speed-pass-2026-10.md). Seeding
+// (POST) does not wait.
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -24,49 +29,61 @@ const EXPORT_MARKER = "\nexport default {\n";
 
 export const D1_COUNTER_SOURCE = (latencyMs = 0) => `
 ;// --- measurement-only D1 counter (scripts/wrap-d1-counter.mjs; never committed) ---
-type D1Counter = { n: number; ms: number; rowsRead: number };
+type D1Counter = { n: number; ms: number; rowsRead: number; wait: boolean };
 const D1_ROUND_TRIP_WAIT_MS = ${Number(latencyMs) || 0};
-const roundTripWait = () => (D1_ROUND_TRIP_WAIT_MS > 0 ? new Promise((resolve) => setTimeout(resolve, D1_ROUND_TRIP_WAIT_MS)) : undefined);
-function countMeta(counter: D1Counter, result: any) {
+// One wrapped binding per D1 binding, so the app's once-per-binding work
+// (the schema check, keyed by the binding) stays once per isolate. Its
+// statements count into the request started last: the harness sends the
+// requests it counts one at a time. The wait applies to GET requests (the
+// page reads), so seeding a fixture stays quick.
+const d1CounterBox: { counter: D1Counter } = { counter: { n: 0, ms: 0, rowsRead: 0, wait: false } };
+const countingDbs = new WeakMap<object, any>();
+const roundTripWait = () => (d1CounterBox.counter.wait && D1_ROUND_TRIP_WAIT_MS > 0 ? new Promise((resolve) => setTimeout(resolve, D1_ROUND_TRIP_WAIT_MS)) : undefined);
+function countMeta(result: any) {
   const meta = result?.meta;
   if (meta) {
-    counter.ms += Number(meta.duration ?? 0);
-    counter.rowsRead += Number(meta.rows_read ?? 0);
+    d1CounterBox.counter.ms += Number(meta.duration ?? 0);
+    d1CounterBox.counter.rowsRead += Number(meta.rows_read ?? 0);
   }
   return result;
 }
-function wrapStatement(statement: any, counter: D1Counter): any {
+function wrapStatement(statement: any): any {
   return new Proxy(statement, {
     get(target, prop) {
       if (prop === "__raw") return target;
-      if (prop === "bind") return (...args: unknown[]) => wrapStatement(target.bind(...args), counter);
-      if (prop === "all" || prop === "run") return async (...args: unknown[]) => { counter.n += 1; await roundTripWait(); return countMeta(counter, await target[prop](...args)); };
-      if (prop === "first" || prop === "raw") return async (...args: unknown[]) => { counter.n += 1; await roundTripWait(); return target[prop](...args); };
+      if (prop === "bind") return (...args: unknown[]) => wrapStatement(target.bind(...args));
+      if (prop === "all" || prop === "run") return async (...args: unknown[]) => { d1CounterBox.counter.n += 1; await roundTripWait(); return countMeta(await target[prop](...args)); };
+      if (prop === "first" || prop === "raw") return async (...args: unknown[]) => { d1CounterBox.counter.n += 1; await roundTripWait(); return target[prop](...args); };
       const value = target[prop];
       return typeof value === "function" ? value.bind(target) : value;
     }
   });
 }
-function countingDb(db: any, counter: D1Counter): any {
-  return new Proxy(db, {
+function countingDb(db: any): any {
+  const existing = countingDbs.get(db);
+  if (existing) return existing;
+  const wrapped = new Proxy(db, {
     get(target, prop) {
-      if (prop === "prepare") return (sql: string) => wrapStatement(target.prepare(sql), counter);
+      if (prop === "prepare") return (sql: string) => wrapStatement(target.prepare(sql));
       if (prop === "batch") return async (statements: any[]) => {
-        counter.n += statements.length;
+        d1CounterBox.counter.n += statements.length;
         await roundTripWait();
         const results = await target.batch(statements.map((s) => s.__raw ?? s));
-        results.forEach((r: any) => countMeta(counter, r));
+        results.forEach((r: any) => countMeta(r));
         return results;
       };
       const value = target[prop];
       return typeof value === "function" ? value.bind(target) : value;
     }
   });
+  countingDbs.set(db, wrapped);
+  return wrapped;
 }
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const counter: D1Counter = { n: 0, ms: 0, rowsRead: 0 };
-    const response = await __measuredWorker.fetch(request, { ...env, DB: countingDb(env.DB, counter) } as Env);
+    const counter: D1Counter = { n: 0, ms: 0, rowsRead: 0, wait: request.method === "GET" };
+    d1CounterBox.counter = counter;
+    const response = await __measuredWorker.fetch(request, { ...env, DB: countingDb(env.DB) } as Env);
     const copy = new Response(response.body, response);
     copy.headers.set("x-d1", \`\${counter.n};\${counter.ms.toFixed(2)};\${counter.rowsRead}\`);
     return copy;
