@@ -27,17 +27,24 @@ export async function buildRemindersDto(
 ): Promise<RemindersDto> {
   // Only the people: the app shell's context also reads categories and every
   // tracked month, which no reminder needs.
-  const people = await loadPeople(db);
-  const viewId = resolvePageViewId(selectedViewId, people);
-  // Statements first: a month's entries and note are read only for a month
-  // whose statements are all in (the only one a card can show for).
-  const accounts = await loadReminderAccounts(db);
-  const [cardPayments, charges, splits, monthClose] = await Promise.all([
+  // Every read starts at once; the split facts wait only for the people and
+  // the month close only for the people and the accounts.
+  const peopleRead = loadPeople(db);
+  const accountsRead = loadReminderAccounts(db);
+  const [people, accounts, cardPayments, charges, splits, monthClose] = await Promise.all([
+    peopleRead,
+    accountsRead,
     loadCardPayments(db, today),
     loadSubscriptionCharges(db, today),
-    loadSplitsFacts(db, viewId, people),
-    loadMonthCloseFacts(db, viewId, monthsWithAllStatements({ today, accounts, viewId }))
+    peopleRead.then((list) => loadSplitsFacts(db, resolvePageViewId(selectedViewId, list), list)),
+    // Statements first: a month's entries and note are read only for a
+    // month whose statements are all in (the only one a card can show for).
+    Promise.all([peopleRead, accountsRead]).then(([list, accountList]) => {
+      const view = resolvePageViewId(selectedViewId, list);
+      return loadMonthCloseFacts(db, view, monthsWithAllStatements({ today, accounts: accountList, viewId: view }));
+    })
   ]);
+  const viewId = resolvePageViewId(selectedViewId, people);
   const inputs: ReminderInputs = { today, viewId, people: people, accounts, cardPayments, charges, splits, monthClose };
   return { viewId, today, reminders: buildReminders(inputs).slice(0, REMINDERS_MAX) };
 }
