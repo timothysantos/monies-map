@@ -324,7 +324,6 @@ export default {
         buildEntriesShellDto(
           env.DB,
           url.searchParams.get("view") ?? "household",
-          url.searchParams.get("month") ?? getCurrentMonthKey(),
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
         ),

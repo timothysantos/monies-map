@@ -1,14 +1,9 @@
-import { getCurrentMonthKey } from "../lib/month";
-import { buildEntriesContextView, ensureAppData, loadAppShellContext } from "./app-shell";
-import { adjustEntriesForList } from "./month-projection";
+import { ensureAppData, loadAppShellContext } from "./app-shell";
 import {
   findSuggestedLoginPersonId,
   loadCategories,
   loadAccountReferences,
-  loadEntries,
   loadHousehold,
-  loadSplitGroups,
-  loadTrackedMonths,
   resolveLoginIdentityPersonId
 } from "./app-repository";
 import { loadShortcutSettings } from "./app-repository-shortcuts";
@@ -39,54 +34,38 @@ export async function buildReferenceDataDto(db: D1Database): Promise<ReferenceDa
   };
 }
 
-// Build the dedicated entries shell payload for the entries workflow.
+// Build the dedicated entries shell payload for the entries workflow: the
+// shell and the Shortcut defaults an Entries launch (a Shortcut opening the
+// quick add) reads before the full app shell arrives. It once also carried
+// the month's entries for every view, which no screen reads (Entries reads
+// /api/entries-page): ~535 KB, 58 KB gzip, on production's ledger.
 export async function buildEntriesShellDto(
   db: D1Database,
   selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey(),
   viewerEmail?: string,
   appEnvironment?: EntriesShellDto["appEnvironment"]
 ): Promise<EntriesShellDto> {
   const demo = await ensureAppData(db);
-  const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
+  const accountsRead = loadAccountReferences(db);
+  const [household, accounts, categories, viewerPersonId, shortcutSettings] = await Promise.all([
     loadHousehold(db),
-    loadAccountReferences(db),
+    accountsRead,
     loadCategories(db),
-    loadTrackedMonths(db),
-    loadSplitGroups(db)
+    resolveLoginIdentityPersonId(db, viewerEmail),
+    loadShortcutSettings(db, accountsRead)
   ]);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const availableMonths = trackedMonths.length ? trackedMonths : [effectiveSelectedMonth];
-  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewIds = ["household", ...household.people.map((person) => person.id)];
   const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
     ? selectedViewId
     : "household";
-  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
   const suggestedPersonId = viewerEmail && !viewerPersonId
     ? await findSuggestedLoginPersonId(db)
     : undefined;
-  const shortcutSettings = await loadShortcutSettings(db, accounts);
-  const views = viewIds.map((id) =>
-    buildEntriesContextView(
-      id,
-      personNameById[id] ?? "Household",
-      adjustEntriesForList(monthEntries, id),
-      splitGroups,
-      effectiveSelectedMonth,
-      availableMonths
-    )
-  );
 
   return {
     appEnvironment,
     household,
     accounts,
     categories,
-    views,
     selectedViewId: viewId,
     viewerPersonId,
     viewerIdentity: viewerEmail ? {

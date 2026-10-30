@@ -1433,7 +1433,6 @@ export interface EntriesShellDto {
   household: HouseholdDto;
   accounts: AccountDto[];
   categories: CategoryDto[];
-  views: ContextViewDto[];
   selectedViewId: string;
   viewerPersonId?: string;
   viewerIdentity?: {
