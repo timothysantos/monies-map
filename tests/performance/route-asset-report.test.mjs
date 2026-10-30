@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
-import { buildWarmupCosts, createRouteAssetReport, parseWarmupCosts } from "../../scripts/route-asset-report.mjs";
+import { buildWarmupCosts, createRouteAssetReport, getHtmlStylesheetAssets, parseWarmupCosts } from "../../scripts/route-asset-report.mjs";
 import { replaceWarmupCostsBlock, renderWarmupCostsBlock } from "../../scripts/write-warmup-costs.mjs";
 
 function manifestFixture() {
@@ -46,6 +46,24 @@ test("HTML-linked stylesheet is counted in initial and route CSS, once across ro
   assert.equal(report.routes.summary.files.filter(({ file }) => file === "styles.css").length, 1);
   assert.equal(report.sharedAcrossRoutes.filter(({ file }) => file === "styles.css").length, 1);
   assert.equal(report.routes.summary.incrementalFiles.some(({ file }) => file === "styles.css"), false);
+});
+
+// The colour preset loader writes a palette <link> from a script; its href
+// is built at runtime ("/palettes/" + sheet + ".css"). Read as a stylesheet
+// it was an unreadable "palettes/" file that made every route's cost
+// unknown, so the built warmup metadata was empty and route code warmup was
+// refused ("unknown-cost") from 2026-10-13 to the speed pass.
+test("a <link> written by a script is not a stylesheet the page loads", () => {
+  const html = `<!doctype html><html><head>
+    <link rel="stylesheet" href="/styles.css" />
+    <script>
+      if (sheet) {
+        document.write('<link rel="stylesheet" href="/palettes/' + sheet + '.css" data-palette-sheet="' + sheet + '" />');
+      }
+    </script>
+    <link rel="stylesheet" crossorigin href="/assets/index-abc.css">
+  </head><body></body></html>`;
+  assert.deepEqual(getHtmlStylesheetAssets(html), ["styles.css", "assets/index-abc.css"]);
 });
 
 test("a missing manifest asset makes route cost unknown rather than zero", () => {

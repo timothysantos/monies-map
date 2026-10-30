@@ -20,7 +20,10 @@ const ROUTE_ENTRIES = {
 export const WARMUP_COSTS_BLOCK_PATTERN = /<script\b(?=[^>]*\bid=["']monies-warmup-costs["'])(?=[^>]*\btype=["']application\/json["'])[^>]*>([\s\S]*?)<\/script\s*>/gi;
 
 export function getHtmlStylesheetAssets(html) {
-  return [...html.matchAll(/<link\b([^>]+)>/gi)].flatMap(([, attributes]) => {
+  // A <link> inside a script is markup the script may write at runtime (the
+  // colour preset loader), not a stylesheet the page loads.
+  const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
+  return [...markup.matchAll(/<link\b([^>]+)>/gi)].flatMap(([, attributes]) => {
     const rel = attributes.match(/\brel=["']([^"']+)["']/i)?.[1]?.toLowerCase().split(/\s+/) ?? [];
     const href = attributes.match(/\bhref=["']([^"']+)["']/i)?.[1];
     return rel.includes("stylesheet") && href?.startsWith("/") ? [href.slice(1)] : [];

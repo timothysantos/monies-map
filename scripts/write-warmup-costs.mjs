@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { WARMUP_COSTS_BLOCK_PATTERN, buildWarmupCosts, getHtmlStylesheetAssets } from "./route-asset-report.mjs";
+import { WARMUP_COSTS_BLOCK_PATTERN, buildWarmupCosts, getHtmlStylesheetAssets, parseWarmupCosts } from "./route-asset-report.mjs";
+import { WARMUP_COST_ROUTE_IDS } from "../src/client/route-warmup-costs.js";
 
 // Builds may run without git (for example a packaged deploy); unknown is fine.
 function currentRevision() {
@@ -46,6 +47,13 @@ async function main() {
       htmlAssets: getHtmlStylesheetAssets(html)
     }
   );
+  // Metadata the page cannot read turns route code warmup off everywhere
+  // ("unknown-cost"), silently; that shipped once (2026-10-13 to the speed
+  // pass), so a build with any route's cost unknown fails here instead.
+  if (!parseWarmupCosts(metadata)) {
+    const unknown = WARMUP_COST_ROUTE_IDS.filter((route) => !metadata.routes[route]);
+    throw new Error(`Warmup cost metadata is incomplete (unknown: ${unknown.join(", ") || "a chunk"}); route code warmup would be refused. Check the route entries and the stylesheets index.html links.`);
+  }
   await writeFile(indexPath, replaceWarmupCostsBlock(html, metadata));
 }
 
