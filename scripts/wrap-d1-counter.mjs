@@ -9,6 +9,12 @@
 //
 // It refuses a directory with a `.git` entry so it cannot touch a working
 // checkout, and the header is never part of the product.
+//
+//   D1_COUNTER_LATENCY_MS=<ms> node scripts/wrap-d1-counter.mjs <copy>
+// also waits that long before every D1 round trip (a batch is one), the way
+// a deployed Worker waits on the network for D1, so a browser cohort on a
+// local Worker shows what each chain of sequential reads costs in
+// production (docs/audits/speed-pass-2026-10.md).
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,9 +22,11 @@ import process from "node:process";
 
 const EXPORT_MARKER = "\nexport default {\n";
 
-export const D1_COUNTER_SOURCE = `
+export const D1_COUNTER_SOURCE = (latencyMs = 0) => `
 ;// --- measurement-only D1 counter (scripts/wrap-d1-counter.mjs; never committed) ---
 type D1Counter = { n: number; ms: number; rowsRead: number };
+const D1_ROUND_TRIP_WAIT_MS = ${Number(latencyMs) || 0};
+const roundTripWait = () => (D1_ROUND_TRIP_WAIT_MS > 0 ? new Promise((resolve) => setTimeout(resolve, D1_ROUND_TRIP_WAIT_MS)) : undefined);
 function countMeta(counter: D1Counter, result: any) {
   const meta = result?.meta;
   if (meta) {
@@ -32,8 +40,8 @@ function wrapStatement(statement: any, counter: D1Counter): any {
     get(target, prop) {
       if (prop === "__raw") return target;
       if (prop === "bind") return (...args: unknown[]) => wrapStatement(target.bind(...args), counter);
-      if (prop === "all" || prop === "run") return async (...args: unknown[]) => { counter.n += 1; return countMeta(counter, await target[prop](...args)); };
-      if (prop === "first" || prop === "raw") return async (...args: unknown[]) => { counter.n += 1; return target[prop](...args); };
+      if (prop === "all" || prop === "run") return async (...args: unknown[]) => { counter.n += 1; await roundTripWait(); return countMeta(counter, await target[prop](...args)); };
+      if (prop === "first" || prop === "raw") return async (...args: unknown[]) => { counter.n += 1; await roundTripWait(); return target[prop](...args); };
       const value = target[prop];
       return typeof value === "function" ? value.bind(target) : value;
     }
@@ -45,6 +53,7 @@ function countingDb(db: any, counter: D1Counter): any {
       if (prop === "prepare") return (sql: string) => wrapStatement(target.prepare(sql), counter);
       if (prop === "batch") return async (statements: any[]) => {
         counter.n += statements.length;
+        await roundTripWait();
         const results = await target.batch(statements.map((s) => s.__raw ?? s));
         results.forEach((r: any) => countMeta(counter, r));
         return results;
@@ -66,11 +75,11 @@ export default {
 `;
 
 // The index source with its default export renamed and the counter appended.
-export function wrapWorkerSource(source) {
+export function wrapWorkerSource(source, { latencyMs = 0 } = {}) {
   if (source.split(EXPORT_MARKER).length !== 2) {
     throw new Error("Expected exactly one `export default {` at the start of a line in src/index.ts.");
   }
-  return source.replace(EXPORT_MARKER, "\nconst __measuredWorker = {\n") + D1_COUNTER_SOURCE;
+  return source.replace(EXPORT_MARKER, "\nconst __measuredWorker = {\n") + D1_COUNTER_SOURCE(latencyMs);
 }
 
 async function main() {
@@ -81,8 +90,9 @@ async function main() {
   const indexFile = path.join(root, "src", "index.ts");
   const source = await readFile(indexFile, "utf8");
   if (source.includes("__measuredWorker")) throw new Error(`${indexFile} is already wrapped.`);
-  await writeFile(indexFile, wrapWorkerSource(source));
-  console.log(`Wrapped ${indexFile} with the D1 counter.`);
+  const latencyMs = Number(process.env.D1_COUNTER_LATENCY_MS ?? 0);
+  await writeFile(indexFile, wrapWorkerSource(source, { latencyMs }));
+  console.log(`Wrapped ${indexFile} with the D1 counter${latencyMs > 0 ? ` and ${latencyMs} ms per D1 round trip` : ""}.`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
