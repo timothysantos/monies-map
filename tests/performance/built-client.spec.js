@@ -26,29 +26,29 @@ const PROFILES = {
   mobile: { label: "mobile: 150 ms RTT, 1.6 Mbps down, 750 kbps up, CPU 4x", cpuRate: 4, latency: 150, downloadThroughput: 204_800, uploadThroughput: 96_000 }
 };
 
-// In-page readiness predicates: route-specific fixture values (visible while
-// money is hidden) plus an enabled primary control. A heading alone, or the
-// previous page kept visible during a transition, cannot satisfy them. Each
-// returns in-page performance.now() once usable so assertion polling cannot
-// inflate the timing.
+// In-page readiness predicates: the route's own heading on screen, its data
+// rendered (Summary's figures, Entries' rows of the demo month, including
+// the demo's "Vivify" entry) and nothing in the main area busy. The previous
+// page kept visible during a transition cannot satisfy them (other heading,
+// other path). Each returns in-page performance.now() once usable so
+// assertion polling cannot inflate the timing. (The earlier predicates read
+// Summary labels the 2026-10 redesign no longer has.)
 const READY = {
   summary: () => {
     if (location.pathname !== "/summary") return false;
-    const text = document.querySelector("main")?.innerText ?? "";
-    const buttons = [...document.querySelectorAll("button")];
-    const label = (button) => (button.getAttribute("aria-label") ?? button.textContent ?? "").trim();
-    const ready = text.includes("Viewing • Household")
-      && buttons.some((button) => label(button).startsWith("Bills") && label(button).includes("4 transactions"))
-      && buttons.some((button) => label(button) === "View entries for Bills" && !button.disabled);
+    const heading = [...document.querySelectorAll("h1, h2")].some((node) => node.textContent.trim() === "Summary" && node.offsetParent !== null);
+    const ready = heading
+      && document.querySelector("main [data-fig]")
+      && !document.querySelector('main [aria-busy="true"]');
     return ready ? performance.now() : false;
   },
   entries: () => {
     if (location.pathname !== "/entries") return false;
-    const text = document.querySelector("main")?.innerText ?? "";
-    const buttons = [...document.querySelectorAll("button")];
-    const ready = text.includes("Viewing entries for Household")
-      && text.includes("Vivify")
-      && buttons.some((button) => (button.getAttribute("aria-label") ?? "").trim() === "Edit Bills" && !button.disabled);
+    const heading = [...document.querySelectorAll("h1, h2")].some((node) => node.textContent.trim() === "Entries" && node.offsetParent !== null);
+    const ready = heading
+      && document.querySelector("main .entries-rows")
+      && (document.querySelector("main")?.innerText ?? "").includes("Vivify")
+      && !document.querySelector('main [aria-busy="true"]');
     return ready ? performance.now() : false;
   }
 };
@@ -154,7 +154,7 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
       throw new Error(`Summary never became usable: ${error.message}\nErrors: ${JSON.stringify(pageErrors)}\nRequests: ${JSON.stringify(requests.map((request) => request.path))}`);
     }
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "View entries for Bills" })).toBeEnabled();
+    await expect(page.locator("main [data-fig]").first()).toBeVisible();
     expect(pageErrors).toEqual([]);
 
     const paths = requests.map((request) => request.path);
@@ -222,7 +222,7 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
         toEntries.push(await navigate("entries"));
         toSummary.push(await navigate("summary"));
       }
-      await expect(page.getByRole("button", { name: "View entries for Bills" })).toBeEnabled();
+      await expect(page.locator("main [data-fig]").first()).toBeVisible();
       warm = {
         primingRoundTrip: priming,
         summaryToEntries: { ...summarizeSamples(toEntries.map((item) => item.usableMs)), rawMs: toEntries.map((item) => item.usableMs), apiRequestsPerSample: toEntries.map((item) => item.apiRequests.length) },
