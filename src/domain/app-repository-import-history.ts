@@ -70,9 +70,13 @@ export async function loadImportBatches(
     return [];
   }
 
-  const accountRows = await loadImportAccountRows(db, result.results.map((row) => row.id));
-  const certificateRows = await loadImportStatementCertificateRows(db, result.results.map((row) => row.id));
-  const valueRows = await loadImportInvestmentValueRows(db, result.results.map((row) => row.id));
+  // The three lookups (each a read per chunk of imports) are sent together.
+  const importIds = result.results.map((row) => row.id);
+  const [accountRows, certificateRows, valueRows] = await Promise.all([
+    loadImportAccountRows(db, importIds),
+    loadImportStatementCertificateRows(db, importIds),
+    loadImportInvestmentValueRows(db, importIds)
+  ]);
 
   const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
@@ -170,22 +174,18 @@ export async function loadImportBatches(
   });
 }
 
-async function loadImportStatementCertificateRows(db: D1Database, importIds: string[]) {
-  if (!importIds.length) {
-    return [];
-  }
-
-  const rows: {
-    import_id: string;
-    certificate_count: number;
-    exception_count: number;
-    imported_row_count: number;
-    certified_existing_row_count: number;
-    later_statement_count: number;
-  }[] = [];
+// One read per chunk of import ids, all sent at once; the rows come back in
+// chunk order, as the one-chunk-after-another reads returned them.
+async function readInChunks<T>(importIds: string[], read: (chunk: string[], placeholders: string) => Promise<T[]>): Promise<T[]> {
+  const chunks: string[][] = [];
   for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
-    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
-    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+    chunks.push(importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE));
+  }
+  return (await Promise.all(chunks.map((chunk) => read(chunk, chunk.map(() => "?").join(", "))))).flat();
+}
+
+async function loadImportStatementCertificateRows(db: D1Database, importIds: string[]) {
+  return readInChunks(importIds, async (chunk, importIdPlaceholders) => {
     const result = await db
       .prepare(`
         SELECT
@@ -227,19 +227,12 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
         certified_existing_row_count: number;
         later_statement_count: number;
       }>();
-
-    rows.push(...result.results);
-  }
-
-  return rows;
+    return result.results;
+  });
 }
 
 async function loadImportAccountRows(db: D1Database, importIds: string[]) {
-  const rows: { import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }[] = [];
-
-  for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
-    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
-    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+  return readInChunks(importIds, async (chunk, importIdPlaceholders) => {
     const accountRows = await db
       .prepare(`
         SELECT DISTINCT
@@ -259,19 +252,12 @@ async function loadImportAccountRows(db: D1Database, importIds: string[]) {
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
       .all<{ import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }>();
-
-    rows.push(...accountRows.results);
-  }
-
-  return rows;
+    return accountRows.results;
+  });
 }
 
 async function loadImportInvestmentValueRows(db: D1Database, importIds: string[]) {
-  const rows: { import_id: string; as_of_date: string; account_name: string; owner_name: string | null }[] = [];
-
-  for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
-    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
-    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+  return readInChunks(importIds, async (chunk, importIdPlaceholders) => {
     const valueRows = await db
       .prepare(`
         SELECT
@@ -290,11 +276,8 @@ async function loadImportInvestmentValueRows(db: D1Database, importIds: string[]
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
       .all<{ import_id: string; as_of_date: string; account_name: string; owner_name: string | null }>();
-
-    rows.push(...valueRows.results);
-  }
-
-  return rows;
+    return valueRows.results;
+  });
 }
 
 function formatImportAccountLabel(accountName: string, ownerName: string | null) {
