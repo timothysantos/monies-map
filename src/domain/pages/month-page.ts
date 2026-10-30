@@ -2,15 +2,12 @@ import { getCurrentMonthKey } from "../../lib/month";
 import {
   applyActualsFromEntries,
   buildEmptySummaryMonth,
-  loadPlannedSummaryMonthsForViews
+  buildPlannedSummaryMonthsForViews
 } from "../summary-projection";
 import { adjustEntriesForView, buildMonthPage } from "../month-projection";
 import { effectiveScopeForView, filterEntriesForView } from "../person-view-scope";
-import {
-  loadEntries,
-  loadMonthIncomeRows,
-  loadMonthPlanRows
-} from "../app-repository";
+import { loadEntries } from "../app-repository";
+import { loadMonthIncomeRowsForMonths, loadMonthPlanRowsForMonths } from "../app-repository-months";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import { loadEntriesForMonths, loadInvestmentAccountIds } from "../app-repository-entries";
 import { sumInvestmentMoves } from "../investment-moves";
@@ -30,15 +27,38 @@ export async function buildMonthPageDto(
 ): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto }> {
   const { categories, trackedMonths, viewId, label } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
-  const [monthEntries, monthPlanRows, incomeRows, summaryMonths, investmentAccountIds] = await Promise.all([
+  // The (up to three) tracked months before this one, for plan history.
+  const historyMonths = historyMonthsFor(effectiveSelectedMonth).filter((candidate) => trackedMonths.includes(candidate));
+  const planMonths = [effectiveSelectedMonth, ...historyMonths];
+  // Every read is sent at once: this month's and the history months' plan
+  // and income rows come from one range read each, and the history's entries
+  // from one read over their dates.
+  const [monthEntries, planRowsByMonth, incomeRowsByMonth, summaryMonths, investmentAccountIds, historyEntries] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth),
-    loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
+    loadMonthPlanRowsForMonths(db, planMonths),
+    loadMonthIncomeRowsForMonths(db, viewId, planMonths),
     loadRepairedSummaryMonths(db, viewId),
-    loadInvestmentAccountIds(db)
+    loadInvestmentAccountIds(db),
+    historyMonths.length ? loadEntriesForMonths(db, historyMonths) : Promise.resolve([])
   ]);
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
-  const history = await loadPlanHistory(db, viewId, selectedScope, effectiveSelectedMonth, trackedMonths);
+  const monthPlanRows = planRowsByMonth.get(effectiveSelectedMonth) ?? [];
+  const incomeRows = incomeRowsByMonth.get(effectiveSelectedMonth) ?? [];
+  const plannedSummaryMonthsByView = buildPlannedSummaryMonthsForViews(
+    [viewId],
+    [effectiveSelectedMonth],
+    new Map([[effectiveSelectedMonth, monthPlanRows]]),
+    new Map([[`${viewId}:${effectiveSelectedMonth}`, incomeRows]])
+  );
+  // Each month read with its own page's rules (deriveHistoryMonth). Months
+  // the household never tracked are skipped, so an old month reads nothing.
+  const history = historyMonths.length
+    ? historyMonths.map((candidate) => deriveHistoryMonth({
+      month: candidate,
+      planRows: planRowsByMonth.get(candidate) ?? [],
+      incomeRows: incomeRowsByMonth.get(candidate) ?? [],
+      entries: historyEntries.filter((entry) => entry.date.slice(0, 7) === candidate)
+    }, viewId, selectedScope))
+    : null;
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
   // The Actual spend card counts the same entries as Summary and the stored
   // person month totals: only the person's own, in the selected scope.
@@ -75,28 +95,6 @@ export async function buildMonthPageDto(
     summaryPage: { months: [currentSummaryMonth] },
     monthPage: history ? withPlanHistory(monthPage, history) : monthPage
   };
-}
-
-// The rows of the (up to three) tracked months before this one, each read with
-// its own page's rules: one entries read over their dates, then one plan-row
-// read and one income read per month, all in parallel. Months the household
-// never tracked are skipped, so a new household or an old month reads nothing.
-async function loadPlanHistory(db: D1Database, viewId: string, scope: PersonScope, month: string, trackedMonths: string[]) {
-  const months = historyMonthsFor(month).filter((candidate) => trackedMonths.includes(candidate));
-  if (!months.length) {
-    return null;
-  }
-  const [entries, planRows, incomeRows] = await Promise.all([
-    loadEntriesForMonths(db, months),
-    Promise.all(months.map((candidate) => loadMonthPlanRows(db, candidate))),
-    Promise.all(months.map((candidate) => loadMonthIncomeRows(db, viewId, candidate)))
-  ]);
-  return months.map((candidate, index) => deriveHistoryMonth({
-    month: candidate,
-    planRows: planRows[index],
-    incomeRows: incomeRows[index],
-    entries: entries.filter((entry) => entry.date.slice(0, 7) === candidate)
-  }, viewId, scope));
 }
 
 function withPlanHistory(monthPage: MonthPageDto, history: ReturnType<typeof deriveHistoryMonth>[]): MonthPageDto {
