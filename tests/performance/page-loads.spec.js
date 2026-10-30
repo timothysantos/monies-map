@@ -13,7 +13,8 @@ import { parseServerTiming, summarizeSamples, totalsByType } from "./performance
 // read this report yet.
 //
 // Per route, one fresh browser context per sample (empty HTTP cache, warm
-// Worker): the time until the route is usable, the requests started before
+// Worker): the time until the route is usable, the layout shift and long
+// tasks until then, the requests started before
 // that (what the first screen costs) and, for the first sample, the requests
 // that follow while the page sits idle (optional work). A route this build
 // does not have (Ask on an older commit) is reported as missing.
@@ -61,8 +62,29 @@ function contextOptions(use) {
   return { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch };
 }
 
+// Layout shift and long tasks up to the moment the route is usable, read
+// in the page (record-only, like the timings).
+const OBSERVE_LAYOUT_AND_LONG_TASKS = () => {
+  const marks = { layoutShift: 0, longTasks: 0, longTaskMs: 0 };
+  window.__pageLoadMarks = marks;
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!entry.hadRecentInput) marks.layoutShift += entry.value;
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        marks.longTasks += 1;
+        marks.longTaskMs += entry.duration;
+      }
+    }).observe({ type: "longtask", buffered: true });
+  } catch {}
+};
+
 async function preparePage(context, profile, origin) {
   const page = await context.newPage();
+  await page.addInitScript(OBSERVE_LAYOUT_AND_LONG_TASKS);
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
   await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: profile.latency, downloadThroughput: profile.downloadThroughput, uploadThroughput: profile.uploadThroughput });
@@ -116,7 +138,8 @@ async function coldLoad(browser, project, profile, route) {
     expect(pageErrors).toEqual([]);
     const usableWall = (await page.evaluate(() => performance.timeOrigin)) + usableMs;
     const before = requests.filter((request) => request.startedAtMs <= usableWall);
-    return { usableMs, before, requests, usableWall, page, context };
+    const marks = await page.evaluate(() => ({ ...(window.__pageLoadMarks ?? {}) }));
+    return { usableMs, before, requests, usableWall, page, context, marks };
   } catch (error) {
     await context.close();
     throw error;
@@ -139,9 +162,13 @@ test("page cold loads and idle traffic", async ({ browser }, testInfo) => {
         missing = true;
         break;
       }
-      const { usableMs, before, requests, usableWall, page, context } = load;
+      const { usableMs, before, requests, usableWall, page, context, marks } = load;
       samples.push({
         usableMs,
+        // Cumulative layout shift and long tasks until usable.
+        layoutShift: Number((marks.layoutShift ?? 0).toFixed(4)),
+        longTasks: marks.longTasks ?? 0,
+        longTaskMs: Math.round(marks.longTaskMs ?? 0),
         byTypeBeforeUsable: totalsByType(before),
         apiBeforeUsable: brief(apiOnly(before)),
         pathsBeforeUsable: before.map((request) => request.path).filter((requestPath) => /\.(?:m?js|css)$/.test(requestPath))

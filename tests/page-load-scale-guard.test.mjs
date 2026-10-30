@@ -40,7 +40,14 @@ const PAGES = [
   { name: "imports-page", path: "/api/imports-page", maxStatements: 22, maxRowsRead: 250_000, maxRowBytes: 400_000, maxResponseBytes: 60_000 },
   // Settings shows the latest 50 diagnostics with their bodies (50 x 20 KB), the one heavy read a page may make.
   { name: "settings-page", path: "/api/settings-page", maxStatements: 34, maxRowsRead: 250_000, maxRowBytes: 1_700_000, maxResponseBytes: 1_700_000, mayReadDiagnostics: true },
-  { name: "summary-account-pills", path: "/api/summary-account-pills?view=household", maxStatements: 20, maxRowsRead: 250_000, maxRowBytes: 1_100_000, maxResponseBytes: 12_000 }
+  { name: "summary-account-pills", path: "/api/summary-account-pills?view=household", maxStatements: 20, maxRowsRead: 250_000, maxRowBytes: 1_100_000, maxResponseBytes: 12_000 },
+  // The first screen and the two busiest pages (speed pass 2026-10): Summary
+  // made 69 round trips (a plan read per month) and moved 5.3 MB of entry
+  // rows for a year of totals; it reads a year of entries without their
+  // display columns now.
+  { name: "summary-page", path: "/api/summary-page?view=household&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxRowsRead: 45_000, maxRowBytes: 3_500_000, maxResponseBytes: 12_000 },
+  { name: "month-page", path: "/api/month-page?view=household&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxRowsRead: 30_000, maxRowBytes: 2_200_000, maxResponseBytes: 240_000 },
+  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 8, maxRowsRead: 10_000, maxRowBytes: 450_000, maxResponseBytes: 240_000 }
 ];
 // A handler that does a per-row JS loop or per-import query shows up as node
 // CPU long before it shows up in production; this is a catastrophe bound.
@@ -90,6 +97,60 @@ test("a 10k-transaction household with heavy stored previews and diagnostics kee
     assert.ok(measured.responseBytes <= page.maxResponseBytes, `${page.name}: ${measured.responseBytes} response bytes (max ${page.maxResponseBytes})`);
     assert.ok(cpuMedianMs <= MAX_MEDIAN_NODE_CPU_MS, `${page.name}: median node CPU ${cpuMedianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);
   }
+});
+
+// Production waits a network trip for every D1 round trip a request makes
+// one after another (about 100 to 180 ms each, measured from the production
+// logs: Entries ~0.9 s over 5 sequential trips), so the length of that chain
+// is what a page costs (docs/audits/speed-pass-2026-10.md). Each page read
+// here waits ROUND_TRIP_WAIT_MS before every D1 call, which makes the chain
+// measurable: `waves` is its length. The bounds are the measured value plus
+// one step; before the speed pass Summary waited on 9 steps (69 trips),
+// Month on 15, the pills on 8, Settings on 9, Imports on 7 and an Ask turn
+// on 12 before its model call. Rows read pin the whole-table reads away
+// (every page read ~24,000 rows for its month list alone).
+const ROUND_TRIP_WAIT_MS = 30;
+const PAGE_CHAINS = [
+  { name: "app-shell", path: "/api/app-shell?view=household", maxStatements: 4, maxWaves: 2, maxRowsRead: 2_000 },
+  { name: "summary-page household", path: "/api/summary-page?view=household&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxWaves: 3, maxRowsRead: 45_000 },
+  { name: "summary-page person", path: "/api/summary-page?view=person-tim&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxWaves: 3, maxRowsRead: 45_000 },
+  { name: "summary-account-pills", path: "/api/summary-account-pills?view=household", maxStatements: 11, maxWaves: 2, maxRowsRead: 100_000 },
+  { name: "month-page", path: "/api/month-page?view=person-tim&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxWaves: 3, maxRowsRead: 30_000 },
+  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 8, maxWaves: 3, maxRowsRead: 10_000 },
+  { name: "splits-page", path: "/api/splits-page?view=person-tim&month=2026-08", maxStatements: 24, maxWaves: 5, maxRowsRead: 70_000 },
+  { name: "reminders", path: "/api/reminders?view=household", maxStatements: 15, maxWaves: 4, maxRowsRead: 40_000 },
+  { name: "imports-page", path: "/api/imports-page", maxStatements: 15, maxWaves: 4, maxRowsRead: 250_000 },
+  { name: "settings-page", path: "/api/settings-page", maxStatements: 21, maxWaves: 2, maxRowsRead: 250_000 },
+  { name: "ask turn", path: "/api/ask/turn", body: { text: "what did I spend on food", viewId: "household", scope: "direct_plus_shared", month: "2026-08", page: "ask" }, maxStatements: 16, maxWaves: 3, maxRowsRead: 5_000 }
+];
+
+test("every page read on the 10k household waits on a short chain of D1 round trips", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  const counting = countingDatabase(db, { latencyMs: ROUND_TRIP_WAIT_MS });
+  // A model stand-in, so the Ask turn reads its whole context.
+  const ai = { run: async () => ({ choices: [{ message: { role: "assistant", content: JSON.stringify({ action: "cannot_help", note: "x" }) } }] }) };
+  const env = { DB: counting.db, ...template.config.vars, AI: ai, AI_ASSIST_ENABLED: "true" };
+  const call = async (page) => {
+    const response = await worker.fetch(new Request(`http://127.0.0.1${page.path}`, page.body
+      ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(page.body) }
+      : undefined), env);
+    const text = await response.text();
+    assert.equal(response.status, 200, `${page.name}: ${text.slice(0, 200)}`);
+  };
+
+  const failures = [];
+  for (const page of PAGE_CHAINS) {
+    await call(page); // the cold path is pinned in cold-start-statement-budget.test.mjs
+    counting.reset();
+    await call(page);
+    const measured = counting.summary();
+    console.log(`# ${page.name}: ${measured.statements} round trips in ${measured.waves} sequential steps, ${measured.rowsRead + measured.batchRowsRead} rows read`);
+    if (measured.statements > page.maxStatements) failures.push(`${page.name}: ${measured.statements} round trips (max ${page.maxStatements})`);
+    if (measured.waves > page.maxWaves) failures.push(`${page.name}: ${measured.waves} sequential steps (max ${page.maxWaves})`);
+    if (measured.rowsRead + measured.batchRowsRead > page.maxRowsRead) failures.push(`${page.name}: ${measured.rowsRead + measured.batchRowsRead} rows read (max ${page.maxRowsRead})`);
+  }
+  assert.deepEqual(failures, []);
 });
 
 // The Splits page on the same 10k household plus production's settled

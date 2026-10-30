@@ -45,6 +45,37 @@ test("a cold isolate on an up-to-date empty-state database uses a small fixed nu
   assert.deepEqual(writes.map((call) => call.sql.slice(0, 80)), []);
 });
 
+// The round trips are not only few but mostly sent together: production
+// waits a network trip for each sequential one, and the first page after an
+// idle spell waits on all of them. Before the speed pass (2026-10) the
+// schema check alone was ~24 sequential steps (a PRAGMA per table) and the
+// seeding 6 more.
+const COLD_START_SEQUENTIAL_STEP_BUDGET = 8;
+
+test("a cold isolate's schema check and seeding wait on a few sequential round trips", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const counting = countingDatabase(db, { latencyMs: 30 });
+  await ensureDemoSchema(counting.db);
+  await seedEmptyStateReferenceData(counting.db);
+  const { waves, statements } = counting.summary();
+  assert.ok(
+    waves <= COLD_START_SEQUENTIAL_STEP_BUDGET,
+    `cold start waited on ${waves} sequential round trips of ${statements} (budget ${COLD_START_SEQUENTIAL_STEP_BUDGET})`
+  );
+});
+
+test("the schema check reads columns once but sees a column it added itself", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  // An older database: a column the check adds is missing.
+  await db.prepare("ALTER TABLE split_groups DROP COLUMN expense_source").run();
+  const counting = countingDatabase(db);
+  await ensureDemoSchema(counting.db);
+  const columns = (await db.prepare("PRAGMA table_info(split_groups)").all()).results.map((column) => column.name);
+  assert.ok(columns.includes("expense_source"), "the missing column is added back");
+  const pragmas = counting.calls.filter((call) => /^PRAGMA table_info/i.test(call.sql));
+  assert.deepEqual(pragmas.map((call) => call.sql), [], "every column check is answered from the one up-front read");
+});
+
 test("default match rules: a missing default comes back, a retired one goes, everything else is untouched", async (t) => {
   const { db } = await openSeededDatabase(t, template);
   const missing = defaultCategoryMatchRules[3];
