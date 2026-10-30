@@ -57,10 +57,13 @@ export async function buildEntriesPageDto(
   const { household, trackedMonths } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const rangeMonths = entriesRangeMonths(fromMonth, effectiveSelectedMonth);
-  const monthEntries = rangeMonths.length
-    ? await loadEntriesForMonths(db, rangeMonths, { withTime: true })
-    : await loadEntries(db, effectiveSelectedMonth, { withTime: true });
-  const splitGroups = await loadSplitGroups(db);
+  // The entries and the split groups are read together.
+  const [monthEntries, splitGroups] = await Promise.all([
+    rangeMonths.length
+      ? loadEntriesForMonths(db, rangeMonths, { withTime: true })
+      : loadEntries(db, effectiveSelectedMonth, { withTime: true }),
+    loadSplitGroups(db)
+  ]);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewId = resolvePageViewId(selectedViewId, household.people);
   const label = resolvePageLabel(viewId, personNameById);
