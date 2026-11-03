@@ -63,10 +63,13 @@ replaces the household with a fictional couple, Ethan and Serene, and 17
 months of history ending today. They earn modest take-home pay (about
 $5,700 and $4,400 a month, a 13th-month AWS in December and a small
 mid-year bonus for Ethan in July; CPF is not income) and spend about $3,400
-to $4,800 in a usual month. Ten accounts: three banks (one joint), four
+to $4,800 in a usual month. Eleven accounts: three banks (one joint), four
 credit cards with statement imports and checkpoints (one card deliberately
-off by $42.80), and three investment accounts (Endowus, StashAway, IBKR)
-that monthly transfers feed, with one withdrawal for the over-plan month.
+off by $42.80), three investment accounts (Endowus, StashAway, IBKR)
+that monthly transfers feed, with one withdrawal for the over-plan month,
+and an iFAST account that nothing moves into. StashAway and iFAST each have
+six monthly statement imports that save what the account was worth
+(`investment_statement_values`), so the Summary shows their worth.
 Card bills, contributions and settle-ups are matched transfers; one SRS
 top-up is unresolved. Month plans with savings and investment lines cover
 every month but one (so that month opens in the Simple view), with a few
@@ -353,20 +356,47 @@ nothing. The gateway's monthly spend limit is shared with production; the
 demo's 50 units a day keep its share small.
 
 The demo runs the showcase dataset (`DEMO_DATASET` is `showcase` in
-`wrangler.demo.jsonc`; walkthrough in `docs/demo-tour.md`). To refresh it,
-deploy, then reseed once so the history ends in the current month. The
-reseed is a Worker route, and the demo enforces the Access token, so it only
-works from Settings, Demo state, in a browser signed in through Access (a bare
-`curl` to `/api/demo/reseed` gets a 401 or the Access login redirect). A table change needs `npm run db:migrate:demo` first.
+`wrangler.demo.jsonc`; walkthrough in `docs/demo-tour.md`). A table change
+needs `npm run db:migrate:demo` first.
 
 ```bash
 npm run deploy:demo
-# then Settings → Demo state → Reseed demo data, signed in through Access
 ```
 
-Reseed from Settings, Demo state is the usual way. A deploy alone keeps the data
-that is already stored; only a reseed switches to the showcase or moves its
-months forward.
+### How is the demo kept current?
+
+The showcase rebuilds itself. The demo settings record the showcase's last
+day (`seedDate`, or for an older seed the day of `lastSeededAt`, in
+Singapore time like `getCurrentMonthKey`). When a cold isolate starts and
+that day is in an earlier month, or 7 or more days ago, it rebuilds the
+showcase for today before answering (`isShowcaseStale` and
+`refreshStaleShowcase` in `src/domain/demo-settings.ts`, called from
+`initializeAppData` in `src/domain/app-shell.ts`). The week rule keeps the
+month in progress from stopping at the day it was seeded.
+
+- **Cost.** The check reads only the demo settings the cold path already
+  loads, so a current demo adds no round trip. A rebuild is the usual
+  showcase reseed: one batch, then the month totals.
+- **Two isolates at once.** The rebuild is one all-or-nothing batch with the
+  data and the new settings. Its first statement is a guard that fails, and
+  rolls the batch back, when the stored `seedDate` is no longer the one the
+  isolate read, so only the first isolate rebuilds and the other carries on
+  with its result.
+- **Scope.** Only when `APP_ENVIRONMENT` is `demo`, `DEMO_DATASET` is
+  `showcase` and no `DEMO_SEED_MONTH` pins the month
+  (`showcaseRefreshesItself`, set per request in `src/index.ts`), and only
+  over a showcase that is not in the empty state. Production, local, test and
+  the default demo never rebuild this way
+  (`tests/demo-showcase-refresh.test.mjs`).
+- **Edits are lost.** Whatever a visitor changed on the demo is replaced at
+  the rebuild, as with Reseed demo data. The user guide says so.
+- A warm isolate only rebuilds when it is replaced by a cold one, which
+  Cloudflare does often; a Cron Trigger was not needed.
+
+Reseed from Settings, Demo state still rebuilds it at once (the route
+enforces the Access token, so a bare `curl` to `/api/demo/reseed` gets a 401
+or the Access login redirect). A deploy alone keeps the data that is already
+stored until the next rebuild.
 
 ## How do I deploy to production?
 

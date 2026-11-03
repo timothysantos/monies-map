@@ -176,6 +176,10 @@ On the demo site, open **Settings** and use **Demo state**:
 
 - **Reseed demo data** replaces everything with this site's demo data,
   so the sample data is back exactly as it was.
+
+The demo site also brings its sample data up to date by itself at the start
+of each month, and when it is a week behind, so its history always ends
+close to today. Anything you changed on the demo is lost then.
 - **Enter empty state** clears all money data (accounts, entries, imports,
   plans, splits) and keeps only the people and categories, so you can start
   fresh. You type `empty state` to confirm.

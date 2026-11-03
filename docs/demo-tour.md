@@ -10,7 +10,9 @@ share costs fairly.
 - The demo must be running the showcase data. You will see **Ethan** and
   **Serene** in the view switcher at the top. If you see other names, ask a
   developer to refresh the demo (see "Refresh the demo" at the end).
-- Reseed shortly before a meeting so the history ends in the current month:
+- The demo rebuilds itself at the start of each month and whenever it is a
+  week out of date, so the history ends close to today. Anything a visitor
+  changed is replaced then. To start from fresh data just before a meeting,
   open Settings, then **Demo state**, and press **Reseed demo data**. On
   the showcase demo that button restores the showcase data. Anything a
   previous visitor changed is replaced.
@@ -147,9 +149,13 @@ Open **Imports**.
 
 Open **Settings**, then **Accounts**.
 
-- Nine of the ten accounts are **reconciled to last month's statement**,
-  including the three investment accounts (their checkpoints are the money
-  put in; market gains aren't tracked).
+- Ten of the eleven accounts are **reconciled to last month's statement**,
+  including the four investment accounts (their checkpoints are the money
+  put in; market gains aren't tracked there).
+- On the Summary, **StashAway General Investing** and Ethan's **iFAST Wrap
+  Account** also say what they were worth at the end of last month, as
+  their monthly statements say. Ethan bought his iFAST unit trusts before
+  the history starts and puts nothing more in, so only its worth changes.
 - The **OCBC 365 Card** is off by **$42.80**: a Grab ride printed on the
   statement never made it into the ledger. It shows as an open
   reconciliation exception.
@@ -197,6 +203,8 @@ For developers: the demo worker uses the showcase data when
 npm run deploy:demo
 ```
 
-Then press **Reseed demo data** in Settings, Demo state on the demo site
-(the demo is behind Cloudflare Access, so sign in first).
+The demo moves its history forward by itself at the start of each month and
+when it is a week out of date. To refresh it now, press **Reseed demo data**
+in Settings, Demo state on the demo site (the demo is behind Cloudflare
+Access, so sign in first).
 Details are in the developer guide's demo section.

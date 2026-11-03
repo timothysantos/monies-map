@@ -77,6 +77,11 @@ probes answered in milliseconds. Measured on a copy of production:
 - `loadSplitMatchCandidates` (Imports counts possible split links) read every
   imported transaction. It now reads none when no split record is waiting for
   a match, and otherwise only the date windows within a week of those records.
+- The demo's showcase decides whether it is out of date from the demo
+  settings the cold path already reads (`isShowcaseStale`), so a current
+  demo costs no extra round trip; only a stale one pays for the rebuild, one
+  guarded all-or-nothing batch (developer guide, "How is the demo kept
+  current?").
 
 Found 2026-10-30 (speed pass, `docs/audits/speed-pass-2026-10.md`): what a
 page costs in production is the length of its chain of sequential D1 round
