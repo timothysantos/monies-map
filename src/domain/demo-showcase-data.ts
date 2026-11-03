@@ -51,7 +51,8 @@ export const SHOWCASE_ACCOUNT_IDS = {
   sereneGroceryCard: "acct-serene-ocbc-365",
   ethanEndowus: "acct-ethan-endowus",
   ethanIbkr: "acct-ethan-ibkr",
-  sereneStashAway: "acct-serene-stashaway"
+  sereneStashAway: "acct-serene-stashaway",
+  ethanIfast: "acct-ethan-ifast"
 } as const;
 
 const A = SHOWCASE_ACCOUNT_IDS;
@@ -69,6 +70,9 @@ export interface ShowcaseAccount {
   slug: string;
   statementParserKey: string | null;
   activityParserKey: string | null;
+  // An investment account whose monthly statement says what it was worth
+  // (DOMAIN.md, "Investment Statement Value"): the parser of that statement.
+  valueStatementParserKey?: string;
 }
 
 export const SHOWCASE_INSTITUTIONS = [
@@ -78,7 +82,8 @@ export const SHOWCASE_INSTITUTIONS = [
   { id: "inst-dbs", name: "DBS" },
   { id: "inst-endowus", name: "Endowus" },
   { id: "inst-stashaway", name: "StashAway" },
-  { id: "inst-ibkr", name: "Interactive Brokers" }
+  { id: "inst-ibkr", name: "Interactive Brokers" },
+  { id: "inst-ifast", name: "iFAST" }
 ];
 
 export const SHOWCASE_ACCOUNTS: ShowcaseAccount[] = [
@@ -97,7 +102,10 @@ export const SHOWCASE_ACCOUNTS: ShowcaseAccount[] = [
   // (market gains are not tracked here).
   { id: A.ethanEndowus, institutionId: "inst-endowus", ownerPersonId: ETHAN, name: "Endowus Core Portfolio", kind: "investment", openingBalanceMinor: 1_860_000, isJoint: false, slug: "endowus", statementParserKey: null, activityParserKey: null },
   { id: A.ethanIbkr, institutionId: "inst-ibkr", ownerPersonId: ETHAN, name: "IBKR Brokerage", kind: "investment", openingBalanceMinor: 1_240_000, isJoint: false, slug: "ibkr", statementParserKey: null, activityParserKey: null },
-  { id: A.sereneStashAway, institutionId: "inst-stashaway", ownerPersonId: SERENE, name: "StashAway General Investing", kind: "investment", openingBalanceMinor: 960_000, isJoint: false, slug: "stashaway", statementParserKey: null, activityParserKey: null }
+  { id: A.sereneStashAway, institutionId: "inst-stashaway", ownerPersonId: SERENE, name: "StashAway General Investing", kind: "investment", openingBalanceMinor: 960_000, isJoint: false, slug: "stashaway", statementParserKey: null, activityParserKey: null, valueStatementParserKey: "stashaway_pdf" },
+  // Unit trusts Ethan bought before the history starts and no longer adds
+  // to: no money moves in or out, only the monthly statement's worth.
+  { id: A.ethanIfast, institutionId: "inst-ifast", ownerPersonId: ETHAN, name: "iFAST Wrap Account", kind: "investment", openingBalanceMinor: 1_520_000, isJoint: false, slug: "ifast", statementParserKey: null, activityParserKey: null, valueStatementParserKey: "ifast_wrap_pdf" }
 ];
 
 const CUSTOM_CATEGORIES: CategoryDto[] = [
@@ -206,6 +214,19 @@ export interface ShowcaseImportRow {
   accountId: string;
   rawRowJson: string;
   normalizedHash: string;
+}
+
+// What an investment statement said the account was worth at month end.
+export interface ShowcaseInvestmentValue {
+  id: string;
+  accountId: string;
+  month: string;
+  asOfDate: string;
+  totalAssetsMinor: number;
+  marketValueMinor: number;
+  cashMinor: number;
+  importId: string;
+  createdAt: string;
 }
 
 export interface ShowcaseCheckpoint {
@@ -377,6 +398,7 @@ export interface ShowcaseDataset {
   imports: ShowcaseImport[];
   importRows: ShowcaseImportRow[];
   checkpoints: ShowcaseCheckpoint[];
+  investmentValues: ShowcaseInvestmentValue[];
   certificates: ShowcaseCertificate[];
   reconciliationExceptions: ShowcaseReconciliationException[];
   planRows: ShowcasePlanRow[];
@@ -1091,6 +1113,7 @@ function assignImports(input: {
   const imports: ShowcaseImport[] = [];
   const importRows: ShowcaseImportRow[] = [];
   const checkpoints: ShowcaseCheckpoint[] = [];
+  const investmentValues: ShowcaseInvestmentValue[] = [];
   const certificates: ShowcaseCertificate[] = [];
   const reconciliationExceptions: ShowcaseReconciliationException[] = [];
   const importById = new Map<string, ShowcaseImport>();
@@ -1213,6 +1236,43 @@ function assignImports(input: {
       }), false);
     }
 
+    // Investment statements for M-6..M-1, each imported early the next
+    // month with no rows of its own: what the account was worth on the
+    // month's last day. The worth is the money put in so far plus a gain
+    // that grows slowly with a small monthly wobble, so it reads like a
+    // real portfolio and never falls below what went in.
+    if (account.valueStatementParserKey) {
+      const isIfast = account.valueStatementParserKey === "ifast_wrap_pdf";
+      for (let offset = -6; offset <= -1; offset += 1) {
+        const month = monthAt(offset);
+        const asOfDate = dayOfMonth(month, 31);
+        const rng = rngFor(offset, `${account.slug}-worth`);
+        const gainBasisPoints = (isIfast ? 1_150 : 420) + (offset + 6) * (isIfast ? 40 : 35) + between(rng, -45, 45);
+        const totalAssetsMinor = Math.round(input.balanceAt(account.id, asOfDate) * (10_000 + gainBasisPoints) / 10_000);
+        const cashMinor = isIfast ? between(rng, 4_000, 16_000) : 0;
+        const valueImport = ensureImport({
+          id: `import-showcase-${account.slug}-worth-${month}`,
+          sourceType: "pdf",
+          sourceLabel: `${account.slug}-statement-${month}`,
+          parserKey: account.valueStatementParserKey,
+          importedAt: stamp(statementImportDate(month), `01:${minute}:30`),
+          status: "completed",
+          note: null
+        });
+        investmentValues.push({
+          id: `investment-value-showcase-${account.slug}-${month}`,
+          accountId: account.id,
+          month,
+          asOfDate,
+          totalAssetsMinor,
+          marketValueMinor: totalAssetsMinor - cashMinor,
+          cashMinor,
+          importId: valueImport.id,
+          createdAt: valueImport.importedAt
+        });
+      }
+    }
+
     // Statement checkpoints for M-6..M-1 (M-2 for the OCBC card, whose
     // M-1 statement is still due and whose M-2 statement is the mismatch).
     const lastStatementOffset = account.id === A.sereneGroceryCard ? -2 : -1;
@@ -1294,7 +1354,7 @@ function assignImports(input: {
     note: "Imported the wrong file; rolled back."
   });
 
-  return { imports, importRows, checkpoints, certificates, reconciliationExceptions };
+  return { imports, importRows, checkpoints, investmentValues, certificates, reconciliationExceptions };
 }
 
 function signedAmount(row: ShowcaseTransaction) {

@@ -16,6 +16,9 @@ export interface DemoSettings {
   // Set only when the showcase dataset (DEMO_DATASET=showcase) was seeded,
   // so a cold start keeps the showcase instead of backfilling the default.
   dataset?: "showcase";
+  // The showcase's last day with activity (YYYY-MM-DD, the household's
+  // calendar), so a cold start can tell when it is out of date.
+  seedDate?: string;
 }
 
 interface SummaryMonthSeed {

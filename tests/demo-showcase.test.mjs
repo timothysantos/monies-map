@@ -83,7 +83,8 @@ test("the showcase replaces the household with a fictional one and records the d
       "POSB Joint Account|bank|1",
       "StashAway General Investing|investment|0",
       "UOB Lady's Card|credit_card|0",
-      "UOB One Account|bank|0"
+      "UOB One Account|bank|0",
+      "iFAST Wrap Account|investment|0"
     ]
   );
 
@@ -260,7 +261,8 @@ test("statements: every account reconciled except the OCBC card, off by $42.80 w
       "POSB Joint Account": ["matched", "2026-04", 0, 0],
       "StashAway General Investing": ["matched", "2026-04", 0, 0],
       "UOB Lady's Card": ["matched", "2026-04", 0, 0],
-      "UOB One Account": ["matched", "2026-04", 0, 1]
+      "UOB One Account": ["matched", "2026-04", 0, 1],
+      "iFAST Wrap Account": ["matched", "2026-04", 0, 0]
     }
   );
   // Every older checkpoint reconciles too.
@@ -275,12 +277,17 @@ test("statements: every account reconciled except the OCBC card, off by $42.80 w
 
   const imports = await get(api, "/api/imports-page");
   const recent = imports.importsPage.recentImports;
-  assert.equal(recent.length, 71);
+  // 71 files plus six monthly statements each for iFAST and StashAway, which
+  // save what the account was worth.
+  assert.equal(recent.length, 83);
   assert.equal(recent.filter((item) => item.sourceType === "pdf" && item.statementCertificateStatus === "certified").length, 28);
   assert.deepEqual(recent.filter((item) => item.statementCertificateStatus === "exception").map((item) => item.sourceLabel), ["ocbc-365-statement-2026-03"]);
   assert.deepEqual(recent.filter((item) => item.status === "rolled_back").map((item) => item.transactionCount), [0]);
-  // Only the newest statement per account can be rolled back.
-  assert.equal(recent.filter((item) => item.sourceType === "pdf" && !item.rollbackProtected).length, 5);
+  // Only the newest bank or card statement per account can be rolled back.
+  // Investment statements are outside the statement chain, so any of them can.
+  const worthStatement = (item) => /^(ifast|stashaway)-statement-/.test(item.sourceLabel);
+  assert.equal(recent.filter((item) => item.sourceType === "pdf" && !worthStatement(item) && !item.rollbackProtected).length, 5);
+  assert.equal(recent.filter((item) => worthStatement(item) && !item.rollbackProtected).length, 12);
   assert.equal(imports.importsPage.pendingSplitMatchCount, 1);
 
   // Imported rows are traceable to their batch; the three certification

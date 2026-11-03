@@ -10,6 +10,7 @@ import {
   TransferPurposeError
 } from "./domain/app-repository-transfer-purpose";
 import {
+  configureAppData,
   invalidateAppDataCache,
   resetAppData
 } from "./domain/app-shell";
@@ -33,7 +34,7 @@ import { buildSettledRowsDto, buildSettledSearchDto } from "./domain/pages/split
 import { buildTransferDraftCandidatesDto, readTransferDraftQuery } from "./domain/pages/transfer-draft-candidates";
 import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
-import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
+import { enterEmptyState, reseedDemoSettings, showcaseRefreshesItself } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
   loadTransferMatchCandidates,
@@ -246,6 +247,9 @@ export default {
     if (accessRefusal) {
       return accessRefusal;
     }
+
+    // Only the demo Worker's showcase rebuilds itself when it is out of date.
+    configureAppData({ refreshStaleShowcase: showcaseRefreshesItself(env) });
 
     // A write that another site's page triggered in a signed-in browser is
     // refused before any schema or data work (src/server/cross-site-guard.ts).

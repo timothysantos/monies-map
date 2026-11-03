@@ -181,6 +181,15 @@ export function buildShowcaseInsertSqlStatements(dataset: ShowcaseDataset) {
       item.needsReviewRowCount, item.debitTotalMinor, item.creditTotalMinor, item.netTotalMinor, item.statementBalanceMinor,
       item.projectedLedgerBalanceMinor, item.deltaMinor, item.exceptionCount, item.status, item.createdAt
     ])],
+    // What the investment statements said each account was worth
+    // (import-investment-values.ts reads them for the Summary).
+    ["investment_statement_values", [
+      "id", "household_id", "account_id", "value_month", "as_of_date", "total_assets_minor", "market_value_minor",
+      "cash_minor", "income_minor", "currency", "account_reference", "import_id", "previous_value_json", "created_at", "updated_at"
+    ], dataset.investmentValues.map((item) => [
+      item.id, H, item.accountId, item.month, item.asOfDate, item.totalAssetsMinor, item.marketValueMinor,
+      item.cashMinor, 0, "SGD", null, item.importId, null, item.createdAt, item.createdAt
+    ])],
     ["monthly_plan_rows", [
       "id", "household_id", "year", "month", "person_id", "ownership_type", "section_key", "category_id", "label",
       "plan_date", "account_id", "planned_amount_minor", "actual_amount_minor", "notes", "created_at", "updated_at"
@@ -231,8 +240,16 @@ export function buildShowcaseInsertSqlStatements(dataset: ShowcaseDataset) {
   return tables.flatMap(([table, columns, rows]) => (rows.length ? buildShowcaseInsertSql(table, columns, rows) : []));
 }
 
-export function buildShowcaseSeedStatements(db: D1Database, dataset: ShowcaseDataset, extraStatements: D1PreparedStatement[] = []) {
+// `guardStatements` go first: one that fails (a guard that finds the seed
+// already moved on) rolls the whole batch back before anything is replaced.
+export function buildShowcaseSeedStatements(
+  db: D1Database,
+  dataset: ShowcaseDataset,
+  extraStatements: D1PreparedStatement[] = [],
+  guardStatements: D1PreparedStatement[] = []
+) {
   return [
+    ...guardStatements,
     ...SHOWCASE_CLEAR_TABLES.map((table) => db.prepare(`DELETE FROM ${table}`)),
     // Payment ways name the people and accounts replaced here; the Shortcut
     // settings in the same table stay.
@@ -254,17 +271,23 @@ export function resolveShowcaseSeedWindow(seedMonth?: string, now = new Date()) 
   return { seedMonth: today.slice(0, 7), cutoffDay: Number(today.slice(8, 10)) };
 }
 
+// The showcase's last day with activity for a seed window (YYYY-MM-DD).
+export function showcaseSeedWindowDate(window: { seedMonth: string; cutoffDay: number }) {
+  return `${window.seedMonth}-${String(window.cutoffDay).padStart(2, "0")}`;
+}
+
 // Replaces the household with the showcase in one batch (with any extra
-// statements, such as the demo settings that record the dataset), then
-// refreshes every showcase month's snapshots.
+// statements, such as the demo settings that record the dataset, and any
+// guard that must pass first), then refreshes every showcase month's
+// snapshots.
 export async function reseedShowcaseData(
   db: D1Database,
-  options: { seedMonth?: string; now?: Date; extraStatements?: D1PreparedStatement[] } = {}
+  options: { seedMonth?: string; now?: Date; extraStatements?: D1PreparedStatement[]; guardStatements?: D1PreparedStatement[] } = {}
 ) {
   await ensureDemoSchema(db);
   await ensureAppSettingsTable(db);
   const dataset = buildShowcaseDataset(resolveShowcaseSeedWindow(options.seedMonth, options.now));
-  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? []));
+  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? [], options.guardStatements ?? []));
   await refreshMonthlySnapshots(db, dataset.months);
   return dataset;
 }

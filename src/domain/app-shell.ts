@@ -2,7 +2,8 @@ import { buildEmptySummaryMonth } from "./summary-projection";
 import { buildPersonScopes } from "./person-view-scope";
 
 import { defaultDemoSettings, type DemoSettings } from "./demo-data";
-import { loadDemoSettings } from "./demo-settings";
+import { isShowcaseStale, loadDemoSettings, refreshStaleShowcase } from "./demo-settings";
+import { todayInAppTimeZone } from "../lib/app-calendar";
 
 import {
   loadCategories,
@@ -25,6 +26,15 @@ import type {
 } from "../types/dto";
 
 let appDataReadyPromise: Promise<DemoSettings> | null = null;
+
+// Whether a cold start may rebuild a stale showcase (demo-settings.ts,
+// showcaseRefreshesItself). The Worker sets it from its own vars on every
+// request (src/index.ts), so it is off unless this is the demo Worker.
+let refreshStaleShowcaseOnColdStart = false;
+
+export function configureAppData(options: { refreshStaleShowcase: boolean }) {
+  refreshStaleShowcaseOnColdStart = options.refreshStaleShowcase;
+}
 
 // This module owns shell orchestration and shell-shared DTO builders.
 // Route-specific fragments belong in `src/domain/route-context.ts`,
@@ -110,6 +120,10 @@ async function initializeAppData(db: D1Database) {
   await ensureDemoSchema(db);
   if (demo.emptyState) {
     await seedEmptyStateReferenceData(db);
+  } else if (refreshStaleShowcaseOnColdStart && isShowcaseStale(demo, todayInAppTimeZone())) {
+    // Seeded for an earlier month or a week ago: rebuilt for today instead
+    // of checked, so a current showcase costs no extra round trip.
+    return refreshStaleShowcase(db, demo);
   } else {
     await ensureSeedData(db, demo);
   }
