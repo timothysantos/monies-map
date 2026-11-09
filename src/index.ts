@@ -345,7 +345,8 @@ export default {
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey(),
-          url.searchParams.get("from")
+          url.searchParams.get("from"),
+          url.searchParams.get("trip")
         ),
         timing
       );

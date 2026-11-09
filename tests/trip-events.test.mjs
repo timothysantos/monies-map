@@ -218,6 +218,25 @@ test("without the tables the feature is off: the list says so, a change is refus
   await ok(api, "/api/entries/delete", { entryId: entry });
 });
 
+test("the showcase demo seeds a Bali trip and a Japan trip from its own travel entries, and still seeds without the tables", async (t) => {
+  const { reseedShowcaseData } = await import("../src/domain/app-repository-showcase-seed.ts");
+  const { api, db } = await openSeededDatabase(t, template);
+  await reseedShowcaseData(db, { seedMonth: "2026-11" });
+  const list = await ok(api, "/api/trip-events");
+  assert.deepEqual(list.tripEvents.map((trip) => [trip.name, trip.startDate, trip.endDate, trip.currency ?? null, trip.entryCount]), [
+    ["Japan trip", "2026-06-06", "2026-06-13", "JPY", 13],
+    ["Bali trip", "2025-10-15", "2025-10-17", "IDR", 4]
+  ]);
+  assert.equal(list.tripEvents[0].splitGroupId, "split-group-japan-trip");
+  // Reseeding again replaces them, never doubles them.
+  await reseedShowcaseData(db, { seedMonth: "2026-11" });
+  assert.equal((await ok(api, "/api/trip-events")).tripEvents.length, 2);
+  await db.prepare("DROP TABLE trip_event_entries").run();
+  await db.prepare("DROP TABLE trip_events").run();
+  await reseedShowcaseData(db, { seedMonth: "2026-11" });
+  assert.equal((await ok(api, "/api/trip-events")).available, false);
+});
+
 test("the Entries page names each listed entry's trip and only the trips its rows use", async (t) => {
   const { api } = await openSeededDatabase(t, template);
   const before = await ok(api, "/api/entries-page?view=household&month=2026-05");

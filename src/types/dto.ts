@@ -1,3 +1,4 @@
+import type { TripEventDto } from "../domain/trip-events";
 export type PersonScope = "direct" | "shared" | "direct_plus_shared";
 export type EntryType = "expense" | "income" | "transfer";
 export type TransferDirection = "in" | "out";
@@ -392,6 +393,16 @@ export interface EntriesPageDto {
   // The trips and events the listed entries are on, for their chips: only
   // those, and left out when none is (DOMAIN.md "Trip or Event").
   tripEvents?: Record<string, { name: string; iconKey: string }>;
+  // The trip view (the request's `trip`): the trip (null when it is not
+  // found), or with `all` the whole list; the first and last day of its
+  // entries when it has any.
+  tripView?: {
+    all?: true;
+    tripEvent?: TripEventDto | null;
+    tripEvents?: TripEventDto[];
+    firstDate?: string;
+    lastDate?: string;
+  };
 }
 
 export interface SplitGroupPillDto {

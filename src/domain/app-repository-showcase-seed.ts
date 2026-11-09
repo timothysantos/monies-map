@@ -240,21 +240,37 @@ export function buildShowcaseInsertSqlStatements(dataset: ShowcaseDataset) {
   return tables.flatMap(([table, columns, rows]) => (rows.length ? buildShowcaseInsertSql(table, columns, rows) : []));
 }
 
+// The showcase's trips and events and their entries.
+export function buildShowcaseTripEventSql(dataset: ShowcaseDataset) {
+  const H = DEFAULT_HOUSEHOLD_ID;
+  return [
+    ...buildShowcaseInsertSql("trip_events", ["id", "household_id", "name", "icon_key", "start_date", "end_date", "currency", "split_group_id", "created_at", "updated_at"],
+      dataset.tripEvents.map((trip) => [trip.id, H, trip.name, trip.iconKey, trip.startDate, trip.endDate, trip.currency, trip.splitGroupId, trip.createdAt, trip.createdAt])),
+    ...buildShowcaseInsertSql("trip_event_entries", ["transaction_id", "trip_event_id", "household_id", "added_by", "added_at"],
+      dataset.tripEvents.flatMap((trip) => trip.entryIds.map((entryId) => [entryId, trip.id, H, "person", trip.createdAt])))
+  ].filter((sql) => !sql.endsWith("VALUES "));
+}
+
 // `guardStatements` go first: one that fails (a guard that finds the seed
 // already moved on) rolls the whole batch back before anything is replaced.
 export function buildShowcaseSeedStatements(
   db: D1Database,
   dataset: ShowcaseDataset,
   extraStatements: D1PreparedStatement[] = [],
-  guardStatements: D1PreparedStatement[] = []
+  guardStatements: D1PreparedStatement[] = [],
+  { withTripEvents = false }: { withTripEvents?: boolean } = {}
 ) {
   return [
     ...guardStatements,
+    // Trips and events (additive tables): cleared and seeded only when the
+    // database has them.
+    ...(withTripEvents ? [db.prepare("DELETE FROM trip_event_entries"), db.prepare("DELETE FROM trip_events")] : []),
     ...SHOWCASE_CLEAR_TABLES.map((table) => db.prepare(`DELETE FROM ${table}`)),
     // Payment ways name the people and accounts replaced here; the Shortcut
     // settings in the same table stay.
     db.prepare("DELETE FROM app_settings WHERE key = ?").bind(PAYMENT_WAYS_SETTINGS_KEY),
     ...buildShowcaseInsertSqlStatements(dataset).map((sql) => db.prepare(sql)),
+    ...(withTripEvents ? buildShowcaseTripEventSql(dataset).map((sql) => db.prepare(sql)) : []),
     ...buildMonthlySnapshotRefreshMarkers(db, dataset.months),
     ...extraStatements
   ];
@@ -287,7 +303,8 @@ export async function reseedShowcaseData(
   await ensureDemoSchema(db);
   await ensureAppSettingsTable(db);
   const dataset = buildShowcaseDataset(resolveShowcaseSeedWindow(options.seedMonth, options.now));
-  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? [], options.guardStatements ?? []));
+  const withTripEvents = await db.prepare("SELECT 1 FROM trip_events LIMIT 1").all().then(() => true, () => false);
+  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? [], options.guardStatements ?? [], { withTripEvents }));
   await refreshMonthlySnapshots(db, dataset.months);
   return dataset;
 }

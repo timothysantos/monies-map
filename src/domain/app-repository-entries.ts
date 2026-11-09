@@ -15,7 +15,9 @@ import type { EntryDto, LinkedTransferDto, TransferPurposeDto } from "../types/d
 // `figuresOnly` (Summary) reads only what the figures and charts count: an
 // entry's description, note, account name, import and split labels and
 // certification date are left empty, so never show such an entry.
-export type EntryLoadOptions = { withTime?: boolean; figuresOnly?: boolean };
+// `tripEventId` (the Entries trip view) keeps only the entries on that trip
+// or event, or on any ("*"); the link table bounds the read.
+export type EntryLoadOptions = { withTime?: boolean; figuresOnly?: boolean; tripEventId?: string };
 
 export async function loadEntries(db: D1Database, month = getCurrentMonthKey(), options: EntryLoadOptions = {}): Promise<EntryDto[]> {
   const [monthStart, nextMonth] = getMonthBounds(month);
@@ -165,6 +167,10 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
   // A figures-only read leaves the display columns out (and their joins:
   // each joins at most one row by primary key, so the rows are the same).
   const shown = (column: string) => (options.figuresOnly ? "" : `${column},`);
+  const onTrip = options.tripEventId
+    ? `AND transactions.id IN (SELECT transaction_id FROM trip_event_entries WHERE household_id = ?${options.tripEventId === "*" ? "" : " AND trip_event_id = ?"})`
+    : "";
+  const tripBinds = options.tripEventId ? [DEFAULT_HOUSEHOLD_ID, ...(options.tripEventId === "*" ? [] : [options.tripEventId])] : [];
   const entriesRead = db
     .prepare(`
       SELECT
@@ -228,9 +234,10 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
+        ${onTrip}
       ORDER BY transactions.transaction_date, transactions.created_at
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth, ...tripBinds)
     .all<{
       id: string;
       transaction_date: string;
@@ -266,8 +273,9 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
     }>();
 
   const linkedSplitSharesRead = db
-    .prepare(LINKED_SPLIT_SHARES_SQL)
-    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
+    // The trip view keeps only the shares of the trip's entries.
+    .prepare(onTrip ? LINKED_SPLIT_SHARES_SQL.replace("ORDER BY", `${onTrip}\n      ORDER BY`) : LINKED_SPLIT_SHARES_SQL)
+    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth, ...tripBinds)
     .all<{
       transaction_id: string;
       person_id: string;

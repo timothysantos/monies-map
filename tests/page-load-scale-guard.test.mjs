@@ -160,6 +160,43 @@ test("every page read on the 10k household waits on a short chain of D1 round tr
   assert.deepEqual(failures, []);
 });
 
+// The trip view (DOMAIN.md "Trip or Event") on the 10k household: a trip
+// holding 200 entries spread over a year, and every trip together (the
+// Trips & events sheet), are bounded by the link table: three sequential
+// steps, a few round trips, and the rows of the trip's entries only.
+test("the trip view and the Trips & events totals read a bounded chain on the 10k household", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  await db.prepare("INSERT INTO trip_events (id, household_id, name, icon_key, start_date, end_date) VALUES ('trip-scale', 'household-1', 'Big move', 'house', '2025-09-01', '2026-08-31')").run();
+  await db.prepare(`
+    INSERT INTO trip_event_entries (transaction_id, trip_event_id, household_id)
+    SELECT id, 'trip-scale', 'household-1' FROM transactions
+    WHERE household_id = 'household-1' AND transaction_date BETWEEN '2025-09-01' AND '2026-08-31' AND entry_type = 'expense'
+    ORDER BY id LIMIT 200
+  `).run();
+  const counting = countingDatabase(db, { latencyMs: ROUND_TRIP_WAIT_MS });
+  const env = { DB: counting.db, ...template.config.vars };
+  const failures = [];
+  for (const [name, path] of [["trip view", "/api/entries-page?view=household&month=2026-08&trip=trip-scale"], ["all trips", "/api/entries-page?view=person-tim&month=2026-08&trip=all"]]) {
+    const call = async () => {
+      const response = await worker.fetch(new Request(`http://127.0.0.1${path}`), env);
+      const body = await response.json();
+      assert.equal(response.status, 200, `${name}: ${JSON.stringify(body).slice(0, 200)}`);
+      return body;
+    };
+    await call();
+    counting.reset();
+    const body = await call();
+    const measured = counting.summary();
+    console.log(`# ${name}: ${measured.statements} round trips in ${measured.waves} sequential steps, ${measured.rowsRead + measured.batchRowsRead} rows read`);
+    assert.ok(body.monthPage.entries.length > 0 && body.monthPage.entries.length <= 200, `${name}: ${body.monthPage.entries.length} entries`);
+    if (measured.statements > 10) failures.push(`${name}: ${measured.statements} round trips (max 10)`);
+    if (measured.waves > 3) failures.push(`${name}: ${measured.waves} sequential steps (max 3)`);
+    if (measured.rowsRead + measured.batchRowsRead > 12_000) failures.push(`${name}: ${measured.rowsRead + measured.batchRowsRead} rows read (max 12,000)`);
+  }
+  assert.deepEqual(failures, []);
+});
+
 // The Splits page on the same 10k household plus production's settled
 // history (352 records one settlement covered, 287 in one group): the page
 // must never send a settled row (they are ~1 kB each and load when a section

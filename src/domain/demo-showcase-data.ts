@@ -389,6 +389,20 @@ export interface ShowcaseRuleSuggestion {
   sampleDescriptionsJson: string;
 }
 
+// A trip or event the showcase puts its travel entries on (DOMAIN.md
+// "Trip or Event"): fictional, from the showcase's own entries.
+export interface ShowcaseTripEvent {
+  id: string;
+  name: string;
+  iconKey: string;
+  startDate: string;
+  endDate: string;
+  currency: string | null;
+  splitGroupId: string | null;
+  entryIds: string[];
+  createdAt: string;
+}
+
 export interface ShowcaseDataset {
   seedMonth: string;
   cutoffDate: string;
@@ -410,6 +424,7 @@ export interface ShowcaseDataset {
   settlementCheckpoints: ShowcaseSettlementCheckpoint[];
   splitHistory: ShowcaseSplitHistory[];
   ruleSuggestions: ShowcaseRuleSuggestion[];
+  tripEvents: ShowcaseTripEvent[];
   peopleCreatedAt: string[];
 }
 
@@ -575,6 +590,17 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     };
     transactions.push(row);
     return row;
+  }
+
+  // Trips and events: the entries that exist by the cutoff (a trip whose
+  // entries are all later is left out).
+  const tripEvents: ShowcaseTripEvent[] = [];
+  const japanBookedEarly: Array<ShowcaseTransaction | null> = [];
+  function tripEvent(input: Omit<ShowcaseTripEvent, "entryIds" | "createdAt">, rows: Array<ShowcaseTransaction | null>) {
+    const entryIds = rows.filter((row): row is ShowcaseTransaction => row !== null).map((row) => row.id);
+    if (entryIds.length) {
+      tripEvents.push({ ...input, entryIds, createdAt: stamp(input.startDate, "09:00:00") });
+    }
   }
 
   function expense(accountId: string, date: string, description: string, amountMinor: number, category: string, extra: Partial<AddInput> = {}) {
@@ -828,10 +854,13 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
 
     // ---- Month stories --------------------------------------------------
     if (offset === -13) {
-      expense(A.ethanCard, d(8), "AIRASIA SINGAPORE", 48_640, "Travel", { note: "Bali long weekend, return flights for two." });
-      expense(A.ethanCard, d(15), "UBUD RIVERSIDE VILLA BALI ID", 52_480, "Travel", { postLagDays: 2 });
-      expense(A.ethanCard, d(16), "WARUNG MADE SEMINYAK ID", 3_860, "Food & Drinks", { postLagDays: 2 });
-      expense(A.sereneCard, d(16), "UBUD ART MARKET ID", 4_240, "Shopping", { postLagDays: 2 });
+      const bali = [
+        expense(A.ethanCard, d(8), "AIRASIA SINGAPORE", 48_640, "Travel", { note: "Bali long weekend, return flights for two." }),
+        expense(A.ethanCard, d(15), "UBUD RIVERSIDE VILLA BALI ID", 52_480, "Travel", { postLagDays: 2 }),
+        expense(A.ethanCard, d(16), "WARUNG MADE SEMINYAK ID", 3_860, "Food & Drinks", { postLagDays: 2 }),
+        expense(A.sereneCard, d(16), "UBUD ART MARKET ID", 4_240, "Shopping", { postLagDays: 2 })
+      ];
+      tripEvent({ id: "showcase-trip-bali", name: "Bali trip", iconKey: "plane", startDate: d(15), endDate: d(17), currency: "IDR", splitGroupId: null }, bali);
     }
     if (offset === -12) {
       const ikea = expense(A.ethanCard, d(20), "IKEA TAMPINES", 28_450, "Home");
@@ -845,7 +874,7 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
       expense(A.ethanCard, d(21), "BOON TONG KEE", 16_800, "Food & Drinks", { note: "Family dinner." });
     }
     if (offset === -7) {
-      expense(A.sereneCard, d(9), "SINGAPORE AIRLINES", 118_000, "Travel", { planKey: "japan-flights", note: "Tokyo and Kyoto flights for both of us, from the sale." });
+      japanBookedEarly.push(expense(A.sereneCard, d(9), "SINGAPORE AIRLINES", 118_000, "Travel", { planKey: "japan-flights", note: "Tokyo and Kyoto flights for both of us, from the sale." }));
     }
     // Bank fees (Money insights "fees this year"): Citi's annual fee, waived
     // a week later on request; currency fees on the Japan trip; a late fee
@@ -870,14 +899,20 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
       const ryokan = expense(A.sereneCard, d(10), "RAKUTEN TRAVEL KYOTO JP", 83_720, "Travel", { postLagDays: 2 });
       const shinkansen = expense(A.sereneCard, d(9), "JR CENTRAL SHINKANSEN JP", 25_790, "Travel", { postLagDays: 2 });
       const kaiseki = expense(A.ethanCard, d(12), "GION KAISEKI KYOTO JP", 32_760, "Food & Drinks", { postLagDays: 2 });
-      expense(A.sereneCard, d(7), "UNIQLO GINZA JP", 8_940, "Shopping", { postLagDays: 2 });
-      expense(A.ethanCard, d(8), "BIC CAMERA SHINJUKU JP", 21_450, "Shopping", { postLagDays: 2 });
-      expense(A.ethanCard, d(11), "FAMILYMART KYOTO JP", 1_280, "Food & Drinks", { postLagDays: 2 });
-      expense(A.sereneCard, d(7), "DON QUIJOTE SHIBUYA JP", 18_640, "Shopping", { postLagDays: 2 });
-      expense(A.ethanCard, d(7), "ICHIRAN RAMEN SHIBUYA JP", 4_280, "Food & Drinks", { postLagDays: 2 });
-      expense(A.sereneCard, d(13), "TOKYO STATION SOUVENIRS JP", 9_650, "Gifts", { postLagDays: 2 });
-      expense(A.ethanCard, d(8), "POKEMON CENTER TOKYO JP", 21_400, "Gifts", { postLagDays: 2, note: "Birthday present for our nephew." });
-      expense(A.ethanCard, d(11), "MK TAXI KYOTO JP", 3_860, "Taxi", { postLagDays: 2 });
+      const japanShops = [
+        expense(A.sereneCard, d(7), "UNIQLO GINZA JP", 8_940, "Shopping", { postLagDays: 2 }),
+        expense(A.ethanCard, d(8), "BIC CAMERA SHINJUKU JP", 21_450, "Shopping", { postLagDays: 2 }),
+        expense(A.ethanCard, d(11), "FAMILYMART KYOTO JP", 1_280, "Food & Drinks", { postLagDays: 2 }),
+        expense(A.sereneCard, d(7), "DON QUIJOTE SHIBUYA JP", 18_640, "Shopping", { postLagDays: 2 }),
+        expense(A.ethanCard, d(7), "ICHIRAN RAMEN SHIBUYA JP", 4_280, "Food & Drinks", { postLagDays: 2 }),
+        expense(A.sereneCard, d(13), "TOKYO STATION SOUVENIRS JP", 9_650, "Gifts", { postLagDays: 2 }),
+        expense(A.ethanCard, d(8), "POKEMON CENTER TOKYO JP", 21_400, "Gifts", { postLagDays: 2, note: "Birthday present for our nephew." }),
+        expense(A.ethanCard, d(11), "MK TAXI KYOTO JP", 3_860, "Taxi", { postLagDays: 2 })
+      ];
+      tripEvent(
+        { id: "showcase-trip-japan", name: "Japan trip", iconKey: "plane", startDate: d(6), endDate: d(13), currency: "JPY", splitGroupId: JAPAN },
+        [...japanBookedEarly, hotel, ryokan, shinkansen, kaiseki, ...japanShops]
+      );
       const jpy = (yen: number) => yen * 100;
       const travel = (payer: string, day: number, description: string, yen: number, category: string, linked: ShowcaseTransaction | null = null, note?: string) =>
         splitExpense({ groupId: JAPAN, payer, date: d(day), description, category, totalMinor: jpy(yen), currency: "JPY", linked, note });
@@ -1093,6 +1128,7 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     settlementCheckpoints,
     splitHistory,
     ruleSuggestions,
+    tripEvents,
     peopleCreatedAt: [firstStamp, bumpSecond(firstStamp)]
   };
 }

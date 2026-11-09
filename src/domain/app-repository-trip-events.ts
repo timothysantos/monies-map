@@ -135,6 +135,7 @@ function linksFromRows(rows: Array<{ transaction_id: string; trip_event_id: stri
 
 // The first and last day of a trip's entries, or null when it has none (or
 // the tables are missing). Bounded by the link table.
+// `tripEventId` "*" is every trip's entries together.
 export async function loadTripEventEntrySpan(db: D1Database, tripEventId: string): Promise<{ first: string; last: string; count: number } | null> {
   try {
     const row = await db
@@ -142,9 +143,9 @@ export async function loadTripEventEntrySpan(db: D1Database, tripEventId: string
         SELECT MIN(transactions.transaction_date) AS first, MAX(transactions.transaction_date) AS last, COUNT(*) AS count
         FROM trip_event_entries
         INNER JOIN transactions ON transactions.id = trip_event_entries.transaction_id
-        WHERE trip_event_entries.household_id = ? AND trip_event_entries.trip_event_id = ?
+        WHERE trip_event_entries.household_id = ?${tripEventId === "*" ? "" : " AND trip_event_entries.trip_event_id = ?"}
       `)
-      .bind(DEFAULT_HOUSEHOLD_ID, tripEventId)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...(tripEventId === "*" ? [] : [tripEventId]))
       .first<{ first: string | null; last: string | null; count: number }>();
     return row?.first && row.last ? { first: row.first, last: row.last, count: Number(row.count) } : null;
   } catch {

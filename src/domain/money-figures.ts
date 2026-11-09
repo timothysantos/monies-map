@@ -202,3 +202,70 @@ export function repeatingFigureMinor(ids: readonly string[], entries: FigureEntr
  * refunded charge and its refund net to zero and the total is the figure.
  */
 export const bankFeesFigureMinor = repeatingFigureMinor;
+
+// ---- Spent on a trip or event (DOMAIN.md "Trip or Event") ------------------
+//
+// The trip view's figures: the same Spend as the Entries Spent lead
+// (expenses less paybacks, no transfers), over the rows the trip view
+// lists, at the view's amounts. Every pill and bar is a slice of that one
+// set, so Before you went + While away = Spent, the category bars add up to
+// Spent, and the days add up to Spent. A row's `amountMinor` is its amount
+// in the view (the Entries aggregate rows' `visibleAmountMinor`).
+
+type TripFigureEntry = Pick<EntryDto, "id" | "date" | "entryType" | "amountMinor" | "categoryName" | "transferPurpose">;
+
+export interface TripEventFigures {
+  spentMinor: number;
+  // Only with dates: what was spent before the first day, and from then on.
+  beforeMinor: number | null;
+  whileAwayMinor: number | null;
+  // While away over the trip's days, rounded to the cent; null without dates.
+  perDayMinor: number | null;
+  days: number | null;
+  // Largest first; a category whose refunds outweigh it is kept (below
+  // zero), so the bars add up to Spent.
+  byCategory: Array<{ categoryName: string; amountMinor: number; entryIds: string[] }>;
+  // "before" first, then each day (dates in order).
+  byDay: Array<{ key: string; amountMinor: number; entryIds: string[] }>;
+}
+
+function daysBetween(start: string, end: string) {
+  return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
+export function tripEventFigures(entries: TripFigureEntry[], trip: { startDate?: string; endDate?: string } | null): TripEventFigures {
+  const start = trip?.startDate ?? null;
+  const end = trip?.endDate ?? start;
+  let spent = 0;
+  let before = 0;
+  const categories = new Map<string, { amountMinor: number; entryIds: string[] }>();
+  const dayMap = new Map<string, { amountMinor: number; entryIds: string[] }>();
+  for (const entry of entries) {
+    const amount = spendingMinor(entry);
+    if (amount === 0 && entry.entryType !== "expense") continue;
+    spent += amount;
+    const category = categories.get(entry.categoryName) ?? { amountMinor: 0, entryIds: [] };
+    category.amountMinor += amount;
+    category.entryIds.push(entry.id);
+    categories.set(entry.categoryName, category);
+    const dayKey = start && entry.date < start ? "before" : entry.date;
+    if (dayKey === "before") before += amount;
+    const day = dayMap.get(dayKey) ?? { amountMinor: 0, entryIds: [] };
+    day.amountMinor += amount;
+    day.entryIds.push(entry.id);
+    dayMap.set(dayKey, day);
+  }
+  const days = start && end ? daysBetween(start, end) : null;
+  const whileAway = start ? spent - before : null;
+  return {
+    spentMinor: spent,
+    beforeMinor: start ? before : null,
+    whileAwayMinor: whileAway,
+    perDayMinor: days && whileAway !== null ? Math.round(whileAway / days) : null,
+    days,
+    byCategory: [...categories].map(([categoryName, value]) => ({ categoryName, ...value }))
+      .sort((left, right) => right.amountMinor - left.amountMinor || left.categoryName.localeCompare(right.categoryName)),
+    byDay: [...dayMap].map(([key, value]) => ({ key, ...value }))
+      .sort((left, right) => (left.key === "before" ? -1 : right.key === "before" ? 1 : left.key.localeCompare(right.key)))
+  };
+}

@@ -8,7 +8,8 @@ import {
 } from "../app-repository";
 import { loadEntriesForMonths } from "../app-repository-entries";
 import { getMonthBounds } from "../app-repository-helpers";
-import { loadTripEventLinksForDateRange } from "../app-repository-trip-events";
+import { loadTripEventEntrySpan, loadTripEventLinksForDateRange, loadTripEvents } from "../app-repository-trip-events";
+import { loadEntriesForDateRange } from "../app-repository-entries";
 import type { EntriesPageDto } from "../../types/dto";
 import {
   loadRoutePageContext,
@@ -54,8 +55,12 @@ export async function buildEntriesPageDto(
   db: D1Database,
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),
-  fromMonth: string | null = null
+  fromMonth: string | null = null,
+  tripEventId: string | null = null
 ): Promise<EntriesPageDto> {
+  if (tripEventId) {
+    return buildTripEventEntriesPageDto(db, selectedViewId, selectedMonth, tripEventId);
+  }
   const { household, trackedMonths } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const rangeMonths = entriesRangeMonths(fromMonth, effectiveSelectedMonth);
@@ -104,4 +109,59 @@ function withTripEvents(entries: EntriesPageDto["monthPage"]["entries"], links: 
     const tripEventId = links.get(entry.id);
     return tripEventId ? { ...entry, tripEventId } : entry;
   });
+}
+
+function dayAfter(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+// The trip view (DOMAIN.md "Trip or Event"; the URL's entry_trip): every
+// entry on one trip or event, across its months, whatever the page's month
+// (which the DTO still echoes, so the page's own month stays as it was).
+// `tripEventId` "all" lists the entries of every trip with the whole list,
+// for the Trips & events sheet's totals. Bounded by the link table.
+async function buildTripEventEntriesPageDto(
+  db: D1Database,
+  selectedViewId: string,
+  selectedMonth: string,
+  tripEventId: string
+): Promise<EntriesPageDto> {
+  const all = tripEventId === "all";
+  const [{ household, trackedMonths }, span, list] = await Promise.all([
+    loadRoutePageContext(db, selectedViewId),
+    loadTripEventEntrySpan(db, all ? "*" : tripEventId),
+    loadTripEvents(db)
+  ]);
+  const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
+  const tripEvent = all ? null : list.tripEvents.find((trip) => trip.id === tripEventId) ?? null;
+  const [entries, splitGroups, trips] = await Promise.all([
+    span && (all || tripEvent)
+      ? loadEntriesForDateRange(db, span.first, dayAfter(span.last), { withTime: true, tripEventId: all ? "*" : tripEventId })
+      : Promise.resolve([]),
+    loadSplitGroups(db),
+    span ? loadTripEventLinksForDateRange(db, span.first, dayAfter(span.last)) : Promise.resolve({ links: new Map<string, string>(), chips: {} })
+  ]);
+  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
+  const viewId = resolvePageViewId(selectedViewId, household.people);
+  return {
+    viewId,
+    label: resolvePageLabel(viewId, personNameById),
+    splitGroups: [
+      { id: "split-group-none", name: "Non-group expenses" },
+      ...splitGroups.map((group) => ({ id: group.id, name: group.name }))
+    ],
+    monthPage: {
+      month: effectiveSelectedMonth,
+      selectedPersonId: viewId,
+      selectedScope: "direct_plus_shared",
+      scopes: buildPersonScopes(viewId),
+      entries: withTripEvents(adjustEntriesForList(entries, viewId), trips.links)
+    },
+    ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {}),
+    tripView: all
+      ? { all: true, tripEvents: list.tripEvents, ...(span ? { firstDate: span.first, lastDate: span.last } : {}) }
+      : { tripEvent, ...(span ? { firstDate: span.first, lastDate: span.last } : {}) }
+  };
 }
