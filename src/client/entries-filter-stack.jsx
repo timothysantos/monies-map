@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { messages } from "./copy/en-SG";
 import { entriesMessages } from "./copy/en-SG-entries";
 import { FilterMultiSelect, FilterSelect } from "./ui-components";
+import { tripEventsCopy } from "./copy/trip-events-copy";
 
 // The filter bar is URL-state driven by Entries. Keeping it in its own route
 // module prevents its mobile controls from becoming part of the first shell.
@@ -23,7 +24,10 @@ export function EntriesFilterStack({
   onChangeSearch,
   onResetFilters,
   onRefresh,
-  onDone
+  onDone,
+  // Trips and events: the trip view's name, and the Trips & events sheet.
+  tripName = "",
+  onOpenTrips = undefined
 }) {
   const isOpen = hideToggle ? true : showMobileFilters;
   const stackRef = useRef(null);
@@ -107,6 +111,14 @@ export function EntriesFilterStack({
             onChange={(value) => onChangeFilter("type", value)}
           />
         </div>
+        {onOpenTrips ? (
+          <div className="entries-filter-target entries-filter" data-filter-target="trip">
+            <span className="entries-filter-label">{tripEventsCopy.rowLabel}</span>
+            <button type="button" className="entries-filter-trip-button" data-trip-filter="" onClick={onOpenTrips}>
+              <span>{tripName || tripEventsCopy.filterAll}</span>
+            </button>
+          </div>
+        ) : null}
         {!hideActions ? (
           <div className="entries-filter-reset">
             <button type="button" className="subtle-action" onClick={onResetFilters}>

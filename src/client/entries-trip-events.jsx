@@ -363,3 +363,6 @@ export function describeTripEventChange(result, entryCount) {
   const moved = entryCount === 1 && (result.changes ?? [])[0]?.from;
   return moved ? copy.moved(result.name) : copy.putOn(changed, result.name);
 }
+
+// The trip view and the Trips & events sheet ride in this same chunk.
+export { TripEventLead, TripEventsSheet } from "./trip-event-views";

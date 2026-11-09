@@ -51,6 +51,14 @@ export function readFigure(element) {
     plan: element.hasAttribute("data-fig-plan") ? element.getAttribute("data-fig-plan") ?? "" : null,
     ask: element.getAttribute("data-fig-ask") ?? "",
     period: startMonth ? { startMonth, endMonth: endMonth || startMonth } : null,
+    // A trip or event's figure: whose share, which category, its split
+    // group, and whether it is the list itself (trip-figure-search.js).
+    trip: {
+      personId: element.getAttribute("data-fig-trip-view") ?? "",
+      categoryName: element.getAttribute("data-fig-trip-category") ?? "",
+      group: element.getAttribute("data-fig-trip-group") ?? "",
+      list: element.hasAttribute("data-fig-trip-list")
+    },
     search: window.location.search,
     pathname: window.location.pathname,
     hidden: document.documentElement.dataset.moneyPrivacy === "hidden"

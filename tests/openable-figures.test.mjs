@@ -33,6 +33,8 @@ import { bankFeesFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
+import { buildTripEventLeadModel } from "../src/client/trip-event-lead-model.js";
+import { projectEntriesForView } from "../src/client/entry-row-projection.js";
 import { entriesRangeMonths } from "../src/domain/pages/entries-page.ts";
 
 const TIM = "person-tim";
@@ -474,6 +476,123 @@ test("Entries pills: View entries narrows the list to the rows behind the pill a
       assert.ok(derived.filteredEntries.length <= wholeRows.filteredEntries.length);
     }
   }
+});
+
+// ---- Trips and events (DOMAIN.md "Trip or Event") --------------------------
+//
+// The trip view (entry_trip): its Spent, each person's pill, While away and
+// Before you went, each category bar and each day open the trip view
+// narrowed, whose Spent lead is the figure to the cent; pills and bars add
+// up to Spent. Seoul trip, 3 to 9 April 2026: flights booked in March,
+// a shared hotel added to Splits half each, Joyce's own dinner, Tim's taxi
+// and a refund that counts against the trip.
+const TRIP_VIEWS = [
+  { viewId: "household", scope: "direct_plus_shared" },
+  { viewId: TIM, scope: "direct_plus_shared" },
+  { viewId: TIM, scope: "direct" },
+  { viewId: TIM, scope: "shared" },
+  { viewId: "person-joyce", scope: "direct_plus_shared" }
+];
+
+async function seedTrip(api) {
+  const ids = [
+    await createEntry(api, { date: "2026-03-14", description: "SQ flights to Seoul", categoryName: "Travel", amountMinor: 128_640 }),
+    await createEntry(api, { date: "2026-04-03", description: "Lotte Hotel Seoul", categoryName: "Travel", amountMinor: 119_820 }),
+    await createEntry(api, { date: "2026-04-04", description: "Gwangjang Market", categoryName: "Food & Drinks", accountName: "Citi Rewards", ownerName: "Joyce", amountMinor: 3_680 }),
+    await createEntry(api, { date: "2026-04-05", description: "Kakao T taxi", categoryName: "Public Transport", amountMinor: 1_780 }),
+    await createEntry(api, { date: "2026-04-06", description: "Refund Gwangjang", categoryName: "Food & Drinks", entryType: "income", amountMinor: 500 })
+  ];
+  const split = await api("/api/splits/expenses/from-entry", { entryId: ids[1], splitGroupId: null, splitBasisPoints: 5000 });
+  assert.equal(split.status, 200, JSON.stringify(split.payload));
+  // An April entry not on the trip stays out of every figure.
+  await createEntry(api, { date: "2026-04-05", description: "Home groceries", categoryName: "Groceries", amountMinor: 4_321 });
+  const saved = await api("/api/trip-events/save", { name: "Seoul trip", startDate: "2026-04-03", endDate: "2026-04-09", currency: "KRW" });
+  assert.equal(saved.status, 200, JSON.stringify(saved.payload));
+  const tripEvent = saved.payload.tripEvent;
+  const set = await api("/api/trip-events/entries/set", { entryIds: ids, tripEventId: tripEvent.id });
+  assert.equal(set.status, 200, JSON.stringify(set.payload));
+  return tripEvent;
+}
+
+async function openTripView(api, location, accounts) {
+  assert.equal(location.pathname, "/entries");
+  const params = new URLSearchParams(location.search);
+  const page = await get(api, `/api/entries-page?view=${params.get("view")}&month=${params.get("month")}&trip=${params.get("entry_trip")}`);
+  const { selectedScope, entryFilters } = readEntriesFilterParams(params);
+  const derived = getEntryDerivedData({ entries: page.monthPage.entries, entryFilters, selectedScope, viewId: page.viewId, pinnedEntryIds: [], investmentAccountIds: getInvestmentAccountIds(accounts) });
+  const aggregateEntries = projectEntriesForView(derived.filteredEntries, page.viewId).aggregateEntries;
+  const lead = buildTripEventLeadModel({
+    tripEvent: page.tripView.tripEvent,
+    aggregateEntries,
+    pageEntries: page.monthPage.entries,
+    entryFilters,
+    viewId: page.viewId,
+    people: [{ id: TIM, name: "Tim" }, { id: "person-joyce", name: "Joyce" }],
+    investmentAccountIds: getInvestmentAccountIds(accounts)
+  });
+  return { page, derived, lead };
+}
+
+const tripOpen = (search, tripEvent, extra = {}) => figureMenu({ fig: "trip", arg: tripEvent.id, name: tripEvent.name, period: null, search, pathname: "/entries", ...extra });
+
+test("trip view: Spent and every pill, category and day open the trip view narrowed, to the cent, and add up", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const tripEvent = await seedTrip(api);
+  const { accounts } = await get(api, "/api/reference-data");
+  const sums = [];
+  for (const view of TRIP_VIEWS) {
+    const search = `?view=${view.viewId}&month=${MAY}&scope=${view.scope}&entries_scope=${view.scope}&entry_trip=${tripEvent.id}`;
+    const { lead, derived, page } = await openTripView(api, { pathname: "/entries", search }, accounts);
+    const label = `${view.viewId}/${view.scope}`;
+    assert.ok(page.monthPage.entries.every((entry) => entry.tripEventId === tripEvent.id), `${label}: only the trip's entries`);
+    // Spent is the Entries Spent rule over the same rows.
+    assert.equal(lead.spentMinor, derived.entryTotals.spendMinor, `${label} Spent`);
+    // Its menu: no View entries (it is the list), Ask about this.
+    assert.deepEqual(tripOpen(search, tripEvent, { trip: { list: true } }).items.map((item) => item.action), ["ask"]);
+    // Pills and bars add up.
+    assert.equal(lead.beforeMinor + lead.whileAwayMinor, lead.spentMinor, `${label} before + away`);
+    assert.equal(lead.byCategory.reduce((sum, row) => sum + row.amountMinor, 0), lead.spentMinor, `${label} categories`);
+    assert.equal(lead.byDay.reduce((sum, row) => sum + row.amountMinor, 0), lead.spentMinor, `${label} days`);
+    if (view.viewId === "household") {
+      assert.equal(lead.personPills.reduce((sum, pill) => sum + pill.amountMinor, 0), lead.spentMinor, "Tim + Joyce = Spent");
+    }
+    // Every figure opens to itself.
+    const figures = [
+      ...lead.personPills.map((pill) => ({ name: pill.name, minor: pill.amountMinor, trip: { personId: pill.personId } })),
+      ...lead.byCategory.map((row) => ({ name: row.categoryName, minor: row.amountMinor, trip: { categoryName: row.categoryName } })),
+      ...lead.byDay.map((row) => ({ name: row.key, minor: row.amountMinor, ids: row.entryIds })),
+      { name: "before", minor: lead.beforeMinor, ids: lead.byDay.find((row) => row.key === "before")?.entryIds ?? [] },
+      { name: "away", minor: lead.whileAwayMinor, ids: lead.byDay.filter((row) => row.key !== "before").flatMap((row) => row.entryIds) }
+    ].filter((figure) => figure.ids === undefined || figure.ids.length);
+    for (const figure of figures) {
+      const menu = tripOpen(search, tripEvent, { ids: figure.ids ?? [], trip: figure.trip ?? {} });
+      const opened = await openTripView(api, menu.items[0].location, accounts);
+      assert.equal(opened.lead.spentMinor, figure.minor, `${label} ${figure.name}`);
+      assert.equal(opened.derived.entryTotals.spendMinor, figure.minor, `${label} ${figure.name} (Entries totals)`);
+    }
+    sums.push([label, lead.spentMinor]);
+  }
+  // The household: flights $1,286.40 + hotel $1,198.20 + dinner $36.80 +
+  // taxi $17.80 - refund $5.00; Tim's share holds half the hotel.
+  assert.deepEqual(sums, [
+    ["household/direct_plus_shared", 253_420],
+    [`${TIM}/direct_plus_shared`, 128_640 + 59_910 + 1_780 - 500],
+    [`${TIM}/direct`, 128_640 + 1_780 - 500],
+    [`${TIM}/shared`, 59_910],
+    ["person-joyce/direct_plus_shared", 59_910 + 3_680]
+  ]);
+});
+
+test("trip view: an unknown trip lists nothing and names no trip; the other filters still narrow it", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const tripEvent = await seedTrip(api);
+  const missing = await get(api, `/api/entries-page?view=household&month=${MAY}&trip=trip-nowhere`);
+  assert.deepEqual(missing.monthPage.entries, []);
+  assert.equal(missing.tripView.tripEvent, null);
+  assert.equal(missing.monthPage.month, MAY, "the page keeps its month");
+  const { accounts } = await get(api, "/api/reference-data");
+  const { lead } = await openTripView(api, { pathname: "/entries", search: `?view=household&month=${MAY}&scope=direct_plus_shared&entry_trip=${tripEvent.id}&entry_category=Travel` }, accounts);
+  assert.equal(lead.spentMinor, 128_640 + 119_820);
 });
 
 test("an unknown figure, a period that is not one, or a missing investment account kind is refused, not guessed", async (t) => {

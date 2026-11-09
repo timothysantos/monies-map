@@ -1367,3 +1367,25 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
 }
+
+/* The filter bar's "Trip or event" control (entries-filter-stack.jsx). */
+.entries-filter-trip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 12px);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.entries-filter-trip-button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

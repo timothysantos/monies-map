@@ -34,11 +34,15 @@ function listLabel(names) {
 }
 
 /**
- * @param {{ entryFilters: any, entryCount: number, wallets?: { value: string, label?: string }[], hasPeriod?: boolean }} input
+ * @param {{ entryFilters: any, entryCount: number, wallets?: { value: string, label?: string }[], hasPeriod?: boolean, tripName?: string }} input
  * @returns {{ text: string, label: string, announce: string, filterCount: number } | null}
  */
-export function buildEntriesIslandContext({ entryFilters, entryCount, wallets = [], hasPeriod = false }) {
+export function buildEntriesIslandContext({ entryFilters, entryCount, wallets = [], hasPeriod = false, tripName = "" }) {
   const parts = [];
+  // A trip or event first, by its name (DOMAIN.md "Trip or Event").
+  if (entryFilters.tripEventId) {
+    parts.push(cut(tripName || copy.tripEvent, NAME_MAX));
+  }
   const categories = entryFilters.categories ?? [];
   const walletIds = entryFilters.wallets ?? [];
   const search = cleanSearch(entryFilters.search);

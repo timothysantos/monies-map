@@ -25,6 +25,8 @@
 // - entry_from, entry_to: a period of months (YYYY-MM) in place of the one
 //   month, when entry_to is the page's month: a Summary range's figure
 //   lists the whole range. Another month picked in the header drops it.
+// - entry_trip: a trip or event's id (DOMAIN.md "Trip or Event"): the trip
+//   view, every entry on it across its months, whatever the month
 // - entries_scope: direct | shared | direct_plus_shared
 // - from_ask=1: the filters came from an Ask answer, so the page shows the
 //   "From Ask" chip that clears them or goes back to Ask
@@ -49,6 +51,7 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
   "entry_figure",
   "entry_from",
   "entry_to",
+  "entry_trip",
   "from_ask"
 ]);
 
@@ -112,7 +115,8 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
       minAmountMinor: readAmountParam(searchParams.get("entry_min")),
       maxAmountMinor: readAmountParam(searchParams.get("entry_max")),
       investmentMovesIn: searchParams.get("entry_invest_moves") === "1",
-      figure: ENTRY_FIGURES.includes(figure) ? figure : ""
+      figure: ENTRY_FIGURES.includes(figure) ? figure : "",
+      tripEventId: searchParams.get("entry_trip") ?? ""
     }
   };
 }
@@ -122,7 +126,7 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
  * shows the same rows.
  * `fromMonth` lists the months from it to `month` (entry_from, entry_to);
  * `figure` narrows to the rows behind one figure (entry_figure).
- * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean, figure?: string, fromMonth?: string }} filter
+ * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean, figure?: string, fromMonth?: string, tripEventId?: string }} filter
  */
 export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   const params = new URLSearchParams();
@@ -145,6 +149,7 @@ export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   if (Number.isFinite(filter.minAmountMinor)) params.set("entry_min", formatAmountParam(filter.minAmountMinor));
   if (Number.isFinite(filter.maxAmountMinor)) params.set("entry_max", formatAmountParam(filter.maxAmountMinor));
   for (const entryId of filter.entryIds ?? []) params.append("entry_id", entryId);
+  if (filter.tripEventId) params.set("entry_trip", filter.tripEventId);
   if (fromAsk) params.set("from_ask", "1");
   return params;
 }

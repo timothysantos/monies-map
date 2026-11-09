@@ -18,6 +18,7 @@ const names = {
   difference: "Difference",
   plan: "Plan",
   splits: "Splits",
+  trip: "Trip or event",
   // A Money insights line (its menu has no title; this names it for screen readers).
   insight: "Insight"
 };
@@ -56,6 +57,7 @@ export const figureCopy = {
     plan: (period) => `How did I do against the plan ${period}?`,
     category: (name, period) => `How much did I spend on ${name} ${period}?`,
     shop: (name, period) => `How much did I spend at ${name} ${period}?`,
-    owed: "Who owes whom?"
+    owed: "Who owes whom?",
+    trip: (name) => `How much did we spend on ${name}?`
   }
 };

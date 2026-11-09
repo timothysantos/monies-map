@@ -81,12 +81,14 @@ import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
 import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
 import { tripEventsCopy } from "./copy/trip-events-copy";
-import { forgetTripEvents } from "./trip-events-api";
+import { deleteTripEvent, forgetTripEvents, putAwayTripEvent } from "./trip-events-api";
 
 // Trips and events (DOMAIN.md "Trip or Event"): the picker and its Undo note
 // are a lazy chunk, fetched when a picker first opens.
 const TripEventPicker = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventPicker })));
 const TripEventNote = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventNote })));
+const TripEventLead = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventLead })));
+const TripEventsSheet = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventsSheet })));
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -163,11 +165,14 @@ export function EntriesPanel({
   const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const [tripPicker, setTripPicker] = useState({ mounted: false, open: false, entries: [] });
   const [tripNote, setTripNote] = useState(null);
+  const [tripsSheet, setTripsSheet] = useState({ mounted: false, open: false });
   const tripPickerAnchorRef = useRef(null);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
   // A period of months (entry_from, entry_to) from a Summary range's figure.
   const rangeStartMonth = readEntriesRangeStart(searchParams, selectedMonth);
+  // The trip view (entry_trip): every entry on one trip, across its months.
+  const tripViewId = searchParams.get("entry_trip") ?? "";
   const {
     entriesPage,
     isEntriesPageLoading,
@@ -179,6 +184,7 @@ export function EntriesPanel({
     entriesSourceView,
     selectedMonth,
     rangeStartMonth,
+    tripEventId: tripViewId,
     externalRefreshToken,
     onInvalidateAppShellCache,
     runBackgroundRefresh
@@ -262,6 +268,7 @@ export function EntriesPanel({
       && entriesPage.viewId === entriesSourceView.id,
     busy: showMobileFilters
       || tripPicker.open
+      || tripsSheet.open
       || isQuickExpenseSaving
       || quickExpensePendingKey !== ""
       || pendingLinkedEntryId !== ""
@@ -562,6 +569,12 @@ export function EntriesPanel({
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id, investmentAccountIds]
   );
   const breakdownSummary = useMemo(() => describeTopShares(expenseBreakdown), [expenseBreakdown]);
+  // The trip view's rows at the view's amounts (the same rows the totals
+  // count), for its lead.
+  const tripAggregateEntries = useMemo(
+    () => (tripViewId ? projectEntriesForView(filteredEntries, entryView.id).aggregateEntries : []),
+    [entryView.id, filteredEntries, tripViewId]
+  );
   const totalsModel = useMemo(
     () => buildEntriesTotalsModel({
       entryTotals,
@@ -936,9 +949,50 @@ export function EntriesPanel({
   const handleTripEventUndone = useCallback((note) => {
     tripEvents.applyChanges((note.changes ?? []).map((change) => ({ entryId: change.entryId, to: change.from })));
     forgetTripEvents(queryClient);
+    if (note.restoreTripId) {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set("entry_trip", note.restoreTripId);
+        return next;
+      });
+    }
     void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
-  }, [queryClient, refreshEntriesPage, runBackgroundRefresh, tripEvents]);
+  }, [queryClient, refreshEntriesPage, runBackgroundRefresh, setSearchParams, tripEvents]);
   const dismissTripNote = useCallback(() => setTripNote(null), []);
+  const tripName = entriesPage.tripView?.tripEvent?.name
+    ?? (tripViewId ? entriesPage.tripEvents?.[tripViewId]?.name ?? "" : "");
+  const openTripsSheet = useCallback(() => setTripsSheet({ mounted: true, open: true }), []);
+  const chooseTripView = useCallback((trip) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("entry_trip", trip.id);
+      for (const key of ["entry_from", "entry_to", "entry_figure", "entry_id"]) next.delete(key);
+      return next;
+    });
+  }, [setSearchParams]);
+  const clearTripView = useCallback(() => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("entry_trip");
+      return next;
+    });
+  }, [setSearchParams]);
+  const handlePutAwayTrip = useCallback(async (trip, putAway) => {
+    const result = await putAwayTripEvent(trip.id, putAway, tripEventsCopy.saveFailed);
+    setTripNote({ key: `away-${Date.now()}`, undoId: "", message: result.ok ? (putAway ? tripEventsCopy.putAwayDone(trip.name) : tripEventsCopy.broughtBack(trip.name)) : result.error, changes: [] });
+    forgetTripEvents(queryClient);
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [queryClient, refreshEntriesPage, runBackgroundRefresh]);
+  const handleDeleteTrip = useCallback(async (trip) => {
+    const result = await deleteTripEvent(trip.id, tripEventsCopy.saveFailed);
+    if (!result.ok) {
+      setTripNote({ key: `delete-${Date.now()}`, undoId: "", message: result.error, changes: [] });
+      return;
+    }
+    setTripNote({ key: result.undoId, undoId: result.undoId, message: tripEventsCopy.deleted(trip.name), changes: [], restoreTripId: trip.id });
+    forgetTripEvents(queryClient);
+    clearTripView();
+  }, [clearTripView, queryClient]);
   const renderTripEventRow = useCallback((entry) => {
     const chip = getTripChip(entry);
     return (
@@ -1124,6 +1178,7 @@ export function EntriesPanel({
       next.delete("entry_min");
       next.delete("entry_max");
       next.delete("entry_figure");
+      next.delete("entry_trip");
       // Only the phone island's Clear resets the period too. Existing Reset
       // callers pass an event (or nothing) and keep their desktop behavior.
       if (clearPeriod === true) {
@@ -1194,12 +1249,15 @@ export function EntriesPanel({
       entryFilters,
       entryCount: filteredEntries.length,
       wallets,
-      hasPeriod: Boolean(entriesPage.monthPage.rangeStartMonth)
+      hasPeriod: Boolean(entriesPage.monthPage.rangeStartMonth),
+      tripName
     }),
-    [entriesPage.monthPage.rangeStartMonth, entryFilters, filteredEntries.length, wallets]
+    [entriesPage.monthPage.rangeStartMonth, entryFilters, filteredEntries.length, tripName, wallets]
   );
   const filterStackProps = useMemo(() => ({
     island: islandContext,
+    tripName,
+    onOpenTrips: openTripsSheet,
     showMobileFilters,
     activeEntryFilterCount,
     entryFilters,
@@ -1215,6 +1273,8 @@ export function EntriesPanel({
     onRefresh: refreshEntriesFilters,
     onDone: useMobileEntrySheet ? onCloseMobileContext : undefined
   }), [
+    openTripsSheet,
+    tripName,
     activeEntryFilterCount,
     entryCategoryOptions,
     entryFilters,
@@ -1316,6 +1376,26 @@ export function EntriesPanel({
         />
       ) : (
         <>
+          {tripViewId ? (
+            <Suspense fallback={<div className="trip-lead" aria-busy="true" />}>
+              <TripEventLead
+                tripView={entriesPage.tripView}
+                aggregateEntries={tripAggregateEntries}
+                pageEntries={entriesPage.monthPage.entries}
+                entryFilters={entryFilters}
+                viewId={entryView.id}
+                people={people}
+                investmentAccountIds={investmentAccountIds}
+                entryCount={filteredEntries.length}
+                isMobile={useMobileEntrySheet}
+                onClear={clearTripView}
+                onPutAway={handlePutAwayTrip}
+                onDelete={handleDeleteTrip}
+              />
+            </Suspense>
+          ) : null}
+          {tripViewId ? null : (
+          <>
           <EntriesTotals
             model={totalsModel}
             showExpenseBreakdown={showExpenseBreakdown}
@@ -1334,6 +1414,8 @@ export function EntriesPanel({
             isCheckInActionShown={isCheckInActionShown}
             className="financial-insight-entries"
           />
+          </>
+          )}
         </>
       )}
 
@@ -1642,6 +1724,19 @@ export function EntriesPanel({
           />
         </Suspense>
       ) : null}
+      {tripsSheet.mounted ? (
+        <Suspense fallback={null}>
+          <TripEventsSheet
+            open={tripsSheet.open}
+            onOpenChange={(open) => setTripsSheet((current) => ({ ...current, open }))}
+            viewId={entryView.id}
+            month={selectedMonth}
+            selectedScope={selectedScope}
+            currentTripEventId={tripViewId}
+            onChoose={chooseTripView}
+          />
+        </Suspense>
+      ) : null}
       {tripNote ? (
         <Suspense fallback={null}>
           <TripEventNote key={tripNote.key} note={tripNote} onUndone={handleTripEventUndone} onDismiss={dismissTripNote} />
@@ -1747,6 +1842,7 @@ function useEntriesPageData({
   entriesSourceView,
   selectedMonth,
   rangeStartMonth = "",
+  tripEventId = "",
   externalRefreshToken,
   onInvalidateAppShellCache,
   runBackgroundRefresh
@@ -1770,9 +1866,13 @@ function useEntriesPageData({
       if (rangeStartMonth) {
         params.set("from", rangeStartMonth);
       }
+      // A trip view is its own request too (every entry on the trip).
+      if (tripEventId) {
+        params.set("trip", tripEventId);
+      }
       return params;
     },
-    [entriesSourceView.id, rangeStartMonth, selectedMonth]
+    [entriesSourceView.id, rangeStartMonth, selectedMonth, tripEventId]
   );
   const entriesPageCacheKey = entriesPageParams.toString();
 
@@ -1821,12 +1921,12 @@ function useEntriesPageData({
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
     // The shell's warm start is one month; a period waits for its own load.
-    if (initialPage.monthPage.month !== selectedMonth || rangeStartMonth) {
+    if (initialPage.monthPage.month !== selectedMonth || rangeStartMonth || tripEventId) {
       return;
     }
 
     owner.seed(initialPage, entriesPageParams);
-  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, rangeStartMonth, selectedMonth]);
+  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, rangeStartMonth, selectedMonth, tripEventId]);
 
   // A failed load over rows that already belong to this month and view is a
   // background failure: the rows stay and the refresh notice offers a retry.
@@ -1881,11 +1981,11 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   const walletFilterKey = read.entryFilters.wallets.join("\u0000");
   const categoryFilterKey = read.entryFilters.categories.join("\u0000");
   const entryIdFilterKey = read.entryFilters.entryIds.join("\u0000");
-  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn, figure } = read.entryFilters;
+  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn, figure, tripEventId } = read.entryFilters;
   const entryFilters = useMemo(
     () => read.entryFilters,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryFilterKey, entryIdFilterKey, figure, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, type, walletFilterKey]
+    [categoryFilterKey, entryIdFilterKey, figure, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, tripEventId, type, walletFilterKey]
   );
 
   return {

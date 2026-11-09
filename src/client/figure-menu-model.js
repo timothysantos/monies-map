@@ -1,6 +1,7 @@
 import { figureCopy as copy } from "./copy/figure-copy";
 import { buildEntriesFilterSearch, ENTRY_FIGURES } from "./entry-filter-params";
 import { formatMonthLabel } from "./formatters";
+import { tripFigureSearch } from "./trip-figure-search";
 
 // What an openable figure's menu offers (design.md "Openable figures"), as
 // data, so it is tested without a page: figure-menu.js reads the figure's
@@ -32,9 +33,31 @@ const HIDDEN_QUESTION = { spentOverPlan: "spentVsPlan", spentMore: "spentVsIncom
  * The menu a figure opens, as data: its label and its items, each with the
  * location it opens or the question it asks. Pure: the DOM is read by
  * readFigure.
- * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean }} figure
+ * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean, trip?: { personId?: string, categoryName?: string, group?: string, list?: boolean } }} figure
  */
-export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false }) {
+export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false, trip = {} }) {
+  // A trip or event's figure (data-fig="trip", data-fig-arg its id): the
+  // trip view, narrowed to the figure's slice. Its Spent lead is the list
+  // itself, so it offers Open Splits (a linked split group) and Ask.
+  if (fig === "trip") {
+    const tripItems = [];
+    if (!trip.list) {
+      tripItems.push({
+        action: "entries",
+        label: copy.viewEntries,
+        location: { pathname: "/entries", search: tripFigureSearch(search, { tripEventId: arg, personId: trip.personId, categoryName: trip.categoryName, entryIds: ids }) }
+      });
+    }
+    if (trip.group) {
+      const current = new URLSearchParams(search);
+      const params = new URLSearchParams({ view: current.get("view") || "household", split_group: trip.group });
+      if (current.get("month")) params.set("month", current.get("month"));
+      tripItems.push({ action: "splits", label: copy.openSplits, location: { pathname: "/splits", search: `?${params.toString()}`, hash: "#splits-activity" } });
+    }
+    const tripName = ownName || copy.names.trip;
+    tripItems.push({ action: "ask", label: copy.ask, question: copy.questions.trip(tripName) });
+    return { label: copy.menuLabel(tripName), title: { name: tripName, period: "" }, items: tripItems };
+  }
   // A Money insights line: Ask about this is its only item (the line
   // carries its own signal; figure-menu.js fires it back at the line).
   if (fig === "insight") {

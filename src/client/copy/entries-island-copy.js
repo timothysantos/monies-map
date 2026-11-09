@@ -9,6 +9,7 @@ export const entriesIslandCopy = {
   filters: (count) => `${count} filters`,
   amountRange: "Amount range",
   pickedEntries: "Picked entries",
+  tripEvent: "A trip or event",
   severalMonths: "Several months",
   noEntries: "No entries",
   entries: (count) => (count === 1 ? "1 entry" : `${count} entries`),
