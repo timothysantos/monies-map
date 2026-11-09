@@ -794,6 +794,41 @@ CREATE TABLE IF NOT EXISTS ask_habits (
   FOREIGN KEY (household_id) REFERENCES households(id)
 );
 
+-- Trips and events (DOMAIN.md "Trip or Event"): a named set of entries such
+-- as "Seoul trip" or "Mum's 70th", across categories, people and months.
+-- Not the same as a split group (who owes whom). Dates and currency only
+-- help suggest entries; only entries put on it count. Additive: every
+-- reader tolerates the tables missing (the feature is simply off), so this
+-- ships before the code.
+CREATE TABLE IF NOT EXISTS trip_events (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  icon_key TEXT NOT NULL DEFAULT 'star',
+  start_date TEXT,
+  end_date TEXT,
+  currency TEXT,
+  split_group_id TEXT,
+  put_away_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+-- One row per entry: an entry is on at most one trip or event (the primary
+-- key keeps it so). Deleting an entry or rolling back its import takes the
+-- link with it.
+CREATE TABLE IF NOT EXISTS trip_event_entries (
+  transaction_id TEXT PRIMARY KEY,
+  trip_event_id TEXT NOT NULL,
+  household_id TEXT NOT NULL,
+  added_by TEXT NOT NULL DEFAULT 'person' CHECK (added_by IN ('person', 'ask', 'ask_auto', 'suggestion')),
+  added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+  FOREIGN KEY (trip_event_id) REFERENCES trip_events(id) ON DELETE CASCADE,
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
 CREATE TABLE IF NOT EXISTS app_error_diagnostics (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -882,3 +917,9 @@ CREATE INDEX IF NOT EXISTS idx_category_match_rule_issue_ignores_household
 
 CREATE INDEX IF NOT EXISTS idx_ask_habits_household_kind
   ON ask_habits (household_id, kind, last_used DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trip_events_household
+  ON trip_events (household_id, put_away_at, start_date);
+
+CREATE INDEX IF NOT EXISTS idx_trip_event_entries_trip
+  ON trip_event_entries (trip_event_id, household_id);

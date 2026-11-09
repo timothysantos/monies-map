@@ -329,6 +329,9 @@ export async function clearDemoData(db: D1Database) {
   // additive, so an older database without it has nothing to clear.
   await db.prepare("DELETE FROM app_settings WHERE key = ?").bind(ASK_HANDLES_SAFE_SETTING_KEY).run();
   await db.prepare("DELETE FROM ask_habits").run().catch(() => undefined);
+  // Trips and events (additive tables, so maybe missing) go with the entries.
+  await db.prepare("DELETE FROM trip_event_entries").run().catch(() => undefined);
+  await db.prepare("DELETE FROM trip_events").run().catch(() => undefined);
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_activity_history",
