@@ -1,11 +1,13 @@
 // Subscription price change: the same payee charged one amount for several
-// periods in a row, then a new amount that differs by at least $1 and 5%.
+// periods in a row, then a new amount that differs by at least $1 and 5%
+// (detectPriceChange, the rule the Subscriptions and bills row's "Went up"
+// shares: src/domain/repeating-charges.ts).
 // Shown for 45 days from the first new charge; a later change is a new
 // reminder. The payee is the statement line without codes and reference
 // numbers (payeeKey, as Account routine uses), so every charge of one
 // subscription reads as one series even when its reference changes.
-import { daysBetween, monthsBetween } from "../money-signals/format";
 import { payeeKey, payeeName } from "../account-routines";
+import { detectPriceChange } from "../repeating-charges";
 import type { PriceChangeReminderDto } from "../../types/dto";
 import type { ReminderChargeRow, ReminderInputs } from "./facts";
 import { REMINDER_THRESHOLDS } from "./thresholds";
@@ -20,50 +22,8 @@ interface Charge {
   description: string;
 }
 
-// Whether two charges are one period apart: next month, or about a year on
-// (a yearly charge can land a few days either side of the anniversary).
-function isNextPeriod(period: Period, previous: Charge, next: Charge) {
-  const gap = monthsBetween(previous.month, next.month);
-  return period === "monthly" ? gap === 1 : gap >= 11 && gap <= 13;
-}
-
-// The length of the run of one amount that ends just before `endIndex`
-// (exclusive), going back one period at a time. 0 when `endIndex` is 0.
-function runLengthBefore(period: Period, series: Charge[], endIndex: number) {
-  if (endIndex <= 0) {
-    return 0;
-  }
-  const amount = series[endIndex - 1].amountMinor;
-  let length = 1;
-  for (let index = endIndex - 2; index >= 0; index -= 1) {
-    if (series[index].amountMinor !== amount || !isNextPeriod(period, series[index], series[index + 1])) {
-      break;
-    }
-    length += 1;
-  }
-  return length;
-}
-
 function detectChange(period: Period, series: Charge[], today: string) {
-  const { stableMonthlyCharges, stableYearlyCharges, minChangeMinor, minChangeRatio, showDays } = REMINDER_THRESHOLDS.priceChange;
-  const last = series[series.length - 1];
-  // The newest run of one amount: the first new charge and any after it.
-  let firstNew = series.length - 1;
-  while (firstNew > 0 && series[firstNew - 1].amountMinor === last.amountMinor && isNextPeriod(period, series[firstNew - 1], series[firstNew])) {
-    firstNew -= 1;
-  }
-  if (firstNew === 0 || !isNextPeriod(period, series[firstNew - 1], series[firstNew])) {
-    return null;
-  }
-  const priorCount = runLengthBefore(period, series, firstNew);
-  const oldAmount = series[firstNew - 1].amountMinor;
-  const change = Math.abs(last.amountMinor - oldAmount);
-  const sinceFirstNew = daysBetween(series[firstNew].date, today);
-  const enoughHistory = priorCount >= (period === "monthly" ? stableMonthlyCharges : stableYearlyCharges);
-  if (!enoughHistory || change < minChangeMinor || change < oldAmount * minChangeRatio || sinceFirstNew < 0 || sinceFirstNew > showDays) {
-    return null;
-  }
-  return { oldAmount, newAmount: last.amountMinor, firstNewCharge: series[firstNew], priorCount };
+  return detectPriceChange(period, series, today, REMINDER_THRESHOLDS.priceChange.showDays);
 }
 
 export function priceChangeReminders(input: PriceInput): PriceChangeReminderDto[] {

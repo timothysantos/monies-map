@@ -511,6 +511,46 @@ Important distinctions:
 - Insights are only as fresh as imports: a statement imported late moves
   the scheduled check and the missed payment late too.
 
+### Repeating Charge
+
+A charge that comes back every month or every year (streaming, phone,
+broadband, S&CC, insurance, utilities), found in recorded entries by fixed
+rules (`src/domain/repeating-charges.ts`), never by AI. One engine serves
+Summary's "Subscriptions and bills" card, its Coming up list and the
+`subscription price change` reminder, so they never disagree.
+
+Canonical terms:
+- `repeating charge` (a `series`): the charges of one payee (`payeeKey`,
+  the Account routine rule that drops codes and reference numbers), kept
+  across a change of card. Its `series key` is the payee key plus
+  `|monthly` or `|yearly`.
+- `monthly series`: one charge in each of 3 or more months in a row, 25 to
+  35 days apart. `yearly series`: 2 or more charges 11 to 13 months apart.
+  A payee charged twice in one month is not a series (groceries, Grab),
+  unless the household kept it.
+- `fixed` or `changes each month`: a fixed charge stays within $1 or 5% of
+  its amount (10% when charged in another currency), with at most one step
+  to a new amount at a time; one that changes each month stays within half
+  to double its middle amount, and only in Bills or Insurance or once kept.
+- `might repeat`: two months in a row that pass every other test. Listed
+  apart and never counted until kept.
+- `usual day`: the middle day of the month of the last 3 charges (yearly:
+  the last date a year on).
+- `went up`: the price change rule (3 charges at one amount, 2 yearly, then
+  a new amount at least $1 and 5% different), shown on the row for 90 days;
+  the reminder keeps its own 45.
+- `not seen since`: a series whose usual day plus 10 days has passed with no
+  charge, while the account it came from has later entries. Two missed
+  months make it `stopped` (in the fold). It never says "cancelled".
+- Expenses only: never a transfer, and never Investments or Savings.
+
+Important distinctions:
+- A statement not imported yet is not a stopped subscription: "not seen
+  since" waits for the account's later entries.
+- Amounts are the view's (a person view counts each charge at their share,
+  the rule every figure uses), so "View entries" from any of its figures
+  adds up to the figure.
+
 ### Category
 
 The spending or income taxonomy used to classify ledger entries, split
