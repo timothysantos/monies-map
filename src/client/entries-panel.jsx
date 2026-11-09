@@ -2,7 +2,7 @@
 // (ui/lead-support-detail.jsx, in the shared ui-components chunk), so they
 // load before this route's overrides.
 import "./entries-route.css";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Inbox, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,7 +22,7 @@ import {
 } from "./entry-composer-section";
 import { EntryTransferTools } from "./entry-editor";
 import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
-import { BottomActions } from "./ui/lead-support-detail";
+import { BottomActions, DetailRow } from "./ui/lead-support-detail";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { formatShortMonth } from "./copy/ask-copy";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
@@ -79,6 +79,14 @@ import { EntryTransferPurposeRow, offersTransferPurpose } from "./entry-transfer
 import { useLiveSearchParams } from "./use-live-search-params";
 import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
+import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
+import { tripEventsCopy } from "./copy/trip-events-copy";
+import { forgetTripEvents } from "./trip-events-api";
+
+// Trips and events (DOMAIN.md "Trip or Event"): the picker and its Undo note
+// are a lazy chunk, fetched when a picker first opens.
+const TripEventPicker = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventPicker })));
+const TripEventNote = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventNote })));
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -153,6 +161,9 @@ export function EntriesPanel({
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
   const [mobileSplitBasisPoints, setMobileSplitBasisPoints] = useState(5000);
   const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
+  const [tripPicker, setTripPicker] = useState({ mounted: false, open: false, entries: [] });
+  const [tripNote, setTripNote] = useState(null);
+  const tripPickerAnchorRef = useRef(null);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
   // A period of months (entry_from, entry_to) from a Summary range's figure.
@@ -242,6 +253,7 @@ export function EntriesPanel({
     onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
   });
+  const tripEvents = useTripEventsOnEntries(entriesPage);
   // Entries owns its page DTO, so it reports readiness for the requested
   // month and view as well as every open editor or in-flight write.
   useRouteWorkReport({
@@ -249,6 +261,7 @@ export function EntriesPanel({
       && entriesPage.monthPage.month === selectedMonth
       && entriesPage.viewId === entriesSourceView.id,
     busy: showMobileFilters
+      || tripPicker.open
       || isQuickExpenseSaving
       || quickExpensePendingKey !== ""
       || pendingLinkedEntryId !== ""
@@ -904,6 +917,43 @@ export function EntriesPanel({
     setMobileSplitBasisPoints(5000);
   }
 
+  // Trips and events: the picker for one entry or the picked rows, saving
+  // at once; the note's Undo puts back what the change moved.
+  const openTripPicker = useCallback((pickedEntries, element) => {
+    tripPickerAnchorRef.current = element ?? null;
+    setTripPicker({
+      mounted: true,
+      open: true,
+      entries: pickedEntries.map((entry) => ({ id: entry.id, date: entry.date, tripEventId: tripEvents.tripEventIdOf(entry) }))
+    });
+  }, [tripEvents]);
+  const getTripChip = useCallback((entry) => tripEvents.chipOf(tripEvents.tripEventIdOf(entry)), [tripEvents]);
+  const handleTripEventSaved = useCallback((result) => {
+    tripEvents.applyChanges(result.changes, result.tripEvent);
+    setTripNote(result.undoId ? { key: result.undoId, undoId: result.undoId, message: result.message, changes: result.changes } : { key: `same-${Date.now()}`, undoId: "", message: result.message, changes: [] });
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [refreshEntriesPage, runBackgroundRefresh, tripEvents]);
+  const handleTripEventUndone = useCallback((note) => {
+    tripEvents.applyChanges((note.changes ?? []).map((change) => ({ entryId: change.entryId, to: change.from })));
+    forgetTripEvents(queryClient);
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [queryClient, refreshEntriesPage, runBackgroundRefresh, tripEvents]);
+  const dismissTripNote = useCallback(() => setTripNote(null), []);
+  const renderTripEventRow = useCallback((entry) => {
+    const chip = getTripChip(entry);
+    return (
+      <DetailRow
+        key="tripEvent"
+        label={tripEventsCopy.rowLabel}
+        value={chip?.name ?? ""}
+        emptyLabel={tripEventsCopy.none}
+        state="action"
+        data-row="tripEvent"
+        onClick={(event) => openTripPicker([entry], event.currentTarget)}
+      />
+    );
+  }, [getTripChip, openTripPicker]);
+
   function handleMobileSplitGroupSelection(nextGroupId) {
     setMobileSplitGroupId(nextGroupId);
   }
@@ -1440,6 +1490,7 @@ export function EntriesPanel({
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
             onAmountChange={(patch) => updateEntryAmount(activeEditingEntry.id, patch)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
+            tripEventRow={renderTripEventRow(activeEditingEntry)}
             onOwnerChange={(nextValue) => {
               if (nextValue === "Shared") {
                 updateEntry(activeEditingEntry.id, { ownershipType: "shared", ownerName: undefined });
@@ -1552,6 +1603,9 @@ export function EntriesPanel({
           onUndoEntrySettlementLock={() => void undoEntrySettlementLock()}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}
+          getTripChip={getTripChip}
+          onOpenTripPicker={(entry, element) => openTripPicker([entry], element)}
+          renderTripEventRow={renderTripEventRow}
         />
       ) : (
         <EntriesEmptyState
@@ -1576,6 +1630,23 @@ export function EntriesPanel({
         onSaveOnly={() => void confirmEntryCategorySync({ updateLinked: false })}
         onUpdateBoth={() => void confirmEntryCategorySync({ updateLinked: true })}
       />
+      {tripPicker.mounted ? (
+        <Suspense fallback={null}>
+          <TripEventPicker
+            open={tripPicker.open}
+            onOpenChange={(open) => setTripPicker((current) => ({ ...current, open }))}
+            anchorRef={tripPickerAnchorRef}
+            entries={tripPicker.entries}
+            onSaved={handleTripEventSaved}
+            isMobile={useMobileEntrySheet}
+          />
+        </Suspense>
+      ) : null}
+      {tripNote ? (
+        <Suspense fallback={null}>
+          <TripEventNote key={tripNote.key} note={tripNote} onUndone={handleTripEventUndone} onDismiss={dismissTripNote} />
+        </Suspense>
+      ) : null}
       <EntriesDeleteConfirmationDialog
         confirmation={deleteConfirmation}
         isSubmitting={

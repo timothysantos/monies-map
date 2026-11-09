@@ -67,6 +67,9 @@ export function EntryEditCard({
   isCategoryQuickSaving = false,
   onOwnerChange,
   splitsRow = null,
+  // "Trip or event" (DOMAIN.md "Trip or Event"): the row the caller builds,
+  // or null.
+  tripEventRow = null,
   transferTools = null,
   // "What is this for?" on a transfer to someone in the household
   // (entry-transfer-purpose-row.jsx), or null.
@@ -425,6 +428,7 @@ export function EntryEditCard({
       </div>
       <DetailRows label={copy.editCard.detailsLabel} className="entry-edit-rows">
         {categoryRowWithQuickSave}
+        {tripEventRow}
         {ownerRow}
         {splitsRow}
         {transferRow}

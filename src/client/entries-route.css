@@ -1336,3 +1336,34 @@ body[data-entry-inline-editor] > .entries-ask-chip {
 .entry-splits-menu-item.is-danger {
   color: var(--pastel-rose-ink);
 }
+
+/* A row's trip or event (DOMAIN.md "Trip or Event"): a plain oat chip with
+   its icon and name, no money or person colour. The dashed one is a
+   suggestion: one tap puts the entry on it. */
+.entry-chip.entry-chip-trip {
+  gap: 4px;
+  max-width: 14rem;
+  border-color: var(--line);
+  background: var(--chip);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.entry-chip.entry-chip-trip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-chip.entry-chip-trip.is-suggestion {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+}
+
+.entry-chip.entry-chip-trip:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}

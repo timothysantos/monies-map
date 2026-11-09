@@ -27,6 +27,8 @@ import { SplitShareChoices } from "./split-share-choices";
 import { EntryLinkCopyButton } from "./entry-link-copy";
 import { splitShareCopy } from "./copy/split-share-copy";
 import { EntryTransferPurposeRow, offersTransferPurpose } from "./entry-transfer-purpose-row";
+import { TripEventGlyph } from "./trip-event-glyph";
+import { tripEventsCopy } from "./copy/trip-events-copy";
 
 const {
   categories: categoryService,
@@ -117,7 +119,12 @@ export function EntriesDateGroups({
   isUndoingEntrySettlementLock = false,
   onUndoEntrySettlementLock = undefined,
   hasEditingChanges = false,
-  renderInlineEditor = true
+  renderInlineEditor = true,
+  // Trips and events (DOMAIN.md "Trip or Event"): the row's chip, the
+  // picker it opens, and the entry card's "Trip or event" row.
+  getTripChip = undefined,
+  onOpenTripPicker = undefined,
+  renderTripEventRow = undefined
 }) {
   const splitGroupOptions = useMemo(
     () => splitGroups.map((group) => ({
@@ -217,6 +224,7 @@ export function EntriesDateGroups({
   const beginEntryEdit = useStableHandler(onBeginEntryEdit);
   const changeEntryCategory = useStableHandler(onChangeEntryCategory);
   const changeCategoryAppearance = useStableHandler(onCategoryAppearanceChange);
+  const openTripPicker = useStableHandler((entry, element) => onOpenTripPicker?.(entry, element));
 
   // Only the open inline editor reads these, so they are built for that one
   // row per render instead of being passed to every row.
@@ -260,7 +268,8 @@ export function EntriesDateGroups({
       onDeleteCreatedSplit,
       onDeleteEntry,
       onFinishEntryEdit,
-      onCancelEntryEdit
+      onCancelEntryEdit,
+      tripEventRow: renderTripEventRow?.(entry) ?? null
     };
   }
 
@@ -303,6 +312,8 @@ export function EntriesDateGroups({
                   onChangeEntryCategory={changeEntryCategory}
                   onCategoryAppearanceChange={changeCategoryAppearance}
                   editor={isEditing && renderInlineEditor ? buildEditor(entry.ledgerEntry ?? entry) : null}
+                  tripChip={getTripChip?.(entry) ?? null}
+                  onOpenTripPicker={onOpenTripPicker ? openTripPicker : undefined}
                 />
               );
             })}
@@ -408,7 +419,9 @@ function EntryRow({
   onBeginEntryEdit,
   onChangeEntryCategory,
   onCategoryAppearanceChange,
-  editor
+  editor,
+  tripChip = null,
+  onOpenTripPicker = undefined
 }) {
   const rowRef = useRef(null);
   // The category label opens the shared category list. It mounts after the
@@ -557,6 +570,19 @@ function EntryRow({
               {isLinkedToSplits && display.splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
               ) : null}
+              {tripChip ? (
+                <button
+                  type="button"
+                  className="entry-chip entry-chip-trip"
+                  data-trip-chip={tripChip.name}
+                  title={tripEventsCopy.chipTitle(tripChip.name)}
+                  aria-label={tripEventsCopy.chipTitle(tripChip.name)}
+                  onClick={(event) => onOpenTripPicker?.(entry, event.currentTarget)}
+                >
+                  <TripEventGlyph iconKey={tripChip.iconKey} size={12} />
+                  <span>{tripChip.name}</span>
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -662,7 +688,8 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
     onDeleteCreatedSplit,
     onDeleteEntry,
     onFinishEntryEdit,
-    onCancelEntryEdit
+    onCancelEntryEdit,
+    tripEventRow
   } = editor;
   const editableAmountMinor = entryService.getTotalAmountMinor(entry);
   const deleteEntryButton = (
@@ -707,6 +734,7 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
           }
         }}
         amountAction={<TotalsVisibilityToggle className="totals-visibility-toggle--form" />}
+        tripEventRow={tripEventRow}
         splitsRow={linkedSplitExpenseId || entry.entryType === "expense" ? (
           <EntrySplitsRow
             isLinked={Boolean(linkedSplitExpenseId)}
