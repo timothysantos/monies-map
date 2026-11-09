@@ -44,6 +44,7 @@ import {
   loadTransferLinkPlan,
   type TransferLinkPlan
 } from "./import-transfer-links";
+import { buildTripEventCarryStatements } from "./app-repository-trip-events";
 import { buildEstimateReopen, buildNoLongerListedEntryRemoval, buildNoLongerListedEntryRestore, findLaterNoLongerListedChange } from "./import-no-longer-listed-entries";
 import { buildWrongCardDuplicateRemoval, buildWrongCardDuplicateRestore, hasLaterWrongCardRemovalCovering, type WrongCardRemovalRequest } from "./import-wrong-card-duplicates";
 import {
@@ -672,6 +673,8 @@ export async function commitImportBatch(
     });
   }
 
+  // The transaction each new row becomes, for a wrong-card twin's trip below.
+  const insertedTransactionIdByRowId = new Map<string, string>();
   for (const row of input.rows) {
     assertImportDescriptionQuality(row.description, row.rowIndex);
 
@@ -889,6 +892,7 @@ export async function commitImportBatch(
     const importedEventDate = resolveImportPreviewEventDate(row);
     const storedPostDate = resolveActivityPostDate(closedStatementPeriods, accountId, row.date);
 
+    insertedTransactionIdByRowId.set(row.rowId, transactionId);
     stage(db
       .prepare(`
         INSERT INTO transactions (
@@ -957,6 +961,16 @@ export async function commitImportBatch(
     }
   }
   assertStatementFixesMatchCertification(statementFixPlan, certifiedEntryIds);
+
+  // A removed wrong-card Apple Pay copy's trip or event moves to its twin
+  // (the bank's row in the ledger or in this file), after the twin's insert.
+  if (!isOfficialStatementImport && input.wrongCardDuplicates?.length) {
+    const carry = await buildTripEventCarryStatements(db, input.wrongCardDuplicates.flatMap((request) => {
+      const survivorEntryId = request.twinKind === "ledger" ? request.twinId : insertedTransactionIdByRowId.get(request.twinId);
+      return survivorEntryId ? [{ removedEntryId: request.transactionId, survivorEntryId }] : [];
+    }));
+    carry.forEach(write);
+  }
 
   for (const statement of await buildInvestmentValueSaveStatements(db, importId, investmentValueSaves)) {
     write(statement);

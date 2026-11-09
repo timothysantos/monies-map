@@ -4,6 +4,7 @@
 // provisional copy of a purchase the statement already matched is removed.
 // Both are recorded in statement_corrections and can be undone. Each command
 // reads and checks first, then writes everything in one batch.
+import { buildTripEventCarryStatements } from "./app-repository-trip-events";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { getSignedLedgerAmountMinor } from "./app-repository-helpers";
@@ -122,6 +123,8 @@ export async function applyStatementCorrections(db: D1Database, input: {
     const covering = entriesById.get(correction.coveredByEntryId)!;
     const accountName = accountsById.get(entry.account_id)!.name;
     statements.push(
+      // The removed copy's trip or event moves to the copy that stays.
+      ...await buildTripEventCarryStatements(db, [{ removedEntryId: entry.id, survivorEntryId: covering.id }]),
       buildCorrectionRecordStatement(db, correctionId, {
         entryId: entry.id,
         kind: correction.kind,
