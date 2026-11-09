@@ -1735,6 +1735,8 @@ never collide and ids of one kind still sort by creation time. Older
 ### Split Group
 
 A named shared-expense context such as a trip, event, or household bucket.
+Not the same as a Trip or Event: a split group says who owes whom; a trip or
+event says what something cost (see Trip or Event).
 
 Storage:
 - `split_groups`
@@ -1744,6 +1746,54 @@ Relationships:
 - has many `split batches`
 - has many `split expenses`
 - has many `split settlements`
+
+### Trip or Event
+
+A named set of entries such as "Seoul trip", "Mum's 70th" or "New flat",
+across categories, people and months, so the household can see what it
+cost (owner decision, 2026-11-10; `src/domain/trip-events.ts`). The list is
+"Trips & events"; a row's chip shows only the trip's name, never the words
+"Trip or event".
+
+Not the same as a Split Group: a split group is about who owes whom (its
+expenses can be cash that never reaches Entries, and many groups are
+ongoing), while a trip or event is about what something cost the household,
+including spending nobody splits. The two can be linked (`split_group_id`):
+adding an entry to the linked split group's splits also puts it on the trip.
+
+Canonical terms:
+- `trip or event`: a name, an icon and optional dates and currency. Dates and
+  currency only help suggest entries ("Now" in the picker, the dashed
+  suggestion chip, the review list) and never decide what is counted: only
+  the entries put on it count, so flights booked months before belong too
+- `on a trip`: an entry is on at most one trip or event, so the trips'
+  totals never count the same dollar twice
+- `put away`: hidden from the picker and the list, nothing deleted
+- `delete`: the links come off and the entries stay as they are; Undo brings
+  the trip and its entries back
+- `Spent` (on a trip): the Entries Spent rule over the trip's entries in the
+  page's view and scope (Money Figure)
+
+Rules:
+- one change puts at most 200 entries on (or off), all or nothing, with one
+  audit event holding each entry's trip before and after; Undo reads it back
+- a statement-certified entry can still be put on a trip: nothing about its
+  bank facts changes
+- an entry replaced by a correction (a wrong-card Apple Pay copy, a
+  statement's second copy) hands its trip to the entry that stays; an
+  estimate paired with its bank row keeps its id and so its trip
+- nothing joins a trip by itself; a suggestion needs a tap
+
+Storage:
+- `trip_events` (additive; every reader tolerates it missing)
+- `trip_event_entries` (one row per entry, `transaction_id` primary key;
+  `added_by` is `person`, `ask`, `ask_auto` or `suggestion`)
+
+Code:
+- `src/domain/trip-events.ts` (rules), `src/domain/app-repository-trip-events.ts`
+  (storage, all-or-nothing commands, Undo, the carry through corrections)
+- `src/server/trip-events-route.ts` (`/api/trip-events`, `/save`,
+  `/entries/set`, `/put-away`, `/delete`, `/undo`)
 
 ### Split Batch
 

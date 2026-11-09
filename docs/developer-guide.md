@@ -2788,6 +2788,31 @@ found and its description names nobody is `medium` confidence and hidden
 by default; add `&include=medium` to see those too. `tests/skew-candidates.test.mjs` and
 `tests/skew-candidates-api.test.mjs` hold the rules and their refusals.
 
+## How are trips and events stored?
+
+A trip or event (DOMAIN.md "Trip or Event") lives in two additive tables in
+`schema.sql`: `trip_events` (name, icon, optional dates, currency, split
+group link, put away) and `trip_event_entries` (one row per entry, so an
+entry is on at most one; deleting the entry or rolling back its import
+takes the row with it). Every reader tolerates the tables missing and the
+commands then refuse with "Trips and events need a database update first."
+
+Routes (`src/server/trip-events-route.ts`, bodies read through
+`readJsonObject`): `GET /api/trip-events`, and `POST` to `/save`,
+`/entries/set` (`{ entryIds, tripEventId }` or `{ changes: [{ entryId,
+tripEventId }] }`, at most 200, `tripEventId: null` takes entries off,
+`"new"` with `newTripEvent` makes one in the same batch), `/put-away`,
+`/delete` (the entries stay) and `/undo` (`{ undoId }` from a set or a
+delete). Tests: `tests/trip-events.test.mjs` (scenarios and negatives),
+`tests/atomic-writes-trip-events.test.mjs`, and
+`tests/trip-events-carry.test.mjs` (the trip follows the entry that survives
+a wrong-card or statement duplicate removal).
+
+Migration: the tables are `CREATE TABLE IF NOT EXISTS`, so export the
+production D1 first, then run `npm run db:migrate:remote` and
+`npm run db:migrate:demo` before deploying code that uses them; running it
+again is safe.
+
 ## What are reminders in Ask?
 
 `GET /api/reminders[?view=]` (DOMAIN.md "Reminder") answers what the fixed rules

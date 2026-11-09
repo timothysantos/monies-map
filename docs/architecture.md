@@ -498,6 +498,23 @@ so Invested counts it once (`investment-moves.ts`). Placement: the Summary's
 slice Summary already loads, so no page payload grows for a household with no
 investment statement.
 
+### Trips and events (current, 2026-11)
+
+A trip or event (DOMAIN.md "Trip or Event") gathers entries such as "Seoul
+trip" or "Mum's 70th" across categories, people and months. It is its own
+additive model, not a kind of split group: `trip_events` holds the name,
+icon and optional dates, currency and split group link, and
+`trip_event_entries` holds one row per entry (so an entry is on at most
+one). Every reader tolerates the tables missing; the feature is then off.
+The commands (`src/domain/app-repository-trip-events.ts`, routes in
+`src/server/trip-events-route.ts`) are all-or-nothing with one audit event,
+and Undo reads that audit event back. No month total changes, so no month
+refresh markers are written. The one place the feature touches existing
+commands is the carry through corrections: a wrong-card Apple Pay copy or a
+statement's second copy hands its trip to the entry that stays
+(`buildTripEventCarryStatements`, one more statement in that correction's
+own batch). Summary and Month do not change (owner decision 5).
+
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the

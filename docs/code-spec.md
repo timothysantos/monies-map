@@ -853,6 +853,16 @@ A persistence command is all-or-nothing:
   a safe id, a hex evidence key, at most 500 dismissals), then write the
   `app_settings` row and its audit event in one batch
   (`tests/atomic-writes-ledger-checkup.test.mjs`)
+- trips and events (`src/domain/app-repository-trip-events.ts`, DOMAIN.md
+  "Trip or Event"): save, set entries (at most 200, written as two
+  `json_each` statements whatever the count, so no statement binds more than
+  a few values), put away, delete and undo each check first and write with
+  one audit event in one batch; the set and delete audit events hold what
+  Undo needs (each entry's trip before and after; the deleted trip's fields
+  and entries). No month refresh markers: no month total changes
+  (`tests/atomic-writes-trip-events.test.mjs`). The tables are additive and
+  every read tolerates them missing; a correction's carry statement is read
+  first and left out when they are
 - the bulk link of clear transfer pairs
   (`src/domain/app-repository-transfer-bulk-link.ts`, DOMAIN.md "Ledger
   Check-up") takes the clear pairs the route recomputed on the ledger as it is,
