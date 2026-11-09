@@ -1878,7 +1878,12 @@ line and the sentence, the money jobs, the Income and Saved pills or
 columns, Not planned yet), Simple's Daily spend and Top spending, Intent vs
 Outcome, Earned vs spent by month, Spending Mix (each slice and each row's `›`), the Month
 plan rows' actuals, the Entries lead and pills, the Splits lead's balance
-and the open group's strip tile (another tile still opens its group).
+and the open group's strip tile (another tile still opens its group), and
+every amount on Subscriptions and bills (its two totals, each row's last
+charge and 12 months, both prices of "Went up": `data-fig="spent"` with the
+exact `data-fig-ids` the server named, the `repeating` figure in
+`money-figures.ts`; Ask about this asks "How much did I spend at Netflix
+in …?").
 Hidden money: the same menu, no amount in any label. A text figure is the
 text itself, like a link in a sentence: it is not held to the 44 px rule,
 its row or card is.
@@ -1887,6 +1892,41 @@ One figure cannot be shown as it is: a Month budget line whose refunds are
 more than its spending reads $0 actual (it never goes below zero), while
 its entries add up to the refund below zero. Daily spend is an average, so
 View entries shows the spending it divides.
+
+## Subscriptions and bills
+
+A Summary card under Money insights (owner decision D1, 2026-11-10;
+DOMAIN.md "Repeating Charge"): one list of every charge that comes back
+each month or year, in any category except transfers, Investments and
+Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
+
+- Loading: `subscriptions-section.jsx` is its own lazy chunk; Summary
+  renders it only once the top summary is usable (`cardsUsable`, App.jsx's
+  `summaryCardsUsable`), and `use-repeating-charges.js` reads
+  `GET /api/repeating-charges?view=&scope=` through the shell's
+  `fetchRequiredQuery` into the query cache (`queryKeys.repeatingCharges`).
+  A save that invalidates a page reads it again. Until the answer arrives a
+  reserve (`.subs-reserve`, first-screen CSS) holds its place; a household
+  with nothing repeating shows no card. A failed read shows nothing.
+- Desktop: the title and one line, two totals ("In October", "Last 12
+  months"), "All N · Sorted by cost over 12 months", then a row per charge:
+  its category icon, name, chips ("Went up: $38.90 → $42.90 in Sep" in the
+  butter tone, "Changes each month", "Not seen since Aug" dashed), the
+  line "Insurance · monthly, around the 1st · UOB One • Tim", its usual
+  amount ("a month", "a year" or "last one" for a bill that changes) and
+  its 12 months. A charge not seen lately is muted on the neutral wash.
+  Folds at the end: "N stopped", "N more might repeat" and (with choices)
+  "N taken off the list".
+- Phone: the four rows most worth a look (went up or not seen lately
+  first, then the costliest) with the shorter line ("Monthly · around the
+  1st"), no 12 months column, and "See all N ›", which lists the rest in
+  place. (The design's sheet for "See all" is a later step.)
+- Colours: tokens only; money is never toned here (it is what was paid,
+  not over or under anything). Hidden money shows `••••` and "Went up in
+  Sep" without its amounts.
+- Model: `subscriptions-model.js` (pure): totals are the sums of the listed
+  and stopped series the server named, never of might-repeat or taken-off
+  ones.
 
 ## Apple Shortcut Install Boundary
 

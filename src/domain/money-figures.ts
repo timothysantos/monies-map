@@ -19,6 +19,9 @@
 //   lead), `transfers` (transfers out), `outflow` (spent plus transfers out)
 //   and `difference` (income less spent at the view's amounts; Summary's
 //   realized savings).
+// A third kind is named by the server: Subscriptions and bills' figures
+// (`repeating`, repeatingFigureMinor) are the exact charges behind them,
+// opened as `spent` narrowed to their entry ids.
 //
 // A row belongs to a figure when it adds to it (or takes from it), so
 // leaving the other rows out never changes the figure. The total is worked
@@ -178,4 +181,15 @@ export function moneyJobFigureMinor(
     default:
       return null;
   }
+}
+
+/**
+ * Subscriptions and bills (DOMAIN.md "Repeating Charge"; the `repeating`
+ * figure): every amount on the card is the charges the server named, at the
+ * view's amounts. It opens as `spent` with exactly those entry ids, so the
+ * Entries Spent total is this sum to the cent. Paybacks are never named.
+ */
+export function repeatingFigureMinor(ids: readonly string[], entries: FigureEntry[]): number {
+  const named = new Set(ids);
+  return entries.filter((entry) => named.has(entry.id)).reduce((sum, entry) => sum + spendingMinor(entry), 0);
 }

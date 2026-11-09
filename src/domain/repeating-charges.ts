@@ -176,7 +176,8 @@ export interface RepeatingSeries {
   // The focus month (the last complete month) and the 12 months ending it.
   focus: { amountMinor: number; ids: string[] };
   year: { amountMinor: number; ids: string[] };
-  wentUp?: { fromMinor: number; toMinor: number; firstNewDate: string; ids: string[] };
+  // The last charge at the old price and the first at the new one.
+  wentUp?: { fromMinor: number; toMinor: number; lastOldDate: string; firstNewDate: string; fromIds: string[]; toIds: string[] };
   // The month of the last charge, for a series that is late or stopped.
   lastSeenMonth?: string;
 }
@@ -319,7 +320,9 @@ function buildSeries(
     : null;
 
   const ownName = choice?.displayName?.trim() || "";
-  const said = payeeName(latest.description) || key;
+  // The payee as a person says it, without a web address's ending
+  // ("NETFLIX.COM" is "Netflix").
+  const said = payeeName(latest.description.replace(/\.(?:COM|NET|ORG|SG|CO|IO)\b/gi, "")) || key;
   return {
     seriesKey,
     payeeKey: key,
@@ -348,7 +351,9 @@ function buildSeries(
         fromMinor: change.oldAmount,
         toMinor: change.newAmount,
         firstNewDate: change.firstNewCharge.date,
-        ids: [...change.lastOldCharge.ids, ...change.firstNewCharge.ids]
+        lastOldDate: change.lastOldCharge.date,
+        fromIds: change.lastOldCharge.ids,
+        toIds: change.firstNewCharge.ids
       }
     } : {}),
     ...(status === "late" || status === "stopped" ? { lastSeenMonth: latest.month } : {})

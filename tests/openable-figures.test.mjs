@@ -29,7 +29,10 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { MONEY_FIGURES } from "../src/domain/money-figures.ts";
+import { MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
+import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
+import { addMonths } from "../src/domain/money-signals/format.ts";
 import { entriesRangeMonths } from "../src/domain/pages/entries-page.ts";
 
 const TIM = "person-tim";
@@ -503,4 +506,56 @@ test("an unknown figure, a period that is not one, or a missing investment accou
   const menu = figureMenu({ fig: "invested", period: { startMonth: MAY, endMonth: MAY }, search: viewSearch(VIEWS[1], MAY) });
   const { model: withoutKinds } = await openEntries(api, menu.items[0].location, []);
   assert.notEqual(withoutKinds.spent.amountMinor, lead.figures.invested);
+});
+
+// Subscriptions and bills (the `repeating` figure, money-figures.ts): every
+// amount on the card (the last month, the last 12 months, a row's last
+// charge and its 12 months, and both sides of "Went up") opens exactly the
+// charges the server named, and Entries' Spent total is the amount, in every
+// view and scope. The route reads the household's real today, so the charges
+// are placed relative to it.
+test("Subscriptions and bills: every figure opens exactly its charges and Entries' total is the figure", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  const thisMonth = todayInAppTimeZone().slice(0, 7);
+  const ago = (count) => addMonths(thisMonth, -count);
+  for (let back = 6; back >= 1; back -= 1) {
+    await createEntry(api, { date: `${ago(back)}-14`, description: "NETFLIX.COM 866-579-7172", accountName: "Citi Rewards", categoryName: "Subscriptions MO", amountMinor: 1998, ownerName: "Joyce" });
+    await createEntry(api, { date: `${ago(back)}-22`, description: "SINGTEL MOBILE 81234567", accountName: "UOB One", categoryName: "Bills", amountMinor: back === 1 ? 4290 : 3890, ownerName: "Tim" });
+    const shared = await api("/api/entries/create", {
+      date: `${ago(back)}-18`, description: "SP SERVICES UTILITIES", accountName: "Household Float", categoryName: "Bills",
+      entryType: "expense", amountMinor: 11_000 + back * 1_111, ownershipType: "shared", ownerName: "Tim", splitBasisPoints: 6000
+    });
+    assert.equal(shared.status, 200, JSON.stringify(shared.payload));
+  }
+  let checked = 0;
+  for (const view of VIEWS) {
+    const answer = await get(api, `/api/repeating-charges?view=${view.viewId}&scope=${view.scope}`);
+    const model = buildSubscriptionsModel(answer);
+    assert.ok(model.rows.length > 0, `${view.viewId}:${view.scope} has rows`);
+    const search = viewSearch(view, answer.focusMonth);
+    const asPeriod = (text) => {
+      const [startMonth, endMonth] = text.split(":");
+      return { startMonth, endMonth };
+    };
+    const figures = [
+      ["last month", model.totals.focus, model.focusPeriod],
+      ["12 months", model.totals.year, model.yearPeriod],
+      ...model.rows.flatMap((series) => [
+        [`${series.name} last`, series.latest, monthPeriod(series.latest.date)],
+        [`${series.name} year`, series.year, model.yearPeriod],
+        ...(series.wentUp ? [
+          [`${series.name} from`, { amountMinor: series.wentUp.fromMinor, ids: series.wentUp.fromIds }, monthPeriod(series.wentUp.fromDate)],
+          [`${series.name} to`, { amountMinor: series.wentUp.toMinor, ids: series.wentUp.toIds }, monthPeriod(series.wentUp.date)]
+        ] : [])
+      ])
+    ];
+    for (const [label, amount, period] of figures) {
+      const { model: entries, derived } = await viewEntries(api, accounts, "spent", { search, period: asPeriod(period), ids: amount.ids });
+      assert.equal(shownTotal(entries), amount.amountMinor, `${view.viewId}:${view.scope} ${label}`);
+      assert.equal(repeatingFigureMinor(amount.ids, derived.filteredEntries), amount.amountMinor, `${view.viewId}:${view.scope} ${label} (rule)`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked >= 20, `checked ${checked} figures`);
 });

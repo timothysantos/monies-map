@@ -43,7 +43,7 @@ test("Netflix that moved to another card stays one series, with its 12 months an
   assert.equal(series.length, 1);
   const [netflix] = series;
   assert.equal(netflix.seriesKey, "NETFLIX COM|monthly");
-  assert.equal(netflix.name, "Netflix Com");
+  assert.equal(netflix.name, "Netflix");
   assert.equal(netflix.period, "monthly");
   assert.equal(netflix.amountKind, "fixed");
   assert.equal(netflix.status, "active");
@@ -187,7 +187,9 @@ test("the row's went up is the price change reminder's, on the same charges", ()
     fromMinor: 3890,
     toMinor: 4290,
     firstNewDate: "2026-10-22",
-    ids: [rows[10].ids[0], rows[11].ids[0]]
+    lastOldDate: "2026-09-22",
+    fromIds: [rows[10].ids[0]],
+    toIds: [rows[11].ids[0]]
   });
   const [reminder] = reminderOn(TODAY);
   assert.equal(reminder.fromMinor, singtel.wentUp.fromMinor);

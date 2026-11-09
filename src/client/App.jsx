@@ -2145,6 +2145,9 @@ export function App() {
   // (claude-credit-status.js). Only those two routes see the flag, so it
   // never re-renders another route as optional work starts and stops.
   const creditStatusRouteUsable = (renderedTabId === "ask" || renderedTabId === "settings") && routeWork.usable;
+  // Summary's Subscriptions and bills reads its data once the top summary is
+  // usable; only Summary sees the flag, for the same reason.
+  const summaryCardsUsable = renderedTabId === "summary" && routeWork.usable;
   const renderedRouteElement = useMemo(() => {
     if (!appShell || !pageView || !referenceData) {
       return null;
@@ -2160,6 +2163,8 @@ export function App() {
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={saveSummaryMonthNote}
           onOpenMonth={openSummaryMonth}
+          cardsUsable={summaryCardsUsable}
+          fetchRequiredQuery={fetchRequiredQuery}
         />
       );
     }
@@ -2307,6 +2312,7 @@ export function App() {
     onAskSettingsMutation,
     categories,
     creditStatusRouteUsable,
+    summaryCardsUsable,
     fetchAskEntriesPage,
     fetchRequiredQuery,
     closeMobileContext,

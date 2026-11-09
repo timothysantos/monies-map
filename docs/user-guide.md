@@ -328,6 +328,22 @@ over plan.
   the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
+- **Subscriptions and bills**: under Money insights, one list of every
+  charge that comes back each month or each year: streaming, phone,
+  broadband, the town council, insurance, utilities. The app finds them in
+  your entries: the same shop, about a month (or a year) apart, at a similar
+  amount. Two figures lead it: what they came to last month and over the
+  last 12 months. Each row shows what it usually costs ("a month", "a year",
+  or "last one" for a bill that changes each month, like electricity), what
+  it cost over 12 months, roughly which day it comes, and the account it is
+  paid from. **Went up** shows the old and the new price for three months
+  after a price rise. **Not seen since Aug** means it usually comes by now
+  and the account's later entries are in, but it did not come; after two
+  missed months it moves to **stopped** at the end of the list. **Might
+  repeat** lists charges found only twice in a row so far; they are not
+  counted. Click any amount (on a phone, tap it) for **View entries** with
+  exactly those charges. On a phone the four rows most worth a look come
+  first; **See all** shows the rest. Hide money totals and the amounts go.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
   amount, its share and a thin bar. The bigger slices are named on the donut

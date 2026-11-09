@@ -121,6 +121,9 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
     ? questions.owed
     : questionKey === "category"
       ? questions.category(arg, periodWords)
+      : questionKey === "shop"
+        // A Subscriptions and bills figure: the payee its menu is titled with.
+        ? questions.shop(ownName, periodWords)
       : (questions[questionKey] ?? questions.spentMost)(periodWords);
   items.push({ action: "ask", label: copy.ask, question: question.replace(/ \?$/, "?") });
 

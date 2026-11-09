@@ -360,6 +360,23 @@ Later and Got it kept on the device. No AI, no write, no new table. The
 Ledger check-up is what looks wrong; reminders are what is coming up and never
 repeat it. See `docs/flows/reminders-flow.md` and `docs/audits/reminders.md`.
 
+### Subscriptions and bills: repeating charges on Summary (current, 2026-11)
+
+A Summary card under Money insights lists every charge that comes back each
+month or year (owner decisions D1 to D3, 2026-11-10). One pure engine
+(`src/domain/repeating-charges.ts`, DOMAIN.md "Repeating Charge") groups the
+view's expenses by payee (`payeeKey`) and finds monthly and yearly series by
+gap and amount; the subscription price change reminder shares its
+`detectPriceChange`, so the row's "Went up" and the reminder never disagree.
+`GET /api/repeating-charges?view=&scope=` (`src/domain/pages/
+repeating-charges.ts`) reads 26 months of expenses grouped in SQL by
+description and month, each account's latest entry date, the people and,
+for a person view, the window's split shares, all in one step; a person
+view counts each charge at their share (`personEntryAmountMinor`). The card
+(`subscriptions-section.jsx`) is a lazy chunk read once the top summary is
+usable. Every amount opens exactly its charges (`repeating` figure). No AI,
+no write.
+
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
 The household asks "Check my books" and gets a list of problems in its own data

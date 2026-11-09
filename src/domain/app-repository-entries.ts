@@ -132,6 +132,33 @@ export async function loadInvestmentAccountIds(db: D1Database): Promise<Set<stri
   return new Set(result.results.map((row) => row.id));
 }
 
+// The linked split shares of the entries in a date range (bound: household,
+// start, end exclusive); buildLinkedSplitShareMap reads them. Exported for
+// the Subscriptions and bills read, which counts a person's share the same way.
+export const LINKED_SPLIT_SHARES_SQL = `
+      SELECT
+        split_expenses.linked_transaction_id AS transaction_id,
+        split_expense_shares.person_id,
+        split_expense_shares.ratio_basis_points,
+        split_expense_shares.amount_minor,
+        people.display_name,
+        split_expenses.currency AS split_currency,
+        transactions.currency AS entry_currency,
+        transactions.amount_minor AS entry_amount_minor,
+        CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END AS person_rank,
+        people.created_at AS person_created_at
+      FROM split_expense_shares
+      INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
+      INNER JOIN people ON people.id = split_expense_shares.person_id
+      INNER JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.household_id = ?
+        AND split_expenses.linked_transaction_id IS NOT NULL
+        AND split_expenses.deleted_at IS NULL
+        AND transactions.transaction_date >= ?
+        AND transactions.transaction_date < ?
+      ORDER BY split_expense_shares.created_at
+    `;
+
 // The ledger stays event-first. We still project post_date so the UI can show
 // when the bank cleared a row without moving it out of its planning month.
 export async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string, options: EntryLoadOptions = {}): Promise<EntryDto[]> {
@@ -239,29 +266,7 @@ export async function loadEntriesForDateRange(db: D1Database, monthStart: string
     }>();
 
   const linkedSplitSharesRead = db
-    .prepare(`
-      SELECT
-        split_expenses.linked_transaction_id AS transaction_id,
-        split_expense_shares.person_id,
-        split_expense_shares.ratio_basis_points,
-        split_expense_shares.amount_minor,
-        people.display_name,
-        split_expenses.currency AS split_currency,
-        transactions.currency AS entry_currency,
-        transactions.amount_minor AS entry_amount_minor,
-        CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END AS person_rank,
-        people.created_at AS person_created_at
-      FROM split_expense_shares
-      INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
-      INNER JOIN people ON people.id = split_expense_shares.person_id
-      INNER JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
-      WHERE split_expenses.household_id = ?
-        AND split_expenses.linked_transaction_id IS NOT NULL
-        AND split_expenses.deleted_at IS NULL
-        AND transactions.transaction_date >= ?
-        AND transactions.transaction_date < ?
-      ORDER BY split_expense_shares.created_at
-    `)
+    .prepare(LINKED_SPLIT_SHARES_SQL)
     .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
     .all<{
       transaction_id: string;
@@ -382,7 +387,7 @@ function readStoredTransferPurpose(row: {
   };
 }
 
-type LinkedSplitShareRow = {
+export type LinkedSplitShareRow = {
   transaction_id: string;
   person_id: string;
   ratio_basis_points: number;
@@ -402,7 +407,7 @@ type LinkedSplitShareRow = {
 // through untouched. A travel split's shares are in its own currency, so each
 // person's share is converted to their share of the ledger amount
 // (homeCurrencyShareAmounts); the split itself keeps its own shares.
-function buildLinkedSplitShareMap(rows: LinkedSplitShareRow[]) {
+export function buildLinkedSplitShareMap(rows: LinkedSplitShareRow[]) {
   const shareMap = groupSplits(rows, "transaction_id");
   const rowsByTransaction = new Map<string, LinkedSplitShareRow[]>();
   for (const row of rows) {

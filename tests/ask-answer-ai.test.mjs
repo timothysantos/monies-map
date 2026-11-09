@@ -134,7 +134,7 @@ async function askWithAi(db, ai, text, vars = {}) {
   return response.json();
 }
 
-const TEMPLATE = "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,219.19 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.";
+const TEMPLATE = "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,213.21 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.";
 
 async function usedUnits(db) {
   const row = await db.prepare("SELECT SUM(used_units) AS used FROM ai_assist_daily_usage").first();

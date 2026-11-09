@@ -187,6 +187,7 @@ chunk.
 | `skewCandidates` (`GET /api/skew-candidates`) | `<= 250ms` | `400ms` | read-only, 16 D1 reads, no writes; entries for the month ±14 days, not a page DTO, at most 50 candidates |
 | `ledgerCheckup` (`GET /api/ledger-checkup`) | `<= 150ms` | `400ms` | read-only, runs only when opened: 3 round trips, at most 25 statements, about 129,000 rows read and 40 ms of CPU on the 10k fixture with problems of every kind; not a page DTO, at most 50 findings per kind (`tests/ledger-checkup-budget.test.mjs`, "Ledger check-up reads" below) |
 | `reminders` (`GET /api/reminders`) | `<= 150ms` | `400ms` | read-only, read when Ask opens (never on the first screen): at most 16 statements (13 without a month checklist), about 21,000 to 30,000 rows read and 80 to 110 ms of CPU on the 10k fixture, at most 20 reminders and about 2 KB (`tests/reminders-budget.test.mjs`, payload key `reminders`) |
+| `repeatingCharges` (`GET /api/repeating-charges`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step of 4 to 5 statements, about 40,200 rows and 612 kB of rows read and ~40 ms of CPU on the 10k fixture, 26 months of expenses grouped in SQL by description and month (`tests/page-load-scale-guard.test.mjs`, payload key `repeating-charges`) |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
 Measured at the 10k stress fixture after the macro performance work

@@ -2813,6 +2813,26 @@ production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
 again is safe.
 
+## How are subscriptions and bills found?
+
+`GET /api/repeating-charges[?view=&scope=]` (DOMAIN.md "Repeating Charge")
+answers Summary's "Subscriptions and bills" card: the charges that come back
+every month or year in the view, each with its usual day and amount, the
+last month's and last 12 months' totals and the entry ids behind every
+figure. The rules are the pure `findRepeatingCharges` in
+`src/domain/repeating-charges.ts` (every number in `REPEATING_RULES`); the
+subscription price change reminder uses its `detectPriceChange`. The loader
+`src/domain/pages/repeating-charges.ts` reads in one step: 26 months of
+expenses grouped in SQL by description and month (each group carries its
+charges as `id~owner~amount`), the accounts with their latest entry date,
+the people and, for a person view, the split shares of the window. It uses
+no AI and writes nothing. The card is the lazy `subscriptions-section.jsx`
+(`subscriptions-model.js` is the pure view-model, `use-repeating-charges.js`
+the read). Tests: `tests/repeating-charges-rules.test.mjs` (the rules and
+their negatives), `tests/repeating-charges-api.test.mjs` (the real Worker),
+`tests/openable-figures.test.mjs` (every figure equals its entries) and
+`tests/e2e/subscriptions-card.spec.js`.
+
 ## What are reminders in Ask?
 
 `GET /api/reminders[?view=]` (DOMAIN.md "Reminder") answers what the fixed rules

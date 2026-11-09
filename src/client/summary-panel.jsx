@@ -38,18 +38,26 @@ const EarnedSpentChart = lazy(() => import("./earned-spent-chart.js").then((modu
   default: module.createEarnedSpentChart({ createElement, useEffect, useLayoutEffect, useMemo, useRef, useState })
 })));
 const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcome").then((module) => ({ default: module.SummaryIntentVsOutcomeSection })));
+// Subscriptions and bills sits under Money insights. Its code rides in
+// Spending Mix's chunk (a chunk of its own moved React out of the entry into
+// a new first-screen file, check:bundle); it renders, and reads its data,
+// only once the top summary is usable.
+const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SubscriptionsSection })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review (in the Simple view,
 //    earned against spent by month instead).
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth }) {
+export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth, cardsUsable = false, fetchRequiredQuery = undefined }) {
   const [, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobileLayout = useIsMobileLayout();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  // Subscriptions and bills keeps the height it had on this device last
+  // time while it loads, so nothing under it moves (none the first time).
+  const [subsReserveHeight] = useState(readSubscriptionsCardHeight);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
   useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
@@ -201,6 +209,12 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         className="financial-insight-summary"
       />
 
+      {cardsUsable && fetchRequiredQuery ? (
+        <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
+          <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} reserveHeight={subsReserveHeight} />
+        </Suspense>
+      ) : <SubscriptionsReserve height={subsReserveHeight} />}
+
       <div className="summary-top-grid has-intent-grid">
         {/* All months: the whole range's spending by category. */}
         <Suspense fallback={<div className="spending-mix-reserve" aria-hidden="true" />}>
@@ -261,6 +275,23 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       ) : null}
     </article>
   );
+}
+
+// The height Subscriptions and bills had last time on this device
+// (subscriptions-section.jsx writes it; 0 when it showed nothing).
+const SUBSCRIPTIONS_HEIGHT_KEY = "monies-map:subs-card-height";
+
+function readSubscriptionsCardHeight() {
+  try {
+    const value = Number(window.localStorage.getItem(SUBSCRIPTIONS_HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? Math.min(value, 2000) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function SubscriptionsReserve({ height }) {
+  return height ? <div className="subs-reserve" aria-hidden="true" style={{ minHeight: height }} /> : null;
 }
 
 // A person view's figures follow the route's scope, so desktop Summary names

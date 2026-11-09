@@ -103,6 +103,13 @@
   min-height: 480px;
 }
 
+/* And for Subscriptions and bills (subscriptions-section.jsx), under Money
+   insights, until its data arrives: as tall as it was last time on this
+   device (summary-panel.jsx), and nothing the first time. */
+.subs-reserve {
+  margin-bottom: 16px;
+}
+
 /* The same for the column + line chart above the month-by-month list: the
    height of its legend and plot (earned-spent-chart.css). */
 .earned-spent-chart-reserve {

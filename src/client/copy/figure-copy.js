@@ -55,6 +55,7 @@ export const figureCopy = {
     income: (period) => `How much did I earn ${period}?`,
     plan: (period) => `How did I do against the plan ${period}?`,
     category: (name, period) => `How much did I spend on ${name} ${period}?`,
+    shop: (name, period) => `How much did I spend at ${name} ${period}?`,
     owed: "Who owes whom?"
   }
 };

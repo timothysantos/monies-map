@@ -83,7 +83,7 @@ test("why was March so expensive: the Month page's figures, plan, Spending Mix a
     ["HDB Housing Loan Giro", "1 Mar · Loans", 62000]
   ]);
   assert.equal(payload.wording.source, "template");
-  assert.equal(payload.wording.text, "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,219.19 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.");
+  assert.equal(payload.wording.text, "March came to $8,134.67, $1,198.23 more than the $6,936.44 you planned. That's $4,213.21 more than February. Home took the most at $4,390.00, and the biggest single cost was Courts Megastore Tampines at $2,680.00.");
   assert.deepEqual(payload.ai, { requested: false, available: false, reason: "AI assistance is turned off." });
   assert.deepEqual(answer.links.map((link) => link.kind), ["entries", "month"]);
   assert.deepEqual(answer.links[1], { kind: "month", label: "Open Month", month: "2026-03", viewId: "household", scope: "direct_plus_shared" });
@@ -201,9 +201,9 @@ test("compare March with February: both months' spend and the categories that mo
   const payload = await ask(api, "compare March with February");
   assert.equal(payload.intent, "compare");
   assert.deepEqual(payload.months, ["2026-03", "2026-02"]);
-  assert.deepEqual(payload.answer.support, [{ label: "February", amountMinor: 391548, currency: "SGD" }]);
+  assert.deepEqual(payload.answer.support, [{ label: "February", amountMinor: 392146, currency: "SGD" }]);
   assert.deepEqual(payload.answer.lines[0], { label: "Home", amountMinor: 439000, currency: "SGD", tone: "neutral", secondary: { kind: "compare", label: "February", amountMinor: 0 } });
-  assert.equal(payload.wording.text, "March came to $8,134.67, $4,219.19 more than February's $3,915.48. The biggest change was home: $4,390.00 in March against $0.00 in February. Income was $10,118.80 in March and $10,664.92 in February.");
+  assert.equal(payload.wording.text, "March came to $8,134.67, $4,213.21 more than February's $3,921.46. The biggest change was home: $4,390.00 in March against $0.00 in February. Income was $10,118.80 in March and $10,664.92 in February.");
 });
 
 test("the biggest expenses are the view's five largest, and Open in Entries shows exactly those", async (t) => {

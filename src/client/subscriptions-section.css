@@ -1,0 +1,211 @@
+/* Subscriptions and bills (subscriptions-section.jsx; design.md
+   "Subscriptions and bills"). A Summary card under Money insights: a head,
+   two totals, and one row per repeating charge. Colours are the tokens
+   only: a price that went up is the butter (harvest gold) chip, a charge
+   not seen lately is muted on the neutral wash. Money is never toned here:
+   it is a list of what was paid, not over or under anything. */
+
+.subs-card {
+  margin-bottom: 16px;
+}
+
+.subs-head h3 {
+  margin: 0;
+}
+
+.subs-intro {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.subs-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+  max-width: 420px;
+}
+
+.subs-total {
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.subs-total-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.subs-total-figure {
+  display: inline-block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.subs-sorted {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.subs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.subs-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.subs-list > li:last-child {
+  border-bottom: 0;
+}
+
+.subs-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c, var(--muted)) 20%, var(--paper));
+  color: color-mix(in srgb, var(--c, var(--muted)) 70%, var(--text));
+}
+
+.subs-row-main {
+  min-width: 0;
+}
+
+.subs-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.93rem;
+  line-height: 1.25;
+}
+
+.subs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.subs-usual,
+.subs-year {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.subs-usual {
+  min-width: 92px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.subs-year {
+  min-width: 104px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.subs-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.subs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.subs-chip.is-up {
+  border-color: var(--pastel-butter-line);
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.subs-chip.is-stop {
+  border-style: dashed;
+  background: transparent;
+}
+
+.subs-row.is-stopped {
+  background: var(--pastel-neutral);
+}
+
+.subs-row.is-stopped .subs-name,
+.subs-row.is-stopped .subs-usual {
+  color: var(--muted);
+}
+
+.subs-fold {
+  border-bottom: 1px solid var(--line);
+}
+
+.subs-fold-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.subs-fold-hint {
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .subs-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .subs-totals {
+    max-width: none;
+  }
+}

@@ -195,3 +195,9 @@ export function SpendingMixSection({
     </section>
   );
 }
+
+// Subscriptions and bills rides in this chunk: a lazy chunk of its own made
+// the bundler move React out of the entry into a shared first-screen file
+// (check:bundle). Both load beside the first screen; its data waits for
+// the top summary to be usable.
+export { SubscriptionsSection } from "./subscriptions-section";

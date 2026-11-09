@@ -74,7 +74,12 @@ const PAYLOAD_APIS = [
   // keys, kinds, dates, minor amounts and names, read once when Ask opens.
   // The demo household raises a few of them; the bound is 20 (tests/
   // reminders-budget.test.mjs measures the heavy household).
-  ["reminders", "/api/reminders?view=household"]
+  ["reminders", "/api/reminders?view=household"],
+  // Subscriptions and bills on Summary (DOMAIN.md "Repeating Charge"): read
+  // once the top summary is usable, never on the first screen. The demo
+  // household has few repeating charges in the last year; a busy household
+  // is bounded in page-load-scale-guard (12 kB on the 10k household).
+  ["repeating-charges", "/api/repeating-charges?view=household"]
 ];
 
 // The Splits page once a settlement covered part of a group: the covered

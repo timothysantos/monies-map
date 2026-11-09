@@ -747,7 +747,9 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
 
     // Ethan: Citi Rewards for food, shopping and streaming.
     expense(A.ethanCard, d(4), "APPLE.COM/BILL", 398, "Subscriptions MO", { planKey: "icloud" });
-    expense(A.ethanCard, d(9), "NETFLIX.COM", 1_898, "Subscriptions MO", { planKey: "netflix" });
+    // Netflix went up from $15.98 to $18.98 two months ago (the Subscriptions
+    // and bills row says "Went up").
+    expense(A.ethanCard, d(9), "NETFLIX.COM", offset <= -3 ? 1_598 : 1_898, "Subscriptions MO", { planKey: "netflix" });
     for (let index = 0; index < 13; index += 1) {
       const day = 1 + index * 2 + Math.floor(rng() * 2);
       const place = pick(rng, ethanDining);
@@ -783,6 +785,11 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     // Serene: UOB Lady's for food, beauty and clothes.
     expense(A.sereneCard, d(2), "STARHUB MOBILE", 2_800, "Bills", { planKey: "starhub" });
     expense(A.sereneCard, d(7), "SPOTIFY SINGAPORE", 1_198, "Subscriptions MO", { planKey: "spotify" });
+    // Viu for most of a year, stopped three months ago (Subscriptions and
+    // bills folds it under "stopped").
+    if (offset >= -9 && offset <= -3) {
+      expense(A.sereneCard, d(15), "VIU PREMIUM SUBSCRIPTION", 898, "Subscriptions MO");
+    }
     for (let index = 0; index < 11; index += 1) {
       const day = 2 + index * 2 + Math.floor(rng() * 3);
       const place = pick(rng, sereneDining);

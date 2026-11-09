@@ -145,5 +145,9 @@ export const queryKeys = {
   // The reminders shown at the top of Ask (reminders-api.js), one per view.
   reminders(viewId) {
     return ["reminders", viewId || "household"];
+  },
+  // Summary's Subscriptions and bills (repeating-charges-api.js), per view and scope.
+  repeatingCharges(viewId, scope) {
+    return ["repeating-charges", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
   }
 };
