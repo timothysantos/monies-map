@@ -739,6 +739,27 @@ so nothing is counted twice.
 - An entry on a trip shows a small label with the trip's name beside its
   other labels. Tap the label to move it to another trip or take it off.
 
+**See what a trip cost.** In the filters, **Trip or event** opens **Trips &
+events**: every one, the newest first, with what it cost and how many
+entries it holds. Tap one and the top of Entries becomes that trip's
+summary, over all its entries whatever month they fell in (flights booked
+months before count too):
+
+- **Spent**: everything spent on it, less any refunds. Money moved between
+  your own accounts is left out.
+- One amount per person (what each person's share was), **While away** with
+  what that comes to a day, and **Before you went** (bookings made before the
+  first day).
+- **Where it went** (by category) and **Day by day**. On a phone these fold
+  into two rows you tap to open.
+
+Every amount opens like other figures: **View entries** narrows the list to
+exactly that money. **Clear** goes back to the month. **Put away** hides an
+old trip from the list you choose from (nothing is deleted; **Bring back**
+undoes it). **Delete** takes the trip off its entries and keeps the entries;
+the note at the bottom has **Undo**. On a phone, the filter is in the **View
+and scope** sheet, and the bar at the bottom names the trip with **Clear**.
+
 An entry the bank statement has confirmed can still go on a trip: nothing
 about its bank details changes. If the bank's row replaces an Apple Pay
 entry, or a second copy of the same purchase is removed, the trip stays with

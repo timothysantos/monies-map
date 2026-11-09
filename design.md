@@ -3334,8 +3334,31 @@ only. Summary and Month do not change.
   `use-trip-events-on-entries.js` reads a row's trip from the page by entry id
   (so an open editor's copy never hides it) with a small overlay for changes
   saved since, dropped once a page agrees.
-- Bundle: the picker, note and their styles are the `entries-trip-events`
-  chunk. The first-screen bytes did not grow from this code; Vite moved its
+- Filter and trip view: `entry_trip` in the URL (entry-filter-params.js,
+  ASK_FILTER_PARAM_KEYS) asks the page for `trip=<id>`: every entry on the
+  trip across its months, whatever the page's month (the header month stays
+  as it was, a deviation from the mockup, which had the month step out).
+  The filter bar and the phone's View and scope sheet have a "Trip or event"
+  control opening the Trips & events sheet (`trip-event-views.jsx`); the
+  island line names the trip first. The Entries top becomes the trip lead
+  (`TripEventLead`): name, dates, days and entries; Spent; one pill per person
+  (household view only), While away with a day's average, Before you went;
+  Where it went and Day by day as bars (folded into two rows on a phone).
+  Quiet Clear, Put away and Delete (with the Undo note). The money insights
+  card is not shown in the trip view (it is about the month).
+- Figures: every amount carries `data-fig="trip"` and the trip's id; the menu
+  (figure-menu-model.js) opens the trip view narrowed: a person pill to that
+  person's view, a category bar to `entry_category`, a day or Before / While
+  away to `entry_id`. Spent is the list itself, so it offers Open Splits (when
+  linked) and Ask only. The rule is `tripEventFigures` in money-figures.ts;
+  `tests/openable-figures.test.mjs` proves every pill and bar for five views
+  and scopes.
+- Trips & events sheet: newest first, each with its Spent (an openable
+  figure) worked out from one `trip=all` page read through the Entries code,
+  so each equals its trip view's lead; put-away ones fold under "N put away ·
+  Show"; empty, it teaches what it is for.
+- Bundle: the picker, note, lead, sheet and their styles are the
+  `entries-trip-events` chunk. The first-screen bytes did not grow from this code; Vite moved its
   ~1 kB preload helper into its own first-screen file once Entries gained a
   dynamic import, so the file-count budget is 8.
 

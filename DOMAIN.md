@@ -1837,7 +1837,11 @@ Canonical terms:
 - `delete`: the links come off and the entries stay as they are; Undo brings
   the trip and its entries back
 - `Spent` (on a trip): the Entries Spent rule over the trip's entries in the
-  page's view and scope (Money Figure)
+  page's view and scope (Money Figure, `tripEventFigures`); the person pills,
+  While away + Before you went, the category bars and the days are slices of
+  it and add up to it
+- `trip view`: Entries with `entry_trip`, every entry on the trip across its
+  months
 
 Rules:
 - one change puts at most 200 entries on (or off), all or nothing, with one

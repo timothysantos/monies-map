@@ -2827,6 +2827,16 @@ delete). Tests: `tests/trip-events.test.mjs` (scenarios and negatives),
 `tests/trip-events-carry.test.mjs` (the trip follows the entry that survives
 a wrong-card or statement duplicate removal).
 
+The trip view is a page read: `GET /api/entries-page?view=…&month=…&trip=<id>`
+lists every entry on that trip (`trip=all`: every trip's entries and the whole
+list, for the Trips & events sheet's totals), bounded by the link table
+(`loadEntriesForDateRange`'s `tripEventId` option; the scale guard pins it
+at two steps on the 10k household). The DTO echoes the month and adds
+`tripView`. The figures are `tripEventFigures` (money-figures.ts) through
+`trip-event-lead-model.js`. The showcase demo seeds a Bali trip and a Japan
+trip from its own travel entries (`demo-showcase-data.ts`), only when the
+tables exist.
+
 Migration: the tables are `CREATE TABLE IF NOT EXISTS`, so export the
 production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
