@@ -689,6 +689,29 @@ above the View and scope bar and names what the list is showing, such as
 "From Ask · Groceries". Tap it to go back to your conversation on Ask; tap
 its **✕** to clear those filters and see the whole month again.
 
+### Trips and events
+
+A trip or event gathers what you spent on one thing, such as "Seoul trip",
+"Mum's 70th" or "New flat", whatever its category, whoever paid and
+whichever month it fell in. Each entry can be on one trip or event at most,
+so nothing is counted twice.
+
+- **Put an entry on one:** open the entry and tap **Trip or event**. The
+  list has a search on top, the trip you are on now first, then the ones you
+  used last, then the rest. Tap one and it is saved straight away; a small
+  note at the bottom says what happened, with **Undo**.
+- **Make a new one while you choose:** type its name in the search and press
+  Enter (or tap **Make "…"**). The entry goes on it at once. The day of the
+  entry becomes its date, which you can change later.
+- **Take an entry off:** choose **None**.
+- An entry on a trip shows a small label with the trip's name beside its
+  other labels. Tap the label to move it to another trip or take it off.
+
+An entry the bank statement has confirmed can still go on a trip: nothing
+about its bank details changes. If the bank's row replaces an Apple Pay
+entry, or a second copy of the same purchase is removed, the trip stays with
+the entry that is kept.
+
 ## Splits
 
 Splits has an intentional **dark orange theme**, on desktop and phone, so you

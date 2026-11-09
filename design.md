@@ -3240,6 +3240,40 @@ searched.
   is drawn outside it. Guard: `tests/e2e/category-list-reach.spec.js`
   (390x664, 320x568, 1280x800).
 
+## Trips and events on Entries
+
+A trip or event (DOMAIN.md "Trip or Event") shows and is chosen on Entries
+only. Summary and Month do not change.
+
+- Row chip: a plain oat chip (`--chip`, ink text, its icon) with only the
+  trip's name, after the other chips (`entry-chip-trip`, entries-route.css).
+  No money tone, no person colour. Tapping it opens the picker for that row.
+  The dashed variant (`is-suggestion`) is a suggestion that one tap accepts.
+- Entry card: one Detail row, "Trip or event", after Category, in the same
+  quiet style; empty reads "None".
+- Picker (`entries-trip-events.jsx`, a lazy chunk fetched when a picker first
+  opens): the category list's shape and classes. A search ("Find or make a
+  trip or event"), then Now (trips whose dates hold today, with a Now tag),
+  Recent (the three used last), More (A to Z), None when the entry is on one,
+  and "New trip or event". A typed name nobody has is offered first as
+  `Make "Jeju weekend"`; Enter makes it and puts the entry on it in one
+  command, dated the entry's own day. Put-away trips are left out. Popover on
+  a wide screen, the picker sheet on a phone (rows at least 44 px, lifted
+  above the keyboard).
+- Saving: a choice saves at once (`/api/trip-events/entries/set`, no "Are you
+  sure?") and a note at the bottom says what happened with Undo
+  (`/api/trip-events/undo`, through the change's audit event). A refused save
+  keeps the picker open with the reason.
+- Data: the Entries page DTO carries `tripEventId` on rows that have one and a
+  `tripEvents` map of just those trips (name and icon).
+  `use-trip-events-on-entries.js` reads a row's trip from the page by entry id
+  (so an open editor's copy never hides it) with a small overlay for changes
+  saved since, dropped once a page agrees.
+- Bundle: the picker, note and their styles are the `entries-trip-events`
+  chunk. The first-screen bytes did not grow from this code; Vite moved its
+  ~1 kB preload helper into its own first-screen file once Entries gained a
+  dynamic import, so the file-count budget is 8.
+
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
