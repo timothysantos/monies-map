@@ -217,3 +217,26 @@ test("without the tables the feature is off: the list says so, a change is refus
   // A plain entry delete still works.
   await ok(api, "/api/entries/delete", { entryId: entry });
 });
+
+test("the Entries page names each listed entry's trip and only the trips its rows use", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const before = await ok(api, "/api/entries-page?view=household&month=2026-05");
+  assert.equal("tripEvents" in before, false, "no trips, no key");
+  assert.ok(before.monthPage.entries.every((entry) => !("tripEventId" in entry)));
+
+  const [onTrip, loose] = await seedEntries(api, 2);
+  const seoul = (await ok(api, "/api/trip-events/save", { name: "Seoul trip" })).tripEvent;
+  await ok(api, "/api/trip-events/save", { name: "Bali trip" });
+  // An entry in another month on another trip is not this page's.
+  const [april] = await seedEntries(api, 1, { date: "2026-04-10", prefix: "April" });
+  const mum = (await ok(api, "/api/trip-events/save", { name: "Mum's 70th" })).tripEvent;
+  await ok(api, "/api/trip-events/entries/set", { entryIds: [onTrip], tripEventId: seoul.id });
+  await ok(api, "/api/trip-events/entries/set", { entryIds: [april], tripEventId: mum.id });
+
+  for (const view of ["household", "person-tim"]) {
+    const page = await ok(api, `/api/entries-page?view=${view}&month=2026-05`);
+    assert.deepEqual(page.tripEvents, { [seoul.id]: { name: "Seoul trip", iconKey: "plane" } });
+    assert.equal(page.monthPage.entries.find((entry) => entry.id === onTrip).tripEventId, seoul.id);
+    assert.equal("tripEventId" in page.monthPage.entries.find((entry) => entry.id === loose), false);
+  }
+});

@@ -7,6 +7,8 @@ import {
   loadSplitGroups
 } from "../app-repository";
 import { loadEntriesForMonths } from "../app-repository-entries";
+import { getMonthBounds } from "../app-repository-helpers";
+import { loadTripEventLinksForDateRange } from "../app-repository-trip-events";
 import type { EntriesPageDto } from "../../types/dto";
 import {
   loadRoutePageContext,
@@ -57,12 +59,15 @@ export async function buildEntriesPageDto(
   const { household, trackedMonths } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const rangeMonths = entriesRangeMonths(fromMonth, effectiveSelectedMonth);
-  // The entries and the split groups are read together.
-  const [monthEntries, splitGroups] = await Promise.all([
+  // The entries, the split groups and the entries' trips are read together.
+  const [rangeStart] = getMonthBounds(rangeMonths[0] ?? effectiveSelectedMonth);
+  const [, rangeEnd] = getMonthBounds(rangeMonths.at(-1) ?? effectiveSelectedMonth);
+  const [monthEntries, splitGroups, trips] = await Promise.all([
     rangeMonths.length
       ? loadEntriesForMonths(db, rangeMonths, { withTime: true })
       : loadEntries(db, effectiveSelectedMonth, { withTime: true }),
-    loadSplitGroups(db)
+    loadSplitGroups(db),
+    loadTripEventLinksForDateRange(db, rangeStart, rangeEnd)
   ]);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewId = resolvePageViewId(selectedViewId, household.people);
@@ -84,7 +89,19 @@ export async function buildEntriesPageDto(
       selectedPersonId: viewId,
       selectedScope: viewId === "household" ? "direct_plus_shared" : "direct_plus_shared",
       scopes: buildPersonScopes(viewId),
-      entries: adjustEntriesForList(monthEntries, viewId)
-    }
+      entries: withTripEvents(adjustEntriesForList(monthEntries, viewId), trips.links)
+    },
+    ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {})
   };
+}
+
+// Each listed entry's trip or event, only where it has one.
+function withTripEvents(entries: EntriesPageDto["monthPage"]["entries"], links: Map<string, string>) {
+  if (!links.size) {
+    return entries;
+  }
+  return entries.map((entry) => {
+    const tripEventId = links.get(entry.id);
+    return tripEventId ? { ...entry, tripEventId } : entry;
+  });
 }

@@ -352,6 +352,9 @@ export interface EntryDto {
   // What a transfer out to another person of the household pays for
   // (DOMAIN.md "Transfer Purpose"); left out for every other entry.
   transferPurpose?: TransferPurposeDto;
+  // The trip or event the entry is on (DOMAIN.md "Trip or Event"); only on
+  // the Entries page, and left out when it is on none.
+  tripEventId?: string;
 }
 
 // A transfer's purpose. On the ledger entry it names the category and the
@@ -386,6 +389,9 @@ export interface EntriesPageDto {
     scopes: Array<{ key: PersonScope; label: string }>;
     entries: EntryDto[];
   };
+  // The trips and events the listed entries are on, for their chips: only
+  // those, and left out when none is (DOMAIN.md "Trip or Event").
+  tripEvents?: Record<string, { name: string; iconKey: string }>;
 }
 
 export interface SplitGroupPillDto {
