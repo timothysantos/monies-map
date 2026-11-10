@@ -119,6 +119,19 @@ export function normalizeShortcutAmount(
   return normalizeShortcutMajorAmount(amount);
 }
 
+/**
+ * True when the request carries no amount at all: absent, blank, or text with
+ * no figure in it (a terminal that asks which currency to pay in can hand the
+ * Shortcut nothing). A figure that is refused (a refund, "12,34") is not
+ * missing: it stays an ordinary error.
+ */
+export function isShortcutAmountMissing(amountMinor?: number, amount?: number | string) {
+  if (amountMinor != null || typeof amount === "number") {
+    return false;
+  }
+  return amount == null || !/\d/u.test(amount.normalize("NFKC"));
+}
+
 function normalizeShortcutMajorAmount(
   amount?: number | string
 ): NormalizedShortcutAmount | undefined {
@@ -129,16 +142,28 @@ function normalizeShortcutMajorAmount(
     return undefined;
   }
 
-  const compact = amount.trim().normalize("NFKC").replace(/\s/gu, "");
-  const numberMatches = compact.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
+  // "Rp.150.000" is Rupiah written with a full stop after the sign.
+  const compact = amount.trim().normalize("NFKC").replace(/\s/gu, "").replace(/rp\.(?=\d)/giu, "Rp");
+  const numberMatches = compact.match(/\d[\d,.]*/g) ?? [];
   if (numberMatches.length !== 1) {
     return undefined;
   }
 
   const numericToken = numberMatches[0];
-  const [wholePart, fractionalPart] = numericToken.split(".");
+  // A dot is the thousands mark only when every group after it has exactly
+  // three figures and no comma is present ("Rp150.000", "1.234.567").
+  // Anything else with a dot is read as before: at most two decimal places.
+  // One group ("150.000") also reads as a decimal, so it counts as thousands
+  // only beside a Rupiah sign; two or more groups cannot be a decimal.
+  const dotGroups = /^[1-9]\d{0,2}(?:\.\d{3})+$/.test(numericToken) ? numericToken.split(".").length - 1 : 0;
+  const isRupiah = detectShortcutAmountCurrency(compact.replace(numericToken, "")) === "IDR";
+  const dotThousands = dotGroups >= 2 || (dotGroups === 1 && isRupiah);
+  const [wholePart, fractionalPart] = dotThousands
+    ? [numericToken.replace(/\./g, ""), undefined]
+    : numericToken.split(".");
   if (
-    (wholePart.includes(",") && !/^\d{1,3}(?:,\d{3})+$/.test(wholePart))
+    (!dotThousands && !/^\d[\d,]*(?:\.\d+)?$/.test(numericToken))
+    || (wholePart.includes(",") && !/^\d{1,3}(?:,\d{3})+$/.test(wholePart))
     || (fractionalPart != null && !/^\d{1,2}$/.test(fractionalPart))
   ) {
     return undefined;
@@ -158,7 +183,7 @@ function normalizeShortcutMajorAmount(
     return undefined;
   }
 
-  const normalized = Number(numericToken.replace(/,/g, ""));
+  const normalized = Number(dotThousands ? wholePart : numericToken.replace(/,/g, ""));
   const result = normalizeMajorAmount(normalized);
   if (!result) {
     return undefined;
@@ -289,6 +314,9 @@ function detectShortcutAmountCurrency(affixes: string) {
   const currencyAffix = affixes.replace(/[()+-]/g, "").toUpperCase();
   if (/^[A-Z]{3}$/.test(currencyAffix)) {
     return currencyAffix;
+  }
+  if (currencyAffix === "RP") {
+    return "IDR";
   }
   if (currencyAffix === "S$" || currencyAffix === "SG$") {
     return "SGD";

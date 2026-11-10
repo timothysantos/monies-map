@@ -37,6 +37,38 @@ test("shortcut amount rejects ambiguous, negative, over-precise, and unsafe valu
   assert.equal(normalizeShortcutAmount(Number.MAX_SAFE_INTEGER + 1), undefined);
 });
 
+test("shortcut amount reads a dot as the thousands mark when the groups are exactly three digits", () => {
+  // Overseas terminals (and a typed answer) often write IDR with dots.
+  assert.deepEqual(normalizeShortcutAmount(undefined, "Rp150.000"), { amountMinor: 15_000_000, currency: "IDR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "IDR 150.000"), { amountMinor: 15_000_000, currency: "IDR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "IDR\u00a01.234.567"), { amountMinor: 123_456_700, currency: "IDR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "1.234.567"), { amountMinor: 123_456_700 });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "Rp.150.000"), { amountMinor: 15_000_000, currency: "IDR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "Rp 1.500"), { amountMinor: 150_000, currency: "IDR" });
+  // A single dot group with no Rupiah sign stays ambiguous and is refused.
+  assert.equal(normalizeShortcutAmount(undefined, "150.000"), undefined);
+  assert.equal(normalizeShortcutAmount(undefined, "SGD 12.345"), undefined);
+  // The existing readings are untouched.
+  assert.deepEqual(normalizeShortcutAmount(undefined, "IDR 150,000"), { amountMinor: 15_000_000, currency: "IDR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "19.82"), { amountMinor: 1982 });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "SGD 1.84"), { amountMinor: 184, currency: "SGD" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "150.5"), { amountMinor: 15050 });
+});
+
+test("shortcut amount still refuses dot numbers that are not clean thousands", () => {
+  for (const text of [
+    "1.23.456", "1.2345", "12.345.67", "1.234.56", "0.000", "1.234.567,89", "0.123",
+    "-5.00", "-IDR 150.000", "(Rp150.000)", "IDR 150.000 IDR 20.000", "1,234.567", "1.234,567"
+  ]) {
+    assert.equal(normalizeShortcutAmount(undefined, text), undefined, text);
+  }
+  // Two decimal places are cents, never thousands.
+  assert.deepEqual(normalizeShortcutAmount(undefined, "150.00"), { amountMinor: 15_000 });
+  // A blank answer is not an amount.
+  assert.equal(normalizeShortcutAmount(undefined, ""), undefined);
+  assert.equal(normalizeShortcutAmount(undefined, "  "), undefined);
+});
+
 test("shortcut date accepts the shared ISO contract and legacy day-first text", () => {
   assert.equal(normalizeShortcutDate("2026-08-22T19:07:30+08:00"), "2026-08-22");
   assert.equal(normalizeShortcutDate("22/8/26"), "2026-08-22");

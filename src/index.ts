@@ -134,6 +134,7 @@ import {
   isShortcutEntryType,
   isShortcutOwnershipType,
   isShortcutTransferDirection,
+  isShortcutAmountMissing,
   normalizeShortcutAmount,
   normalizeShortcutCurrency,
   normalizeShortcutDate,
@@ -1481,6 +1482,23 @@ export default {
         || !isShortcutEntryType(entryType)
         || !isShortcutOwnershipType(ownershipType)
       ) {
+        // Only the amount is missing (a terminal asking which currency to pay
+        // in): say so, with what the Shortcut's prompt names, so it can ask
+        // the person and post the same request again. Nothing is saved.
+        if (
+          invalidFields.length === 1
+          && invalidFields[0] === "amount"
+          && account
+          && isShortcutAmountMissing(bodyWithDefaults.amountMinor, bodyWithDefaults.amount)
+        ) {
+          return json({
+            ok: false,
+            needsAmount: true,
+            merchant: shortcutDescription,
+            accountName: account.name,
+            error: "Missing or invalid shortcut fields: amount."
+          }, 400);
+        }
         return json({
           ok: false,
           error: hasOversizedShortcutDescription(...descriptionValues)
