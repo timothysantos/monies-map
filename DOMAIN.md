@@ -1460,7 +1460,9 @@ Canonical terms:
 
 Definitions:
 - The registered summary cards are `insights` (Money insights), `subs`
-  (Subscriptions and bills, which holds Coming up and Bank fees), `mix`
+  (Subscriptions and bills, which holds Coming up and Bank fees),
+  `investments` (Investments over time), `taxreliefs` (Tax reliefs this
+  year), `mix`
   (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent by month in
   Simple) and `accounts` (The accounts shown). The top summary is not a
   summary card and always stays first.

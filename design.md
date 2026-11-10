@@ -1990,7 +1990,7 @@ not one of them; Money insights can be moved but never hidden, so a To do
 is never out of sight.
 
 - Cards (`summary-card-order.js`): `insights`, `subs` (Subscriptions and
-  bills), `mix` (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent
+  bills), `investments` (Investments over time), `taxreliefs` (Tax reliefs this year), `mix` (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent
   by month in Simple) and `accounts` (The accounts shown), in that usual
   order. Spending Mix and the month-by-month card sit side by side when they
   are next to each other (either order); otherwise each takes the width. A
