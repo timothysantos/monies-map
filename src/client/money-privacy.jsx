@@ -1,6 +1,8 @@
 import { Eye, EyeOff } from "lucide-react";
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
+import { deviceStorage } from "./device-storage";
+
 const MONEY_TOTALS_VISIBILITY_STORAGE_KEY = "monies-map:money-totals-visible";
 const MoneyPrivacyContext = createContext(null);
 
@@ -9,7 +11,11 @@ function readInitialVisibility() {
     return false;
   }
 
-  return window.localStorage.getItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY) === "true";
+  try {
+    return deviceStorage()?.getItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 function writeMoneyPrivacyDocumentState(areTotalsVisible) {
@@ -34,7 +40,13 @@ export function MoneyPrivacyProvider({ children }) {
   }, [areTotalsVisible]);
 
   useEffect(() => {
-    window.localStorage.setItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY, String(areTotalsVisible));
+    // This provider wraps the whole app, so a blocked or full store must not
+    // throw here: nothing above it could show an error.
+    try {
+      deviceStorage()?.setItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY, String(areTotalsVisible));
+    } catch {
+      // Not remembered on this device; hidden again on the next visit.
+    }
   }, [areTotalsVisible]);
 
   const value = useMemo(() => ({

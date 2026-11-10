@@ -178,6 +178,12 @@ Details and the reasons are in `docs/code-spec.md` and
   imports no React and no first-screen module (its inputs are handed in by
   `use-route-warmup.js`). `tests/first-screen-structure.test.mjs` fails with
   the importing file when one slips back in.
+- The page must never stay empty. `index.html`'s boot guard (one reload for a
+  script that fails to load, otherwise a card with Reload app) covers a start
+  that fails; code that runs at import or outside the error boundary reads
+  device storage only through `deviceStorage()`
+  (`src/client/device-storage.js`), never as a bare `localStorage` default
+  parameter (`tests/boot-guard.test.mjs`).
 - Keep the first screen within budget. `npm run check:bundle` (part of
   `npm run verify`) fails when the entry chunk plus the Summary route, or
   the built (minified) `styles.css`, grows more than 5% past

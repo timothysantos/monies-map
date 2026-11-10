@@ -1,3 +1,4 @@
+import { deviceStorage } from "./device-storage";
 import { useSyncExternalStore } from "react";
 
 import { APP_SHELL_PERSISTED_CACHE_KEY } from "./app-shell-query";
@@ -24,7 +25,7 @@ const LEAD_VIEW_PATH = "/api/viewer-preferences/lead-view";
 const isLeadView = (value) => value === "plan" || value === "simple";
 
 /** The stored choice, or null when there is none (or storage is blocked). */
-export function readLeadView(storage = globalThis.localStorage) {
+export function readLeadView(storage = deviceStorage()) {
   try {
     const stored = storage?.getItem(LEAD_VIEW_STORAGE_KEY);
     return isLeadView(stored) ? stored : null;
@@ -34,7 +35,7 @@ export function readLeadView(storage = globalThis.localStorage) {
 }
 
 // Writes the cache; null clears it.
-export function saveLeadView(view, storage = globalThis.localStorage) {
+export function saveLeadView(view, storage = deviceStorage()) {
   try {
     if (view) storage?.setItem(LEAD_VIEW_STORAGE_KEY, view);
     else storage?.removeItem(LEAD_VIEW_STORAGE_KEY);
@@ -52,7 +53,7 @@ export function chooseLeadView(stored) {
 // `signedIn` says whether the shell named a login; `saving` is a choice on
 // its way to the server, which a shell that arrives meanwhile (with the old
 // value) must not undo.
-export function createLeadViewStore({ storage = globalThis.localStorage, send = sendLeadView } = {}) {
+export function createLeadViewStore({ storage = deviceStorage(), send = sendLeadView } = {}) {
   let chosen = readLeadView(storage);
   let signedIn = false;
   let saving = 0;

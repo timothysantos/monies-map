@@ -1,3 +1,4 @@
+import { deviceStorage } from "./device-storage";
 // What the Splits donut adds up: "share" is the person's own share of each
 // open expense, "group" is each category's full amount (the lead chip's own
 // set). The choice is kept per device and per page; the same choice stays
@@ -15,7 +16,7 @@ export function resolveDonutMode(stored, isHousehold) {
 
 // Storage can be missing or blocked (a private window): the default is used
 // and the choice lasts for the visit.
-export function createDonutModeStore(storage = globalThis.localStorage) {
+export function createDonutModeStore(storage = deviceStorage()) {
   return {
     read() {
       try {

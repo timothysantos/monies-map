@@ -43,6 +43,10 @@ export const smokeWorkflows = [
     file: "tests/e2e/faq-guide-tabs.spec.js"
   },
   {
+    name: "boot resilience",
+    file: "tests/e2e/boot-resilience.spec.js"
+  },
+  {
     name: "summary",
     file: "tests/e2e/summary-workflow.spec.js"
   },

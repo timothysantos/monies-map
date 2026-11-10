@@ -182,6 +182,32 @@ To check a real iPhone, open the app in Safari on the phone, connect it to a
 Mac, enable Web Inspector on the phone (Settings → Apps → Safari → Advanced),
 and use Safari's Develop menu on the Mac to inspect the page.
 
+### Why can the page never stay empty?
+
+On 2026-11-11 the app showed an entirely black page: nothing in React was
+running, so nothing could show an error. Two causes were reproduced in
+Chromium and WebKit: the browser refusing `localStorage` (Safari throws from
+the property itself with all cookies blocked, and `setItem` throws when the
+store is full) while the app starts, and an old page whose entry script a
+deploy had removed. Two rules keep it from coming back:
+
+- `index.html` carries a boot guard (a plain inline script). A script that
+  fails to load is retried with one automatic reload (loop guard in
+  `sessionStorage`, `monies-map:boot-reload`); any other failure that leaves
+  the page empty, or a start that draws nothing for 15 seconds, leaves a card
+  with a Reload app button, in the app's own crash words. A mounted app
+  replaces the card. `tests/boot-guard.test.mjs` and
+  `tests/e2e/boot-resilience.spec.js` prove it.
+- Anything that runs at import time or outside a screen's error boundary
+  (the privacy provider, a store created at module level, a default
+  parameter) reads device storage through `deviceStorage()`
+  (`src/client/device-storage.js`) and treats a failed write as "not
+  remembered". Never write `= globalThis.localStorage` as a default
+  parameter.
+
+`public/_headers` keeps `index.html` at `Cache-Control: no-cache` and the
+hashed files under `/assets/` immutable.
+
 ## Which gates must pass before a merge?
 
 `npm run verify` is the local merge gate: `npm audit`, strict TypeScript for

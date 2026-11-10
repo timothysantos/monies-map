@@ -1,3 +1,4 @@
+import { deviceStorage } from "./device-storage";
 // Colour presets (design.md, "Colour presets"): whole colour schemes a
 // person picks per device in Settings > Colours, each in a Light and a Dark
 // mode, with Auto following the phone. The 70s Warm light default lives in
@@ -81,13 +82,13 @@ function readStored(key, storage) {
 }
 
 /** The preset this device chose, or the default when storage is empty or blocked. */
-export function readStoredPresetId(storage = globalThis.localStorage) {
+export function readStoredPresetId(storage = deviceStorage()) {
   const stored = readStored(PALETTE_STORAGE_KEY, storage);
   return COLOUR_PRESETS.some((preset) => preset.id === stored) ? stored : DEFAULT_PRESET_ID;
 }
 
 /** The mode this device chose: light, dark, or auto when nothing (or nothing known) is stored. */
-export function readStoredMode(storage = globalThis.localStorage) {
+export function readStoredMode(storage = deviceStorage()) {
   const stored = readStored(MODE_STORAGE_KEY, storage);
   return COLOUR_MODES.includes(stored) ? stored : DEFAULT_MODE;
 }
@@ -150,7 +151,7 @@ let latestRequest = 0;
  */
 export async function applyColours(
   { presetId, mode },
-  { doc = globalThis.document, storage = globalThis.localStorage, prefersDark = systemPrefersDark() } = {}
+  { doc = globalThis.document, storage = deviceStorage(), prefersDark = systemPrefersDark() } = {}
 ) {
   const preset = findColourPreset(presetId);
   const chosenMode = COLOUR_MODES.includes(mode) ? mode : DEFAULT_MODE;

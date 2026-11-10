@@ -46,6 +46,78 @@
         if (dark && dark.addEventListener) dark.addEventListener("change", function () { apply(false); });
       })();
     </script>
+    <script>
+      // Boot guard. If the app's own script cannot start (an old page whose
+      // files a deploy replaced, a blocked download, an error before the
+      // first screen is drawn) the page would stay empty: nothing in React
+      // is running to show an error. A script that fails to load is retried
+      // with one automatic reload (the loop guard is in sessionStorage); any
+      // other failure, or a start that takes too long, leaves a plain card
+      // with a Reload button. A mounted app replaces the card.
+      // The words match messages.common in src/client/copy/en-SG.js
+      // (tests/boot-guard.test.mjs checks that).
+      (function () {
+        var RELOAD_KEY = "monies-map:boot-reload";
+        var RELOAD_WITHIN_MS = 60000;
+        var scriptFailed = false;
+        function mount() { return document.getElementById("root"); }
+        function isEmpty() { var m = mount(); return !!m && !m.firstChild; }
+        function reloadOnce() {
+          try {
+            if (Date.now() - (Number(sessionStorage.getItem(RELOAD_KEY)) || 0) < RELOAD_WITHIN_MS) return false;
+            sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+          } catch (error) { return false; }
+          location.reload();
+          return true;
+        }
+        function showCard() {
+          var m = mount();
+          if (!m || m.firstChild) return;
+          var card = document.createElement("div");
+          card.setAttribute("data-boot-card", "");
+          card.setAttribute("role", "alert");
+          card.style.cssText = "max-width:26rem;box-sizing:border-box;width:calc(100% - 2rem);margin:20vh auto 0;padding:1.5rem;border-radius:1.25rem;background:var(--card);color:var(--text);border:1px solid var(--card-border);box-shadow:var(--card-shadow)";
+          var title = document.createElement("p");
+          title.style.cssText = "margin:0 0 .5rem;font-weight:700;font-size:1.125rem";
+          title.textContent = scriptFailed ? "This page needs a fresh copy of the app." : "The app hit a problem and could not be shown.";
+          var detail = document.createElement("p");
+          detail.style.cssText = "margin:0 0 1.25rem;color:var(--muted)";
+          detail.textContent = "Your saved data is not affected. Reload the app to continue.";
+          var button = document.createElement("button");
+          button.type = "button";
+          button.style.cssText = "font:inherit;font-weight:600;padding:.75rem 1.25rem;border:0;border-radius:999px;background:var(--accent-strong);color:var(--on-strong)";
+          button.textContent = "Reload app";
+          button.onclick = function () { location.reload(); };
+          card.appendChild(title);
+          card.appendChild(detail);
+          card.appendChild(button);
+          m.appendChild(card);
+        }
+        function check(retry) {
+          if (!isEmpty()) return;
+          if (retry && reloadOnce()) return;
+          showCard();
+        }
+        window.addEventListener("error", function (event) {
+          var target = event && event.target;
+          if (target && target.tagName === "SCRIPT") {
+            scriptFailed = true;
+            setTimeout(function () { check(true); }, 0);
+          } else {
+            setTimeout(function () { check(false); }, 3000);
+          }
+        }, true);
+        setTimeout(function () { check(false); }, 15000);
+        // A start that held for a few seconds is a good one: the next
+        // deploy may reload this tab again.
+        setTimeout(function () {
+          var m = mount();
+          if (m && m.firstChild && !m.querySelector("[data-boot-card]")) {
+            try { sessionStorage.removeItem(RELOAD_KEY); } catch (error) {}
+          }
+        }, 5000);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

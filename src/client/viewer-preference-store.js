@@ -1,3 +1,4 @@
+import { deviceStorage } from "./device-storage";
 import { APP_SHELL_PERSISTED_CACHE_KEY } from "./app-shell-query";
 
 // One remembered display choice of the signed-in login (the pattern of
@@ -9,7 +10,7 @@ import { APP_SHELL_PERSISTED_CACHE_KEY } from "./app-shell-query";
 // to the server is not undone by a shell that arrives meanwhile with the old
 // value. Storage can be missing or blocked (a private window): then the
 // default is used and the choice lasts for the visit.
-export function createPreferenceStore({ field, storageKey, path, isValid, storage = globalThis.localStorage, send = undefined }) {
+export function createPreferenceStore({ field, storageKey, path, isValid, storage = deviceStorage(), send = undefined }) {
   const post = send ?? (async (value) => {
     const response = await fetch(path, {
       method: "POST",
