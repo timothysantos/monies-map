@@ -10,7 +10,7 @@ import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "../domai
 // server refuses more too (MAX_TRIP_EVENT_CHANGE, BULK_RECATEGORISE_MAX).
 export const PICK_MAX = BULK_RECATEGORISE_MAX;
 
-/** @typedef {{ picking: boolean, ids: ReadonlySet<string>, anchorId: string }} PickState */
+/** @typedef {{ picking: boolean, ids: Set<string>, anchorId: string }} PickState */
 
 /** @type {PickState} */
 export const NO_PICK = Object.freeze({ picking: false, ids: new Set(), anchorId: "" });
@@ -73,6 +73,20 @@ export function rowClickIntent(state, { shiftKey = false, metaKey = false, ctrlK
   if (shiftKey) return "range";
   if (metaKey || ctrlKey || state.picking) return "toggle";
   return "open";
+}
+
+/**
+ * What the picked rows belong to: the month, view, scope and every Entries
+ * filter in the URL. When it changes the rows on screen are others, so
+ * picking ends. An open editor (`editing_entry`) is not part of it.
+ * @param {URLSearchParams} searchParams
+ */
+export function pickScopeKey(searchParams) {
+  return [...searchParams.entries()]
+    .filter(([key]) => key === "view" || key === "month" || key === "entries_scope" || key.startsWith("entry_"))
+    .map(([key, value]) => `${key}=${value}`)
+    .sort()
+    .join("&");
 }
 
 /** The rows' ids in the order on screen (date groups, then rows). */

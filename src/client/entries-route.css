@@ -1384,3 +1384,66 @@ body[data-entry-inline-editor] > .entries-ask-chip {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Picking many rows (entries-list.jsx; the bar is the lazy
+   entries-pick.css). The category bubble becomes a tick box of the same
+   size, so nothing moves; a picked row has a soft accent wash. */
+.entry-row-category .entry-pick-tick {
+  border: 2px solid rgb(var(--accent-strong-rgb) / 0.45);
+  background: var(--paper);
+  box-shadow: none;
+  color: var(--on-strong);
+}
+
+.entry-row-category .entry-pick-tick.is-picked {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.entry-row-main.is-picked {
+  background: rgb(var(--accent-strong-rgb) / 0.08);
+}
+
+.entry-row-main[aria-pressed] {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+@media (hover: none) {
+  /* A press and hold picks the row: no text selection or callout under it. */
+  .entry-row-main {
+    -webkit-touch-callout: none;
+  }
+}
+
+.entries-pick-day {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(var(--accent-strong-rgb) / 0.1);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.entries-filter-pick {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.entries-filter-pick[aria-pressed="true"] {
+  background: rgb(var(--accent-strong-rgb) / 0.12);
+}
+
+@media (max-width: 760px) {
+  .entries-pick-day {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+}

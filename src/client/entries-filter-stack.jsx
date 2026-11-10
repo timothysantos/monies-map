@@ -27,7 +27,10 @@ export function EntriesFilterStack({
   onDone,
   // Trips and events: the trip view's name, and the Trips & events sheet.
   tripName = "",
-  onOpenTrips = undefined
+  onOpenTrips = undefined,
+  // Picking many rows: a wide screen's "Pick" starts (and stops) it.
+  isPicking = false,
+  onTogglePicking = undefined
 }) {
   const isOpen = hideToggle ? true : showMobileFilters;
   const stackRef = useRef(null);
@@ -123,6 +126,11 @@ export function EntriesFilterStack({
         ) : null}
         {!hideActions ? (
           <div className="entries-filter-reset">
+            {onTogglePicking ? (
+              <button type="button" className="subtle-action entries-filter-pick" aria-pressed={isPicking} onClick={onTogglePicking}>
+                {tripEventsCopy.pick}
+              </button>
+            ) : null}
             <button type="button" className="subtle-action" onClick={onResetFilters}>
               {entriesMessages.resetFilters}
             </button>

@@ -15,6 +15,7 @@ import {
   needsConfirm,
   pickDay,
   pickRange,
+  pickScopeKey,
   pickedRows,
   rowClickIntent,
   rowOrder,
@@ -148,6 +149,16 @@ test("Category changes: each row moves from its own category; transfers and rows
   ]);
   assert.equal(needsConfirm(10), false);
   assert.equal(needsConfirm(11), true);
+});
+
+test("picking belongs to the month, view, scope and filters; opening an entry is not a change", () => {
+  const key = (query) => pickScopeKey(new URLSearchParams(query));
+  const base = key("view=person-tim&month=2026-10&entry_category=Food");
+  assert.equal(key("month=2026-10&entry_category=Food&view=person-tim&editing_entry=txn-1"), base);
+  assert.notEqual(key("view=person-tim&month=2026-11&entry_category=Food"), base);
+  assert.notEqual(key("view=household&month=2026-10&entry_category=Food"), base);
+  assert.notEqual(key("view=person-tim&month=2026-10&entry_category=Food&entry_search=grab"), base);
+  assert.notEqual(key("view=person-tim&month=2026-10&entry_category=Food&entries_scope=direct"), base);
 });
 
 test("T and Esc stay out of the way of typing and of an open dialog or popover", () => {

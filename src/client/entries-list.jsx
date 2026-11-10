@@ -37,6 +37,7 @@ const {
 } = moniesClient;
 
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
+const NO_PICKED_IDS = new Set();
 
 function scrollInlineEditorIntoView(element) {
   if (isMobileLayout()) {
@@ -124,7 +125,16 @@ export function EntriesDateGroups({
   // picker it opens, and the entry card's "Trip or event" row.
   getTripChip = undefined,
   onOpenTripPicker = undefined,
-  renderTripEventRow = undefined
+  renderTripEventRow = undefined,
+  // Picking many rows (design.md "Trips and events on Entries", "Picking
+  // many"): while picking, a row's bubble is a tick box, a click picks it
+  // and each date heading offers its whole day. `pickedIds` is the panel's
+  // set; each row gets only a boolean.
+  isPicking = false,
+  pickedIds = NO_PICKED_IDS,
+  onPickRow = undefined,
+  onPickDay = undefined,
+  pickDayLabel = tripEventsCopy.pickWholeDay
 }) {
   const splitGroupOptions = useMemo(
     () => splitGroups.map((group) => ({
@@ -225,6 +235,7 @@ export function EntriesDateGroups({
   const changeEntryCategory = useStableHandler(onChangeEntryCategory);
   const changeCategoryAppearance = useStableHandler(onCategoryAppearanceChange);
   const openTripPicker = useStableHandler((entry, element) => onOpenTripPicker?.(entry, element));
+  const pickRow = useStableHandler((entry, event) => onPickRow?.(entry, event));
 
   // Only the open inline editor reads these, so they are built for that one
   // row per render instead of being passed to every row.
@@ -280,6 +291,16 @@ export function EntriesDateGroups({
           <div className="entries-date-head" ref={trackStuckDateRow}>
             <strong>{formatService.formatDateOnly(group.date)}</strong>
             <div className="entries-date-actions">
+              {isPicking && onPickDay ? (
+                <button
+                  type="button"
+                  className="entries-pick-day"
+                  data-pick-day={group.date}
+                  onClick={() => onPickDay(group.entries.map((entry) => entry.id))}
+                >
+                  {pickDayLabel}
+                </button>
+              ) : null}
               <span>{entriesMessages.dateNet}: <PrivateMoney className={moneyToneClass(flowTone(group.netMinor))}>{formatService.money(group.netMinor)}</PrivateMoney></span>
               {onRefreshEntries ? (
                 <button
@@ -314,6 +335,9 @@ export function EntriesDateGroups({
                   editor={isEditing && renderInlineEditor ? buildEditor(entry.ledgerEntry ?? entry) : null}
                   tripChip={getTripChip?.(entry) ?? null}
                   onOpenTripPicker={onOpenTripPicker ? openTripPicker : undefined}
+                  isPicking={isPicking}
+                  isPicked={isPicking && pickedIds.has(entry.id)}
+                  onPickRow={onPickRow ? pickRow : undefined}
                 />
               );
             })}
@@ -421,9 +445,13 @@ function EntryRow({
   onCategoryAppearanceChange,
   editor,
   tripChip = null,
-  onOpenTripPicker = undefined
+  onOpenTripPicker = undefined,
+  isPicking = false,
+  isPicked = false,
+  onPickRow = undefined
 }) {
   const rowRef = useRef(null);
+  const hold = useHoldToPick(onPickRow ? () => onPickRow(entry, { hold: true }) : undefined, isPicking);
   // The category label opens the shared category list. It mounts after the
   // first use and stays, so closing returns focus to the label.
   const categoryLabelRef = useRef(null);
@@ -477,10 +505,32 @@ function EntryRow({
     <div ref={rowRef} className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
       {!isEditing || !renderInlineEditor ? (
         <div
-          className={`entry-row-main has-owner-cue motion-row ${entry.isPendingDerived ? "is-pending" : ""}`}
+          className={`entry-row-main has-owner-cue motion-row ${entry.isPendingDerived ? "is-pending" : ""}${isPicked ? " is-picked" : ""}`}
           {...rowMotionProps(category, ownerCue.style)}
           role="button"
           tabIndex={0}
+          aria-pressed={isPicking ? isPicked : undefined}
+          {...hold.handlers}
+          onMouseDown={(event) => {
+            // Shift-click picks a run: keep the browser from selecting text.
+            if (event.shiftKey && onPickRow) event.preventDefault();
+          }}
+          onClickCapture={(event) => {
+            // A press and hold already picked the row: its click is spent.
+            if (hold.consumeClick()) {
+              event.preventDefault();
+              event.stopPropagation();
+              return;
+            }
+            if (!onPickRow || !(isPicking || event.shiftKey || event.metaKey || event.ctrlKey)) {
+              return;
+            }
+            // While picking, a click anywhere on the row picks it (its
+            // category label and chip do not open their lists).
+            event.preventDefault();
+            event.stopPropagation();
+            onPickRow(entry, { shiftKey: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey });
+          }}
           onClick={(event) => {
             if (shouldIgnoreRowEditClick(event.target, event.currentTarget)) {
               return;
@@ -492,14 +542,25 @@ function EntryRow({
               return;
             }
             event.preventDefault();
+            if (isPicking && onPickRow) {
+              onPickRow(entry, { shiftKey: event.shiftKey });
+              return;
+            }
             onBeginEntryEdit(entry);
           }}
         >
           <div className="entry-row-category">
-            <CategoryAppearancePopover
-              category={category}
-              onChange={onCategoryAppearanceChange}
-            />
+            {isPicking ? (
+              // The bubble's place: a tick box of the same size, so nothing moves.
+              <span className={`category-icon entry-pick-tick${isPicked ? " is-picked" : ""}`} aria-hidden="true">
+                {isPicked ? <Check size={16} strokeWidth={3} /> : null}
+              </span>
+            ) : (
+              <CategoryAppearancePopover
+                category={category}
+                onChange={onCategoryAppearanceChange}
+              />
+            )}
             <strong>{category?.name ?? entry.categoryName}</strong>
           </div>
           <div className="entry-row-description">
@@ -813,6 +874,59 @@ function EntryInlineEditorFields({ entry, viewId, categories, bankState, linkedS
       />
     </>
   );
+}
+
+// Press and hold on a touch screen (about 450 ms, still) starts picking with
+// a light buzz; moving the finger is a scroll and cancels it. The click that
+// ends the hold is spent, so the row does not also open.
+const HOLD_MS = 450;
+const HOLD_SLOP_PX = 10;
+
+function useHoldToPick(onHold, isPicking) {
+  const holdRef = useRef({ timer: 0, x: 0, y: 0, fired: false });
+  useEffect(() => () => window.clearTimeout(holdRef.current.timer), []);
+  const cancel = () => {
+    window.clearTimeout(holdRef.current.timer);
+    holdRef.current.timer = 0;
+  };
+  const handlers = onHold ? {
+    onPointerDown: (event) => {
+      cancel();
+      holdRef.current.fired = false;
+      if (event.pointerType !== "touch" || isPicking) return;
+      holdRef.current.x = event.clientX;
+      holdRef.current.y = event.clientY;
+      holdRef.current.timer = window.setTimeout(() => {
+        holdRef.current.timer = 0;
+        holdRef.current.fired = true;
+        try {
+          navigator.vibrate?.(10);
+        } catch {
+          // A browser without vibration just picks.
+        }
+        onHold();
+      }, HOLD_MS);
+    },
+    onPointerMove: (event) => {
+      if (!holdRef.current.timer) return;
+      if (Math.hypot(event.clientX - holdRef.current.x, event.clientY - holdRef.current.y) > HOLD_SLOP_PX) cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+    // The long press's own menu (copy, look up) would cover the rows.
+    onContextMenu: (event) => {
+      if (holdRef.current.timer || holdRef.current.fired) event.preventDefault();
+    }
+  } : {};
+  return {
+    handlers,
+    consumeClick: () => {
+      if (!holdRef.current.fired) return false;
+      holdRef.current.fired = false;
+      return true;
+    }
+  };
 }
 
 function shouldIgnoreRowEditClick(target, currentTarget) {
