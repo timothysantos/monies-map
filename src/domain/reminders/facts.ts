@@ -2,6 +2,7 @@
 // (src/domain/pages/reminders.ts) fills them from D1; the tests build them
 // by hand. Every rule is a pure function of these and `today`.
 import type { CardBillTransactionRow } from "../card-bill-projection";
+import type { TaxReliefsYear } from "../tax-reliefs";
 
 export interface ReminderCheckpoint {
   // The statement's month (the account's checkpoint month).
@@ -93,6 +94,9 @@ export interface ReminderInputs {
   // Subscriptions and bills (repeating_charge_choices): no price change
   // reminder for them.
   notRepeatingPayeeKeys?: string[];
+  // The year's tax relief facts, read only in December (the one month its
+  // reminder can show). Absent: no tax relief reminder.
+  taxRelief?: TaxReliefsYear;
 }
 
 // A person view reads the accounts that person owns plus joint ones; the

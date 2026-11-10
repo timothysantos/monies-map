@@ -32,7 +32,8 @@ const SAMPLES = [
   [{ dueText: "Sun 18 Oct", overdue: true, paidText: "$20.00", hasPaid: true }],
   [{ payeeName: "Spotify", newText: "$17.98", period: "monthly", hidden: false }],
   [{ oldText: "$15.98", higher: true, priorCount: 11, period: "yearly", dateText: "7 Oct", hidden: false }],
-  ["September", true], ["Alex"], ["October"]
+  ["September", true], ["Alex"], ["October"],
+  [{ name: "Ethan", parts: ["$9,300 more in SRS top-ups", "$5,000 more in CPF cash top-ups for family"], withName: true }], ["$9,300", "SRS top-ups"]
 ];
 
 function visibleStrings(value, path = "remindersCopy", out = []) {
@@ -64,7 +65,7 @@ test("the walk reaches the copy: titles, sentences, the Later choices, checklist
   const text = strings.map(([, value]) => value).join("\n");
   for (const expected of ["Remind me later", "Tomorrow", "In 3 days", "Next week", "Not for this bill", "Paid from another account", "Not for this statement",
     "Statements imported", "Left in Other (no category)", "Splits to settle", "Month note", "Got it", "Back on", "bill due in 6 days", "waiting 5 weeks",
-    "is ready to close", "Ask, 3 reminders", "Ask, 1 reminder", "conversation in progress and 3 reminders"]) {
+    "is ready to close", "left to use this year's tax reliefs", "Not for this year", "would still count", "Ask, 3 reminders", "Ask, 1 reminder", "conversation in progress and 3 reminders"]) {
     assert.ok(text.includes(expected), expected);
   }
   assert.ok(strings.length > 90, `walked ${strings.length} strings`);

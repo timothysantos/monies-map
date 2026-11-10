@@ -2,7 +2,7 @@
 // what it understands. The answer is read-only facts (kinds, dates, minor
 // amounts, names); the words come from copy/reminders-copy.js.
 
-const KINDS = new Set(["card_bill", "statement_missing", "splits_waiting", "price_change", "month_close"]);
+const KINDS = new Set(["card_bill", "statement_missing", "splits_waiting", "price_change", "month_close", "tax_relief"]);
 
 export function remindersEndpoint(viewId) {
   return `/api/reminders?view=${encodeURIComponent(viewId || "household")}`;

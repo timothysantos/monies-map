@@ -48,6 +48,8 @@ export function laterChoices(reminder, today) {
       return { days, skips: [copy.splits.skip], note: copy.splits.laterNote };
     case "month_close":
       return { days, skips: [copy.monthClose.skip], note: copy.monthClose.laterNote };
+    case "tax_relief":
+      return { days, skips: [copy.taxRelief.skip], note: copy.taxRelief.laterNote };
     default:
       return null;
   }
@@ -59,6 +61,7 @@ function laterTitleFor(reminder) {
     case "statement_missing": return copy.statement.laterTitle(reminder.accountName, reminderMonthName(reminder.statementMonth));
     case "splits_waiting": return reminder.direction === "between" ? copy.splits.laterTitleHousehold : copy.splits.laterTitle(otherName(reminder));
     case "month_close": return copy.monthClose.laterTitle(reminderMonthName(reminder.month));
+    case "tax_relief": return copy.taxRelief.laterTitle;
     default: return "";
   }
 }
@@ -84,6 +87,8 @@ export function reminderTarget(reminder, row = null) {
       return { pathname: "/splits", extra: {} };
     case "price_change":
       return { pathname: "/entries", extra: { entry_search: reminder.payeeName } };
+    case "tax_relief":
+      return { pathname: "/summary", extra: {} };
     case "month_close":
       if (row === "statements") return { pathname: "/imports", extra: {} };
       if (row === "other") return { pathname: "/entries", extra: { month: reminder.month, entry_category: "Other" } };
@@ -206,6 +211,23 @@ function buildCard(reminder, options) {
         amountText: hidden ? copy.hiddenAmount : `${delta > 0 ? "+" : "-"}${formatMoney(Math.abs(delta), reminder.currency)}`,
         primaryLabel: copy.price.open,
         quiet: "got-it"
+      };
+    }
+    case "tax_relief": {
+      const names = [...new Set(reminder.items.map((item) => item.personName))];
+      const lines = names.map((name) => copy.taxRelief.line({
+        name,
+        withName: names.length > 1,
+        parts: reminder.items.filter((item) => item.personName === name).map((item) => copy.taxRelief.part(formatMoney(item.roomMinor, "SGD"), copy.taxRelief.reliefs[item.relief]))
+      }));
+      return {
+        ...base,
+        icon: "calendar",
+        tone: "butter",
+        title: copy.taxRelief.title(reminder.daysLeft),
+        sentence: hidden ? copy.taxRelief.hiddenSentence : lines.join(" "),
+        primaryLabel: copy.taxRelief.open,
+        quiet: "later"
       };
     }
     case "month_close": {

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
+import { buildRemindersDto } from "../src/domain/pages/reminders.ts";
 import { buildTaxReliefsYear, classifyTaxReliefRow, taxReliefDaysLeft, taxReliefRoomLeft } from "../src/domain/tax-reliefs.ts";
 import { SG_TAX_RELIEF_LIMITS, taxReliefLimitsFor } from "../src/domain/sg-tax-relief-limits.ts";
 import { seedEmptyStateReferenceData } from "../src/domain/app-repository-seed.ts";
@@ -173,4 +174,19 @@ test("the three categories reach an existing household once, and a household's o
   assert.deepEqual(await names(), ["cat-mine:Charity gift", "cat-cpf-top-up:CPF top-up", "cat-srs-top-up:SRS top-up"]);
   await seedEmptyStateReferenceData(db);
   assert.equal((await names()).length, 3);
+});
+
+test("the December To do: only in December, from the entries, and in Reminders' order", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const ids = await seedReliefs(api);
+  const tax = async (view, today) => (await buildRemindersDto(db, view, today)).reminders.filter((reminder) => reminder.kind === "tax_relief");
+  assert.deepEqual(await tax("household", "2026-11-30"), []);
+  const [reminder] = await tax("household", "2026-12-01");
+  assert.equal(reminder.key, "tax_relief:2026");
+  assert.equal(reminder.daysLeft, 30);
+  // Tim's SRS ($10,000 of $15,300) and family CPF ($3,000 of $8,000) have room; his own CPF is full and the gift has no limit.
+  assert.deepEqual(reminder.items.map((item) => [item.personName, item.relief, item.roomMinor]), [["Tim", "srs", 530_000], ["Tim", "cpf_family", 500_000]]);
+  assert.deepEqual((await tax(JOYCE, "2026-12-01")), []);
+  assert.deepEqual((await tax("household", "2027-01-01")), []);
+  assert.ok(ids.srs);
 });

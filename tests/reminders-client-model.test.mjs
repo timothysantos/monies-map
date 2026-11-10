@@ -362,3 +362,32 @@ test("'Since you last looked' skips the card bill a reminder card already says, 
   const hiddenState = { v: 1, items: { "card_bill:uob:2026-09": { until: "2026-10-15", at: TODAY } } };
   assert.deepEqual(coveredSignalKeys([cardBill()], hiddenState, TODAY), []);
 });
+
+const taxRelief = (extra = {}) => ({
+  key: "tax_relief:2026", kind: "tax_relief", year: "2026", daysLeft: 26,
+  items: [
+    { personId: "p-e", personName: "Ethan", relief: "srs", roomMinor: 930000 },
+    { personId: "p-e", personName: "Ethan", relief: "cpf_family", roomMinor: 500000 },
+    { personId: "p-s", personName: "Serene", relief: "cpf_self", roomMinor: 400000 }
+  ],
+  ...extra
+});
+
+test("the December tax relief card states the room and the days left, opens Summary, and can be put away", () => {
+  const [card] = list([taxRelief()]).entries;
+  assert.equal(card.title, "26 days left to use this year's tax reliefs");
+  assert.equal(card.sentence, "Ethan: $9300.00 more in SRS top-ups and $5000.00 more in CPF cash top-ups for family would still count. Serene: $4000.00 more in CPF cash top-ups for yourself would still count.");
+  assert.deepEqual(card.target, { pathname: "/summary", extra: {} });
+  assert.deepEqual(card.later.skips.map((skip) => skip.label), ["Not for this year"]);
+  assert.doesNotMatch(`${card.title} ${card.sentence}`, /\b(should|must|save[sd]?|tax saved)\b/i);
+  // A single person's view names no one; the last day says so.
+  const single = list([taxRelief({ daysLeft: 0, items: [taxRelief().items[0]] })]).entries[0];
+  assert.equal(single.title, "Last day to use this year's tax reliefs");
+  assert.doesNotMatch(single.sentence, /^Ethan:/);
+});
+
+test("with money hidden the tax relief card shows no amount, and a skipped one stays put away", () => {
+  const [card] = list([taxRelief()], { hidden: true }).entries;
+  assert.doesNotMatch(card.sentence, /\$|\d{3}/);
+  assert.equal(list([taxRelief()], { state: { v: 1, items: { "tax_relief:2026": { skip: true, at: TODAY } } } }).total, 0);
+});

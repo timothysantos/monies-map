@@ -2025,7 +2025,7 @@ export interface TransferOptionDto {
 // rule says is worth a look today, as keys, kinds, dates and minor amounts
 // only. The words come from a fixed template file on the client. Read-only
 // and deterministic; no AI decides anything (docs/flows/reminders-flow.md).
-export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close";
+export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close" | "tax_relief";
 
 interface ReminderBaseDto {
   // Stable per occurrence (kind, subject, occurrence): snoozing and "seen"
@@ -2108,19 +2108,30 @@ export interface MonthCloseReminderDto extends ReminderBaseDto {
   allDone: boolean;
 }
 
+// December, while a relief the person has started still has room before
+// 31 December (src/domain/reminders/tax-relief-reminder.ts, DOMAIN.md "Tax
+// Relief"). Facts only: the relief, the person and the room left.
+export interface TaxReliefReminderDto extends ReminderBaseDto {
+  kind: "tax_relief";
+  year: string;
+  daysLeft: number;
+  items: Array<{ personId: string; personName: string; relief: "srs" | "cpf_self" | "cpf_family"; roomMinor: number }>;
+}
+
 export type ReminderDto =
   | CardBillReminderDto
   | StatementMissingReminderDto
   | SplitsWaitingReminderDto
   | PriceChangeReminderDto
-  | MonthCloseReminderDto;
+  | MonthCloseReminderDto
+  | TaxReliefReminderDto;
 
 export interface RemindersDto {
   viewId: string;
   // The household's day, so a device counts days the way the rules did.
   today: string;
   // In the order they show: overdue bills, bills due soonest, month close,
-  // statements (oldest first), Splits (longest waiting first), price changes.
-  // At most REMINDERS_MAX (20).
+  // statements (oldest first), the December tax relief reminder, Splits
+  // (longest waiting first), price changes. At most REMINDERS_MAX (20).
   reminders: ReminderDto[];
 }

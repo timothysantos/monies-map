@@ -29,8 +29,9 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, changedFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
 import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
+import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
@@ -795,6 +796,40 @@ test("Investments over time: every put in opens exactly its moves and Entries' t
   }
   // Without the view, the page's Shared scope lists none of them.
   const pageView = figureMenu({ fig: "invested", period, search, ids: card.putIn.ids });
+  const { derived: shared } = await openEntries(api, pageView.items[0].location, accounts);
+  assert.equal(shared.filteredEntries.length, 0);
+});
+
+// Tax reliefs this year (money-figures.ts taxReliefFigureMinor): each amount
+// used opens `outflow` narrowed to exactly the entries it counted, in the
+// household view, and Entries' total (spent plus transfers out) is the
+// amount to the cent, whatever view the page is in.
+test("Tax reliefs: every amount used opens exactly its entries and Entries' total is the figure", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  await createEntry(api, { date: "2026-03-15", description: "SRS CONTRIBUTION", categoryName: "SRS top-up", amountMinor: 1_000_000 });
+  await createEntry(api, { date: "2026-04-02", description: "CPF BOARD TOPUP", categoryName: "CPF top-up", amountMinor: 800_000 });
+  await createEntry(api, { date: "2026-08-02", description: "SRS CONTRIBUTION", categoryName: "SRS top-up", amountMinor: 120_000 });
+  await createEntry(api, { date: "2026-06-20", description: "GIVING.SG", categoryName: "Charity gift", amountMinor: 50_000 });
+  const out = await createEntry(api, { date: "2026-05-05", description: "TO JOYCE CPF", categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor: 300_000 });
+  assert.equal((await api("/api/accounts/create", { name: "Joyce OCBC", institution: "OCBC", kind: "bank", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: "person-joyce" })).status, 200);
+  const into = await createEntry(api, { date: "2026-05-05", description: "FROM TIM", accountName: "Joyce OCBC", ownerName: "Joyce", categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor: 300_000 });
+  assert.equal((await api("/api/transfers/link", { fromEntryId: out, toEntryId: into })).status, 200);
+  assert.equal((await api("/api/transfers/purpose", { entryId: out, categoryName: "CPF top-up" })).status, 200);
+  const { accounts } = await get(api, "/api/reference-data");
+  const card = await buildTaxReliefsDto(db, "household", "2026-11-10");
+  const figures = card.people.flatMap((person) => [...person.reliefs, person.charity].filter((figure) => figure.ids.length).map((figure) => [`${person.name}:${figure.amountMinor}`, figure]));
+  assert.ok(figures.length >= 3, "SRS, CPF and the gift are all counted");
+  const search = viewSearch(VIEWS[3], "2026-11");
+  const period = { startMonth: "2026-01", endMonth: "2026-11" };
+  for (const [label, figure] of figures) {
+    const menu = figureMenu({ fig: "outflow", period, search, ids: figure.ids, view: "household" });
+    const { model, derived, params } = await openEntries(api, menu.items[0].location, accounts);
+    assert.equal(params.get("view"), "household", label);
+    assert.equal(shownTotal(model), figure.amountMinor, `${label} Entries total`);
+    assert.equal(taxReliefFigureMinor(figure.ids, derived.filteredEntries), figure.amountMinor, `${label} rule`);
+  }
+  // Without the view, the page's Shared scope would list none of them.
+  const pageView = figureMenu({ fig: "outflow", period, search, ids: figures[0][1].ids });
   const { derived: shared } = await openEntries(api, pageView.items[0].location, accounts);
   assert.equal(shared.filteredEntries.length, 0);
 });

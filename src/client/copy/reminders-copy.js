@@ -132,6 +132,22 @@ export const remindersCopy = {
     open: "See charges"
   },
 
+  // December only: room left in a tax relief already started (DOMAIN.md
+  // "Tax Relief"). It states the room and the deadline; it never says how
+  // much tax a top-up saves and never tells anyone what to do.
+  taxRelief: {
+    title: (daysLeft) => (daysLeft <= 0 ? "Last day to use this year's tax reliefs" : `${plural(daysLeft, "day")} left to use this year's tax reliefs`),
+    // One person's room, then the next: "Ethan: $9,300 more in SRS top-ups would still count."
+    line: ({ name, parts, withName }) => `${withName ? `${name}: ` : ""}${parts.join(" and ")} would still count.`,
+    part: (amountText, relief) => `${amountText} more in ${relief}`,
+    reliefs: { srs: "SRS top-ups", cpf_self: "CPF cash top-ups for yourself", cpf_family: "CPF cash top-ups for family" },
+    hiddenSentence: "Some of this year's tax relief limits are not full yet. Gifts and top-ups count when they are made by 31 Dec.",
+    open: "Open Summary",
+    laterTitle: "Tax reliefs",
+    skip: { label: "Not for this year", hint: "back next December" },
+    laterNote: "This only hides it on this device."
+  },
+
   monthClose: {
     title: (monthName, allDone) => (allDone ? `${monthName} is all in` : `${monthName} is ready to close`),
     allInSentence: "Every statement is in and nothing is left to check.",

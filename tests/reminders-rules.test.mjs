@@ -430,3 +430,56 @@ test("ties on rank put the larger amount first, and the same facts always give t
 test("a view with nothing to say gets an empty list", () => {
   assert.deepEqual(buildReminders(inputs()), []);
 });
+
+// ---------------------------------------------------------------------------
+// Tax relief room (December)
+
+import { buildTaxReliefsYear } from "../src/domain/tax-reliefs.ts";
+
+const reliefRow = (id, ownerPersonId, categoryName, amountMinor, extra = {}) => ({
+  id, date: "2026-03-10", entryType: "transfer", transferDirection: "out", amountMinor, ownerPersonId, categoryName, ...extra
+});
+const taxYear = (today, rows) => buildTaxReliefsYear({ today, people: PEOPLE, rows });
+const ROWS = [
+  reliefRow("srs-1", ETHAN.id, "SRS top-up", 600_000),
+  reliefRow("cpf-1", ETHAN.id, "CPF top-up", 800_000),
+  reliefRow("cpf-2", SERENE.id, "CPF top-up", 400_000),
+  reliefRow("gift-1", ETHAN.id, "Charity gift", 50_000, { entryType: "expense", transferDirection: null })
+];
+
+test("in December, each started relief below its limit is one To do with the room left; a full one and a gift are left out", () => {
+  const today = "2026-12-05";
+  const [reminder] = buildReminders(inputs({ today, viewId: "household", taxRelief: taxYear(today, ROWS) })).filter((item) => item.kind === "tax_relief");
+  assert.deepEqual(reminder, {
+    key: "tax_relief:2026",
+    kind: "tax_relief",
+    year: "2026",
+    daysLeft: 26,
+    items: [
+      { personId: ETHAN.id, personName: "Ethan", relief: "srs", roomMinor: 930_000 },
+      { personId: SERENE.id, personName: "Serene", relief: "cpf_self", roomMinor: 400_000 }
+    ]
+  });
+});
+
+test("a person's view counts only that person's room, and a view with none left has no To do", () => {
+  const today = "2026-12-05";
+  const taxRelief = taxYear(today, ROWS);
+  const own = (viewId) => buildReminders(inputs({ today, viewId, taxRelief })).filter((item) => item.kind === "tax_relief");
+  assert.deepEqual(own(SERENE.id)[0].items.map((item) => [item.personName, item.relief, item.roomMinor]), [["Serene", "cpf_self", 400_000]]);
+  assert.deepEqual(own(ETHAN.id)[0].items.map((item) => item.relief), ["srs"]);
+  const full = taxYear(today, [reliefRow("cpf-full", ETHAN.id, "CPF top-up", 800_000)]);
+  assert.deepEqual(buildReminders(inputs({ today, viewId: ETHAN.id, taxRelief: full })).filter((item) => item.kind === "tax_relief"), []);
+});
+
+test("no To do before December, on a year that has changed, or for a relief nobody started", () => {
+  const kinds = (today, taxRelief, viewId = "household") => buildReminders(inputs({ today, viewId, taxRelief })).filter((item) => item.kind === "tax_relief");
+  assert.deepEqual(kinds("2026-11-30", taxYear("2026-11-30", ROWS)), []);
+  assert.deepEqual(kinds("2027-01-02", taxYear("2026-12-31", ROWS)), []);
+  assert.equal(kinds("2026-12-01", taxYear("2026-12-01", ROWS)).length, 1);
+  assert.equal(kinds("2026-12-31", taxYear("2026-12-31", ROWS))[0].daysLeft, 0);
+  assert.deepEqual(kinds("2026-12-10", taxYear("2026-12-10", [])), []);
+  assert.deepEqual(kinds("2026-12-10", undefined), []);
+  // Only a charity gift: no limit to fill, so nothing to say.
+  assert.deepEqual(kinds("2026-12-10", taxYear("2026-12-10", [ROWS[3]])), []);
+});

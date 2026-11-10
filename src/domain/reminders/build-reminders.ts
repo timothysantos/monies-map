@@ -4,14 +4,16 @@ import type { ReminderInputs } from "./facts";
 import { monthCloseReminders } from "./month-close-reminder";
 import { priceChangeReminders } from "./price-change-reminders";
 import { splitsWaitingReminders } from "./splits-reminders";
+import { taxReliefReminders } from "./tax-relief-reminder";
 
 // Position in the list: overdue bills, bills due soonest, month close,
-// statements (oldest first), Splits (longest waiting first), price changes.
+// statements (oldest first), tax relief room (December), Splits (longest waiting first), price changes.
 function rank(reminder: ReminderDto) {
   switch (reminder.kind) {
     case "card_bill": return reminder.daysUntilDue < 0 ? 0 : 1;
     case "month_close": return 2;
     case "statement_missing": return 3;
+    case "tax_relief": return 3.5;
     case "splits_waiting": return 4;
     case "price_change": return 5;
   }
@@ -26,6 +28,7 @@ function withinRank(reminder: ReminderDto) {
     case "month_close": return Number(reminder.month.replace("-", ""));
     case "statement_missing": return -reminder.daysSinceExpected;
     case "splits_waiting": return -reminder.weeks * 1000 - (reminder.variant === "settle_up" ? 1 : 0);
+    case "tax_relief": return 0;
     case "price_change": return 0;
   }
 }
@@ -36,6 +39,7 @@ function moneyOf(reminder: ReminderDto) {
     case "card_bill": return reminder.leftMinor;
     case "splits_waiting": return reminder.amountMinor;
     case "price_change": return reminder.toMinor - reminder.fromMinor;
+    case "tax_relief": return reminder.items.reduce((sum, item) => sum + item.roomMinor, 0);
     default: return 0;
   }
 }
@@ -50,6 +54,7 @@ export function buildReminders(input: ReminderInputs): ReminderDto[] {
     ...cardBillReminders(input),
     ...monthClose,
     ...statementMissingReminders(input),
+    ...taxReliefReminders(input),
     ...priceChangeReminders(input),
     // While the month-close card still asks about Splits, its Splits row
     // replaces the standalone reminders.
