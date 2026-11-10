@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildPaceRange, everydayMinor, paceOneOffs, paceTotals, roundOutward } from "../src/domain/pace.ts";
+import { buildPaceRange, everydayMinor, paceOneOffs, paceTotals, roundOutward, roundRange } from "../src/domain/pace.ts";
 
 let counter = 0;
 const entry = (date, amountMinor, inSeries = false) => ({ id: `p${(counter += 1)}`, date, amountMinor, inSeries });
@@ -102,6 +102,13 @@ test("two rates within 10% of each other widen to 10% either side of their middl
   const middle = (13_508 + 13_000) / 2;
   assert.equal(range.everydayLowMinor, Math.round(20 * middle * 0.9));
   assert.equal(range.everydayHighMinor, Math.round(20 * middle * 1.1));
+});
+
+test("Coming up's total: one amount rounds to its nearest step, never widened; a range rounds outward", () => {
+  assert.deepEqual(roundRange(1_998, 1_998), { lowMinor: 2_000, highMinor: 2_000 });
+  assert.deepEqual(roundRange(53_210, 53_210), { lowMinor: 53_000, highMinor: 53_000 });
+  assert.deepEqual(roundRange(301, 301), { lowMinor: 1_000, highMinor: 1_000 });
+  assert.deepEqual(roundRange(50_210, 53_990), { lowMinor: 50_000, highMinor: 54_000 });
 });
 
 test("rounding is outward at $10, $50 and $100", () => {

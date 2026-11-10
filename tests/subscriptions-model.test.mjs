@@ -64,4 +64,13 @@ test("coming up: this week to Sunday, next week, later; a bill that changes keep
   const sp = coming.groups[1].items[0];
   assert.deepEqual([sp.lowMinor, sp.highMinor], [11860, 14285]);
   assert.equal(coming.count, 5);
+  // If this keeps up: the 30 days' total, rounded outward around the exact sums.
+  const items = coming.groups.flatMap((group) => group.items);
+  const low = items.reduce((sum, item) => sum + item.lowMinor, 0);
+  const high = items.reduce((sum, item) => sum + item.highMinor, 0);
+  assert.ok(low < high);
+  assert.ok(coming.total.lowMinor <= low && coming.total.highMinor >= high);
+  assert.equal(coming.total.lowMinor % 1_000, 0);
+  assert.equal(coming.total.highMinor % 1_000, 0);
+  assert.ok(coming.total.highMinor - high < 5_000 && low - coming.total.lowMinor < 5_000);
 });

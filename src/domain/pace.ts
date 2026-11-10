@@ -163,6 +163,18 @@ export function roundOutward(lowMinor: number, highMinor: number) {
   };
 }
 
+/**
+ * A total that may be one amount (every part fixed) or a range: one amount
+ * is rounded to its nearest step ("about $20" for $19.98), never widened
+ * into "$10 to $20"; a range is rounded outward (Coming up's total).
+ */
+export function roundRange(lowMinor: number, highMinor: number) {
+  if (lowMinor !== highMinor) return roundOutward(lowMinor, highMinor);
+  const step = Math.abs(lowMinor) < 100_000 ? 1_000 : Math.abs(lowMinor) < 1_000_000 ? 5_000 : 10_000;
+  const about = Math.max(step, Math.round(lowMinor / step) * step);
+  return { lowMinor: about, highMinor: about };
+}
+
 /** Spending at month end and what is left of what comes in, both ranges. */
 export function paceTotals(spentSoFarMinor: number, range: PaceRange) {
   const low = spentSoFarMinor + range.addLowMinor;

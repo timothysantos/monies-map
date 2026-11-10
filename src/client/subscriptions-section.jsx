@@ -16,6 +16,9 @@ import { useIsMobileLayout } from "./use-viewport";
 import { useRepeatingCharges } from "./use-repeating-charges";
 import { saveRepeatingChoice } from "./repeating-charges-api";
 
+// A rounded total reads "$540", never "$540.00".
+const wholeMoney = (minor) => money(minor).replace(/\.00(?=\D*$)/, "");
+
 // The details and choices of one charge load only when a row is opened.
 const SubscriptionsChargeDialog = lazy(() => import("./subscriptions-charge-dialog").then((module) => ({ default: module.SubscriptionsChargeDialog })));
 
@@ -319,7 +322,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
       {tab === "coming" ? (
         <>
           {comingUp?.count && !hiddenMoney ? (
-            <p className="subs-coming-total" data-pace="coming-up">{paceCopy.comingUpTotal(money(comingUp.total.lowMinor), money(comingUp.total.highMinor), comingUp.endDate)}</p>
+            <p className="subs-coming-total" data-pace="coming-up">{paceCopy.comingUpTotal(wholeMoney(comingUp.total.lowMinor), wholeMoney(comingUp.total.highMinor), comingUp.endDate)}</p>
           ) : null}
           <ul className="subs-list" aria-label={copy.comingUp}>
             <ComingUpList comingUp={comingUp} categories={categories} phone={phone} />
