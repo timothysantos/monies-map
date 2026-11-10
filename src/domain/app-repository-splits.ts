@@ -2075,9 +2075,15 @@ type BulkEntryRow = LinkableEntryRow & { entry_type: string; owner_person_id: st
 // split is added. More than USUALLY_SHARED_POLICY.maxEntriesPerAdd are
 // refused; more than USUALLY_SHARED_CONFIRM_ABOVE need confirmedCount equal
 // to the number of entries (the person tapped "Yes, add all N").
+// `source` says who chose the split, for the audit event only: "usual" is
+// Usually shared (each shop's habit), "chosen" is the picked rows' bar on
+// Entries ("Add to Splits": one group and share the person chose for all).
+// Both write the same rows through this one command.
+export type AddEntriesToSplitsSource = "usual" | "chosen";
+
 export async function addEntriesToSplitsRecord(
   db: D1Database,
-  input: { items: AddEntriesToSplitsItem[]; confirmedCount?: number }
+  input: { items: AddEntriesToSplitsItem[]; confirmedCount?: number; source?: AddEntriesToSplitsSource }
 ): Promise<AddEntriesToSplitsResult> {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) throw new Error("Choose at least one entry to add to Splits.");
@@ -2174,8 +2180,10 @@ export async function addEntriesToSplitsRecord(
     buildAuditEventStatement(db, {
       entityType: "split_expense",
       entityId: accepted[0].id,
-      action: "split_expenses_added_usual",
-      detail: `Added ${accepted.length} ${accepted.length === 1 ? "entry" : "entries"} to Splits with their usual split.`
+      action: input.source === "chosen" ? "split_expenses_added_chosen" : "split_expenses_added_usual",
+      detail: input.source === "chosen"
+        ? `Added ${accepted.length} picked ${accepted.length === 1 ? "entry" : "entries"} to Splits with the split chosen in Entries.`
+        : `Added ${accepted.length} ${accepted.length === 1 ? "entry" : "entries"} to Splits with their usual split.`
     }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
   ];
@@ -2200,7 +2208,7 @@ export async function addEntriesToSplitsRecord(
 // (each as Delete split does, with its history event), behind guards that
 // fail the whole batch when one was already removed. A split in a settled
 // period is refused as a whole, with the reason.
-export async function removeSplitExpensesRecord(db: D1Database, input: { splitExpenseIds: string[] }) {
+export async function removeSplitExpensesRecord(db: D1Database, input: { splitExpenseIds: string[]; source?: AddEntriesToSplitsSource }) {
   const ids = Array.isArray(input.splitExpenseIds) ? input.splitExpenseIds.map((id) => String(id ?? "")) : [];
   if (!ids.length || ids.some((id) => !id) || new Set(ids).size !== ids.length) throw new Error("Choose the splits to remove.");
   if (ids.length > USUALLY_SHARED_POLICY.maxEntriesPerAdd) {
@@ -2236,8 +2244,8 @@ export async function removeSplitExpensesRecord(db: D1Database, input: { splitEx
     buildAuditEventStatement(db, {
       entityType: "split_expense",
       entityId: rows[0].id,
-      action: "split_expenses_removed_usual",
-      detail: `Took ${rows.length} ${rows.length === 1 ? "entry" : "entries"} back off Splits (undo of Usually shared).`
+      action: input.source === "chosen" ? "split_expenses_removed_chosen" : "split_expenses_removed_usual",
+      detail: `Took ${rows.length} ${rows.length === 1 ? "entry" : "entries"} back off Splits (undo of ${input.source === "chosen" ? "Add to Splits from the picked rows" : "Usually shared"}).`
     }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
   ];

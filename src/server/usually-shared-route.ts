@@ -3,7 +3,9 @@
 // - GET  /api/splits/usually-shared          the list, grouped by shop (read-only)
 // - POST /api/splits/expenses/add-usual      put entries on Splits with each shop's usual split
 //                                            ({ groups: [{ splitGroupId, payerShareBasisPoints, entryIds }], confirmedCount })
-// - POST /api/splits/expenses/remove-added   Undo: take those splits back off ({ splitExpenseIds })
+// - POST /api/splits/expenses/add-chosen     the picked rows' "Add to Splits": one group and one
+//                                            share for every entry ({ splitGroupId, payerShareBasisPoints, entryIds, confirmedCount })
+// - POST /api/splits/expenses/remove-added   Undo: take those splits back off ({ splitExpenseIds, source? })
 //
 // Both writes are one all-or-nothing command (app-repository-splits.ts) and
 // reuse the rows "Add to splits" writes for one entry. A cross-site write
@@ -19,12 +21,13 @@ import { readJsonObject, RequestBodyTooLargeError } from "./limited-body";
 
 export const USUALLY_SHARED_PATH = "/api/splits/usually-shared";
 const ADD_PATH = "/api/splits/expenses/add-usual";
+const CHOSEN_PATH = "/api/splits/expenses/add-chosen";
 const REMOVE_PATH = "/api/splits/expenses/remove-added";
 // 200 ids with room to spare.
 const MAX_BODY_BYTES = 64 * 1024;
 
 export function isUsuallySharedPath(pathname: string) {
-  return pathname === USUALLY_SHARED_PATH || pathname === ADD_PATH || pathname === REMOVE_PATH;
+  return pathname === USUALLY_SHARED_PATH || pathname === ADD_PATH || pathname === CHOSEN_PATH || pathname === REMOVE_PATH;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value : "");
@@ -46,6 +49,13 @@ export function readUsualAddItems(body: { groups?: unknown }): AddEntriesToSplit
   return items;
 }
 
+// The picked rows' body as one item per entry, all with the one group and share.
+export function readChosenAddItems(body: { splitGroupId?: unknown; payerShareBasisPoints?: unknown; entryIds?: unknown }): AddEntriesToSplitsItem[] {
+  return readUsualAddItems({
+    groups: [{ splitGroupId: body.splitGroupId, payerShareBasisPoints: body.payerShareBasisPoints, entryIds: body.entryIds }]
+  });
+}
+
 export async function handleUsuallySharedRoute(request: Request, url: URL, env: { DB: D1Database }): Promise<Response | null> {
   if (url.pathname === USUALLY_SHARED_PATH) {
     if (request.method !== "GET") {
@@ -57,7 +67,7 @@ export async function handleUsuallySharedRoute(request: Request, url: URL, env: 
       ...(await buildUsuallySharedDto(env.DB, { today: todayInAppTimeZone(), ...(Number.isInteger(days) && days > 0 ? { days } : {}) }))
     });
   }
-  if (url.pathname !== ADD_PATH && url.pathname !== REMOVE_PATH) {
+  if (url.pathname !== ADD_PATH && url.pathname !== CHOSEN_PATH && url.pathname !== REMOVE_PATH) {
     return null;
   }
   if (request.method !== "POST") {
@@ -73,10 +83,12 @@ export async function handleUsuallySharedRoute(request: Request, url: URL, env: 
     throw error;
   }
   try {
-    if (url.pathname === ADD_PATH) {
+    if (url.pathname === ADD_PATH || url.pathname === CHOSEN_PATH) {
+      const chosen = url.pathname === CHOSEN_PATH;
       const result = await addEntriesToSplitsRecord(env.DB, {
-        items: readUsualAddItems(body),
-        confirmedCount: typeof body.confirmedCount === "number" ? body.confirmedCount : undefined
+        items: chosen ? readChosenAddItems(body) : readUsualAddItems(body),
+        confirmedCount: typeof body.confirmedCount === "number" ? body.confirmedCount : undefined,
+        source: chosen ? "chosen" : "usual"
       });
       return json({
         ok: true,
@@ -86,7 +98,7 @@ export async function handleUsuallySharedRoute(request: Request, url: URL, env: 
       });
     }
     const ids = Array.isArray(body.splitExpenseIds) ? body.splitExpenseIds.slice(0, USUALLY_SHARED_POLICY.maxEntriesPerAdd + 1).map(text) : [];
-    return json({ ok: true, ...(await removeSplitExpensesRecord(env.DB, { splitExpenseIds: ids })) });
+    return json({ ok: true, ...(await removeSplitExpensesRecord(env.DB, { splitExpenseIds: ids, source: body.source === "chosen" ? "chosen" : "usual" })) });
   } catch (error) {
     if (error instanceof SplitSettlementLockedError) {
       return json({ ok: false, error: error.message, code: error.code, checkpointId: error.checkpointId, batchId: error.batchId }, 409);
