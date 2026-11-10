@@ -15,7 +15,7 @@ import {
   openSeededDatabase,
   rows
 } from "./support/d1-workspace.mjs";
-import { saveLeadViewPreference, savePlanModePreference, viewerPreferencesKey } from "../src/domain/app-repository-viewer-preferences.ts";
+import { loadViewerPreferences, saveLeadViewPreference, savePlanModePreference, saveSummaryCardsPreference, viewerPreferencesKey } from "../src/domain/app-repository-viewer-preferences.ts";
 
 let template;
 test.before(async () => {
@@ -221,4 +221,25 @@ test("the Summary card order is saved for one login and not the other; Reset rem
   }
   assert.equal((await arrange(null, "mix,insights")).status, 401);
   assertSameDatabase(await dumpDatabase(workspace.db), before);
+});
+
+test("a Summary card order save that fails leaves the stored choices as they were", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await saveLeadViewPreference(db, TIM, "simple");
+  await saveSummaryCardsPreference(db, TIM, "insights,mix,subs,plan,accounts");
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO app_settings/);
+  await assert.rejects(saveSummaryCardsPreference(faulty.db, TIM, "mix,insights"), /injected_failure_missing_table/);
+  assert.equal(faulty.state.fired, true);
+  assertSameDatabase(await dumpDatabase(db), before);
+  await assert.rejects(saveSummaryCardsPreference(db, TIM, "Mix;plan"), /not one Summary knows/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("a stored card order that is not the right shape reads as the usual order and keeps the other choices", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await saveLeadViewPreference(db, TIM, "simple");
+  await db.prepare("UPDATE app_settings SET value_json = json_patch(value_json, ?) WHERE key = ?")
+    .bind(JSON.stringify({ summaryCards: "<script>" }), await viewerPreferencesKey(TIM)).run();
+  assert.deepEqual(await loadViewerPreferences(db, TIM), { leadView: "simple", planMode: null, summaryCards: null });
 });
