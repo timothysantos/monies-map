@@ -7,7 +7,7 @@ import { reseedDemo } from "./helpers";
 // hidden); nothing changes until Done; the choice survives a reload; Reset
 // brings the usual order back. Without a login it is kept on the device.
 
-const USUAL = ["insights", "subs", "investments", "taxreliefs", "mix+plan", "accounts"];
+const USUAL = ["insights", "changed", "subs", "investments", "taxreliefs", "mix+plan", "accounts"];
 
 async function cardOrder(page) {
   return page.evaluate(() => [...document.querySelectorAll(".panel [data-summary-card], .panel .summary-top-grid, .panel .summary-card-solo")]
@@ -40,17 +40,17 @@ test.describe("Arrange Summary", () => {
     expect(await cardOrder(page)).toEqual(USUAL);
 
     await page.locator(".summary-cards-arrange button").click();
-    // Three moves up: above Subscriptions and bills.
+    // Three moves up: above Subscriptions and bills (and under What changed).
     for (let move = 0; move < 3; move += 1) await dialog.getByRole("button", { name: "Move Spending Mix up" }).click();
     await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
-    expect(await cardOrder(page)).toEqual(["insights", "solo", "subs", "investments", "taxreliefs", "solo"]);
+    expect(await cardOrder(page)).toEqual(["insights", "changed", "solo", "subs", "investments", "taxreliefs", "solo"]);
     await expect(page.locator(".summary-accounts")).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator(".summary-cards-arrange button")).toBeVisible({ timeout: 30_000 });
-    expect(await cardOrder(page)).toEqual(["insights", "solo", "subs", "investments", "taxreliefs", "solo"]);
+    expect(await cardOrder(page)).toEqual(["insights", "changed", "solo", "subs", "investments", "taxreliefs", "solo"]);
 
     await page.locator(".summary-cards-arrange button").click();
     await dialog.getByRole("button", { name: "Reset to the usual order" }).click();

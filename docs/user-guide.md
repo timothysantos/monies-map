@@ -339,8 +339,8 @@ over plan.
   behind the change, and click any amount for exactly those entries. On a
   phone it shows three rows, then **Show all**. When nothing has moved much
   it says so in one line. It only appears when the range ends in this month,
-  it follows the person and range you chose, and with money hidden it lists
-  the names only. It only says what has happened; it never guesses ahead.
+  it follows the person and range you chose, you can move or hide it with
+  **Arrange cards**, and with money hidden it lists the names only. It only says what has happened; it never guesses ahead.
 - **Bank fees this year**: one of the Money insights lines. When the banks
   have charged you $20 or more since 1 January, it adds them up by kind:
   late fees, interest, annual fees, foreign currency fees and bank account

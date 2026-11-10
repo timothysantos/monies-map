@@ -1924,12 +1924,13 @@ that invalidates a page. A failed read, or nothing to show, shows nothing.
 
 ## What changed card
 
-A Summary card between Money insights and Subscriptions and bills (owner
+A Summary card between Money insights and Subscriptions and bills, registered
+for Arrange Summary as `changed` and so movable and hideable (owner
 decision 2026-11-10; DOMAIN.md "What Changed Card"; `summary-changed-section.jsx`,
 words in `copy/summary-changed-copy.js`).
 
 - Loading: it rides in Spending Mix's lazy chunk (a chunk of its own added
-  two first-screen files); `use-summary-changed.js` reads
+  two first-screen files); `useSummaryCardQuery` reads
   `GET /api/summary-changed?view=&scope=` through `fetchRequiredQuery` once
   the top summary is usable, only when the Summary range ends in the
   current month. No answer, nothing to compare or a failed read shows no card.

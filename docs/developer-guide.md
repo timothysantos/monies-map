@@ -2888,8 +2888,8 @@ the view's entries of this month and the 6 before with
 SQL: the engine needs each entry's description, person share and offset
 rule), so the card and Ask never disagree; the client
 (`summary-changed-section.jsx`, riding in Spending Mix's chunk like
-Subscriptions' so the first screen gains no file; `use-summary-changed.js`;
-`queryKeys.summaryChanged`) reads it once the top summary is usable and only
+Subscriptions' so the first screen gains no file; `useSummaryCardQuery`;
+`queryKeys.summaryChanged`; registered as the `changed` Summary card) reads it once the top summary is usable and only
 when the Summary range ends in the current month. Ask's usual answer for the
 month in progress uses `sameDayUsual` too. "What changed?" is
 `src/domain/ask-changed.ts` (the `changed` intent and `what_changed` topic),
@@ -2939,7 +2939,7 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
    plain words a grandparent follows.
 
 Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
-only on an owner decision. Registered today: `insights`, `subs` (which holds
+only on an owner decision. Registered today: `insights`, `changed`, `subs` (which holds
 Coming up and Bank fees), `investments`, `taxreliefs`, `mix`, `plan`, `accounts`. The server only checks
 the stored string's shape, so no server change is needed for a new card.
 
