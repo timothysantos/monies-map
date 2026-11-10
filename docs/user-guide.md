@@ -364,6 +364,14 @@ over plan.
   Mark an entry with the categories **SRS top-up**, **CPF top-up** or **Charity
   gift** (for a transfer, choose one as its purpose, and name the person it is
   for if it is for family). The card is hidden until something is marked.
+- **Miles and cashback**: what each credit card has earned this month (or
+  since its statement day), with a bar for each bonus showing how much of its
+  cap is used, which card to use next for your top kinds of spending, a notice
+  when a bonus is used up, and a look back over the last 3 months at about how
+  many more miles the best card each time would have earned. Miles and cashback
+  are counted separately. It is an estimate from your entries; your card
+  statement's points are the final word. Tap an amount to see the entries
+  behind it. Set the rules in **Settings**, **Cards and rewards**.
 - **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
   move the cards under the top summary up or down, and tap a card's name to
   hide or show it. **Done** keeps your order; **Reset to the usual order**
@@ -1637,6 +1645,13 @@ set up**). Select a row to open it; it opens right under its row.
   isn't set up, it says so: Ask then uses the basic model. If Claude is set
   up but nobody has asked it anything yet, it says Claude hasn't been used
   yet.
+- **Cards and rewards**: what each credit card pays back (miles or cashback,
+  the usual rate, bonus categories and how much of a bonus each month counts),
+  used by **Miles and cashback** on Summary. The usual rules of common cards
+  are already filled in; open a card to change them, or **Reset to the usual
+  rules**. **Suggest cards from** chooses **The whole household** (any of your
+  cards can be suggested for anyone's spending) or **Each person's own cards**.
+  Each change has **Undo**.
 - **Payment ways**: the account each person's PayNow, bank transfers and
   cash come from ([Choose your payment ways](#choose-your-payment-ways)).
 - **Categories**: the categories used everywhere. Select one to change its

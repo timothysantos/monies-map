@@ -12,6 +12,11 @@ Route entry:
 
 - `/settings`
 
+Settings > Cards and rewards (`settings-card-rewards-section.jsx`) reads
+`GET /api/card-rewards/rules` only when opened, saves through `POST
+/api/card-rewards/rules` and `/suggest-from`, and refreshes the Summary card's
+query (`queryKeys.cardRewards`).
+
 The route state carries the active settings section. The browser location is
 the source of truth.
 

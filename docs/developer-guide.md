@@ -3043,6 +3043,29 @@ Ask), `tests/pace-copy-lint.test.mjs`, the colour guard,
 `tests/ask-answer-route.test.mjs` and `tests/e2e/pace-line.spec.js`
 (`PACE_SHOT_DIR` saves screenshots).
 
+## How does Miles and cashback work?
+
+A Summary card and a Settings section (DOMAIN.md "Card Reward Rule"), no AI.
+The rules per credit card are rows of the additive `card_reward_rules` table
+(`schema.sql`; one JSON object each, bounded by `readCardRewardRules`).
+`src/domain/card-reward-presets.ts` is the one config module with the usual
+rules of the cards we hold, each with its source and a "check yearly" note;
+a preset is matched to a card by name, copied in the first time the card is
+read (`ensureCardRewardRules`) and then editable in Settings > Cards and
+rewards, where "Reset to the usual rules" copies it again. **Check the presets
+once a year** (the HSBC Revolution cap especially). Pure rules in
+`src/domain/card-rewards.ts`: the channel estimate (`entryChannels`: an Apple
+Pay Shortcut entry is contactless, a non-SGD `original_currency` is foreign,
+AMAZE*, WWW and .COM are online), `cardsThisCycle`, `bestCardsNow`,
+`capNotices` and `lookingBack` (3 whole months replayed in date order). The
+page reader is `src/domain/pages/card-rewards.ts`, the commands are in
+`src/domain/app-repository-card-rewards.ts` and the routes in
+`src/server/card-rewards-route.ts`. "Suggest cards from" (default the whole
+household) decides whose cards may be named. Tests:
+`tests/card-rewards-rules.test.mjs`, `tests/card-rewards-api.test.mjs`,
+`tests/atomic-writes-card-rewards.test.mjs`, `tests/card-rewards-model.test.mjs`,
+`tests/openable-figures.test.mjs` and `tests/e2e/summary-miles.spec.js`.
+
 ## How do the Investments and Tax reliefs cards work?
 
 Two Summary cards (DOMAIN.md "Investments Over Time" and "Tax Relief"), both

@@ -74,7 +74,7 @@ export const cardRewardsCopy = {
   nothingBest: "Not enough spending on these cards yet to suggest one.",
 
   noticesTitle: "Bonus caps",
-  usedUpNotice: (card, resetsOn, base, unit, what) => `${card}'s bonus is used up until ${dayMonth(resetsOn)}; ${what} there now earns ${rateText(unit, base)}.`,
+  usedUpNotice: (card, resetsOn, base, unit, what) => `The bonus on ${card} is used up until ${dayMonth(resetsOn)}; ${what} there now earns ${rateText(unit, base)}.`,
   alternative: (card, room) => (room === null ? `${card} still pays its bonus on it.` : `${card} has ${room} of bonus room left.`),
   nearlyNotice: (card, room, resetsOn) => `${card} has ${room} of bonus room left until ${dayMonth(resetsOn)}.`,
   minimumNotice: (card, need, count) => `${card} needs ${cardRewardsCopy.minimumToGo(need, count)}.`,

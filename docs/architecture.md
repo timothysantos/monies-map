@@ -408,6 +408,24 @@ same 7-month date window Ask's "What changed?" reads and shares its engine
 first screen and adds nothing to the Summary payload. Deterministic, no AI,
 looks back only.
 
+### Miles and cashback: card reward rules (current, 2026-11)
+
+Owner-approved (2026-11-10). A credit card's reward rules (DOMAIN.md "Card
+reward rule") live in the additive `card_reward_rules` table, one JSON row per
+card, copied from the presets in `src/domain/card-reward-presets.ts` the first
+time a card is read (`ensureCardRewardRules`: one read, one `db.batch()` for
+only what is missing, one audit event; a missing table reads as the presets).
+Pure rules in `src/domain/card-rewards.ts` (channel estimate, earning per cycle
+with caps, best card now, cap notices, a 3-month replay) run over the credit
+card entries of the last four months (bounded by date, household-date index).
+`GET /api/card-rewards?view=` feeds Summary's card, `GET
+/api/card-rewards/rules` Settings > Cards and rewards; `POST
+/api/card-rewards/rules` (save, reset, undo) and `/suggest-from` are
+all-or-nothing commands with audit events (`app-repository-card-rewards.ts`).
+The "Suggest cards from" setting defaults to the whole household (pooled caps
+and miles); per-person mode never names another person's card. Lazy code in
+Spending Mix's chunk, read once the top summary is usable. No AI.
+
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
 The household asks "Check my books" and gets a list of problems in its own data

@@ -6,6 +6,7 @@ import { buildCardRewardsModel } from "./card-rewards-model";
 import { cardRewardsCopy as copy, formatMiles } from "./copy/card-rewards-copy";
 import { shortMonthName } from "./copy/subscriptions-copy";
 import { money } from "./formatters";
+import { useMoneyPrivacy } from "./money-privacy";
 import { getPersonColourVars } from "./person-colour";
 import { useCardRewards } from "./use-card-rewards";
 import { useIsMobileLayout } from "./use-viewport";
@@ -35,7 +36,10 @@ function Figure({ ids, period, name, children, className = "" }) {
   );
 }
 
-function earnedText(unit, amount) {
+// Miles reveal spending like dollars do, so hidden money hides them too.
+const HIDDEN = "••••";
+function earnedText(unit, amount, visible) {
+  if (!visible) return HIDDEN;
   return unit === "miles" ? copy.miles(amount) : money(Math.floor(amount));
 }
 
@@ -45,6 +49,10 @@ function OwnerChip({ name }) {
 }
 
 function BonusBar({ card, bonus }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  if (!areTotalsVisible) {
+    return null;
+  }
   if (bonus.capMinor === null) {
     return <p className="cr-bonus-line">{copy.noCap(card.unit, bonus)}</p>;
   }
@@ -66,6 +74,7 @@ function BonusBar({ card, bonus }) {
 }
 
 function CardRow({ card, showOwner }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <li className="cr-card" data-card={card.accountId}>
       <div className="cr-card-head">
@@ -75,7 +84,7 @@ function CardRow({ card, showOwner }) {
         </span>
         <span className="cr-card-earned">
           <Figure ids={card.ids} period={card.period} name={card.unit === "miles" ? copy.milesFrom(card.name) : copy.backFrom(card.name)} className="cr-figure">
-            {earnedText(card.unit, card.earned)}
+            {earnedText(card.unit, card.earned, areTotalsVisible)}
           </Figure>
           <span className="cr-label">{copy.since(card)}</span>
         </span>
@@ -128,6 +137,7 @@ function noticeText(notice) {
 }
 
 function LookingBackBlock({ item }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const [startMonth] = item.period.split(":");
   const endMonth = item.endDate.slice(0, 7);
   const title = copy.backTitle(shortMonthName(startMonth), shortMonthName(endMonth));
@@ -145,7 +155,7 @@ function LookingBackBlock({ item }) {
       <p className="cr-back-line">
         {copy.backAbout}{" "}
         <Figure ids={item.ids} period={item.period} name={item.unit === "miles" ? copy.backMiles : copy.backCashback} className="cr-figure cr-back-figure">
-          {item.unit === "miles" ? copy.miles(item.gain) : money(item.gain)}
+          {item.unit === "miles" ? (areTotalsVisible ? copy.miles(item.gain) : HIDDEN) : money(item.gain)}
         </Figure>
         {" "}{item.unit === "miles" ? copy.backMiles : copy.backCashback}
       </p>
@@ -154,7 +164,7 @@ function LookingBackBlock({ item }) {
           <li key={`${change.categoryName}|${change.fromAccountId}|${change.toAccountId}`} className="cr-change">
             <span>{copy.change(change.categoryName, change.fromName, change.toName)}</span>
             <Figure ids={change.ids} period={item.period} name={copy.change(change.categoryName, change.fromName, change.toName)} className="cr-figure cr-label">
-              {item.unit === "miles" ? copy.changeMiles(change.gain) : `about ${money(change.gain)} more`}
+              {item.unit === "miles" ? (areTotalsVisible ? copy.changeMiles(change.gain) : HIDDEN) : `about ${money(change.gain)} more`}
             </Figure>
           </li>
         ))}
@@ -164,6 +174,7 @@ function LookingBackBlock({ item }) {
 }
 
 function Picture({ picture, pooled, phone }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const [showAll, setShowAll] = useState(false);
   const cards = phone && !showAll ? picture.phoneCards : picture.cards;
   return (
@@ -173,7 +184,7 @@ function Picture({ picture, pooled, phone }) {
         {picture.milesTotal ? (
           <div className="cr-total">
             <span className="cr-total-label">{copy.milesSoFar}</span>
-            <Figure ids={picture.milesTotal.ids} period={picture.milesTotal.period} name={copy.milesSoFar} className="cr-total-figure">{formatMiles(picture.milesTotal.amount)}</Figure>
+            <Figure ids={picture.milesTotal.ids} period={picture.milesTotal.period} name={copy.milesSoFar} className="cr-total-figure">{areTotalsVisible ? formatMiles(picture.milesTotal.amount) : HIDDEN}</Figure>
           </div>
         ) : null}
         {picture.cashbackTotal ? (

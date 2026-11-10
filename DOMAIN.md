@@ -581,6 +581,47 @@ Canonical terms:
   Each used amount opens as `outflow` narrowed to its entries
   (`taxReliefFigureMinor`).
 
+### Card Reward Rule
+
+What a credit card pays back, kept per card account so Summary's "Miles and
+cashback" card can show what was earned and suggest the best card
+(owner-approved design, 2026-11-10; no AI, deterministic, an estimate:
+"your card statement's points are the final word").
+
+Canonical terms:
+- `card reward rules` (table `card_reward_rules`, one JSON row per credit card
+  account, additive): the `unit` (`miles` or `cashback`; they are counted
+  apart and never converted into dollars), the `usual rate` (miles a dollar,
+  or percent back), `bonus rules`, `excluded categories` (earn nothing) and,
+  for cashback, a `monthly minimum` (spending and a number of payments).
+- `bonus rule`: categories and/or a `channel` (`online`, `contactless`,
+  `foreign` currency; `match` both or either), a rate, a `cap` (eligible
+  spending per `cycle`) and the cycle (a calendar month, or a statement month
+  from the card's statement day).
+- `channel` is an estimate from the entry: an Apple Pay Shortcut entry
+  (`external_reference` starting `shortcut:`) is contactless, a non-SGD
+  `original_currency` is foreign, and AMAZE*, "WWW" and ".COM" in the name
+  are online.
+- `usual rules` (presets): `src/domain/card-reward-presets.ts`, one config
+  module, each with its source and a "check yearly" note, matched to an
+  account by name, copied into the card's rules the first time it is read and
+  editable afterwards; "Reset to the usual rules" copies it again.
+- `bonus room left`: cap less eligible spending so far this cycle.
+  `best card now` per top category uses it. `cap notice`: "bonus used up
+  until 1 Dec" / "$620 of bonus room left". `looking back`: the last 3 whole
+  months replayed in date order with the caps ("about N more miles", top 3
+  changes).
+- `Suggest cards from` (setting `card_rewards_suggest_from`): `household`
+  (default: any household card may be suggested for anyone's spending, caps
+  shared per card, miles one household total with a per-card breakdown) or
+  `own` (each person's own cards only; never another person's card).
+- Rewards are on the whole card amount (a bank pays on the charge), so a
+  figure opens in the household view as `spent` narrowed to its entries
+  (`cardRewardSpendFigureMinor`).
+- Changes: `card_reward_rules_seeded` (the first copy-in, once),
+  `card_reward_rules_changed` (a save, a reset or an Undo) and
+  `card_rewards_suggest_from_updated` audit events; every edit has Undo.
+
 ### Repeating Charge
 
 A charge that comes back every month or every year (streaming, phone,

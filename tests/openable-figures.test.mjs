@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, cardRewardSpendFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
 import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
 import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
@@ -885,4 +885,48 @@ test("Usually shared: a group's amount equals the Entries total behind its figur
     checked += 1;
   }
   assert.equal(checked, 3);
+});
+
+// Miles and cashback (money-figures.ts cardRewardSpendFigureMinor): every
+// spending figure on the card (a card's spending this cycle, a bonus's
+// eligible spending) opens exactly the card entries the server named, in the
+// household view (a bank pays on the whole charge), and Entries' Spent total
+// is the figure to the cent. Joyce's split dinner is counted whole.
+test("Miles and cashback: every spending figure opens exactly its entries and Entries' total is the figure", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  const thisMonth = todayInAppTimeZone().slice(0, 7);
+  const day = `${thisMonth}-01`;
+  await createEntry(api, { date: day, description: "AMAZE*SHOPEE SINGAPORE", accountName: "Citi Rewards", categoryName: "Shopping", amountMinor: 31_250, ownerName: "Joyce" });
+  await createEntry(api, { date: day, description: "SONG FA BAK KUT TEH", accountName: "UOB Lady's", categoryName: "Food & Drinks", amountMinor: 8_800, ownerName: "Joyce" });
+  const shared = await api("/api/entries/create", {
+    date: day, description: "DIN TAI FUNG", accountName: "UOB Lady's", categoryName: "Food & Drinks",
+    entryType: "expense", amountMinor: 12_000, ownershipType: "shared", ownerName: "Joyce", splitBasisPoints: 6000
+  });
+  assert.equal(shared.status, 200, JSON.stringify(shared.payload));
+  let checked = 0;
+  for (const viewId of ["household", "person-joyce"]) {
+    const answer = await get(api, `/api/card-rewards?view=${viewId}`);
+    const asPeriod = (text) => {
+      const [startMonth, endMonth] = text.split(":");
+      return { startMonth, endMonth };
+    };
+    for (const person of answer.people) {
+      for (const card of person.cards) {
+        const figures = [["card", card.spendMinor, card.ids, card.period], ...card.bonuses.map((bonus) => [`bonus ${bonus.bonusId}`, bonus.eligibleMinor, bonus.eligibleIds, bonus.period])];
+        for (const [label, amountMinor, ids, period] of figures) {
+          if (!ids.length) continue;
+          const menu = figureMenu({ fig: "spent", period: asPeriod(period), search: "", ids, view: "household" });
+          const link = menu.items.find((item) => item.action === "entries");
+          assert.ok(link, `${card.name} ${label} offers View entries`);
+          assert.match(link.location.search, /view=household/);
+          const { model, derived } = await openEntries(api, link.location, accounts);
+          assert.equal(shownTotal(model), amountMinor, `${viewId} ${card.name} ${label}`);
+          assert.equal(cardRewardSpendFigureMinor(ids, derived.filteredEntries), amountMinor, `${viewId} ${card.name} ${label} (rule)`);
+          checked += 1;
+        }
+      }
+    }
+  }
+  assert.ok(checked >= 6, `checked ${checked} figures`);
 });

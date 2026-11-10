@@ -198,6 +198,7 @@ chunk.
 | `summaryPage` bank fees (2026-11) | same step | — | one more statement beside the Summary page's other reads (two for a person view, with the window's split shares): the year's fee candidates bounded by date and description words; the DTO's `bankFeesYear` is left out when the year has no fee |
 | `summaryChanged` (`GET /api/summary-changed`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable and only when its range ends in the current month: 6 round trips, about 11,000 rows and 1.7 MB of rows read and ~45 ms of CPU on the 10k fixture, the 7-month date window `loadUsualEntries` reads for Ask (`tests/page-load-scale-guard.test.mjs`); the card's code rides in Spending Mix's chunk |
 | `usuallyShared` (`GET /api/splits/usually-shared`) | `<= 250ms` | `400ms` | read-only, read by the lazy Splits section (never the first screen, never a page DTO): two entry reads, each bounded by a date window and a LIMIT (the newest 500 unsplit candidates of 90 days; the newest 6,000 history rows of 455 days), 4 round trips, about 77,000 rows read, 1.7 MB of rows and ~240 ms of CPU on the 10k fixture; the sweep indexes history by owner and shop (a remembered shop key) so each candidate sees only its own shop and category (`tests/page-load-scale-guard.test.mjs`; the prod export took 5.7 s before the index, 0.2 s after) |
+| `cardRewards` (`GET /api/card-rewards`, `/rules`) | `<= 100ms` | `300ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step of 5 statements (credit cards, rules, statement days, people, the credit card entries of the last four months bounded by date); the first read per household also writes the presets in one batch (`tests/card-rewards-api.test.mjs`, `tests/cold-start-statement-budget.test.mjs`) |
 | `repeatingCharges` (`GET /api/repeating-charges`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step of 4 to 5 statements, about 40,200 rows and 612 kB of rows read and ~40 ms of CPU on the 10k fixture, 26 months of expenses grouped in SQL by description and month (`tests/page-load-scale-guard.test.mjs`, payload key `repeating-charges`) |
 | `investmentsOverTime` (`GET /api/investments-over-time`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step, the accounts, their statement values and the people, plus the year's entries (figures only) only when an account in view has a statement value |
 | `taxReliefs` (`GET /api/tax-reliefs`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable: one step, the people and this year's entries whose category or transfer purpose is a relief category, matched in SQL so only those rows leave D1; the limits are one dated module (`sg-tax-relief-limits.ts`) |
@@ -877,6 +878,15 @@ A persistence command is all-or-nothing:
   markers: no entry and no month total changes
   (`tests/atomic-writes-repeating-charges.test.mjs`). The table is additive
   and every read tolerates it missing
+- Miles and cashback (`src/domain/app-repository-card-rewards.ts`, DOMAIN.md
+  "Card Reward Rule"): the first copy-in of the presets (one read, then only
+  the missing rows plus one `card_reward_rules_seeded` event in one batch),
+  save, reset, Undo (`card_reward_rules_changed`) and "Suggest cards from"
+  (`card_rewards_suggest_from_updated`) validate first (a known credit card,
+  `readCardRewardRules` bounds) and write the row and its audit event in one
+  batch. No month refresh markers: no entry changes
+  (`tests/atomic-writes-card-rewards.test.mjs`). The table is additive and every
+  read tolerates it missing (the presets are used)
 - trips and events (`src/domain/app-repository-trip-events.ts`, DOMAIN.md
   "Trip or Event"): save, set entries (at most 200, written as two
   `json_each` statements whatever the count, so no statement binds more than

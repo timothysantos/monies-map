@@ -198,6 +198,15 @@ export function repeatingFigureMinor(ids: readonly string[], entries: FigureEntr
 }
 
 /**
+ * Miles and cashback (DOMAIN.md "Card reward rule"): a spending figure on the
+ * card (a bonus's eligible spending, a card's spending this cycle) is the
+ * card entries the server named, at their whole amounts (a bank pays on the
+ * charge, never a person's share), so it opens as `spent` narrowed to the ids
+ * in the household view and Entries' total is the figure to the cent.
+ */
+export const cardRewardSpendFigureMinor = repeatingFigureMinor;
+
+/**
  * Bank fees this year (the `bank_fees` figure, DOMAIN.md "Bank Charge"):
  * every row either classifier names a fee in the year, charges adding and
  * refunds (money in under Fees) taking away, at the view's amounts. It opens

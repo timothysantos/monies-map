@@ -1945,6 +1945,34 @@ words in `copy/summary-changed-copy.js`).
 - Hidden money: names only, A to Z, no amounts, no up or down, no mark.
 - Colours: tokens only; money is not toned (it lists what moved).
 
+## Miles and cashback
+
+A Summary card (owner-approved, 2026-11-10; DOMAIN.md "Card Reward Rule"),
+registered as `miles` beside Subscriptions and bills (`SUMMARY_CARD_IDS`,
+`cardBody`, `NAMES`). Lazy code in Spending Mix's chunk
+(`card-rewards-section.jsx`, `card-rewards-section.css`,
+`card-rewards-model.js`, words in `copy/card-rewards-copy.js`), read once the
+top summary is usable (`use-card-rewards.js`, `queryKeys.cardRewards`).
+
+- Totals ("Miles so far", "Cashback so far", kept apart, never converted),
+  then each card with what it earned this month (or since its statement day), a
+  bonus-cap bar ("$620 of $1,000 bonus spending"), "Used up until 1 Dec", then
+  "Best card now" per top category, "Bonus caps" notices and "Looking back" over
+  the last 3 whole months. A line says it is an estimate and the card
+  statement's points are the final word. With the household pooled (the
+  default) the household is one picture with an owner chip per card; each
+  person's own cards shows one picture per person. Compact on a phone: the first
+  three cards and "Show every card".
+- Every spend figure is `data-fig="spent"` with its entry ids and
+  `data-fig-view="household"` (a bank pays on the whole charge); View entries
+  equals it to the cent (`cardRewardSpendFigureMinor`). Miles open the spending
+  that earned them.
+- Settings > Cards and rewards: the "Suggest cards from" choice, then one row
+  per credit card that opens its rules (unit, usual rate, bonuses with the one
+  category list, how it was paid, rate, cap, cycle, exclusions, minimum), Save,
+  "Reset to the usual rules" and Undo on the notice. Existing Settings row,
+  sheet and field patterns only.
+
 ## Subscriptions and bills
 
 A Summary card under Money insights (owner decision D1, 2026-11-10;
