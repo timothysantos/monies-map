@@ -67,7 +67,7 @@ test.describe("Arrange Summary", () => {
     await expect(sheet).toContainText("Tap a card's name to show or hide it.");
     const firstUp = sheet.getByRole("button", { name: "Move Money insights up" });
     await expect(firstUp).toBeDisabled();
-    await expect(sheet.getByRole("button", { name: "Move The accounts shown down" })).toBeDisabled();
+    await expect(sheet.getByRole("button", { name: "Move Miles and cashback down" })).toBeDisabled();
     const box = await sheet.getByRole("button", { name: "Move Spending Mix up" }).boundingBox();
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeGreaterThanOrEqual(44);
