@@ -1,0 +1,54 @@
+/* If this keeps up (pace-line.jsx): the plan tone (sky) only, one strength,
+   even when the high end is over the plan. What is spent is solid; the low
+   end continues dashed; the high end is hatched; the plan is a thin mark.
+   A forecast is never rose: it has not happened. */
+
+.pace-line {
+  margin: 10px 0 0;
+}
+
+.pace-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--pastel-neutral);
+  overflow: hidden;
+}
+
+.pace-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.pace-bar-spent {
+  left: 0;
+  background: var(--pastel-sky-ink);
+}
+
+.pace-bar-low {
+  border-top: 2px dashed var(--pastel-sky-ink);
+  border-bottom: 2px dashed var(--pastel-sky-ink);
+  background: var(--pastel-sky);
+}
+
+.pace-bar-high {
+  background: repeating-linear-gradient(135deg, var(--pastel-sky-line) 0 3px, var(--pastel-sky) 3px 7px);
+}
+
+.pace-bar-plan {
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+}
+
+.pace-text {
+  margin: 6px 0 0;
+  color: var(--pastel-sky-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.pace-text [data-fig] {
+  color: inherit;
+}
