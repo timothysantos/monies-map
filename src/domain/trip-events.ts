@@ -32,6 +32,11 @@ export interface TripEventDto {
   entryCount: number;
   // When an entry was last put on it (or when it was made), for "Recent".
   lastUsedAt: string;
+  // Only on the trip view: the linked split group's cash expenses that have
+  // no entry, per currency ("Also ₩96,000 cash on Seoul trip splits, not in
+  // Entries"). Left out when there are none.
+  splitCash?: Array<{ currency: string; amountMinor: number }>;
+  splitGroupName?: string;
 }
 
 // What a page's rows need to show a chip: the trips those rows use.

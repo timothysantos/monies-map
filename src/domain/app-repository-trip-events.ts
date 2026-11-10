@@ -27,6 +27,24 @@ import {
   type TripEventIcon,
   type TripEventInput
 } from "./trip-events";
+import {
+  HOME_CURRENCY,
+  MAX_SEARCH_ROWS,
+  MAX_SPLIT_SUGGESTION_ROWS,
+  MAX_SUGGESTION_ROWS,
+  SEARCH_MONTHS_BEFORE,
+  buildTripEventSearchResults,
+  buildTripEventSuggestions,
+  monthsBefore,
+  readSearchWords,
+  suggestTripEventsForNewEntries,
+  tripEventDefaultsFromEntries,
+  type ActiveTripEvent,
+  type TripSuggestionGroupDto,
+  type TripSuggestionSourceRow,
+  type TripSuggestionsDto,
+  type WalletHistory
+} from "./trip-event-suggestions";
 
 export { TripEventRefusedError } from "./trip-events";
 
@@ -96,31 +114,68 @@ export async function loadTripEvent(db: D1Database, tripEventId: string): Promis
   return tripEvents.find((trip) => trip.id === tripEventId) ?? null;
 }
 
+const LINKS_IN_RANGE_SQL = `
+  SELECT 'link' AS kind, trip_event_entries.transaction_id, trip_events.id AS trip_event_id, trip_events.name, trip_events.icon_key,
+    NULL AS currency, NULL AS amount_minor
+  FROM trip_event_entries
+  INNER JOIN transactions ON transactions.id = trip_event_entries.transaction_id
+  INNER JOIN trip_events ON trip_events.id = trip_event_entries.trip_event_id
+  WHERE trip_event_entries.household_id = ?
+    AND transactions.household_id = ?
+    AND transactions.transaction_date >= ?
+    AND transactions.transaction_date < ?
+`;
+
 // The trip of each entry in a date range (the Entries page's rows), and
-// the chips those trips need. Empty when the tables are missing.
+// the chips those trips need. Empty when the tables are missing. With
+// `splitCashGroupId` (the trip view of a trip linked to a split group), the
+// same round trip also sums that group's cash expenses that have no entry,
+// per currency.
 export async function loadTripEventLinksForDateRange(
   db: D1Database,
   rangeStart: string,
-  rangeEndExclusive: string
-): Promise<{ links: Map<string, string>; chips: Record<string, TripEventChipDto> }> {
+  rangeEndExclusive: string,
+  { splitCashGroupId = null }: { splitCashGroupId?: string | null } = {}
+): Promise<{ links: Map<string, string>; chips: Record<string, TripEventChipDto>; splitCash: Array<{ currency: string; amountMinor: number }> }> {
   try {
     const result = await db
-      .prepare(`
-        SELECT trip_event_entries.transaction_id, trip_events.id AS trip_event_id, trip_events.name, trip_events.icon_key
-        FROM trip_event_entries
-        INNER JOIN transactions ON transactions.id = trip_event_entries.transaction_id
-        INNER JOIN trip_events ON trip_events.id = trip_event_entries.trip_event_id
-        WHERE trip_event_entries.household_id = ?
-          AND transactions.household_id = ?
-          AND transactions.transaction_date >= ?
-          AND transactions.transaction_date < ?
-      `)
-      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, rangeStart, rangeEndExclusive)
-      .all<{ transaction_id: string; trip_event_id: string; name: string; icon_key: string }>();
-    return linksFromRows(result.results);
+      .prepare(`${LINKS_IN_RANGE_SQL}${splitCashGroupId ? `UNION ALL ${SPLIT_CASH_SQL}` : ""}`)
+      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, rangeStart, rangeEndExclusive, ...(splitCashGroupId ? [DEFAULT_HOUSEHOLD_ID, splitCashGroupId] : []))
+      .all<{ kind: "link" | "cash"; transaction_id: string; trip_event_id: string; name: string; icon_key: string; currency: string | null; amount_minor: number | null }>();
+    return {
+      ...linksFromRows(result.results.filter((row) => row.kind === "link")),
+      splitCash: splitCashFromRows(result.results)
+    };
   } catch {
-    return { links: new Map(), chips: {} };
+    return { links: new Map(), chips: {}, splitCash: [] };
   }
+}
+
+// A split group's cash expenses with no entry (DOMAIN.md "Trip or Event":
+// they are not entries, so a trip's total leaves them out and its view names
+// them in one line).
+const SPLIT_CASH_SQL = `
+  SELECT 'cash' AS kind, NULL AS transaction_id, NULL AS trip_event_id, NULL AS name, NULL AS icon_key,
+    currency, SUM(total_amount_minor) AS amount_minor
+  FROM split_expenses
+  WHERE household_id = ? AND split_group_id = ? AND deleted_at IS NULL AND linked_transaction_id IS NULL
+  GROUP BY currency
+`;
+
+function splitCashFromRows(rows: Array<{ kind: string; currency: string | null; amount_minor: number | null }>) {
+  return rows
+    .filter((row) => row.kind === "cash" && row.currency && Number(row.amount_minor) > 0)
+    .map((row) => ({ currency: String(row.currency), amountMinor: Number(row.amount_minor) }))
+    .sort((left, right) => left.currency.localeCompare(right.currency));
+}
+
+// A trip view whose trip has no entries yet still names its split cash.
+export async function loadSplitGroupCash(db: D1Database, splitGroupId: string) {
+  const result = await db
+    .prepare(SPLIT_CASH_SQL)
+    .bind(DEFAULT_HOUSEHOLD_ID, splitGroupId)
+    .all<{ kind: string; currency: string | null; amount_minor: number | null }>();
+  return splitCashFromRows(result.results);
 }
 
 function linksFromRows(rows: Array<{ transaction_id: string; trip_event_id: string; name: string; icon_key: string }>) {
@@ -236,13 +291,16 @@ interface SetChangeDetail {
 // Put entries on a trip or event, move them to another, or take them off:
 // up to MAX_TRIP_EVENT_CHANGE at once. `newTripEvent` makes a trip in the
 // same batch; a change whose tripEventId is "new" goes on it (the picker's
-// "Make 'Jeju weekend'"). Changes that would change nothing are left out.
+// "Make 'Jeju weekend'"). Changes that would change nothing are left out,
+// and with `onlyEntriesOnNoTrip` so are entries already on another trip
+// (the split group follow rule never moves an entry).
 export async function setTripEventEntries(
   db: D1Database,
   input: {
     changes: TripEventEntryChange[];
     addedBy?: TripEventAddedBy;
     newTripEvent?: Parameters<typeof readTripEventInput>[0] | null;
+    onlyEntriesOnNoTrip?: boolean;
   }
 ): Promise<{ undoId: string | null; changed: number; tripEvent: TripEventDto | null; changes: SetChangeDetail[] }> {
   await assertTablesExist(db);
@@ -289,7 +347,8 @@ export async function setTripEventEntries(
 
   const effective: SetChangeDetail[] = resolved
     .map((change) => ({ entryId: change.entryId, from: fromById.get(change.entryId) ?? null, to: change.to }))
-    .filter((change) => change.from !== change.to);
+    .filter((change) => change.from !== change.to)
+    .filter((change) => !input.onlyEntriesOnNoTrip || change.from === null);
   const tripEventId = resolved.every((change) => change.to === resolved[0].to) ? resolved[0].to : null;
   if (!effective.length && !created) {
     return { undoId: null, changed: 0, tripEvent: tripEventId ? await loadTripEvent(db, tripEventId) : null, changes: [] };
@@ -541,3 +600,392 @@ export async function buildTripEventCarryStatements(
   return statements;
 }
 
+// ---- Suggestions (DOMAIN.md "Trip or Event", "Suggestions") ---------------
+// Reads only: nothing joins a trip until the person ticks and taps, and the
+// tap goes through setTripEventEntries. Every read is bounded by dates (or a
+// split group, or a search window) and a LIMIT.
+
+const SUGGESTION_COLUMNS = `
+  SELECT
+    transactions.id,
+    transactions.transaction_date AS date,
+    transactions.description,
+    transactions.original_description,
+    transactions.amount_minor,
+    transactions.original_amount_minor,
+    transactions.original_currency,
+    categories.name AS category_name,
+    accounts.account_name,
+    CASE WHEN accounts.is_joint = 1 THEN 'Shared' ELSE COALESCE(owners.display_name, account_owners.display_name) END AS who,
+    trip_event_entries.trip_event_id,
+    split_expenses.split_group_id
+  FROM transactions
+  INNER JOIN accounts ON accounts.id = transactions.account_id
+  LEFT JOIN people AS owners ON owners.id = transactions.owner_person_id
+  LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
+  LEFT JOIN categories ON categories.id = transactions.category_id
+  LEFT JOIN imports ON imports.id = transactions.import_id
+  LEFT JOIN trip_event_entries ON trip_event_entries.transaction_id = transactions.id
+  LEFT JOIN split_expenses
+    ON split_expenses.household_id = transactions.household_id
+   AND split_expenses.linked_transaction_id = transactions.id
+   AND split_expenses.deleted_at IS NULL
+  WHERE transactions.household_id = ?
+    AND transactions.entry_type = 'expense'
+    AND (transactions.import_id IS NULL OR imports.status = 'completed')
+`;
+
+interface SuggestionRow {
+  id: string;
+  date: string;
+  description: string;
+  original_description: string | null;
+  amount_minor: number;
+  original_amount_minor: number | null;
+  original_currency: string | null;
+  category_name: string | null;
+  account_name: string | null;
+  who: string | null;
+  trip_event_id: string | null;
+  split_group_id: string | null;
+}
+
+function toSourceRow(row: SuggestionRow): TripSuggestionSourceRow {
+  return {
+    id: row.id,
+    date: row.date,
+    description: row.description,
+    originalDescription: row.original_description,
+    amountMinor: Number(row.amount_minor),
+    originalAmountMinor: row.original_amount_minor === null ? null : Number(row.original_amount_minor),
+    originalCurrency: row.original_currency,
+    categoryName: row.category_name,
+    who: row.who,
+    accountName: row.account_name,
+    tripEventId: row.trip_event_id,
+    splitGroupId: row.split_group_id
+  };
+}
+
+async function readSuggestionRows(db: D1Database, filter: string, binds: unknown[], limit: number, order = "transactions.transaction_date, transactions.created_at, transactions.id") {
+  const result = await db
+    .prepare(`${SUGGESTION_COLUMNS} ${filter} ORDER BY ${order} LIMIT ${limit + 1}`)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...binds)
+    .all<SuggestionRow>();
+  return { rows: result.results.slice(0, limit).map(toSourceRow), truncated: result.results.length > limit };
+}
+
+const NO_SUGGESTIONS: TripSuggestionsDto = { available: false, tripEventId: null, groups: [], homeBillCount: 0, truncated: false };
+
+// What the review list needs about a trip (or a draft from the New sheet):
+// its dates, currency and split group (with the group's name).
+async function readSuggestionTarget(db: D1Database, input: { tripEventId?: string | null; startDate?: unknown; endDate?: unknown; currency?: unknown; splitGroupId?: unknown }) {
+  if (input.tripEventId) {
+    const trip = await db
+      .prepare(`
+        SELECT trip_events.id, trip_events.start_date, trip_events.end_date, trip_events.currency, trip_events.split_group_id, split_groups.group_name
+        FROM trip_events
+        LEFT JOIN split_groups ON split_groups.household_id = trip_events.household_id AND split_groups.id = trip_events.split_group_id
+        WHERE trip_events.household_id = ? AND trip_events.id = ?
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.tripEventId)
+      .first<{ id: string; start_date: string | null; end_date: string | null; currency: string | null; split_group_id: string | null; group_name: string | null }>();
+    if (!trip) throw new TripEventRefusedError("That trip or event was not found.");
+    return { tripEventId: trip.id, startDate: trip.start_date, endDate: trip.end_date, currency: trip.currency, splitGroupId: trip.split_group_id, splitGroupName: trip.group_name };
+  }
+  // A draft: the New sheet's fields, read with the save's own rules.
+  const draft = readTripEventInput({ name: "Draft", startDate: input.startDate, endDate: input.endDate, currency: input.currency, splitGroupId: input.splitGroupId });
+  const group = draft.splitGroupId
+    ? await db.prepare("SELECT group_name FROM split_groups WHERE household_id = ? AND id = ?").bind(DEFAULT_HOUSEHOLD_ID, draft.splitGroupId).first<{ group_name: string }>()
+    : null;
+  return { tripEventId: null, startDate: draft.startDate, endDate: draft.endDate, currency: draft.currency, splitGroupId: group ? draft.splitGroupId : null, splitGroupName: group?.group_name ?? null };
+}
+
+// The review list (design 2d) for a trip, or for the New sheet's draft
+// before it is saved (its preview line). Two sequential steps: the trip,
+// then the entries in its dates and those on its split group together.
+export async function loadTripEventSuggestions(
+  db: D1Database,
+  input: { tripEventId?: string | null; startDate?: unknown; endDate?: unknown; currency?: unknown; splitGroupId?: unknown }
+): Promise<TripSuggestionsDto> {
+  let target: Awaited<ReturnType<typeof readSuggestionTarget>>;
+  try {
+    target = await readSuggestionTarget(db, input);
+  } catch (error) {
+    if (error instanceof TripEventRefusedError) throw error;
+    return NO_SUGGESTIONS;
+  }
+  try {
+    const [inDates, onSplits] = await Promise.all([
+      target.startDate && target.endDate
+        ? readSuggestionRows(db, "AND transactions.transaction_date >= ? AND transactions.transaction_date <= ?", [target.startDate, target.endDate], MAX_SUGGESTION_ROWS)
+        : Promise.resolve({ rows: [], truncated: false }),
+      target.splitGroupId
+        ? readSuggestionRows(
+          db,
+          "AND transactions.id IN (SELECT linked_transaction_id FROM split_expenses WHERE household_id = ? AND split_group_id = ? AND deleted_at IS NULL AND linked_transaction_id IS NOT NULL)",
+          [DEFAULT_HOUSEHOLD_ID, target.splitGroupId],
+          MAX_SPLIT_SUGGESTION_ROWS
+        )
+        : Promise.resolve({ rows: [], truncated: false })
+    ]);
+    // Entries already on this trip are not suggestions.
+    const notOnThis = (rows: TripSuggestionSourceRow[]) => rows.filter((row) => !target.tripEventId || row.tripEventId !== target.tripEventId);
+    return buildTripEventSuggestions({
+      ...target,
+      inDates: notOnThis(inDates.rows),
+      onSplits: notOnThis(onSplits.rows),
+      truncated: inDates.truncated || onSplits.truncated
+    });
+  } catch {
+    // The trip tables missing: the feature is off.
+    return NO_SUGGESTIONS;
+  }
+}
+
+// "Booked before you went?": the household's entries whose description or
+// note holds every word, in the 12 months before the first day (or before
+// today, for a trip with no dates), skipping the trip's own dates. Newest
+// first, at most MAX_SEARCH_ROWS.
+export async function searchTripEventSuggestions(
+  db: D1Database,
+  input: { tripEventId: string; query: unknown; today: string }
+): Promise<{ available: boolean; group: TripSuggestionGroupDto; before: string; since: string }> {
+  const words = readSearchWords(input.query);
+  let target: Awaited<ReturnType<typeof readSuggestionTarget>> | null;
+  try {
+    target = await readSuggestionTarget(db, { tripEventId: input.tripEventId });
+  } catch (error) {
+    if (error instanceof TripEventRefusedError) throw error;
+    target = null;
+  }
+  const before = target?.startDate ?? input.today;
+  const since = monthsBefore(before, SEARCH_MONTHS_BEFORE);
+  if (!target || !words.length) {
+    return { available: Boolean(target), group: { key: "search", entries: [] }, before, since };
+  }
+  const wordFilter = words
+    .map(() => "AND (lower(transactions.description) LIKE ? OR lower(COALESCE(transactions.note, '')) LIKE ?)")
+    .join(" ");
+  try {
+    const { rows } = await readSuggestionRows(
+      db,
+      `AND transactions.transaction_date >= ? AND transactions.transaction_date < ? ${wordFilter}`,
+      [since, before, ...words.flatMap((word) => [`%${word}%`, `%${word}%`])],
+      MAX_SEARCH_ROWS,
+      "transactions.transaction_date DESC, transactions.created_at DESC, transactions.id"
+    );
+    return { available: true, group: buildTripEventSearchResults(rows, target.currency), before, since };
+  } catch {
+    return { available: false, group: { key: "search", entries: [] }, before, since };
+  }
+}
+
+// A New sheet started from picked rows: their first and last day and their
+// foreign currency (design 2d, smart defaults). One read of those rows.
+export async function loadTripEventDefaultsForEntries(db: D1Database, entryIds: string[]) {
+  const ids = entryIds.filter((id) => typeof id === "string" && id).slice(0, MAX_TRIP_EVENT_CHANGE);
+  if (!ids.length) return { startDate: null, endDate: null, currency: null };
+  const result = await db
+    .prepare(`
+      SELECT transaction_date AS date, description, original_description, original_currency
+      FROM transactions
+      WHERE household_id = ? AND id IN (SELECT value FROM json_each(?))
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, JSON.stringify(ids))
+    .all<{ date: string; description: string; original_description: string | null; original_currency: string | null }>();
+  return tripEventDefaultsFromEntries(result.results.map((row) => ({
+    date: row.date,
+    description: row.description,
+    originalDescription: row.original_description,
+    originalCurrency: row.original_currency
+  })));
+}
+
+// The household's split groups for the New sheet's "Start from a split
+// group" and "Shared costs", newest activity first.
+export async function loadSplitGroupsForTripEvents(db: D1Database) {
+  const groups = await db
+    .prepare(`
+      SELECT split_groups.id, split_groups.group_name, split_groups.icon_key, split_groups.currency,
+        COALESCE(MAX(split_expenses.expense_date), substr(split_groups.created_at, 1, 10)) AS last_used_on
+      FROM split_groups
+      LEFT JOIN split_expenses
+        ON split_expenses.household_id = split_groups.household_id
+       AND split_expenses.split_group_id = split_groups.id
+       AND split_expenses.deleted_at IS NULL
+      WHERE split_groups.household_id = ?
+      GROUP BY split_groups.id
+      ORDER BY last_used_on DESC, split_groups.group_name
+      LIMIT ${MAX_TRIP_EVENTS}
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string; group_name: string; icon_key: string | null; currency: string | null; last_used_on: string | null }>();
+  return groups.results.map((group) => ({
+    id: group.id,
+    name: group.group_name,
+    // A trip icon when the group's is one of them; the sheet guesses
+    // otherwise.
+    ...(isTripEventIcon(group.icon_key) ? { iconKey: group.icon_key } : {}),
+    currency: (group.currency ?? HOME_CURRENCY).toUpperCase(),
+    lastUsedOn: group.last_used_on ?? ""
+  }));
+}
+
+// ---- The dashed chip on new entries (design 2f, decision 4 = A) ------------
+
+// The Entries page's trip facts for its rows in one round trip: each row's
+// trip (and the chips those trips need) and, when a trip with a currency is
+// on today, which of the Shortcut's entries in it get the dashed chip.
+// Empty when the tables are missing.
+export async function loadTripEventRowFacts(
+  db: D1Database,
+  rangeStart: string,
+  rangeEndExclusive: string,
+  today: string
+): Promise<{ links: Map<string, string>; chips: Record<string, TripEventChipDto>; suggestions: Map<string, string> }> {
+  type FactRow = {
+    kind: "link" | "trip" | "candidate" | "recent";
+    transaction_id: string | null;
+    trip_event_id: string | null;
+    name: string | null;
+    icon_key: string | null;
+    currency: string | null;
+    amount_minor: number | null;
+    start_date: string | null;
+    end_date: string | null;
+    account_id: string | null;
+    entry_date: string | null;
+    n: number | null;
+  };
+  try {
+    const result = await db
+      .prepare(`
+        WITH active AS (
+          SELECT id, name, icon_key, start_date, end_date, currency FROM trip_events
+          WHERE household_id = ? AND put_away_at IS NULL AND currency IS NOT NULL AND currency <> '${HOME_CURRENCY}'
+            AND start_date IS NOT NULL AND end_date IS NOT NULL AND start_date <= ? AND end_date >= ?
+        ),
+        candidates AS (
+          SELECT transactions.id, transactions.account_id, transactions.transaction_date, transactions.original_currency
+          FROM transactions
+          WHERE transactions.household_id = ?
+            AND transactions.external_reference LIKE 'shortcut:_%'
+            -- One lower bound: the earliest active trip's first day, or an
+            -- empty range when no trip is on (most page loads).
+            AND transactions.transaction_date >= COALESCE((SELECT MIN(start_date) FROM active), '9999-12-31')
+            AND transactions.transaction_date <= ?
+            AND NOT EXISTS (SELECT 1 FROM trip_event_entries WHERE trip_event_entries.transaction_id = transactions.id)
+          LIMIT ${MAX_TRIP_EVENT_CHANGE}
+        ),
+        recent AS (
+          SELECT transactions.id, transactions.account_id, trip_event_entries.trip_event_id,
+            ROW_NUMBER() OVER (PARTITION BY transactions.account_id ORDER BY transactions.transaction_date DESC, transactions.created_at DESC, transactions.id DESC) AS n
+          FROM transactions
+          LEFT JOIN trip_event_entries ON trip_event_entries.transaction_id = transactions.id
+          WHERE transactions.household_id = ?
+            AND transactions.account_id IN (SELECT account_id FROM candidates)
+            AND transactions.transaction_date >= COALESCE((SELECT MIN(start_date) FROM active), '9999-12-31')
+            AND transactions.transaction_date <= ?
+        )
+        SELECT kind, transaction_id, trip_event_id, name, icon_key, currency, amount_minor,
+          NULL AS start_date, NULL AS end_date, NULL AS account_id, NULL AS entry_date, NULL AS n
+        FROM (${LINKS_IN_RANGE_SQL})
+        UNION ALL
+        SELECT 'trip', NULL, id, name, icon_key, currency, NULL, start_date, end_date, NULL, NULL, NULL
+        FROM active WHERE EXISTS (SELECT 1 FROM candidates)
+        UNION ALL
+        SELECT 'candidate', id, NULL, NULL, NULL, original_currency, NULL, NULL, NULL, account_id, transaction_date, NULL
+        FROM candidates
+        UNION ALL
+        SELECT 'recent', id, trip_event_id, NULL, NULL, NULL, NULL, NULL, NULL, account_id, NULL, n
+        FROM recent WHERE n <= 4
+      `)
+      .bind(
+        DEFAULT_HOUSEHOLD_ID, today, today,
+        DEFAULT_HOUSEHOLD_ID, today,
+        DEFAULT_HOUSEHOLD_ID, today,
+        DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, rangeStart, rangeEndExclusive
+      )
+      .all<FactRow>();
+    const rows = result.results;
+    const { links, chips } = linksFromRows(rows
+      .filter((row) => row.kind === "link")
+      .map((row) => ({ transaction_id: row.transaction_id!, trip_event_id: row.trip_event_id!, name: row.name!, icon_key: row.icon_key! })));
+    const trips: ActiveTripEvent[] = rows.filter((row) => row.kind === "trip").map((row) => ({
+      id: row.trip_event_id!,
+      name: row.name!,
+      iconKey: row.icon_key!,
+      startDate: row.start_date!,
+      endDate: row.end_date!,
+      currency: row.currency!
+    }));
+    if (!trips.length) return { links, chips, suggestions: new Map() };
+    const walletHistory: WalletHistory = new Map();
+    for (const row of rows.filter((item) => item.kind === "recent").sort((left, right) => Number(left.n) - Number(right.n))) {
+      const list = walletHistory.get(row.account_id!) ?? [];
+      list.push({ id: row.transaction_id!, tripEventId: row.trip_event_id });
+      walletHistory.set(row.account_id!, list);
+    }
+    const suggestions = suggestTripEventsForNewEntries({
+      today,
+      trips,
+      candidates: rows.filter((row) => row.kind === "candidate").map((row) => ({
+        id: row.transaction_id!,
+        date: row.entry_date!,
+        accountId: row.account_id!,
+        originalCurrency: row.currency
+      })),
+      walletHistory
+    });
+    for (const tripEventId of suggestions.values()) {
+      const trip = trips.find((item) => item.id === tripEventId)!;
+      chips[trip.id] ??= { name: trip.name, iconKey: isTripEventIcon(trip.iconKey) ? trip.iconKey : "star" };
+    }
+    return { links, chips, suggestions };
+  } catch {
+    return { links: new Map(), chips: {}, suggestions: new Map() };
+  }
+}
+
+// ---- Following a linked split group (owner decision 3 = A) ------------------
+
+// After an entry is added to a split group that a trip or event is linked
+// to, put the entry on that trip too, unless it is already on one (it is
+// never moved). A second all-or-nothing command, run after the split command
+// has saved: when it can't run (the tables are missing, or it fails) the
+// split stays saved and the entry is simply on no trip. Put-away trips are
+// not followed. Returns the change, with its Undo id, or null.
+export async function followSplitGroupTripEvent(
+  db: D1Database,
+  input: { entryId: string; splitGroupId: string | null | undefined }
+): Promise<{ undoId: string; tripEvent: TripEventChipDto & { id: string }; changes: SetChangeDetail[] } | null> {
+  if (!input.splitGroupId || !input.entryId) return null;
+  let trip: { id: string } | null;
+  try {
+    trip = await db
+      .prepare(`
+        SELECT trip_events.id FROM trip_events
+        WHERE trip_events.household_id = ? AND trip_events.split_group_id = ? AND trip_events.put_away_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM trip_event_entries WHERE trip_event_entries.transaction_id = ?)
+        ORDER BY COALESCE(trip_events.start_date, trip_events.created_at) DESC, trip_events.id
+        LIMIT 1
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.splitGroupId, input.entryId)
+      .first<{ id: string }>();
+  } catch {
+    return null;
+  }
+  if (!trip) return null;
+  const result = await setTripEventEntries(db, {
+    changes: [{ entryId: input.entryId, tripEventId: trip.id }],
+    addedBy: "person",
+    onlyEntriesOnNoTrip: true
+  });
+  if (!result.undoId || !result.changed || !result.tripEvent) return null;
+  return {
+    undoId: result.undoId,
+    tripEvent: { id: result.tripEvent.id, name: result.tripEvent.name, iconKey: result.tripEvent.iconKey },
+    changes: result.changes
+  };
+}

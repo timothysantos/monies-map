@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   deleteTripEvent,
+  followSplitGroupTripEvent,
   putAwayTripEvent,
   saveTripEvent,
   setTripEventEntries,
@@ -31,18 +32,20 @@ test.after(async () => {
 
 // Three entries: the first moved from Bali trip to Seoul trip and the
 // second put on Bali trip in one change (the change to undo), and the third
-// on Mum's 70th, which is then deleted (the delete to undo).
+// on Mum's 70th, which is then deleted (the delete to undo), so it is on no
+// trip. Seoul trip is linked to the "Seoul trip" split group (the follow).
 async function seed(db, api) {
   const first = await createEntry(api, { date: "2026-05-04", description: "Gwangjang Market", categoryName: "Food & Drinks", amountMinor: 3_680 });
   const second = await createEntry(api, { date: "2026-05-05", description: "T-money top up", categoryName: "Groceries", amountMinor: 4_840 });
   const third = await createEntry(api, { date: "2026-05-06", description: "Birthday cake", categoryName: "Groceries", amountMinor: 6_500 });
-  const seoul = (await saveTripEvent(db, { name: "Seoul trip" })).tripEvent;
+  await db.prepare("INSERT INTO split_groups (id, household_id, group_name, currency) VALUES ('split-group-seoul', 'household-1', 'Seoul trip', 'SGD')").run();
+  const seoul = (await saveTripEvent(db, { name: "Seoul trip", splitGroupId: "split-group-seoul" })).tripEvent;
   const bali = (await saveTripEvent(db, { name: "Bali trip" })).tripEvent;
   const mum = (await saveTripEvent(db, { name: "Mum's 70th" })).tripEvent;
   await setTripEventEntries(db, { changes: [{ entryId: first, tripEventId: bali.id }, { entryId: third, tripEventId: mum.id }] });
   const change = await setTripEventEntries(db, { changes: [{ entryId: first, tripEventId: seoul.id }, { entryId: second, tripEventId: bali.id }] });
   const deleted = await deleteTripEvent(db, { tripEventId: mum.id });
-  return { first, second, seoul, bali, undoSetId: change.undoId, undoDeleteId: deleted.undoId };
+  return { first, second, third, seoul, bali, undoSetId: change.undoId, undoDeleteId: deleted.undoId };
 }
 
 const COMMANDS = [
@@ -55,6 +58,8 @@ const COMMANDS = [
     changes: [{ entryId: s.second, tripEventId: "new" }],
     newTripEvent: { name: "Jeju weekend" }
   }), [/INSERT INTO trip_events/, /INSERT INTO trip_event_entries/]],
+  // Owner decision 3 = A: run after a split command saved, as its own command.
+  ["follow a linked split group", (s) => (db) => followSplitGroupTripEvent(db, { entryId: s.third, splitGroupId: "split-group-seoul" }), [/INSERT INTO trip_event_entries/]],
   ["put one away", (s) => (db) => putAwayTripEvent(db, { tripEventId: s.bali.id, putAway: true }), [/UPDATE trip_events SET put_away_at/]],
   ["delete one", (s) => (db) => deleteTripEvent(db, { tripEventId: s.seoul.id }), [/DELETE FROM trip_event_entries/, /DELETE FROM trip_events/]],
   ["undo a change", (s) => (db) => undoTripEventChange(db, { undoId: s.undoSetId }), [/DELETE FROM trip_event_entries/, /INSERT INTO trip_event_entries/]],

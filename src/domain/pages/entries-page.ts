@@ -8,7 +8,8 @@ import {
 } from "../app-repository";
 import { loadEntriesForMonths } from "../app-repository-entries";
 import { getMonthBounds } from "../app-repository-helpers";
-import { loadTripEventEntrySpan, loadTripEventLinksForDateRange, loadTripEvents } from "../app-repository-trip-events";
+import { loadSplitGroupCash, loadTripEventEntrySpan, loadTripEventLinksForDateRange, loadTripEventRowFacts, loadTripEvents } from "../app-repository-trip-events";
+import { todayInAppTimeZone } from "../../lib/app-calendar";
 import { loadEntriesForDateRange } from "../app-repository-entries";
 import type { EntriesPageDto } from "../../types/dto";
 import {
@@ -64,7 +65,9 @@ export async function buildEntriesPageDto(
   const { household, trackedMonths } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const rangeMonths = entriesRangeMonths(fromMonth, effectiveSelectedMonth);
-  // The entries, the split groups and the entries' trips are read together.
+  // The entries, the split groups and the entries' trips (with the dashed
+  // chip's suggestions for new Apple Pay entries on a trip) are read
+  // together.
   const [rangeStart] = getMonthBounds(rangeMonths[0] ?? effectiveSelectedMonth);
   const [, rangeEnd] = getMonthBounds(rangeMonths.at(-1) ?? effectiveSelectedMonth);
   const [monthEntries, splitGroups, trips] = await Promise.all([
@@ -72,7 +75,7 @@ export async function buildEntriesPageDto(
       ? loadEntriesForMonths(db, rangeMonths, { withTime: true })
       : loadEntries(db, effectiveSelectedMonth, { withTime: true }),
     loadSplitGroups(db),
-    loadTripEventLinksForDateRange(db, rangeStart, rangeEnd)
+    loadTripEventRowFacts(db, rangeStart, rangeEnd, todayInAppTimeZone())
   ]);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewId = resolvePageViewId(selectedViewId, household.people);
@@ -94,20 +97,23 @@ export async function buildEntriesPageDto(
       selectedPersonId: viewId,
       selectedScope: viewId === "household" ? "direct_plus_shared" : "direct_plus_shared",
       scopes: buildPersonScopes(viewId),
-      entries: withTripEvents(adjustEntriesForList(monthEntries, viewId), trips.links)
+      entries: withTripEvents(adjustEntriesForList(monthEntries, viewId), trips.links, trips.suggestions)
     },
     ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {})
   };
 }
 
-// Each listed entry's trip or event, only where it has one.
-function withTripEvents(entries: EntriesPageDto["monthPage"]["entries"], links: Map<string, string>) {
-  if (!links.size) {
+// Each listed entry's trip or event, only where it has one, and the trip a
+// new Apple Pay entry might be on (the dashed chip), only where there is one.
+function withTripEvents(entries: EntriesPageDto["monthPage"]["entries"], links: Map<string, string>, suggestions: Map<string, string> = new Map()) {
+  if (!links.size && !suggestions.size) {
     return entries;
   }
   return entries.map((entry) => {
     const tripEventId = links.get(entry.id);
-    return tripEventId ? { ...entry, tripEventId } : entry;
+    if (tripEventId) return { ...entry, tripEventId };
+    const suggestedTripEventId = suggestions.get(entry.id);
+    return suggestedTripEventId ? { ...entry, suggestedTripEventId } : entry;
   });
 }
 
@@ -136,13 +142,24 @@ async function buildTripEventEntriesPageDto(
   ]);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const tripEvent = all ? null : list.tripEvents.find((trip) => trip.id === tripEventId) ?? null;
+  // A trip linked to a split group names that group's cash (no entry) in
+  // its lead; the sum rides on the links' round trip.
+  const splitCashGroupId = tripEvent?.splitGroupId ?? null;
   const [entries, splitGroups, trips] = await Promise.all([
     span && (all || tripEvent)
       ? loadEntriesForDateRange(db, span.first, dayAfter(span.last), { withTime: true, tripEventId: all ? "*" : tripEventId })
       : Promise.resolve([]),
     loadSplitGroups(db),
-    span ? loadTripEventLinksForDateRange(db, span.first, dayAfter(span.last)) : Promise.resolve({ links: new Map<string, string>(), chips: {} })
+    span
+      ? loadTripEventLinksForDateRange(db, span.first, dayAfter(span.last), { splitCashGroupId })
+      : splitCashGroupId
+        ? loadSplitGroupCash(db, splitCashGroupId).then((splitCash) => ({ links: new Map<string, string>(), chips: {}, splitCash }))
+        : Promise.resolve({ links: new Map<string, string>(), chips: {}, splitCash: [] })
   ]);
+  const splitGroupName = splitCashGroupId ? splitGroups.find((group) => group.id === splitCashGroupId)?.name : undefined;
+  const leadTrip = tripEvent
+    ? { ...tripEvent, ...(trips.splitCash.length ? { splitCash: trips.splitCash } : {}), ...(splitGroupName ? { splitGroupName } : {}) }
+    : null;
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewId = resolvePageViewId(selectedViewId, household.people);
   return {
@@ -162,6 +179,6 @@ async function buildTripEventEntriesPageDto(
     ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {}),
     tripView: all
       ? { all: true, tripEvents: list.tripEvents, ...(span ? { firstDate: span.first, lastDate: span.last } : {}) }
-      : { tripEvent, ...(span ? { firstDate: span.first, lastDate: span.last } : {}) }
+      : { tripEvent: leadTrip, ...(span ? { firstDate: span.first, lastDate: span.last } : {}) }
   };
 }

@@ -159,6 +159,7 @@ import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntr
 import { aiVisitorKey } from "./domain/ai-assistance";
 import { handleViewerPreferencesRoute, isViewerPreferencesPath } from "./server/viewer-preferences-route";
 import { handleTripEventsRoute, isTripEventsPath } from "./server/trip-events-route";
+import { followSplitGroupTripEvent } from "./domain/app-repository-trip-events";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
@@ -1783,7 +1784,13 @@ export default {
             source: "splits"
           });
         }
-        return json({ ok: true, ...added });
+        // A trip or event linked to this split group follows it (owner
+        // decision 3 = A; DOMAIN.md "Trip or Event"): the entry goes on the
+        // trip too, unless it is on one already. A second all-or-nothing
+        // command after the split saved; if it fails, the split stays saved.
+        const tripEventFollow = await followSplitGroupTripEvent(env.DB, { entryId: body.entryId, splitGroupId: body.splitGroupId ?? null })
+          .catch(() => null);
+        return json({ ok: true, ...added, ...(tripEventFollow ? { tripEventFollow } : {}) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to add entry to splits" }, 400);
       }

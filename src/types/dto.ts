@@ -356,6 +356,10 @@ export interface EntryDto {
   // The trip or event the entry is on (DOMAIN.md "Trip or Event"); only on
   // the Entries page, and left out when it is on none.
   tripEventId?: string;
+  // An Apple Pay or Shortcut entry on no trip that looks like part of the
+  // trip on now (the dashed "Seoul trip?" chip; DOMAIN.md "Trip or Event",
+  // "Suggestions"). Only on such rows of the Entries page.
+  suggestedTripEventId?: string;
 }
 
 // A transfer's purpose. On the ledger entry it names the category and the

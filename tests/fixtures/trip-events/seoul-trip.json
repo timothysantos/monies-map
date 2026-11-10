@@ -1,0 +1,26 @@
+{
+  "about": "A week in Seoul (3 - 9 Oct 2026), sanitized and with made-up amounts, in the shapes the app stores. The card's activity export is citibank-activity/ACCT_349_07_10_2026-seoul-sanitized.csv (Citi activity CSV: newest first, the KRW amount printed on the bank line beside the card's SGD, a transfer in, rows before the trip and dollar rows at home). The last two days were not on that export yet: they are Apple Pay purchases the Shortcut saved as foreign currency estimates (the KRW amount kept, the SGD at the day's rate). Standing orders kept running at home. The Seoul trip split group holds two cash expenses in won (no entry) and two paid by card (linked to the card's rows, one booked before the trip).",
+  "trip": { "name": "Seoul trip", "startDate": "2026-10-03", "endDate": "2026-10-09", "currency": "KRW" },
+  "krwPerSgd": 1032,
+  "applePay": [
+    { "date": "2026-10-08", "description": "Paris Baguette Hongdae", "amount": "KRW 10,000", "requestId": "seoul-applepay-1" },
+    { "date": "2026-10-08", "description": "Hongdae Dakgalbi", "amount": "KRW 52,000", "requestId": "seoul-applepay-2" },
+    { "date": "2026-10-09", "description": "Incheon Airport Duty Free", "amount": "KRW 86,000", "requestId": "seoul-applepay-3" }
+  ],
+  "standingOrders": [
+    { "date": "2026-10-04", "description": "SP DIGITAL PTE LTD GIRO", "accountName": "UOB One", "categoryName": "Bills", "amountMinor": 14285 },
+    { "date": "2026-10-05", "description": "HDB HOUSING LOAN GIRO", "accountName": "UOB One", "categoryName": "Loans", "amountMinor": 62000 }
+  ],
+  "splitGroup": {
+    "name": "Seoul trip",
+    "currency": "KRW",
+    "cash": [
+      { "date": "2026-10-04", "description": "Myeongdong street food", "payerPersonName": "Joyce", "amountMinor": 3600000 },
+      { "date": "2026-10-06", "description": "Bukchon hanok tea house", "payerPersonName": "Tim", "amountMinor": 6000000 }
+    ],
+    "linkedToCardRows": [
+      { "cardRowStartsWith": "LOTTE HOTEL SEOUL", "date": "2026-10-03", "description": "Lotte Hotel Seoul, 2 nights", "payerPersonName": "Tim", "amountMinor": 126000000 },
+      { "cardRowStartsWith": "INTERPARK TICKET", "date": "2026-09-28", "description": "Nanta show tickets", "payerPersonName": "Tim", "amountMinor": 11000000 }
+    ]
+  }
+}

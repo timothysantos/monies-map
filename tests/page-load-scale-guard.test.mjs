@@ -197,6 +197,67 @@ test("the trip view and the Trips & events totals read a bounded chain on the 10
   assert.deepEqual(failures, []);
 });
 
+// Trip suggestions (DOMAIN.md "Trip or Event", "Suggestions") on the 10k
+// household: the review list of a month-long trip linked to a split group,
+// "Booked before you went?" over the 12 months before it, and the Entries
+// page while a trip with a currency is on today and 60 Apple Pay entries
+// wait for the dashed chip. Each is bounded by dates and a LIMIT: a few
+// round trips, two sequential steps (the page keeps its own), and never the
+// whole table.
+test("trip suggestions and the Entries page's dashed chip read a bounded chain on the 10k household", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  const { todayInAppTimeZone } = await import("../src/lib/app-calendar.ts");
+  const today = todayInAppTimeZone();
+  const shift = (days) => {
+    const date = new Date(`${today}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const group = await db.prepare("SELECT id FROM split_groups WHERE household_id = 'household-1' LIMIT 1").first();
+  await db.prepare("INSERT INTO trip_events (id, household_id, name, icon_key, start_date, end_date, currency, split_group_id) VALUES ('trip-busy', 'household-1', 'Long stay', 'plane', '2026-08-01', '2026-08-31', 'KRW', ?)").bind(group?.id ?? null).run();
+  await db.prepare("INSERT INTO trip_events (id, household_id, name, icon_key, start_date, end_date, currency) VALUES ('trip-now', 'household-1', 'Seoul trip', 'plane', ?, ?, 'KRW')").bind(shift(-3), shift(3)).run();
+  const account = await db.prepare("SELECT id FROM accounts WHERE household_id = 'household-1' LIMIT 1").first();
+  await db.prepare(`
+    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60)
+    INSERT INTO transactions (id, household_id, account_id, transaction_date, description, amount_minor, entry_type, external_reference, original_currency, original_amount_minor)
+    SELECT 'applepay-' || i, 'household-1', ?, ?, 'Seoul shop ' || i, 1000 + i, 'expense', 'shortcut:scale-' || i, CASE WHEN i % 2 = 0 THEN 'KRW' ELSE NULL END, 100000 * i FROM n
+  `).bind(account.id, today).run();
+  const counting = countingDatabase(db, { latencyMs: ROUND_TRIP_WAIT_MS });
+  const env = { DB: counting.db, ...template.config.vars };
+  const failures = [];
+  const checks = [
+    // A month of the 10k household with each entry's joins, plus the split
+    // group's rows: about 12,300 rows today. A whole-table read would be 70k+.
+    ["trip suggestions", "/api/trip-events/suggestions?tripEventId=trip-busy", { statements: 3, waves: 2, rows: 16_000 }],
+    ["trip search", "/api/trip-events/search?tripEventId=trip-busy&q=shop", { statements: 2, waves: 2, rows: 12_000 }],
+    ["entries-page with a trip on today", `/api/entries-page?view=household&month=${today.slice(0, 7)}`, { statements: 8, waves: 3, rows: 10_000 }]
+  ];
+  for (const [name, path, max] of checks) {
+    const call = async () => {
+      const response = await worker.fetch(new Request(`http://127.0.0.1${path}`), env);
+      const body = await response.json();
+      assert.equal(response.status, 200, `${name}: ${JSON.stringify(body).slice(0, 200)}`);
+      return body;
+    };
+    await call();
+    counting.reset();
+    const body = await call();
+    const measured = counting.summary();
+    console.log(`# ${name}: ${measured.statements} round trips in ${measured.waves} sequential steps, ${measured.rowsRead + measured.batchRowsRead} rows read`);
+    if (name === "trip suggestions") {
+      assert.ok(body.groups.reduce((count, item) => count + item.entries.length, 0) <= 600, `${name}: listed too many`);
+    }
+    if (name.startsWith("entries-page")) {
+      assert.equal(body.monthPage.entries.filter((entry) => entry.suggestedTripEventId === "trip-now").length, 30, `${name}: the won Apple Pay entries get the chip`);
+    }
+    if (measured.statements > max.statements) failures.push(`${name}: ${measured.statements} round trips (max ${max.statements})`);
+    if (measured.waves > max.waves) failures.push(`${name}: ${measured.waves} sequential steps (max ${max.waves})`);
+    if (measured.rowsRead + measured.batchRowsRead > max.rows) failures.push(`${name}: ${measured.rowsRead + measured.batchRowsRead} rows read (max ${max.rows})`);
+  }
+  assert.deepEqual(failures, []);
+});
+
 // The Splits page on the same 10k household plus production's settled
 // history (352 records one settlement covered, 287 in one group): the page
 // must never send a settled row (they are ~1 kB each and load when a section
