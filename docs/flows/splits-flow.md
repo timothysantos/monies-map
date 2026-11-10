@@ -245,6 +245,12 @@ and renders nothing until the list has an entry. The list is the sweep in
   settle-up has closed the period, with the settle-up's own reason). Entries,
   Month and Summary refresh through `onSplitMutation`.
 - Nothing is added by itself, and the section is hidden when nothing is found.
+- The same command has a manual route from Entries: the picked rows' "Add to
+  Splits" (design.md "Picking many") posts one group and share for every
+  picked expense to `POST /api/splits/expenses/add-chosen`
+  (`source: "chosen"`), with the same refusals, the same all-or-nothing batch
+  and an Undo through `remove-added`. Entries, Month, Summary and Splits
+  refresh through `onBroadcastSplitMutation`.
 
 ## Ownership Notes
 

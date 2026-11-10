@@ -928,7 +928,15 @@ A persistence command is all-or-nothing:
   a settled period refuses it whole (`SplitSettlementLockedError`, 409)
   (`tests/usually-shared-api.test.mjs`: a `failingStatement` at the shares, the
   audit event, the month marker, the history events and the archive; a race of
-  two Adds)
+  two Adds). The picked rows' "Add to Splits" on Entries calls the same two
+  commands with `source: "chosen"` (one group and share for every entry; its
+  own audit actions `split_expenses_added_chosen` and
+  `split_expenses_removed_chosen`; `POST /api/splits/expenses/add-chosen`), so
+  there is no second persistence path
+  (`tests/split-add-chosen-api.test.mjs`: every refusal, the stale pick, the
+  200 and confirm limits, a `failingStatement` at the shares, audit event and
+  month marker for Add and at the history events, archive and audit event for
+  Undo)
 - the bulk link of clear transfer pairs
   (`src/domain/app-repository-transfer-bulk-link.ts`, DOMAIN.md "Ledger
   Check-up") takes the clear pairs the route recomputed on the ledger as it is,

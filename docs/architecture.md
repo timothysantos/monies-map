@@ -582,7 +582,10 @@ reason, at most 200 and "Yes, add all N" over 10; Undo is
 `removeSplitExpensesRecord` (`/remove-added`, one batch, settlement lock
 checked). Ask offers the same list as a change card (`add_usually_shared`,
 `ask-usually-shared.ts`) saved only through those two routes. It never applies
-by itself and no AI chooses what is on the list.
+by itself and no AI chooses what is on the list. The Entries picked-rows bar
+reaches the same command by hand ("Add to Splits": one chosen group and share
+for all, `POST /api/splits/expenses/add-chosen`, audit `split_expenses_added_chosen`),
+so a shop with no history can still be added in one step, with Undo.
 
 ### Trips and events (current, 2026-11)
 

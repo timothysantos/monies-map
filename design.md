@@ -3580,8 +3580,22 @@ only. Summary and Month do not change.
   and saves through the bulk category command (`POST
   /api/entries/update-category` with `changes`), asking "Yes, change all N"
   in the bar over 10 rows. Transfers keep their Transfer category and are
-  left out. Over 200 picked the bar says so and both refuse (the server
-  refuses too). After either change picking ends, the note offers Undo (the
+  left out. "Add to Splits" (`entries-pick-splits.jsx`, lazy; the choice is
+  a popover under the button on a wide screen and a sheet on a phone, built
+  from Add to splits' own group choices and share pills, with no new control
+  style) holds the split group (the one used last on Splits, else the
+  default, else the first; the only group when there is one), the share
+  (the payer's half each, 0% or 100%, worded "Half each", "Joyce owes all of
+  it", "All Tim's"; with two payers among the picked rows "the other person"
+  and "the payer") and a plain preview ("12 entries to Splits with Joyce,
+  half each, in Okaeri"). "Add N" posts the rows that can go (expenses not
+  on Splits; the rest are counted, not sent) to `POST
+  /api/splits/expenses/add-chosen`, the bulk add command Usually shared
+  uses with one group and share for every entry, asking "Yes, add all N" in
+  the bar over 10. The note names what was added, what was already on Splits
+  and what was left out, with Undo (`remove-added` with `source: "chosen"`).
+  Over 200 picked the bar says so and all three refuse (the server
+  refuses too). After any change picking ends, the note offers Undo (the
   trip change's audit event; for Category the same command with the old
   categories) and the page refreshes through `runBackgroundRefresh`. T on a
   focused row (not picking) opens the picker for that row; T and Esc are

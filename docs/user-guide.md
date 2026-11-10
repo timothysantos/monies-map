@@ -821,6 +821,15 @@ them:
   entry. **Category** moves them all to one category; for more than 10 it
   asks **Yes, change all …** first. Either way the note at the bottom has
   **Undo**, which puts each entry back as it was.
+- **Add to Splits** puts the picked entries on Splits at once. It opens a
+  small box with the split group (it starts on the one you used last), who
+  owes what (**Half each**, or the other person owes all of it, or all of it
+  is the payer's), and a plain line such as "12 entries to Splits with
+  Joyce, half each, in Okaeri". Select **Add 12** to confirm; for more than
+  10 the bar asks **Yes, add all …** first. The person who paid each entry is
+  the one who paid on Splits. Entries already on Splits, and income or
+  transfers, are left alone and the note says how many ("2 were already on
+  Splits"). The note has **Undo**, which takes them all back off Splits.
 - **Cancel** (or Esc) stops picking. You can change up to 200 entries at a
   time. Transfers keep their own category.
 - On a computer, T also opens the list for the entry you are on, without
@@ -2847,6 +2856,10 @@ On a phone it is one row; select **Review** to open the shops in a sheet.
 
 You can also ask: "add the usual shared ones to Splits" shows the same list as
 a draft in [Ask](#ask), saved only when you tap **Add**.
+
+Shops you have not shared before never show up there. To put any entries on
+Splits yourself, in one go, pick them on Entries and use **Add to Splits**
+(see "Many entries at once" under trips and events).
 
 ## Record Apple Pay purchases automatically
 

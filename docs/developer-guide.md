@@ -2885,6 +2885,17 @@ Contract in `docs/code-spec.md`). The browser side is
 `src/client/splits-usually-shared.jsx` (lazy; its own chunk and CSS) with the
 pure `usually-shared-model.js`; the Ask side is `ask-usually-shared.ts`.
 
+The Entries picked-rows bar has a manual route to the same command:
+`POST /api/splits/expenses/add-chosen` takes `{ splitGroupId,
+payerShareBasisPoints, entryIds, confirmedCount }` (one group and share for
+every entry; `readChosenAddItems`) and calls `addEntriesToSplitsRecord` with
+`source: "chosen"`, which changes only the audit action
+(`split_expenses_added_chosen`; Undo is `remove-added` with `source:
+"chosen"`, audit `split_expenses_removed_chosen`). The client is the lazy
+`entries-pick-splits.jsx` (the choice) inside `entries-pick-bar.jsx`, with the
+pure `entry-pick-splits-model.js` (`tests/pick-splits-model.test.mjs`) and
+`tests/split-add-chosen-api.test.mjs`, `tests/e2e/pick-add-to-splits.spec.js`.
+
 Tests: `tests/usually-shared.test.mjs` (the sweep, with the one-policy check),
 `tests/usually-shared-api.test.mjs` (the routes, refusals, `failingStatement`
 for each write, a race), `tests/usually-shared-model.test.mjs`,

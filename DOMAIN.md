@@ -3173,6 +3173,16 @@ found), and a statement-certified entry keeps its bank facts.
 Canonical term:
 - `usually shared`
 
+The picked rows' "Add to Splits" on Entries is the manual route to the same
+command: the person chooses one group and one share for every picked entry
+(the payer's half each, 0% or 100%) instead of each shop's habit, so it
+needs no history and also covers shops never shared before. It sends only
+expenses not on Splits, the command refuses the rest by name (already on
+Splits, income or transfers, an owner who is not one of the two people, a
+group in another currency), the audit action is `split_expenses_added_chosen`
+and its Undo `split_expenses_removed_chosen`. No new term: it is "Add to
+Splits" for many entries (`POST /api/splits/expenses/add-chosen`).
+
 Code:
 - `src/domain/usually-shared.ts` (the sweep, `USUALLY_SHARED_POLICY`)
 - `src/domain/pages/usually-shared.ts` (loads the bounded candidates and history)
