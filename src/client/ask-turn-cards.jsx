@@ -190,8 +190,8 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
             label={changeCopy.fields[row.field] ?? row.field}
             value={(
               <span className="ask-plan-change">
-                {row.before || Number.isInteger(row.beforeMinor) ? <span className="ask-plan-before ask-change-before">{changeValue(row, "before")}</span> : null}
-                {row.before || Number.isInteger(row.beforeMinor) ? <span aria-hidden="true">→</span> : null}
+                {hasBefore(row) ? <span className="ask-plan-before ask-change-before">{changeValue(row, "before")}</span> : null}
+                {hasBefore(row) ? <span aria-hidden="true">→</span> : null}
                 <span className="ask-change-after">{changeValue(row, "after")}</span>
               </span>
             )}
@@ -262,6 +262,12 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
       ) : null}
     </section>
   );
+}
+
+// Whether a row shows a before side: one with a value, and a trip row
+// always ("No trip or event → Seoul trip").
+function hasBefore(row) {
+  return Boolean(row.before) || Number.isInteger(row.beforeMinor) || row.field === "trip";
 }
 
 // One entry's trip before and after: "No trip or event → Seoul trip".
