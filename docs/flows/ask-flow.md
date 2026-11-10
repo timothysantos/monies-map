@@ -478,7 +478,65 @@ command can take it back, and Open on the page that shows it.
 | `set_payment_way` | an active bank wallet for PayNow, an active cash wallet for cash | PayNow and Cash before → after | `/api/settings/payment-ways/save` (the old choices) |
 | `edit_category` | create: a new name; rename: not a built-in category; colour: a palette colour (any other word opens Settings) | name or colour before → after | `/api/categories/create` (none), `/api/categories/update` (the old name or colour) |
 | `link_plan` | a planned item of the month; its expenses with the words, not yet linked | the line, the count and first 8 | `/api/month-plan/links` with the old links kept (the old links) |
+| `set_trip_event` | see "Trips and events" below | each entry's trip before → after, the count and first 8; "Yes, put all N" over 10, refused over 200; a new trip with no entries: its name and days | `/api/trip-events/entries/set` with `addedBy: "ask"` (`/api/trip-events/undo` with the save's `undoId`); a new one alone: `/api/trip-events/save` (`/api/trip-events/delete` with the made trip's id) |
 | `cannot_help` with `blocked` | one of: delete an entry, month or import, import a statement, undo an import, reconcile, accounts, people | a note with the app's reason, then the page opens | none |
+
+#### Trips and events
+
+`set_trip_event` (`src/domain/ask-trip-events.ts`; DOMAIN.md "Trip or
+Event") puts entries on a trip or event, moves them from another, takes
+them off (`off`), or makes a new one (`make`). The model reports only what
+was said: `trip_event.name` as written, and which entries as said: nothing
+(the entry in focus, or the list Ask showed last), shop `words` ("the
+hotel", "the Olive Young one"), a `currency` word ("paid in won") or a
+`when` ("last week", "yesterday", "september"); a new one's `from` and `to`
+days as said. The server derives the rest:
+
+- the trip: by its name key, then the shared name matcher with typos
+  ("seol trip"), keeping only trips whose own words fit what was said
+  ("Tokyo trip" is not Seoul trip). Two that would both fit ("the
+  holiday", Bali and Penang) are two readings that save differently, so it
+  asks (`decideReadings`) with "Put them on …" chips. A bare "the trip"
+  that fits one is used and said as an assumption. A name the household
+  has none of asks back (`unknown_trip_event`, repairable) with the 3
+  nearest trips and `Make "<name>"`.
+- the entries: the saved entry in focus (or a lookup's `target_entry`);
+  the list in focus (its month, words and categories, read again); or a
+  search of the household's rows in the days said, else the list's month,
+  else 90 days before the trip's first day to 30 after its last, else the
+  last three months. Words must be the person's own; the category rule
+  matcher decides a match, the currency matches the entry's or its
+  original currency, transfers are left out.
+- the card: every entry that would change (an entry already on another trip
+  is a row "Bali holiday → Seoul trip", never moved silently); nothing to
+  change is a note; over 200 is refused. A new trip's days are the ones
+  said, else the entries' first and last day.
+
+The save carries `addedBy: "ask"` (a label only: like "suggestion", it is
+the person's own Save; `ask_auto` is never taken from a page), and over ten
+entries the person's `confirmedCount`, which the trip route checks for an
+Ask save as the category command does. Nothing joins a trip by itself: the
+safe set Ask may apply without a Save is unchanged.
+
+"How much was the Seoul trip?" / "How much did we spend on Seoul trip?"
+(the trip figure menu's own question) is `answer_question` with topic
+`trip` and `question.trip` as written. The reply is `trip_answer` (the
+trip's id and name, the view, scope and month); the page reads the Entries
+trip view's page (`/api/entries-page?view&month&trip`) through the same
+required read and builds the money answer card with the trip view's own
+code (`src/client/ask-trip-answer.js`: `readEntriesFilterParams`,
+`getEntryDerivedData`, `buildTripEventLeadModel`), so Spent is that view's
+lead to the cent (`tests/ask-trip-events.test.mjs`). Its chip is Open in
+Entries, the trip view. No figure comes from the model or the turn.
+
+With AI off, the server's trips rule reader (`readTripEventRules`) reads
+"put / add / move <these | it | the X one | paid in won | last week's> on
+<name>", "take these off the trip", "new trip <name> 3-5 May", `Make
+"<name>"` and "how much was / did we spend on <name>?" into the same
+action, checked the same way, and the turn route answers `mode: "rules"`
+with that reply. A message that cannot be a trip one costs no read; one
+that might reads the trip list first. A chip answering Ask's question keeps
+the list that question was about.
 
 #### Transfers: the other side
 

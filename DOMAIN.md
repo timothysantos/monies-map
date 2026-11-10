@@ -1901,6 +1901,12 @@ Rules:
   statement's second copy) hands its trip to the entry that stays; an
   estimate paired with its bank row keeps its id and so its trip
 - nothing joins a trip by itself; a suggestion needs a tap
+- Ask (`set_trip_event`, docs/flows/ask-flow.md "Trips and events"): the
+  model names the trip as written and which entries as said; the app finds
+  both and shows a change card, each entry before and after, saved with
+  the person's Save as `added_by` `ask`, with Undo ("Yes, put all N" over
+  ten, refused over 200). "How much was the Seoul trip?" is answered from
+  the trip view's own Spent. Not part of Ask's safe set
 
 Storage:
 - `trip_events` (additive; every reader tolerates it missing)

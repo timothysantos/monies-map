@@ -343,6 +343,48 @@ Failure. AI off: no lookup runs and the turn answers rules; habits,
 suggestions and Done for you do not need AI at all. A missing `ask_habits`
 table switches the feature off without an error (tested).
 
+## Ask trips and events audit note (2026-11-10, branch `trip-events-ask`)
+
+`set_trip_event` and the trip money question (`src/domain/ask-trip-events.ts`;
+docs/flows/ask-flow.md "Trips and events").
+
+What reaches the model. One new context line, "Trips and events: …": the
+household's trip and event names (not put away, at most 20) through
+`scrubName`, so no run of 4 or more digits. No dates, counts, totals or
+entry ids. The schema gains `trip_event` (name, off, make, words, currency,
+when, from, to: all words as said) and `question.trip` (a name as said).
+Entries a change needs are read after the model answers and never reach a
+prompt; the trip's Spent is computed in the page from the Entries trip
+view's own read, never sent to or taken from the model.
+
+Write boundaries. The model only chooses; the card is built from the
+household's rows (the entry or list in focus loaded by id from the
+household, a search bound to the household and to a date window, at most
+1,000 rows read), with the person's own words only. It saves through
+`ASK_CHANGE_PATHS`: `/api/trip-events/entries/set` (`addedBy: "ask"`,
+Undo `/api/trip-events/undo` with the save's `undoId`), or for a new trip
+with no entries `/api/trip-events/save` (Undo `/api/trip-events/delete`
+with the made trip's id). `addedBy` is a provenance label only: a page could
+already send "suggestion", "ask" is the same kind of label for the
+person's own Save, and `ask_auto` is still never taken from a request. Over
+ten entries an Ask save must carry `confirmedCount` equal to the row count
+(the route refuses otherwise); more than 200 is refused before the card
+and by the command. The safe set Ask applies by itself is unchanged:
+nothing joins a trip by itself. The command (`setTripEventEntries`) is
+unchanged and already all-or-nothing (`tests/atomic-writes-trip-events.test.mjs`).
+
+Cost. No new model call: a plain turn is one unit. The action line and the
+trips line add about 300 to 600 characters to the prompt (the lookup token
+cap still holds; `tests/ask-lookup-route.test.mjs`). With AI off a message
+that may be a trip one ("put", "add", "how much" …) reads the trip list
+once, and only when one could match loads the turn's context; anything else
+answers rules at once as before.
+
+Failure. AI off, failing or over the allowance: the server's trips rule
+reader drafts the same card and the same trip answer (`mode: "rules"`,
+`tests/ask-trip-events.test.mjs`). Missing trip tables: no trips line, and
+a trip message gets a plain note.
+
 ## Controls checked and found sound
 
 | Area | Evidence |

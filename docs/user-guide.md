@@ -1018,6 +1018,13 @@ changes until you tap its button, and most changes have **Undo** after.
   Rides", "make Groceries green".
 - Month: "note for September: Bali trip month", and "link my Netflix
   payments to the Netflix plan line".
+- Trips and events: "put these on Seoul trip" (right after Ask showed you
+  some entries), "add the hotel to the Seoul trip", "move everything paid in
+  won to Seoul trip", "take these off the trip", or "new trip Jeju weekend
+  3-5 May". Ask lists every entry and the trip it is on now and the one it
+  will be on, and nothing changes until you tap the button. For more than
+  ten entries, tap **Yes, put all** first. If there is no trip by that name,
+  Ask shows the closest ones and offers to make it.
 
 Some things Ask won't do, so you can check them on their own screen first:
 deleting entries, months or imports, importing a statement or undoing an
@@ -1094,6 +1101,9 @@ Ask also answers questions about your money in plain words:
   where it came from.
 - "What do I owe Serene?" or "Who owes who?": what is still open between
   you on Splits.
+- "How much was the Seoul trip?": what the trip cost, the same Spent the
+  trip shows on Entries, with who it was for, before you went and while
+  away, and where it went. **Open in Entries** shows the trip.
 - "How much did I invest in September?": what went into Investments and
   into your investment accounts, against what you planned to invest, and
   the entries behind it (or how much more you took out than you put in).

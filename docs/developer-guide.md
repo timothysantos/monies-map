@@ -3052,6 +3052,14 @@ card. With AI off (local and the e2e stack) the route answers
   is logged as `{"event":"ask_turn_repair","action","validatorError","field",
   "repaired"}` (no message text). Count them in the Worker logs to measure the
   repair rate.
+- Trips and events (`src/domain/ask-trip-events.ts`): `set_trip_event` is a
+  change card saved through `/api/trip-events/entries/set` with
+  `addedBy: "ask"` (over ten entries the route needs the confirmed count)
+  and undone with the save's `undoId`; a trip question's reply is
+  `trip_answer`, which the page answers from the Entries trip view's own
+  page read (`src/client/ask-trip-answer.js`). With AI off the turn route's
+  trips rule reader (`readTripEventRules`) drafts the same reply. Tests:
+  `tests/ask-trip-events.test.mjs`; the eval bank has its messages.
 
 
 ### Phone island context
