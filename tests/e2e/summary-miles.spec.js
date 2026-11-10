@@ -90,7 +90,7 @@ test.describe("Miles and cashback on Summary", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const card = await openSummary(page, { money: false });
     await expect(card.locator(".cr-bar")).toHaveCount(0);
-    await expect(card).not.toContainText(/\d,?\d* miles/);
+    await expect(card).not.toContainText(/\d[\d,]* miles(?! a dollar)/);
     await expect(card).not.toContainText("$");
     await shoot(card, "miles-hidden-money.png");
   });
@@ -111,6 +111,8 @@ test.describe("Miles and cashback on Summary", () => {
 test.describe("Settings > Cards and rewards", () => {
   test.beforeEach(async ({ page }) => {
     await reseedDemo(page);
+    // Money starts hidden in a new browser; the caps are shown as dollars.
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   });
 
   test("the usual rules are in; a change saves, can be undone and reset; the setting defaults to the household", async ({ page }) => {
@@ -121,7 +123,7 @@ test.describe("Settings > Cards and rewards", () => {
     await expect(section).toContainText("Suggest cards from");
     await expect(section).toContainText("The whole household");
     const ladys = section.locator("[data-card-rewards]").filter({ hasText: "UOB Lady's" });
-    await expect(ladys).toContainText("Miles · 0.4 a dollar, 4 on Food & Drinks up to $1,000 a month");
+    await expect(ladys).toContainText("Miles · 0.4 a dollar, 4 on Food & Drinks up to $1,000.00 a month");
     await expect(ladys).toContainText("Usual rules");
     await shoot(section, "miles-settings-desktop.png");
 
@@ -130,11 +132,11 @@ test.describe("Settings > Cards and rewards", () => {
     await dialog.locator('[data-row="cap-0"] input').fill("1500");
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(section).toContainText("UOB Lady's: rewards saved.");
-    await expect(ladys).toContainText("up to $1,500 a month");
+    await expect(ladys).toContainText("up to $1,500.00 a month");
     await expect(ladys).toContainText("Changed");
 
     await section.getByRole("button", { name: "Undo" }).click();
-    await expect(ladys).toContainText("up to $1,000 a month");
+    await expect(ladys).toContainText("up to $1,000.00 a month");
     await expect(ladys).toContainText("Usual rules");
 
     // A change, then Reset to the usual rules.
@@ -168,11 +170,11 @@ test.describe("Settings > Cards and rewards", () => {
     await page.goto("/settings?view=household");
     await page.getByRole("button", { name: /Cards and rewards/ }).click();
     const section = page.locator("#settings-card-rewards");
-    await section.getByRole("button", { name: /Suggest cards from/ }).click();
-    await page.getByRole("option", { name: "Each person's own cards" }).click();
+    await expect(section.locator('select[aria-label="Suggest cards from"]')).toHaveValue("household");
+    await section.locator('select[aria-label="Suggest cards from"]').selectOption("own");
     await expect(section).toContainText("Cards are now suggested from: Each person's own cards.");
     await section.getByRole("button", { name: "Undo" }).click();
-    await expect(section).toContainText("The whole household");
+    await expect(section.locator('select[aria-label="Suggest cards from"]')).toHaveValue("household");
   });
 
   test("phone: the section and a card's sheet fit the screen", async ({ page }) => {

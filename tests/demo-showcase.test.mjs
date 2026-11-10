@@ -21,6 +21,7 @@ import { reseedDemoSettings } from "../src/domain/demo-settings.ts";
 import { reseedShowcaseData } from "../src/domain/app-repository-showcase-seed.ts";
 import { buildShowcaseDataset } from "../src/domain/demo-showcase-data.ts";
 import { buildUsuallySharedDto } from "../src/domain/pages/usually-shared.ts";
+import { buildCardRewardsDto } from "../src/domain/pages/card-rewards.ts";
 
 const SEED_MONTH = "2026-05";
 const SHOWCASE_VARS = { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: SEED_MONTH };
@@ -524,4 +525,28 @@ test("a failed showcase reseed leaves the previous data untouched", async (t) =>
   await assert.rejects(() => reseedDemoSettings(failing, SEED_MONTH, "showcase"));
   assert.equal(state.fired, true);
   assertSameDatabase(await dumpDatabase(db), before);
+});
+
+// Miles and cashback on the demo (DOMAIN.md "Card reward rule"): the
+// showcase cards match their usual rules, Citi Rewards' bonus is used up this
+// month (a notice), a cashback card has a minimum still to reach, and the
+// look-back over the last 3 months finds miles to gain.
+test("Miles and cashback shows caps used, a notice and a look-back line on the showcase", async (t) => {
+  const { db } = await openSeededDatabase(t, showcase);
+  const [last] = await rows(db, "SELECT MAX(transaction_date) AS date FROM transactions");
+  const answer = await buildCardRewardsDto(db, "household", last.date);
+  assert.equal(answer.suggestFrom, "household");
+  const [picture] = answer.people;
+  assert.equal(picture.personId, "household");
+  const citi = picture.cards.find((item) => item.name === "Citi Rewards Card");
+  assert.equal(citi.bonuses[0].roomMinor, 0, "Citi Rewards' bonus is used up");
+  assert.ok(citi.earned > 4_000);
+  const kinds = picture.notices.map((notice) => notice.kind);
+  assert.ok(kinds.includes("used_up"), kinds.join());
+  const miles = picture.lookingBack.find((item) => item.unit === "miles");
+  assert.ok(miles.gain > 0 && miles.changes.length >= 1 && miles.changes.length <= 3);
+  assert.ok(picture.cards.some((item) => item.unit === "cashback"));
+  // A person's view shows that person alone (their cards, any household card may be suggested).
+  const own = await buildCardRewardsDto(db, "person-serene", last.date);
+  assert.deepEqual(own.people.map((person) => person.personId), ["person-serene"]);
 });
