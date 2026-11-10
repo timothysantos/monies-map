@@ -81,7 +81,22 @@ import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
 import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
 import { tripEventsCopy } from "./copy/trip-events-copy";
-import { deleteTripEvent, forgetTripEvents, putAwayTripEvent } from "./trip-events-api";
+import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent } from "./trip-events-api";
+import {
+  addPick,
+  isPickKeyIgnored,
+  NO_PICK,
+  pickDay,
+  pickedRows,
+  pickRange,
+  pickScopeKey,
+  rowClickIntent,
+  rowOrder,
+  startPicking,
+  summarizePick,
+  togglePick,
+  undoCategoryChanges
+} from "./entry-pick-model";
 
 // Trips and events (DOMAIN.md "Trip or Event"): the picker and its Undo note
 // are a lazy chunk, fetched when a picker first opens.
@@ -89,6 +104,9 @@ const TripEventPicker = lazy(() => import("./entries-trip-events").then((module)
 const TripEventNote = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventNote })));
 const TripEventLead = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventLead })));
 const TripEventsSheet = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventsSheet })));
+// Picking many rows: the floating bar is its own lazy chunk, fetched when
+// picking starts.
+const EntriesPickBar = lazy(() => import("./entries-pick-bar").then((module) => ({ default: module.EntriesPickBar })));
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -167,6 +185,19 @@ export function EntriesPanel({
   const [tripNote, setTripNote] = useState(null);
   const [tripsSheet, setTripsSheet] = useState({ mounted: false, open: false });
   const tripPickerAnchorRef = useRef(null);
+  // Picking many rows (entry-pick-model.js): kept here, not in the URL, and
+  // ended when the month, view, scope or a filter changes.
+  const currentPickScope = pickScopeKey(searchParams);
+  const [pickStore, setPickStore] = useState(() => ({ scope: currentPickScope, pick: NO_PICK }));
+  let pick = pickStore.pick;
+  if (pickStore.scope !== currentPickScope) {
+    pick = NO_PICK;
+    setPickStore({ scope: currentPickScope, pick: NO_PICK });
+  }
+  const updatePick = useCallback((update) => {
+    setPickStore((current) => ({ scope: current.scope, pick: update(current.pick) }));
+  }, []);
+  const stopPicking = useCallback(() => updatePick(() => NO_PICK), [updatePick]);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
   // A period of months (entry_from, entry_to) from a Summary range's figure.
@@ -942,10 +973,11 @@ export function EntriesPanel({
   }, [tripEvents]);
   const getTripChip = useCallback((entry) => tripEvents.chipOf(tripEvents.tripEventIdOf(entry)), [tripEvents]);
   const handleTripEventSaved = useCallback((result) => {
+    stopPicking();
     tripEvents.applyChanges(result.changes, result.tripEvent);
     setTripNote(result.undoId ? { key: result.undoId, undoId: result.undoId, message: result.message, changes: result.changes } : { key: `same-${Date.now()}`, undoId: "", message: result.message, changes: [] });
     void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
-  }, [refreshEntriesPage, runBackgroundRefresh, tripEvents]);
+  }, [refreshEntriesPage, runBackgroundRefresh, stopPicking, tripEvents]);
   const handleTripEventUndone = useCallback((note) => {
     tripEvents.applyChanges((note.changes ?? []).map((change) => ({ entryId: change.entryId, to: change.from })));
     forgetTripEvents(queryClient);
@@ -1007,6 +1039,68 @@ export function EntriesPanel({
       />
     );
   }, [getTripChip, openTripPicker]);
+
+  // Picking many rows: Shift-click a run, Ctrl or Cmd-click one, press and
+  // hold on a phone, or a day at once; the bar acts on them in screen order.
+  const screenOrder = useMemo(() => rowOrder(groupedEntries), [groupedEntries]);
+  const pickedEntries = useMemo(() => pickedRows(groupedEntries, pick.ids), [groupedEntries, pick.ids]);
+  const pickSummary = useMemo(() => summarizePick(pickedEntries, entryView.id), [entryView.id, pickedEntries]);
+  const handlePickRow = useCallback((entry, event) => {
+    updatePick((current) => {
+      if (event?.hold) return addPick(current, entry.id);
+      const intent = rowClickIntent(current, event);
+      if (intent === "range") return pickRange(current, screenOrder, entry.id);
+      return intent === "toggle" ? togglePick(current, entry.id) : current;
+    });
+  }, [screenOrder, updatePick]);
+  const handlePickDay = useCallback((dayIds) => updatePick((current) => pickDay(current, dayIds)), [updatePick]);
+  const togglePicking = useCallback(() => updatePick((current) => (current.picking ? NO_PICK : startPicking(current))), [updatePick]);
+  const putPickedOnTrip = useCallback((element) => openTripPicker(pickedEntries, element), [openTripPicker, pickedEntries]);
+  const handlePickedCategoryChanged = useCallback(({ changes, categoryName, confirmedCount }) => {
+    stopPicking();
+    const invalidate = () => onInvalidateEntryMutation?.({ month: selectedMonth, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+    invalidate();
+    setTripNote({
+      key: `category-${Date.now()}`,
+      undoId: "",
+      message: tripEventsCopy.categoryMoved(changes.length, categoryName),
+      changes: [],
+      // Undo moves each row back to its own category through the same command.
+      undo: async () => {
+        const result = await changeEntryCategories(undoCategoryChanges(changes), { confirmedCount }, tripEventsCopy.saveFailed);
+        if (result.ok) invalidate();
+        return result;
+      }
+    });
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [onInvalidateEntryMutation, refreshEntriesPage, runBackgroundRefresh, selectedMonth, stopPicking]);
+  // Keys: Esc stops picking; T opens the trip picker for the focused row
+  // (the bar's own T covers the picked rows). Typing and open dialogs keep
+  // their keys.
+  const focusedRowEntry = useStableHandler((element) => {
+    const id = element?.closest?.(".entry-row")?.id;
+    return id ? pickedRows(groupedEntries, new Set([id]))[0] ?? null : null;
+  });
+  useEffect(() => {
+    function handleKey(event) {
+      if (isPickKeyIgnored(event)) return;
+      if (event.key === "Escape" && pick.picking) {
+        event.preventDefault();
+        stopPicking();
+        return;
+      }
+      if ((event.key === "t" || event.key === "T") && !event.shiftKey && !pick.picking) {
+        const active = document.activeElement;
+        if (!active?.classList?.contains("entry-row-main")) return;
+        const entry = focusedRowEntry(active);
+        if (!entry) return;
+        event.preventDefault();
+        openTripPicker([entry], active);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [focusedRowEntry, openTripPicker, pick.picking, stopPicking]);
 
   function handleMobileSplitGroupSelection(nextGroupId) {
     setMobileSplitGroupId(nextGroupId);
@@ -1437,7 +1531,9 @@ export function EntriesPanel({
         />
       ) : null}
 
-      {!useMobileEntrySheet && !entriesLoadError ? <EntriesFilterStack {...filterStackProps} /> : null}
+      {!useMobileEntrySheet && !entriesLoadError ? (
+        <EntriesFilterStack {...filterStackProps} isPicking={pick.picking} onTogglePicking={togglePicking} />
+      ) : null}
 
       {isEntriesPageLoading ? (
         <AppLoadingOverlay className="entries-page-loading" />
@@ -1688,6 +1784,11 @@ export function EntriesPanel({
           getTripChip={getTripChip}
           onOpenTripPicker={(entry, element) => openTripPicker([entry], element)}
           renderTripEventRow={renderTripEventRow}
+          isPicking={pick.picking}
+          pickedIds={pick.ids}
+          onPickRow={handlePickRow}
+          onPickDay={handlePickDay}
+          pickDayLabel={useMobileEntrySheet ? tripEventsCopy.pickDay : tripEventsCopy.pickWholeDay}
         />
       ) : (
         <EntriesEmptyState
@@ -1736,6 +1837,19 @@ export function EntriesPanel({
             onChoose={chooseTripView}
           />
         </Suspense>
+      ) : null}
+      {pick.picking && !entriesLoadError && canPortalEntryComposer ? createPortal(
+        <Suspense fallback={null}>
+          <EntriesPickBar
+            rows={pickedEntries}
+            summary={pickSummary}
+            categories={categories}
+            onPutOnTrip={putPickedOnTrip}
+            onCategoryChanged={handlePickedCategoryChanged}
+            onCancel={stopPicking}
+          />
+        </Suspense>,
+        document.body
       ) : null}
       {tripNote ? (
         <Suspense fallback={null}>

@@ -65,6 +65,15 @@ export function putAwayTripEvent(tripEventId, putAway, fallbackError) {
   return postJson("/api/trip-events/put-away", { tripEventId, putAway }, fallbackError);
 }
 
+// The picked rows' Category (and its Undo): Entries' bulk category command,
+// the one Ask's recategorise uses. Over 10 rows it needs `confirmedCount`
+// (the person's "Yes, change all N", passed only once they tapped it); over
+// 200 it refuses.
+export function changeEntryCategories(changes, { confirmedCount = undefined } = {}, fallbackError = "") {
+  const body = Number.isInteger(confirmedCount) ? { changes, confirmedCount } : { changes };
+  return postJson("/api/entries/update-category", body, fallbackError);
+}
+
 export function deleteTripEvent(tripEventId, fallbackError) {
   return postJson("/api/trip-events/delete", { tripEventId }, fallbackError);
 }

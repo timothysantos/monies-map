@@ -323,7 +323,9 @@ function canFocusSearchOnOpen() {
 }
 
 // The note after a change: what happened, and Undo through the change's
-// audit event. It stays a few seconds; a new change replaces it.
+// audit event (or, for the picked rows' Category, the note's own `undo`,
+// which runs the same command back). It stays a few seconds; a new change
+// replaces it.
 export function TripEventNote({ note, onUndone, onDismiss }) {
   const [state, setState] = useState({ undoing: false, error: "", undone: false });
   useEffect(() => {
@@ -331,9 +333,10 @@ export function TripEventNote({ note, onUndone, onDismiss }) {
     return () => window.clearTimeout(timer);
   }, [note, onDismiss]);
   if (!note) return null;
+  const canUndo = Boolean(note.undoId || note.undo);
   async function undo() {
     setState({ undoing: true, error: "", undone: false });
-    const result = await undoTripEventChange(note.undoId, copy.saveFailed);
+    const result = note.undo ? await note.undo() : await undoTripEventChange(note.undoId, copy.saveFailed);
     if (!result.ok) {
       setState({ undoing: false, error: result.error, undone: false });
       return;
@@ -344,7 +347,7 @@ export function TripEventNote({ note, onUndone, onDismiss }) {
   return (
     <div className="trip-note" role="status" data-trip-note="">
       <span className="trip-note-text">{state.error || (state.undone ? copy.undone : note.message)}</span>
-      {note.undoId && !state.undone ? (
+      {canUndo && !state.undone ? (
         <button type="button" className="trip-note-undo" disabled={state.undoing} onClick={() => void undo()}>{copy.undo}</button>
       ) : null}
       <button type="button" className="trip-note-close" aria-label={copy.close} onClick={() => onDismiss?.()}>

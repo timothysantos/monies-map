@@ -1,0 +1,163 @@
+/* The floating bar for picked Entries rows (entries-pick-bar.jsx), a lazy
+   chunk. A wide screen: the same floating bar as the Splits page's
+   (.desktop-splits-floating-tabs), in its place at the bottom left, which
+   the page's own floating bar gives up while picking. A phone: it takes the
+   tab bar's place, under the thumb. */
+.entries-pick-bar {
+  position: fixed;
+  bottom: 29px;
+  left: 22px;
+  z-index: 58;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  width: min(760px, calc(100vw - 44px));
+  min-height: 54px;
+  padding: 5px 6px 5px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--chrome-radius);
+  background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow);
+  color: var(--text);
+  backdrop-filter: blur(10px);
+}
+
+body[data-ask-dock="docked"] .entries-pick-bar {
+  width: min(760px, calc(100vw - 44px - var(--ask-dock-width)));
+}
+
+/* While picking, the bar has the page's floating bar's place. */
+body:has(> .entries-pick-bar) .mobile-context-sticky-wrap.is-desktop-visible {
+  display: none;
+}
+
+.entries-pick-bar-head {
+  display: contents;
+}
+
+.entries-pick-bar-count {
+  order: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entries-pick-bar-count strong {
+  font-weight: 700;
+}
+
+.entries-pick-bar-actions {
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entries-pick-bar-cancel {
+  order: 2;
+}
+
+.entries-pick-bar-actions .lsd-primary,
+.entries-pick-bar-actions .lsd-quiet,
+.entries-pick-bar-cancel {
+  min-height: 44px;
+}
+
+.entries-pick-bar .lsd-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.entries-pick-bar .lsd-quiet:hover:not(:disabled) {
+  background: rgb(var(--accent-strong-rgb) / 0.08);
+}
+
+.entries-pick-bar-main {
+  min-width: 0;
+  padding: 0 16px;
+}
+
+.entries-pick-key {
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  opacity: 0.7;
+}
+
+.entries-pick-bar-question {
+  margin: 0 4px 0 0;
+  font-weight: 600;
+}
+
+.entries-pick-bar-message {
+  order: 3;
+  flex: 1 0 100%;
+  margin: 0 0 4px;
+  color: var(--pastel-rose-ink);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .entries-pick-bar {
+    right: var(--chrome-edge);
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: var(--chrome-edge);
+    width: auto;
+    padding: 6px 8px 8px 14px;
+  }
+
+  body[data-ask-dock="docked"] .entries-pick-bar {
+    width: auto;
+  }
+
+  /* The bar is where the tab bar was; the View and scope bar and the round
+     buttons above it step aside while picking. */
+  body:has(> .entries-pick-bar) .tab-strip,
+  body:has(> .entries-pick-bar) .mobile-context-sticky-wrap,
+  body:has(> .entries-pick-bar) .entries-fab,
+  body:has(> .entries-pick-bar) .scroll-direction-fab {
+    display: none;
+  }
+
+  /* The keys are a computer's. */
+  .entries-pick-key {
+    display: none;
+  }
+
+  .entries-pick-bar-cancel {
+    order: 1;
+  }
+
+  .entries-pick-bar-actions {
+    order: 3;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+  }
+
+  .entries-pick-bar-question {
+    flex: 1 0 100%;
+  }
+
+  .entries-pick-bar-actions .lsd-primary {
+    flex: 1 1 auto;
+  }
+
+  .entries-pick-bar-message {
+    order: 2;
+  }
+}

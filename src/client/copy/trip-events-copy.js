@@ -86,5 +86,21 @@ export const tripEventsCopy = Object.freeze({
   emptyTitle: "See what a trip really cost",
   emptyBody: "Put the spending from a holiday, a wedding or a move in one place, whatever its category or month. Then see the total, who paid and where it went.",
   putAwayCount: (count, shown) => `${count} put away · ${shown ? "Hide" : "Show"}`,
-  done: "Done"
+  done: "Done",
+  // Picking many rows and the floating bar.
+  pick: "Pick",
+  pickWholeDay: "Pick the whole day",
+  pickDay: "Pick day",
+  picked: (count) => `${count} picked`,
+  putOnTrip: "Put on a trip or event",
+  category: "Category",
+  cancel: "Cancel",
+  pickBarLabel: "Picked entries",
+  tooMany: (max) => `Pick ${max} or fewer to change them together.`,
+  categoryTitle: (count) => `Move ${entriesWord(count)} to…`,
+  categoryMoved: (count, name) => (count === 1 ? `Moved to ${name}` : `${entriesWord(count)} moved to ${name}`),
+  alreadyInCategory: (name) => `They are all in ${name} already.`,
+  transfersKeep: "A transfer keeps its Transfer category.",
+  confirmAll: (count, name) => `Change all ${count} to ${name}?`,
+  yesAll: (count) => `Yes, change all ${count}`
 });
