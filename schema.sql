@@ -938,3 +938,21 @@ CREATE TABLE IF NOT EXISTS repeating_charge_choices (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (household_id, series_key)
 );
+
+-- Card reward rules (DOMAIN.md "Card reward rule"): what each credit card
+-- pays back, in miles or cashback, as one JSON object per card (the unit,
+-- the usual rate, bonus rules with their caps and resets, the categories
+-- that earn nothing and a cashback card's monthly minimum; checked by
+-- readCardRewardRules in src/domain/card-rewards.ts). Copied from the
+-- presets (card-reward-presets.ts) the first time a card is read, then
+-- editable in Settings > Cards and rewards. Additive; a reader treats a
+-- missing table as the presets.
+CREATE TABLE IF NOT EXISTS card_reward_rules (
+  household_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  preset_key TEXT,
+  rules_json TEXT NOT NULL CHECK (length(rules_json) <= 8000),
+  updated_by_person_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, account_id)
+);
