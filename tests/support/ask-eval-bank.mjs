@@ -125,6 +125,11 @@ export async function seedBankHousehold({ db, api, today }) {
   for (const [index, amountMinor] of [1_850, 2_240, 1_620].entries()) {
     await createEntry(api, { date: shiftDay(today, -index), description: "GRAB* RIDE", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor });
   }
+  // Trips and events: one trip, and two holidays a bare "the holiday" cannot tell apart.
+  for (const name of ["Seoul trip", "Bali holiday", "Penang holiday"]) {
+    const saved = await api("/api/trip-events/save", { name });
+    if (saved.status !== 200) throw new Error(`trip ${name}: ${JSON.stringify(saved.payload)}`);
+  }
   const group = await db.prepare("SELECT id FROM split_groups ORDER BY sort_order, group_name LIMIT 1").first();
   return {
     entryId,
