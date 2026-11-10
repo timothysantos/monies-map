@@ -13,9 +13,13 @@
 //   Investments is counted as that expense, the way the Invested figure
 //   counts it, so View entries ("invested", narrowed to the ids) totals the
 //   put in to the cent (money-figures.ts, investmentPutInFigureMinor);
-// - grew by: worth less what the account was worth on its last statement
-//   before 1 January (none: nothing) less what was put in up to the
-//   statement's date. Market moves included, so it can be below zero;
+// - grew by: worth less the account's starting worth less what was put in
+//   after the start and up to the latest statement's date. The start is
+//   the last statement before 1 January (put in counted from 1 January),
+//   or, for an account whose first statement is this year ("from Jun"),
+//   that first statement (put in counted after its date): money that was
+//   in the account before its first statement is never taken for growth.
+//   Market moves included, so it can be below zero;
 // - paid out: the statements' dividends and interest (`income_minor`) dated
 //   this year.
 //
@@ -175,15 +179,22 @@ export function buildInvestmentsOverTime({
   }
   const allMoves = findInvestmentAccountMoves(entries, investmentAccountIds);
 
+  // Each account's start: the last statement before 1 January (moves
+  // counted from 1 January), else its first statement this year (moves
+  // counted after that statement's date).
+  const starts = new Map<string, { worthMinor: number; month: string; after: string; inYear: boolean }>();
   const rows: InvestmentAccountRow[] = shown.map((account) => {
     const list = [...(valuesByAccount.get(account.id) ?? [])].sort((left, right) => left.asOfDate.localeCompare(right.asOfDate));
     const latest = list[list.length - 1];
     const before = list.filter((value) => value.asOfDate < yearStart);
-    const startWorthMinor = before.length ? before[before.length - 1].worthMinor : 0;
-    const moves = allMoves.filter((move) => move.accountId === account.id && move.date.startsWith(year));
-    const putIn = putInOf(moves);
-    const putInByStatement = moves.filter((move) => move.date <= latest.asOfDate).reduce((sum, move) => sum + move.amountMinor, 0);
     const thisYear = list.filter((value) => value.asOfDate.startsWith(year));
+    const startValue = before.length ? before[before.length - 1] : thisYear[0] ?? latest;
+    const start = before.length || !thisYear.length
+      ? { worthMinor: startValue.worthMinor, month: `${year}-01`, after: "", inYear: false }
+      : { worthMinor: startValue.worthMinor, month: startValue.month, after: startValue.asOfDate, inYear: true };
+    starts.set(account.id, start);
+    const moves = allMoves.filter((move) => move.accountId === account.id && move.date.startsWith(year));
+    const grownMoves = moves.filter((move) => move.date > start.after && move.date <= latest.asOfDate);
     return {
       accountId: account.id,
       name: account.name,
@@ -191,31 +202,39 @@ export function buildInvestmentsOverTime({
       personId: account.personId,
       personName: account.personName,
       asOfDate: latest.asOfDate,
-      ...(!before.length && thisYear.length ? { fromMonth: thisYear[0].month } : {}),
+      ...(start.inYear ? { fromMonth: start.month } : {}),
       worthMinor: latest.worthMinor,
-      startWorthMinor,
-      putIn,
-      grewMinor: latest.worthMinor - startWorthMinor - putInByStatement,
+      startWorthMinor: start.worthMinor,
+      putIn: putInOf(moves),
+      grewMinor: latest.worthMinor - start.worthMinor - grownMoves.reduce((sum, move) => sum + move.amountMinor, 0),
       paidOutMinor: thisYear.reduce((sum, value) => sum + value.paidOutMinor, 0)
     };
   });
 
-  const shownIds = new Set(rows.map((row) => row.accountId));
-  const months = monthsOfYear(year, today.slice(0, 7)).map((month) => {
+  // The chart starts at the first account's start: January, or the month of
+  // the first statement when every account started this year.
+  const firstMonth = [...starts.values()].reduce((earliest, start) => (start.month < earliest ? start.month : earliest), `${year}-12`);
+  const months = monthsOfYear(year, today.slice(0, 7)).filter((month) => month >= firstMonth).map((month) => {
     let worthMinor: number | null = 0;
     let started = 0;
+    let putInMinor = 0;
+    const monthEnd = `${month}-31`;
     for (const row of rows) {
       const list = valuesByAccount.get(row.accountId) ?? [];
-      if (!list.some((value) => value.month <= month)) {
-        continue;
+      if (list.some((value) => value.month <= month)) {
+        started += 1;
+        const atMonth = list.find((value) => value.month === month);
+        worthMinor = atMonth && worthMinor !== null ? worthMinor + atMonth.worthMinor : null;
       }
-      started += 1;
-      const atMonth = list.find((value) => value.month === month);
-      worthMinor = atMonth && worthMinor !== null ? worthMinor + atMonth.worthMinor : null;
+      // The stepped line: from the account's start on, its starting worth
+      // plus what was put in after the start, by the month's end.
+      const start = starts.get(row.accountId);
+      if (start && start.month <= month) {
+        putInMinor += start.worthMinor + allMoves
+          .filter((move) => move.accountId === row.accountId && move.date >= yearStart && move.date > start.after && move.date <= monthEnd)
+          .reduce((sum, move) => sum + move.amountMinor, 0);
+      }
     }
-    const monthEnd = `${month}-31`;
-    const putInMinor = rows.reduce((sum, row) => sum + row.startWorthMinor, 0)
-      + allMoves.filter((move) => shownIds.has(move.accountId) && move.date >= yearStart && move.date <= monthEnd).reduce((sum, move) => sum + move.amountMinor, 0);
     return { month, worthMinor: started ? worthMinor : null, putInMinor };
   });
 

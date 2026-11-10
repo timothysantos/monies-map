@@ -94,13 +94,17 @@ test("the household's card: worth, put in, grew by and paid out per account and 
   assert.equal(endowus.paidOutMinor, 2_000);
   assert.equal(endowus.fromMonth, undefined);
   assert.deepEqual(stashaway.putIn, { amountMinor: 280_000, ids: [ids.may] });
+  // Its first statement (June) is its start: the May deposit before it is
+  // not growth, and nothing came in after it.
   assert.equal(stashaway.fromMonth, "2026-06");
-  assert.equal(stashaway.grewMinor, 50_000);
+  assert.equal(stashaway.startWorthMinor, 300_000);
+  assert.equal(stashaway.grewMinor, 30_000);
 
   assert.equal(dto.worthMinor, 1_860_000);
+  assert.equal(dto.startWorthMinor, 1_300_000);
   assert.equal(dto.putIn.amountMinor, 530_000);
   assert.deepEqual(dto.putIn.ids, [ids.apr, ids.feb, ids.may, ids.oct].sort());
-  assert.equal(dto.grewMinor, 430_000);
+  assert.equal(dto.grewMinor, 410_000);
   assert.equal(dto.paidOutMinor, 2_000);
 
   const byMonth = Object.fromEntries(dto.months.map((month) => [month.month, month]));
@@ -113,9 +117,11 @@ test("the household's card: worth, put in, grew by and paid out per account and 
   assert.equal(byMonth["2026-01"].putInMinor, 1_000_000);
   assert.equal(byMonth["2026-02"].putInMinor, 1_200_000);
   assert.equal(byMonth["2026-04"].putInMinor, 1_150_000);
-  assert.equal(byMonth["2026-05"].putInMinor, 1_430_000);
-  assert.equal(byMonth["2026-07"].putInMinor, 1_430_000);
-  assert.equal(byMonth["2026-11"].putInMinor, 1_530_000);
+  // StashAway joins the line at its first statement, with its worth then.
+  assert.equal(byMonth["2026-05"].putInMinor, 1_150_000);
+  assert.equal(byMonth["2026-06"].putInMinor, 1_450_000);
+  assert.equal(byMonth["2026-07"].putInMinor, 1_450_000);
+  assert.equal(byMonth["2026-11"].putInMinor, 1_550_000);
 });
 
 test("a person view shows only that person's accounts; an unknown view is the household's", async (t) => {
@@ -170,12 +176,17 @@ test("a pair between two investment accounts and a contribution paid by an Inves
   const built = buildInvestmentsOverTime({
     today: "2026-05-01",
     accounts: [{ id: "inv-a", name: "A", provider: "A", personId: "p", personName: "P" }, { id: "inv-b", name: "B", provider: "B", personId: "p", personName: "P" }],
-    values: [{ accountId: "inv-a", month: "2026-04", asOfDate: "2026-04-30", worthMinor: 52_000, paidOutMinor: 0 }],
+    values: [
+      { accountId: "inv-a", month: "2026-02", asOfDate: "2026-02-28", worthMinor: 0, paidOutMinor: 0 },
+      { accountId: "inv-a", month: "2026-04", asOfDate: "2026-04-30", worthMinor: 52_000, paidOutMinor: 0 }
+    ],
     entries,
     investmentAccountIds
   });
   // B has no statement value, so it is not a row.
   assert.deepEqual(built.accounts.map((row) => [row.accountId, row.putIn]), [["inv-a", { amountMinor: 50_000, ids: ["giro"] }]]);
   assert.equal(built.grewMinor, 2_000);
+  // Every account started this year: the chart starts at the first statement, not in January.
+  assert.deepEqual(built.months.map((month) => month.month), ["2026-02", "2026-03", "2026-04", "2026-05"]);
   assert.equal(buildInvestmentsOverTime({ today: "2026-05-01", accounts: [], values: [], entries, investmentAccountIds }), null);
 });
