@@ -1,6 +1,7 @@
 import { todayInAppTimeZone } from "../../lib/app-calendar";
 import { DEFAULT_HOUSEHOLD_ID } from "../app-repository-constants";
 import { buildLinkedSplitShareMap, LINKED_SPLIT_SHARES_SQL, type LinkedSplitShareRow } from "../app-repository-entries";
+import { loadRepeatingChoices } from "../app-repository-repeating-charges";
 import { addDays } from "../money-signals/format";
 import { personEntryAmountMinor } from "../person-entry-amount";
 import { effectiveScopeForView } from "../person-view-scope";
@@ -152,7 +153,7 @@ export async function buildRepeatingChargesDto(
   selectedViewId = "household",
   selectedScope: PersonScope = "direct_plus_shared",
   today = todayInAppTimeZone(),
-  loadChoices: LoadRepeatingChoices = async () => ({})
+  loadChoices: LoadRepeatingChoices = loadRepeatingChoices
 ): Promise<RepeatingChargesDto> {
   const start = repeatingWindowStart(today);
   const endExclusive = addDays(today, 1);

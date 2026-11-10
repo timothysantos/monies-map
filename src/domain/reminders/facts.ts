@@ -89,6 +89,10 @@ export interface ReminderInputs {
   // that month still in Other (no category) for this view, and whether the
   // view's note for it is written. A month not listed was not read.
   monthClose: Record<string, { otherEntryCount: number; hasNote: boolean }>;
+  // Payees the household said are "Not a subscription or bill" on
+  // Subscriptions and bills (repeating_charge_choices): no price change
+  // reminder for them.
+  notRepeatingPayeeKeys?: string[];
 }
 
 // A person view reads the accounts that person owns plus joint ones; the

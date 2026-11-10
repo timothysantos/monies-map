@@ -49,7 +49,7 @@ const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((m
 // 2. Month-by-month "intent vs outcome" plan review (in the Simple view,
 //    earned against spent by month instead).
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth, cardsUsable = false, fetchRequiredQuery = undefined }) {
+export function SummaryPanel({ view, selectedMonth, categories, accounts = [], onCategoryAppearanceChange, onRefresh, onOpenMonth, cardsUsable = false, fetchRequiredQuery = undefined, runBackgroundRefresh = undefined }) {
   const [, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -211,7 +211,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
 
       {cardsUsable && fetchRequiredQuery ? (
         <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
-          <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} reserveHeight={subsReserveHeight} />
+          <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
         </Suspense>
       ) : <SubscriptionsReserve height={subsReserveHeight} />}
 

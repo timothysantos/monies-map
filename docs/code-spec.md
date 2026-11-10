@@ -854,6 +854,15 @@ A persistence command is all-or-nothing:
   a safe id, a hex evidence key, at most 500 dismissals), then write the
   `app_settings` row and its audit event in one batch
   (`tests/atomic-writes-ledger-checkup.test.mjs`)
+- Subscriptions and bills' choices
+  (`src/domain/app-repository-repeating-charges.ts`, DOMAIN.md "Repeating
+  Charge"): keep, take off, show again, rename and restore (Undo) check the
+  series key and name first (at most 40 characters), then write the
+  `repeating_charge_choices` row (or delete it when nothing is left) and its
+  `repeating_charge_chosen` audit event in one batch. No month refresh
+  markers: no entry and no month total changes
+  (`tests/atomic-writes-repeating-charges.test.mjs`). The table is additive
+  and every read tolerates it missing
 - trips and events (`src/domain/app-repository-trip-events.ts`, DOMAIN.md
   "Trip or Event"): save, set entries (at most 200, written as two
   `json_each` statements whatever the count, so no statement binds more than

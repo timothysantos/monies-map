@@ -79,4 +79,36 @@ test.describe("Subscriptions and bills", () => {
     await expect(singtel).not.toContainText("$");
     await expect(card.locator(".subs-total-figure").first()).toHaveText("••••");
   });
+
+  test("a row opens its details; taking it off the list, Undo and Rename change the card at once", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const card = await openSummary(page);
+    const singtel = card.locator('[data-series="SINGTEL MOBILE|monthly"]');
+    await singtel.getByRole("button", { name: "Singtel: details and choices" }).click();
+    const dialog = page.getByRole("dialog", { name: "Singtel" });
+    await expect(dialog).toContainText("Usually");
+    await expect(dialog).toContainText("$42.90 a month");
+    await expect(dialog).toContainText("Found 4 months in a row in your entries.");
+    await dialog.getByRole("button", { name: "Not a subscription or bill" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(card.locator(".subs-notice")).toContainText("Taken off the list");
+    await expect(card.locator('.subs-list > [data-series="SINGTEL MOBILE|monthly"]')).toHaveCount(0);
+    await expect(card).toContainText("1 taken off the list");
+
+    await card.locator(".subs-notice").getByRole("button", { name: "Undo" }).click();
+    await expect(card.locator(".subs-notice")).toContainText("Undone");
+    await expect(singtel).toBeVisible();
+
+    const netflix = card.locator('[data-series="NETFLIX COM|monthly"]');
+    await netflix.getByRole("button", { name: "Netflix: details and choices" }).click();
+    await page.getByRole("dialog", { name: "Netflix" }).getByRole("button", { name: "Rename" }).click();
+    const rename = page.getByRole("dialog", { name: "Rename" });
+    await rename.getByLabel("Name").fill("Netflix family plan");
+    await rename.getByRole("button", { name: "Save" }).click();
+    await expect(card.locator(".subs-notice")).toContainText("Renamed");
+    await expect(netflix.locator(".subs-name")).toContainText("Netflix family plan");
+    // Both people see it: it is the household's choice.
+    await page.reload();
+    await expect(page.locator('.subs-card [data-series="NETFLIX COM|monthly"] .subs-name')).toContainText("Netflix family plan", { timeout: 30_000 });
+  });
 });

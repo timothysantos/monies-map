@@ -55,3 +55,21 @@ export async function requestRepeatingCharges(viewId, scope, { signal = undefine
   }
   return answer;
 }
+
+// POST /api/repeating-charges/choice: keep, take off, show again, rename or
+// restore (Undo) one charge. Answers { ok: true, previous, current } or
+// { ok: false, error }; never throws.
+export async function saveRepeatingChoice(body, { fetchImpl = fetch } = {}) {
+  const fallbackError = "That didn't save. Try again.";
+  try {
+    const response = await fetchImpl("/api/repeating-charges/choice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => null);
+    return response.ok && data?.ok ? data : { ok: false, error: data?.error || fallbackError };
+  } catch {
+    return { ok: false, error: fallbackError };
+  }
+}

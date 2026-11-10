@@ -923,3 +923,18 @@ CREATE INDEX IF NOT EXISTS idx_trip_events_household
 
 CREATE INDEX IF NOT EXISTS idx_trip_event_entries_trip
   ON trip_event_entries (trip_event_id, household_id);
+
+-- Subscriptions and bills' choices (DOMAIN.md "Repeating Charge"): keep a
+-- charge on the list, take it off ("Not a subscription or bill") or rename
+-- it, for the whole household. series_key is the payee key and its period
+-- ("NETFLIX COM|monthly"). Additive; a reader treats a missing table as no
+-- choices.
+CREATE TABLE IF NOT EXISTS repeating_charge_choices (
+  household_id TEXT NOT NULL,
+  series_key TEXT NOT NULL,
+  choice TEXT CHECK (choice IN ('kept', 'not_repeating')),
+  display_name TEXT CHECK (display_name IS NULL OR length(display_name) <= 40),
+  updated_by_person_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, series_key)
+);

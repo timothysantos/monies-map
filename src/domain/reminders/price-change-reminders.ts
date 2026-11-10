@@ -12,7 +12,7 @@ import type { PriceChangeReminderDto } from "../../types/dto";
 import type { ReminderChargeRow, ReminderInputs } from "./facts";
 import { REMINDER_THRESHOLDS } from "./thresholds";
 
-type PriceInput = Pick<ReminderInputs, "today" | "viewId" | "accounts" | "charges">;
+type PriceInput = Pick<ReminderInputs, "today" | "viewId" | "accounts" | "charges" | "notRepeatingPayeeKeys">;
 type Period = ReminderChargeRow["period"];
 
 interface Charge {
@@ -30,10 +30,11 @@ export function priceChangeReminders(input: PriceInput): PriceChangeReminderDto[
   const accountIds = new Set(input.accounts
     .filter((account) => account.isActive && (input.viewId === "household" || account.isJoint || account.ownerPersonId === input.viewId))
     .map((account) => account.id));
+  const silenced = new Set(input.notRepeatingPayeeKeys ?? []);
   const seriesByPayee = new Map<string, { period: Period; charges: Charge[] }>();
   for (const row of input.charges) {
     const key = payeeKey(row.description);
-    if (row.isForeign || !key || !accountIds.has(row.accountId)) {
+    if (row.isForeign || !key || !accountIds.has(row.accountId) || silenced.has(key)) {
       continue;
     }
     const entry = seriesByPayee.get(`${row.period}|${key}`) ?? { period: row.period, charges: [] };

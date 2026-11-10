@@ -1924,6 +1924,23 @@ Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
 - Colours: tokens only; money is never toned here (it is what was paid,
   not over or under anything). Hidden money shows `••••` and "Went up in
   Sep" without its amounts.
+- Choices: a row (its name is a button, "Netflix: details and choices";
+  a tap on its amounts opens their figure menu instead) opens
+  `subscriptions-charge-dialog.jsx` (lazy, `SheetDialog`: a sheet on a
+  phone, a small dialog on a wider screen) with Usually, Went up, Last 12
+  months, Comes and Paid from, "Found N months in a row in your entries.",
+  and Keep it on the list, Rename and Not a subscription or bill (Show again
+  for one taken off). A choice saves through `POST
+  /api/repeating-charges/choice`, reads the list again through
+  `runBackgroundRefresh`, and leaves a line in the card ("Taken off the
+  list", "Kept on the list", "Back on the list", "Renamed") with Undo
+  ("Undone" after it). The intro says "Tap one to keep it, rename it or take
+  it off the list."
+- Code: the card rides in Spending Mix's lazy chunk (`spending-mix-section`
+  re-exports it); a chunk of its own made the bundler move React into a new
+  first-screen file. While its answer loads, Summary reserves the height it
+  had last time on this device (`monies-map:subs-card-height`), none the
+  first time, so nothing under it moves.
 - Model: `subscriptions-model.js` (pure): totals are the sums of the listed
   and stopped series the server named, never of might-repeat or taken-off
   ones.

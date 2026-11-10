@@ -342,7 +342,13 @@ over plan.
   missed months it moves to **stopped** at the end of the list. **Might
   repeat** lists charges found only twice in a row so far; they are not
   counted. Click any amount (on a phone, tap it) for **View entries** with
-  exactly those charges. On a phone the four rows most worth a look come
+  exactly those charges. Click a row's name (on a phone, tap the row) to see
+  its details and choose: **Keep it on the list** keeps it even if a month
+  is missed, **Rename** changes only the name shown here, and **Not a
+  subscription or bill** moves it to **taken off the list** (an allowance
+  or a loan, say), where **Show again** brings it back. A charge taken off
+  also stops the price change reminder in Ask. Choices are for the whole
+  household, so both of you see them, and each has **Undo**. On a phone the four rows most worth a look come
   first; **See all** shows the rest. Hide money totals and the amounts go.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its

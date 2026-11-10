@@ -53,5 +53,34 @@ export const subscriptionsCopy = {
   stopped: (count) => `${count} stopped`,
   show: "Show ›",
   hide: "Hide",
-  seeAll: (count) => `See all ${count} ›`
+  seeAll: (count) => `See all ${count} ›`,
+  // Choices (owner decision D3: the whole household sees them).
+  introChoices: "Charges that come back every month or every year, found in your entries. Tap one to keep it, rename it or take it off the list.",
+  openRow: (name) => `${name}: details and choices`,
+  usually: "Usually",
+  wentUpLabel: "Went up",
+  comes: "Comes",
+  paidFrom: "Paid from",
+  found: (series) => (series.period === "yearly"
+    ? `Found ${series.runLength} years in a row in your entries.`
+    : `Found ${series.runLength} months in a row in your entries.`),
+  keep: "Keep it on the list",
+  rename: "Rename",
+  notRepeating: "Not a subscription or bill",
+  showAgain: "Show again",
+  close: "Close",
+  nameLabel: "Name",
+  nameMax: 40,
+  saveName: "Save",
+  renameNote: "Rename changes only the name shown here.",
+  // The line after a choice, with Undo.
+  done: {
+    keep: "Kept on the list",
+    take_off: "Taken off the list",
+    show_again: "Back on the list",
+    rename: "Renamed",
+    restore: "Undone"
+  },
+  undo: "Undo",
+  saveFailed: "That didn't save. Try again."
 };

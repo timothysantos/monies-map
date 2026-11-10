@@ -1,5 +1,5 @@
 import "./subscriptions-section.css";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Receipt } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -12,6 +12,10 @@ import { buildSubscriptionsModel, monthPeriod } from "./subscriptions-model";
 import { ICON_REGISTRY } from "./ui-options";
 import { useIsMobileLayout } from "./use-viewport";
 import { useRepeatingCharges } from "./use-repeating-charges";
+import { saveRepeatingChoice } from "./repeating-charges-api";
+
+// The details and choices of one charge load only when a row is opened.
+const SubscriptionsChargeDialog = lazy(() => import("./subscriptions-charge-dialog").then((module) => ({ default: module.SubscriptionsChargeDialog })));
 
 // Where Summary keeps the card's last height (summary-panel.jsx reads it; a
 // string here so this chunk imports nothing from the first screen).
@@ -90,7 +94,10 @@ function WentUp({ series, phone }) {
   );
 }
 
-function SeriesRow({ series, categories, yearPeriod, phone }) {
+// A row opens its details and the household's choices (the lazy
+// subscriptions-charge-dialog.jsx); a tap on one of its figures opens that
+// figure's menu instead (the shell's capture listener takes it first).
+function SeriesRow({ series, categories, yearPeriod, phone, onOpen }) {
   const isLate = series.status === "late" || series.status === "stopped";
   const chips = (
     <>
@@ -101,10 +108,21 @@ function SeriesRow({ series, categories, yearPeriod, phone }) {
   );
   const meta = isLate ? copy.lateMeta(series) : phone ? copy.metaPhone(series) : copy.meta(series);
   return (
-    <li className={`subs-row ${isLate ? "is-stopped" : ""}`} data-series={series.key}>
+    <li
+      className={`subs-row is-openable ${isLate || series.status === "taken_off" ? "is-stopped" : ""}`}
+      data-series={series.key}
+      onClick={(event) => {
+        if (!(event.target instanceof Element && event.target.closest("[data-fig], button"))) {
+          onOpen(series);
+        }
+      }}
+    >
       <CategoryIcon categories={categories} name={series.category} />
       <div className="subs-row-main">
-        <span className="subs-name">{series.name}{phone ? null : chips}</span>
+        <span className="subs-name">
+          <button type="button" className="subs-open" aria-label={copy.openRow(series.name)} onClick={() => onOpen(series)}>{series.name}</button>
+          {phone ? null : chips}
+        </span>
         <span className="subs-meta">{phone && (series.wentUp || isLate) ? chips : meta}</span>
       </div>
       <span className="subs-usual">
@@ -121,7 +139,7 @@ function SeriesRow({ series, categories, yearPeriod, phone }) {
   );
 }
 
-function Fold({ label, hint, rows, categories, yearPeriod, phone }) {
+function Fold({ label, hint, rows, categories, yearPeriod, phone, onOpen }) {
   const [open, setOpen] = useState(false);
   if (!rows.length) {
     return null;
@@ -135,20 +153,25 @@ function Fold({ label, hint, rows, categories, yearPeriod, phone }) {
         </button>
       </li>
       {open ? rows.map((series) => (
-        <SeriesRow key={series.key} series={series} categories={categories} yearPeriod={yearPeriod} phone={phone} />
+        <SeriesRow key={series.key} series={series} categories={categories} yearPeriod={yearPeriod} phone={phone} onOpen={onOpen} />
       )) : null}
     </>
   );
 }
 
 /**
- * @param {{ view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, reserveHeight?: number }} props
+ * @param {{ view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: (task: () => Promise<any>) => any, reserveHeight?: number }} props
  */
-export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQuery, reserveHeight = 0 }) {
+export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, reserveHeight = 0 }) {
   const queryClient = useQueryClient();
   const phone = useIsMobileLayout();
   const [showAll, setShowAll] = useState(false);
-  const { answer } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
+  const [openSeries, setOpenSeries] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  // The line after a choice: what was done and the state to restore (Undo).
+  const [notice, setNotice] = useState(null);
+  const { answer, refresh } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildSubscriptionsModel(answer), [answer]);
   const cardRef = useRef(null);
   // The height Summary reserves next time on this device (0: nothing shown).
@@ -164,6 +187,46 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
     }
   }, [model, phone, showAll]);
 
+  // Read the list again after a choice; a failure keeps the saved choice and
+  // shows the shell's retryable refresh notice. The price change reminder
+  // reads the choices too.
+  function refreshAfterSave() {
+    const task = () => refresh(undefined);
+    if (runBackgroundRefresh) {
+      runBackgroundRefresh(task);
+    } else {
+      task().catch(() => {
+        // The kept list stays; the next visit reads it again.
+      });
+    }
+    void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+  }
+
+  async function choose(series, action, displayName = undefined) {
+    setSaving(true);
+    setErrorMessage("");
+    const result = await saveRepeatingChoice({ seriesKey: series.key, action, ...(displayName === undefined ? {} : { displayName }) });
+    setSaving(false);
+    if (!result.ok) {
+      setErrorMessage(result.error || copy.saveFailed);
+      return;
+    }
+    setOpenSeries(null);
+    setNotice({ action, seriesKey: result.seriesKey, previous: result.previous });
+    refreshAfterSave();
+  }
+
+  async function undo() {
+    if (!notice || notice.action === "restore") {
+      return;
+    }
+    const result = await saveRepeatingChoice({ seriesKey: notice.seriesKey, action: "restore", choice: notice.previous.choice, displayName: notice.previous.displayName });
+    setNotice(result.ok ? { action: "restore", seriesKey: notice.seriesKey, previous: result.previous } : { ...notice, failed: true });
+    if (result.ok) {
+      refreshAfterSave();
+    }
+  }
+
   if (!model) {
     // Loading: keep the card's place so nothing under it moves.
     return reserveHeight ? <div className="subs-reserve" aria-hidden="true" style={{ minHeight: reserveHeight }} /> : null;
@@ -172,11 +235,12 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
     return null;
   }
   const rows = phone && !showAll ? model.phoneRows : model.rows;
+  const rowProps = { categories, yearPeriod: model.yearPeriod, phone, onOpen: (series) => { setErrorMessage(""); setOpenSeries(series); } };
   return (
     <section ref={cardRef} className="chart-card subs-card" aria-labelledby="subs-title">
       <div className="subs-head">
         <h3 id="subs-title">{copy.title}</h3>
-        <p className="subs-intro">{phone ? copy.introPhone : copy.intro}</p>
+        <p className="subs-intro">{phone ? copy.introPhone : copy.introChoices}</p>
       </div>
       <div className="subs-totals">
         <div className="subs-total">
@@ -188,11 +252,15 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           <Figure className="subs-total-figure" amount={model.totals.year} period={model.yearPeriod} name={copy.title} />
         </div>
       </div>
+      {notice ? (
+        <p className="subs-notice" role="status">
+          <span>{notice.failed ? copy.saveFailed : copy.done[notice.action]}</span>
+          {notice.action !== "restore" ? <button type="button" className="subtle-action" onClick={undo}>{copy.undo}</button> : null}
+        </p>
+      ) : null}
       {phone ? null : <p className="subs-sorted">{copy.all(model.rows.length)} · {copy.sorted}</p>}
       <ul className="subs-list" aria-label={copy.title}>
-        {rows.map((series) => (
-          <SeriesRow key={series.key} series={series} categories={categories} yearPeriod={model.yearPeriod} phone={phone} />
-        ))}
+        {rows.map((series) => <SeriesRow key={series.key} series={series} {...rowProps} />)}
         {phone && !showAll && model.rows.length > rows.length ? (
           <li className="subs-fold">
             <button type="button" className="subs-fold-button" onClick={() => setShowAll(true)}>
@@ -202,12 +270,23 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
         ) : null}
         {!phone || showAll ? (
           <>
-            <Fold label={copy.stopped(model.stopped.length)} hint={copy.show} rows={model.stopped} categories={categories} yearPeriod={model.yearPeriod} phone={phone} />
-            <Fold label={copy.mightRepeat(model.mightRepeat.length)} hint={copy.mightRepeatHint} rows={model.mightRepeat} categories={categories} yearPeriod={model.yearPeriod} phone={phone} />
-            <Fold label={copy.takenOff(model.takenOff.length)} hint={copy.show} rows={model.takenOff} categories={categories} yearPeriod={model.yearPeriod} phone={phone} />
+            <Fold label={copy.stopped(model.stopped.length)} hint={copy.show} rows={model.stopped} {...rowProps} />
+            <Fold label={copy.mightRepeat(model.mightRepeat.length)} hint={copy.mightRepeatHint} rows={model.mightRepeat} {...rowProps} />
+            <Fold label={copy.takenOff(model.takenOff.length)} hint={copy.show} rows={model.takenOff} {...rowProps} />
           </>
         ) : null}
       </ul>
+      {openSeries ? (
+        <Suspense fallback={null}>
+          <SubscriptionsChargeDialog
+            series={openSeries}
+            saving={saving}
+            errorMessage={errorMessage}
+            onChoose={(action, displayName) => choose(openSeries, action, displayName)}
+            onClose={() => setOpenSeries(null)}
+          />
+        </Suspense>
+      ) : null}
     </section>
   );
 }

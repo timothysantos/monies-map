@@ -6,6 +6,7 @@ import { cardBillWindowStart, type CardBillTransactionRow } from "../card-bill-p
 import { addMonths } from "../money-signals/format";
 import { adjustEntriesForView } from "../month-projection";
 import { filterEntriesForView } from "../person-view-scope";
+import { loadRepeatingChoices, notRepeatingPayeeKeys } from "../app-repository-repeating-charges";
 import { buildReminders } from "../reminders/build-reminders";
 import type { ReminderAccount, ReminderChargeRow, ReminderInputs, ReminderSplitGroup, ReminderSplitsFacts } from "../reminders/facts";
 import { monthsWithAllStatements } from "../reminders/month-close-reminder";
@@ -31,7 +32,7 @@ export async function buildRemindersDto(
   // the month close only for the people and the accounts.
   const peopleRead = loadPeople(db);
   const accountsRead = loadReminderAccounts(db);
-  const [people, accounts, cardPayments, charges, splits, monthClose] = await Promise.all([
+  const [people, accounts, cardPayments, charges, splits, monthClose, choices] = await Promise.all([
     peopleRead,
     accountsRead,
     loadCardPayments(db, today),
@@ -42,10 +43,16 @@ export async function buildRemindersDto(
     Promise.all([peopleRead, accountsRead]).then(([list, accountList]) => {
       const view = resolvePageViewId(selectedViewId, list);
       return loadMonthCloseFacts(db, view, monthsWithAllStatements({ today, accounts: accountList, viewId: view }));
-    })
+    }),
+    // "Not a subscription or bill" on Subscriptions and bills silences the
+    // price change reminder for that payee.
+    loadRepeatingChoices(db)
   ]);
   const viewId = resolvePageViewId(selectedViewId, people);
-  const inputs: ReminderInputs = { today, viewId, people: people, accounts, cardPayments, charges, splits, monthClose };
+  const inputs: ReminderInputs = {
+    today, viewId, people: people, accounts, cardPayments, charges, splits, monthClose,
+    notRepeatingPayeeKeys: [...notRepeatingPayeeKeys(choices)]
+  };
   return { viewId, today, reminders: buildReminders(inputs).slice(0, REMINDERS_MAX) };
 }
 

@@ -543,6 +543,15 @@ Canonical terms:
   charge, while the account it came from has later entries. Two missed
   months make it `stopped` (in the fold). It never says "cancelled".
 - Expenses only: never a transfer, and never Investments or Savings.
+- `choice` (`repeating_charge_choices`, one per series key, the whole
+  household's, owner decision D3): `kept` ("Keep it on the list": stays
+  even when a month is missed, and counts from two in a row; a kept bill may
+  change each month in any category), `not_repeating` ("Not a subscription
+  or bill": listed under "taken off the list", never counted, and the price
+  change reminder for that payee goes quiet), and a `display name`
+  (Rename, at most 40 characters; changes only the name shown). "Show
+  again" clears the choice. Every choice writes a `repeating_charge_chosen`
+  audit event and has Undo (restore the state before).
 
 Important distinctions:
 - A statement not imported yet is not a stopped subscription: "not seen

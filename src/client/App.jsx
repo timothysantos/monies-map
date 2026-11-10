@@ -2165,6 +2165,7 @@ export function App() {
           onOpenMonth={openSummaryMonth}
           cardsUsable={summaryCardsUsable}
           fetchRequiredQuery={fetchRequiredQuery}
+          runBackgroundRefresh={runBackgroundRefresh}
         />
       );
     }

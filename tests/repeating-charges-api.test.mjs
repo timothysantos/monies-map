@@ -12,7 +12,8 @@ import {
   createEntry,
   createSeededTemplate,
   dumpDatabase,
-  openSeededDatabase
+  openSeededDatabase,
+  rows
 } from "./support/d1-workspace.mjs";
 
 let template;
@@ -133,4 +134,80 @@ test("a person view counts their own charges at their share, in the scope", asyn
   assert.equal(unknown.viewId, "household");
   assert.equal(unknown.scope, "direct_plus_shared");
   assert.equal(unknown.series.length, 3);
+});
+
+// The household's choices (owner decision D3): keep, take off, show again,
+// rename and restore (Undo), through POST /api/repeating-charges/choice.
+async function choose(api, body) {
+  return api("/api/repeating-charges/choice", body);
+}
+
+test("keep, take off, show again, rename and Undo change the list for the whole household, with an audit event", async (t) => {
+  const { db, api, fetch } = await openSeededDatabase(t, template);
+  await addCharges(api);
+  // Disney+ twice in a row: it might repeat, and is not counted.
+  for (const back of [2, 1]) {
+    await createEntry(api, { date: `${monthAgo(back)}-20`, description: "DISNEY PLUS", accountName: "Citi Rewards", categoryName: "Subscriptions MO", amountMinor: 1198, ownerName: "Joyce" });
+  }
+  const before = await getCharges(fetch, "view=household");
+  assert.deepEqual(before.mightRepeat.map((series) => series.key), ["DISNEY PLUS|monthly"]);
+
+  const kept = await choose(api, { seriesKey: "DISNEY PLUS|monthly", action: "keep" });
+  assert.equal(kept.status, 200, JSON.stringify(kept.payload));
+  assert.deepEqual(kept.payload, { ok: true, seriesKey: "DISNEY PLUS|monthly", previous: { choice: null, displayName: null }, current: { choice: "kept", displayName: null } });
+  const afterKeep = await getCharges(fetch, `view=${TIM}`);
+  // Joyce's charge: not in Tim's view, but the choice is the household's.
+  assert.equal(afterKeep.series.some((series) => series.key === "DISNEY PLUS|monthly"), false);
+  const household = await getCharges(fetch, "view=household");
+  const disney = household.series.find((series) => series.key === "DISNEY PLUS|monthly");
+  assert.equal(disney.kept, true);
+  assert.deepEqual(household.mightRepeat, []);
+
+  const renamed = await choose(api, { seriesKey: "DISNEY PLUS|monthly", action: "rename", displayName: "  Disney+  " });
+  assert.deepEqual(renamed.payload.current, { choice: "kept", displayName: "Disney+" });
+  const named = (await getCharges(fetch, "view=household")).series.find((series) => series.key === "DISNEY PLUS|monthly");
+  assert.equal(named.name, "Disney+");
+  assert.equal(named.payee, "Disney Plus");
+
+  // Not a subscription or bill: off the list, never counted, and the price
+  // change reminder for Singtel goes quiet.
+  const reminderKeys = async () => (await (await fetch("/api/reminders?view=household")).json()).reminders.map((reminder) => reminder.kind);
+  assert.ok((await reminderKeys()).includes("price_change"));
+  const off = await choose(api, { seriesKey: "SINGTEL MOBILE|monthly", action: "take_off" });
+  assert.deepEqual(off.payload.current, { choice: "not_repeating", displayName: null });
+  const afterOff = await getCharges(fetch, "view=household");
+  assert.equal(afterOff.series.some((series) => series.key === "SINGTEL MOBILE|monthly"), false);
+  assert.deepEqual(afterOff.takenOff.map((series) => [series.key, series.status]), [["SINGTEL MOBILE|monthly", "taken_off"]]);
+  assert.equal((await reminderKeys()).includes("price_change"), false);
+
+  // Undo (restore the previous state), then show again.
+  const undone = await choose(api, { seriesKey: "SINGTEL MOBILE|monthly", action: "restore", choice: off.payload.previous.choice, displayName: off.payload.previous.displayName });
+  assert.deepEqual(undone.payload.current, { choice: null, displayName: null });
+  assert.ok((await getCharges(fetch, "view=household")).series.some((series) => series.key === "SINGTEL MOBILE|monthly"));
+  assert.ok((await reminderKeys()).includes("price_change"));
+  const again = await choose(api, { seriesKey: "DISNEY PLUS|monthly", action: "show_again" });
+  assert.deepEqual(again.payload.current, { choice: null, displayName: "Disney+" });
+
+  const audit = await rows(db, "SELECT entity_id, action FROM audit_events WHERE action = 'repeating_charge_chosen' ORDER BY rowid");
+  assert.deepEqual(audit.map((row) => row.entity_id), ["DISNEY PLUS|monthly", "DISNEY PLUS|monthly", "SINGTEL MOBILE|monthly", "SINGTEL MOBILE|monthly", "DISNEY PLUS|monthly"]);
+});
+
+test("a choice is refused for a bad key, an unknown action or a name over 40 characters, and changes nothing", async (t) => {
+  const { db, api, fetch } = await openSeededDatabase(t, template);
+  const before = await dumpDatabase(db);
+  for (const body of [
+    { seriesKey: "netflix|monthly", action: "keep" },
+    { seriesKey: "NETFLIX COM|weekly", action: "keep" },
+    { seriesKey: "NETFLIX COM", action: "keep" },
+    { seriesKey: "NETFLIX COM|monthly", action: "delete" },
+    { seriesKey: "NETFLIX COM|monthly", action: "rename", displayName: "N".repeat(41) },
+    { seriesKey: "NETFLIX COM|monthly", action: "restore", choice: "maybe" }
+  ]) {
+    const { status, payload } = await choose(api, body);
+    assert.equal(status, 400, JSON.stringify(body));
+    assert.equal(payload.ok, false);
+  }
+  const get = await fetch("/api/repeating-charges/choice");
+  assert.equal(get.status, 405);
+  assertSameDatabase(await dumpDatabase(db), before);
 });

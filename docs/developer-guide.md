@@ -2828,7 +2828,14 @@ charges as `id~owner~amount`), the accounts with their latest entry date,
 the people and, for a person view, the split shares of the window. It uses
 no AI and writes nothing. The card is the lazy `subscriptions-section.jsx`
 (`subscriptions-model.js` is the pure view-model, `use-repeating-charges.js`
-the read). Tests: `tests/repeating-charges-rules.test.mjs` (the rules and
+the read). The household's choices (keep, take off, show again, rename) are
+`POST /api/repeating-charges/choice` (`src/server/repeating-charges-route.ts`)
+into the additive `repeating_charge_choices` table through
+`src/domain/app-repository-repeating-charges.ts`, one batch with its audit
+event; the reminders read them too (a payee taken off gets no price change
+reminder). Migration: export production D1 first, then
+`npm run db:migrate:remote` and `npm run db:migrate:demo` before deploying.
+Tests: `tests/repeating-charges-rules.test.mjs` (the rules and
 their negatives), `tests/repeating-charges-api.test.mjs` (the real Worker),
 `tests/openable-figures.test.mjs` (every figure equals its entries) and
 `tests/e2e/subscriptions-card.spec.js`.

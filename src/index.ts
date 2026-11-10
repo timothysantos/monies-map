@@ -19,6 +19,7 @@ import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildRemindersDto } from "./domain/pages/reminders";
 import { buildRepeatingChargesDto } from "./domain/pages/repeating-charges";
+import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
 import { handleLedgerCheckupWrite, isLedgerCheckupWritePath, LEDGER_CHECKUP_CLEAR_PAIRS_PATH } from "./server/ledger-checkup-route";
@@ -557,6 +558,9 @@ export default {
     // Subscriptions and bills on Summary (DOMAIN.md "Repeating Charge"): the
     // charges that come back every month or year, for a view and scope.
     // Read-only, no AI; the card asks for it once the top summary is usable.
+    if (url.pathname === REPEATING_CHOICE_PATH) {
+      return handleRepeatingChoiceRoute(request, env);
+    }
     if (url.pathname === "/api/repeating-charges") {
       if (request.method !== "GET") {
         return json({ ok: false, error: "Subscriptions and bills only answer GET." }, 405, { Allow: "GET" });
