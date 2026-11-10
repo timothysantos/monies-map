@@ -72,11 +72,15 @@ export function buildPaceDto(input: {
   const entriesOf = (target: string): PaceEntry[] => input.rows
     .filter((row) => row.date.slice(0, 7) === target && row.date <= today)
     .map((row) => ({ id: row.ids.join(","), date: row.date, amountMinor: row.amountMinor, inSeries: row.ids.some((id) => seriesIds.has(id)), several: row.ids.length > 1, label: row.description }));
-  const usualMonths = [-3, -2, -1].map((offset) => addMonths(month, offset)).map((item) => ({
-    month: item,
-    everydayMinor: everydayMinor(entriesOf(item)),
-    days: daysInMonth(item)
-  }));
+  // The last 3 complete months, each only when it has entries: a gap (no
+  // entries recorded) is too little history, never a usual rate of $0.
+  const usualMonths = [-3, -2, -1].map((offset) => addMonths(month, offset))
+    .filter((item) => entriesOf(item).length > 0)
+    .map((item) => ({
+      month: item,
+      everydayMinor: everydayMinor(entriesOf(item)),
+      days: daysInMonth(item)
+    }));
   const monthsWithEntries = new Set(input.rows.map((row) => row.date.slice(0, 7)).filter((item) => item < month)).size;
   // Imports behind: the account with the most charges in the last 3 months
   // has nothing recorded for more than 10 days.

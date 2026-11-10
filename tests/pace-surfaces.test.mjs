@@ -111,6 +111,9 @@ test("the read's facts are quiet: the first 5 days, imports 11 days behind, too 
   assert.deepEqual(paceFromRead({ latest: "2026-10-30" }), { month: "2026-11", quiet: "imports" });
   const short = readRows().filter((row) => row.date >= "2026-09-01");
   assert.deepEqual(paceFromRead({ rows: short }), { month: "2026-11", quiet: "history" });
+  // Months of history, but nothing recorded in August: no usual rate of $0.
+  const gap = readRows().filter((row) => !row.date.startsWith("2026-08"));
+  assert.deepEqual(paceFromRead({ rows: gap }), { month: "2026-11", quiet: "history" });
 });
 
 // ---- The line and its figure menu ----------------------------------------
