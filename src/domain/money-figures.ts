@@ -245,6 +245,7 @@ export function taxReliefFigureMinor(ids: readonly string[], entries: FigureEntr
     .reduce((sum, entry) => sum + (entry.entryType === "expense" || isTransferOut(entry) ? entry.amountMinor : 0), 0);
 }
 
+/**
  * Usually shared on Splits (DOMAIN.md "Usually Shared"): each group's amount
  * is the exact entries the server named, at the view's amounts. It opens as
  * `spent` narrowed to those entry ids over the months they fall in, so the

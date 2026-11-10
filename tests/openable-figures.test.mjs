@@ -850,6 +850,7 @@ test("Tax reliefs: every amount used opens exactly its entries and Entries' tota
   const pageView = figureMenu({ fig: "outflow", period, search, ids: figures[0][1].ids });
   const { derived: shared } = await openEntries(api, pageView.items[0].location, accounts);
   assert.equal(shared.filteredEntries.length, 0);
+});
 
 // Usually shared on Splits (the `spent` figure narrowed to a group's entry
 // ids): each group's amount is the entries it names, so Entries' Spent total
