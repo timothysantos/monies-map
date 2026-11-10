@@ -3357,8 +3357,40 @@ only. Summary and Month do not change.
   figure) worked out from one `trip=all` page read through the Entries code,
   so each equals its trip view's lead; put-away ones fold under "N put away ·
   Show"; empty, it teaches what it is for.
+- Picking many (`entry-pick-model.js`, pure and unit tested): a wide
+  screen's filter bar has "Pick"; Shift-click or Ctrl/Cmd-click on a row
+  also starts picking and picks it. On a phone a press and hold (about
+  450 ms, cancelled by a move; `useHoldToPick` in entries-list.jsx) starts it
+  with a light `navigator.vibrate(10)`, and the click that ends the hold is
+  spent. While picking, the row's category bubble is a tick box of the same
+  size (nothing moves), the row has `aria-pressed` and a soft accent wash, a
+  click anywhere on it toggles it (its category label and chip do not open),
+  Shift-click adds the run from the last picked row in screen order, and each
+  date heading has "Pick the whole day" ("Pick day" on a phone; a second tap
+  takes the day off when all of it is picked). Esc stops. The picked set
+  lives in the panel (never the URL) and ends when the month, view, scope or
+  any `entry_*` filter changes (`pickScopeKey`); rows stay memoized with an
+  `isPicked` boolean and stable handlers.
+- The floating bar (`entries-pick-bar.jsx` and `entries-pick.css`, a lazy
+  chunk fetched when picking starts): the Splits floating bar's look in the
+  same place on a wide screen (the page's own floating bar steps aside), and
+  the tab bar's place on a phone (the tab bar, View and scope bar and round
+  buttons step aside; every target at least 44 px). It reads "N picked ·
+  $total": the picked rows' amounts as the rows show them, through
+  `PrivateMoney` and with no money tone. "Put on a trip or event" (T) opens
+  the same picker for the picked rows; "Category" opens the one category list
+  and saves through the bulk category command (`POST
+  /api/entries/update-category` with `changes`), asking "Yes, change all N"
+  in the bar over 10 rows. Transfers keep their Transfer category and are
+  left out. Over 200 picked the bar says so and both refuse (the server
+  refuses too). After either change picking ends, the note offers Undo (the
+  trip change's audit event; for Category the same command with the old
+  categories) and the page refreshes through `runBackgroundRefresh`. T on a
+  focused row (not picking) opens the picker for that row; T and Esc are
+  ignored while typing or while a dialog or popover is open.
 - Bundle: the picker, note, lead, sheet and their styles are the
-  `entries-trip-events` chunk. The first-screen bytes did not grow from this code; Vite moved its
+  `entries-trip-events` chunk, and the pick bar is the `entries-pick-bar`
+  chunk. The first-screen bytes did not grow from this code; Vite moved its
   ~1 kB preload helper into its own first-screen file once Entries gained a
   dynamic import, so the file-count budget is 8.
 

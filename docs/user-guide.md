@@ -739,6 +739,27 @@ so nothing is counted twice.
 - An entry on a trip shows a small label with the trip's name beside its
   other labels. Tap the label to move it to another trip or take it off.
 
+**Many entries at once.** Pick the entries, then choose once for all of
+them:
+
+- **On a computer:** click **Pick** next to **Reset filters**, or hold Shift
+  or Ctrl (Cmd on a Mac) and click an entry. Each entry's round icon turns
+  into a tick box. Click entries to pick them or take them off again.
+  Shift-click picks every entry between the last one you picked and this
+  one. **Pick the whole day** beside a date picks that day's entries.
+- **On a phone:** press and hold an entry until the phone gives a small
+  buzz, then tap more entries. **Pick day** beside a date picks the whole
+  day.
+- A bar at the bottom says how many you picked and what they add up to.
+  **Put on a trip or event** (or the T key) opens the same list as for one
+  entry. **Category** moves them all to one category; for more than 10 it
+  asks **Yes, change all …** first. Either way the note at the bottom has
+  **Undo**, which puts each entry back as it was.
+- **Cancel** (or Esc) stops picking. You can change up to 200 entries at a
+  time. Transfers keep their own category.
+- On a computer, T also opens the list for the entry you are on, without
+  picking.
+
 **See what a trip cost.** In the filters, **Trip or event** opens **Trips &
 events**: every one, the newest first, with what it cost and how many
 entries it holds. Tap one and the top of Entries becomes that trip's
