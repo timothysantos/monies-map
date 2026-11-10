@@ -81,7 +81,9 @@ import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
 import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
 import { tripEventsCopy } from "./copy/trip-events-copy";
-import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent, setTripEventEntries } from "./trip-events-api";
+import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent, setTripEventEntries, undoPickedAddToSplits } from "./trip-events-api";
+import { pickSplitsCopy } from "./copy/pick-splits-copy";
+import { addedNotice as addedToSplitsNotice } from "./entry-pick-splits-model";
 import {
   addPick,
   isPickKeyIgnored,
@@ -1114,6 +1116,29 @@ export function EntriesPanel({
   const handlePickDay = useCallback((dayIds) => updatePick((current) => pickDay(current, dayIds)), [updatePick]);
   const togglePicking = useCallback(() => updatePick((current) => (current.picking ? NO_PICK : startPicking(current))), [updatePick]);
   const putPickedOnTrip = useCallback((element) => openTripPicker(pickedEntries, element), [openTripPicker, pickedEntries]);
+  const handlePickedAddedToSplits = useCallback(({ result, plan }) => {
+    stopPicking();
+    const announce = () => onBroadcastSplitMutation?.({
+      month: selectedMonth,
+      invalidateEntries: true,
+      invalidateMonth: true,
+      invalidateSummary: true
+    });
+    announce();
+    setTripNote({
+      key: `splits-${Date.now()}`,
+      undoId: "",
+      message: addedToSplitsNotice(result, plan),
+      changes: [],
+      // Undo takes those splits back off in one write.
+      undo: async () => {
+        const undone = await undoPickedAddToSplits(result.undoSplitExpenseIds, pickSplitsCopy.undoFailed);
+        if (undone.ok) announce();
+        return undone;
+      }
+    });
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [onBroadcastSplitMutation, refreshEntriesPage, runBackgroundRefresh, selectedMonth, stopPicking]);
   const handlePickedCategoryChanged = useCallback(({ changes, categoryName, confirmedCount }) => {
     stopPicking();
     const invalidate = () => onInvalidateEntryMutation?.({ month: selectedMonth, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
@@ -1936,6 +1961,10 @@ export function EntriesPanel({
             rows={pickedEntries}
             summary={pickSummary}
             categories={categories}
+            splitGroups={entriesPage.splitGroups}
+            people={people}
+            viewId={entryView.id}
+            onAddedToSplits={handlePickedAddedToSplits}
             onPutOnTrip={putPickedOnTrip}
             onCategoryChanged={handlePickedCategoryChanged}
             onCancel={stopPicking}

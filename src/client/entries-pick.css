@@ -161,3 +161,41 @@ body:has(> .entries-pick-bar) .mobile-context-sticky-wrap.is-desktop-visible {
     order: 2;
   }
 }
+
+/* "Add to Splits" choice (entries-pick-splits.jsx): the group and share
+   pills are Add to splits' own (entries-route.css); this only places them. */
+.pick-splits-popover {
+  width: min(380px, calc(100vw - 24px));
+  padding: 12px;
+  overflow-y: auto;
+}
+
+/* Tighter group rows than the phone sheet's: the popover has to fit above the bar. */
+.pick-splits-popover .entry-split-group-choice {
+  min-height: 44px;
+}
+
+.pick-splits-form {
+  display: grid;
+  gap: 4px;
+}
+
+.pick-splits-form .entry-split-picker-field {
+  margin-top: 8px;
+}
+
+.pick-splits-preview {
+  margin: 10px 0 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pick-splits-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.pick-splits-sheet .pick-splits-form {
+  padding: 0 16px 8px;
+}

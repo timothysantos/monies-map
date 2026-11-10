@@ -2,39 +2,61 @@
 // Entries", "Picking many"): a lazy chunk, loaded when picking starts. It
 // shows how many rows are picked and their total (as the rows show it,
 // hidden with the rest of the money), and offers "Put on a trip or event"
-// (T), "Category" and Cancel (Esc). It sits where the wide screen's floating
+// (T), "Category", "Add to Splits" and Cancel (Esc). It sits where the wide screen's floating
 // bar sits, and on a phone where the tab bar is, under the thumb.
 //
 // Category uses the one category list and the bulk category command: over
 // 10 rows it asks "Yes, change all N" here in the bar (never a browser
 // confirm); over 200 the bar refuses, and so does the server.
+//
+// Add to Splits opens a small choice (entries-pick-splits.jsx: group, share,
+// a plain preview) and puts the rows that can go on Splits (expenses not on
+// Splits yet) through the bulk add command with one group and share; over 10
+// it asks "Yes, add all N" here too, and the panel's note offers Undo.
 import "./entries-pick.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { CategoryPickerHost } from "./category-picker-host";
 import { tripEventsCopy as copy } from "./copy/trip-events-copy";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { moniesClient } from "./monies-client-service";
-import { changeEntryCategories } from "./trip-events-api";
+import { pickSplitsCopy as splitsCopy } from "./copy/pick-splits-copy";
+import { addPickedToSplits, changeEntryCategories } from "./trip-events-api";
+import {
+  chosenAddBody,
+  defaultSplitGroupId,
+  needsAddConfirm,
+  noneAddedReason,
+  splitPeopleFor,
+  splitsPlanFor
+} from "./entry-pick-splits-model";
+import { readLastGroupId } from "./splits-group-strip-model";
 import { categoryChangesFor, isPickKeyIgnored, needsConfirm, PICK_MAX } from "./entry-pick-model";
 
 const { format: formatService } = moniesClient;
+
+// The choice (popover or sheet) is fetched when it first opens.
+const PickSplitsChoice = lazy(() => import("./entries-pick-splits").then((module) => ({ default: module.PickSplitsChoice })));
 
 /**
  * @param {{
  *   rows: any[], summary: { count: number, totalMinor: number, tooMany: boolean },
  *   categories: any[],
+ *   splitGroups?: Array<{ id: string, name: string }>, people?: Array<{ name: string }>, viewId?: string,
+ *   onAddedToSplits?: (added: { result: any, plan: any }) => void,
  *   onPutOnTrip: (element: HTMLElement | null) => void,
  *   onCategoryChanged: (change: { changes: any[], categoryName: string, confirmedCount?: number }) => void,
  *   onCancel: () => void
  * }} props
  */
-export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCategoryChanged, onCancel }) {
+export function EntriesPickBar({ rows, summary, categories, splitGroups = [], people = [], viewId = "", onAddedToSplits = undefined, onPutOnTrip, onCategoryChanged, onCancel }) {
   const tripButtonRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
   const categoryButtonRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
+  const splitsButtonRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
+  const [splitsChoice, setSplitsChoice] = useState({ mounted: false, open: false });
   const [categoryList, setCategoryList] = useState({ mounted: false, open: false });
-  const [confirm, setConfirm] = useState(/** @type {{ categoryName: string, changes: any[] } | null} */ (null));
+  const [confirm, setConfirm] = useState(/** @type {{ kind: "category", categoryName: string, changes: any[] } | { kind: "splits", choice: { groupId: string, shareBasisPoints: number } } | null} */ (null));
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const { count, totalMinor, tooMany } = summary;
@@ -105,7 +127,7 @@ export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCateg
     }
     if (needsConfirm(changes.length)) {
       // The list closes; the bar asks before changing that many.
-      setConfirm({ categoryName, changes });
+      setConfirm({ kind: "category", categoryName, changes });
       return { ok: true };
     }
     return save(categoryName, changes);
@@ -113,11 +135,56 @@ export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCateg
 
   async function confirmAll() {
     if (!confirm || saving) return;
+    if (confirm.kind === "splits") {
+      const result = await addToSplits(confirm.choice, true);
+      if (!result.ok) {
+        setMessage(result.error);
+        setConfirm(null);
+      }
+      return;
+    }
     const result = await save(confirm.categoryName, confirm.changes, confirm.changes.length);
     if (!result.ok) {
       setMessage(result.error);
       setConfirm(null);
     }
+  }
+
+  // Add to Splits: the rows that can go (expenses not already on Splits), the
+  // group it starts on and who the words name come from the picked rows.
+  const splitsPlan = useMemo(() => splitsPlanFor(rows), [rows]);
+  const splitsPeople = useMemo(() => splitPeopleFor(splitsPlan.payerNames, people), [people, splitsPlan.payerNames]);
+  const initialGroupId = useMemo(() => defaultSplitGroupId(splitGroups, readLastGroupId(viewId) ?? ""), [splitGroups, viewId]);
+
+  function openSplits() {
+    if (nothing) return;
+    if (tooMany) {
+      setMessage(copy.tooMany(PICK_MAX));
+      return;
+    }
+    if (!splitsPlan.ids.length) {
+      setMessage(splitsCopy.nothingToAdd);
+      return;
+    }
+    setMessage("");
+    setConfirm(null);
+    setSplitsChoice({ mounted: true, open: true });
+  }
+
+  async function addToSplits({ groupId, shareBasisPoints }, confirmed = false) {
+    const ids = splitsPlan.ids;
+    if (needsAddConfirm(ids.length) && !confirmed) {
+      // The choice closes; the bar asks before adding that many.
+      setConfirm({ kind: "splits", choice: { groupId, shareBasisPoints } });
+      return { ok: true };
+    }
+    setSaving(true);
+    const result = await addPickedToSplits(chosenAddBody({ ids, groupId, shareBasisPoints, confirmed }), splitsCopy.saveFailed);
+    setSaving(false);
+    if (!result.ok) return result;
+    if (!result.addedCount) return { ok: false, error: noneAddedReason(result) };
+    onAddedToSplits?.({ result, plan: splitsPlan });
+    return result;
   }
 
   // T puts the picked rows on a trip; Esc (in the panel) stops picking.
@@ -153,9 +220,11 @@ export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCateg
       {message ? <p className="entries-pick-bar-message" role="alert">{message}</p> : null}
       {confirm ? (
         <div className="entries-pick-bar-actions is-confirm">
-          <p className="entries-pick-bar-question">{copy.confirmAll(confirm.changes.length, confirm.categoryName)}</p>
-          <button type="button" className="lsd-primary entries-pick-bar-main" disabled={saving} onClick={() => void confirmAll()}>
-            {copy.yesAll(confirm.changes.length)}
+          <p className="entries-pick-bar-question">
+            {confirm.kind === "splits" ? splitsCopy.confirmAll(splitsPlan.ids.length) : copy.confirmAll(confirm.changes.length, confirm.categoryName)}
+          </p>
+          <button type="button" className="lsd-primary entries-pick-bar-main" data-pick-confirm="" disabled={saving} onClick={() => void confirmAll()}>
+            {confirm.kind === "splits" ? splitsCopy.yesAll(splitsPlan.ids.length) : copy.yesAll(confirm.changes.length)}
           </button>
           <button type="button" className="lsd-quiet entries-pick-bar-second" disabled={saving} onClick={() => setConfirm(null)}>
             {copy.cancel}
@@ -187,8 +256,34 @@ export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCateg
           >
             {copy.category}
           </button>
+          <button
+            ref={splitsButtonRef}
+            type="button"
+            className="lsd-quiet entries-pick-bar-second"
+            data-pick-splits-open=""
+            aria-haspopup="dialog"
+            aria-expanded={splitsChoice.open}
+            disabled={nothing || saving}
+            onClick={openSplits}
+          >
+            {splitsCopy.button}
+          </button>
         </div>
       )}
+      {splitsChoice.mounted ? (
+        <Suspense fallback={null}>
+          <PickSplitsChoice
+            open={splitsChoice.open}
+            onOpenChange={(open) => setSplitsChoice((current) => ({ ...current, open }))}
+            anchorRef={splitsButtonRef}
+            count={splitsPlan.ids.length}
+            groups={splitGroups}
+            people={splitsPeople}
+            initialGroupId={initialGroupId}
+            onChoose={addToSplits}
+          />
+        </Suspense>
+      ) : null}
       {categoryList.mounted ? (
         <CategoryPickerHost
           open={categoryList.open}

@@ -74,6 +74,17 @@ export function changeEntryCategories(changes, { confirmedCount = undefined } = 
   return postJson("/api/entries/update-category", body, fallbackError);
 }
 
+// The picked rows' Add to Splits (and its Undo): one group and one share for
+// every picked entry, through the bulk add command Usually shared uses
+// (src/server/usually-shared-route.ts). Over 10 it needs `confirmedCount`.
+export function addPickedToSplits(body, fallbackError = "") {
+  return postJson("/api/splits/expenses/add-chosen", body, fallbackError);
+}
+
+export function undoPickedAddToSplits(splitExpenseIds, fallbackError = "") {
+  return postJson("/api/splits/expenses/remove-added", { splitExpenseIds, source: "chosen" }, fallbackError);
+}
+
 export function deleteTripEvent(tripEventId, fallbackError) {
   return postJson("/api/trip-events/delete", { tripEventId }, fallbackError);
 }
