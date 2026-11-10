@@ -662,6 +662,14 @@ Canonical terms:
 - `money in`: what came in so far plus regular income (at least $500 from
   the same payer each of the last 2 months) still due this month on its
   usual day. Nothing else is assumed.
+- `year-end pace` (Summary only, from April; owner decision D7,
+  `yearEndKept`): what is kept so far this year (money in less spending,
+  each complete month), plus this month's left range, plus each month still
+  to come at the second-lowest to second-highest kept amount of the last 6
+  complete months (the middle four, so one bonus or one costly month never
+  sets it): "If this keeps up, about $82,300 to $83,800 kept in 2026 by 31
+  Dec." Quiet unless every month from January and each of the last 6 is in
+  Summary's range, or when nothing comes in this month.
 - `quiet`: days 1 to 5, fewer than 3 complete months with entries, a past
   month, imports behind (the busiest account's latest entry is more than 10
   days old), or money hidden (no shape either).

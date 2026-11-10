@@ -2071,6 +2071,10 @@ month keeps going as it has.
   up: about $4,700 to $5,100 by 30 Nov, under the $5,200 plan." The plan's
   side is named only when the whole range is on one side; over the plan is
   said in words, never in rose. Hidden money draws nothing.
+- The year (Summary only, from April; D7): a second sky line under it,
+  "If this keeps up, about $82,300 to $83,800 kept in 2026 by 31 Dec."
+  (`paceYearWords`, `yearEndKept`), from Summary's own months, quiet when
+  the range does not hold every month from January and the last 6.
 - Its figure (`data-fig="pace"`): the menu's note is "How this is worked
   out" with its sums (spent so far, everyday spending for the days to go,
   bills still to come, what is counted once, the rounding); its only item

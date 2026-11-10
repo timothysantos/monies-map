@@ -407,7 +407,11 @@ over plan.
   service, is counted once and not repeated. Nothing else is guessed. Click
   it (on a phone, tap it) to see how it is worked out, or **Ask about this**.
   It stays away in the first 5 days of a month, until you have 3 months of
-  entries, and while your latest statements aren't in yet.
+  entries, and while your latest statements aren't in yet. From April, when
+  the months shown start in January, a second line says what you keep by the
+  end of the year if this keeps up: what you kept so far, plus each month
+  still to come at a typical amount from your last 6 months (the highest and
+  lowest month are left out, so one bonus doesn't count).
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
   amount, its share and a thin bar. The bigger slices are named on the donut
