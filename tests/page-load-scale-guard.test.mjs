@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import worker from "../src/index.ts";
+import { buildUsuallySharedDto } from "../src/domain/pages/usually-shared.ts";
 import { countingDatabase } from "./support/d1-counting.mjs";
 import { createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
 import { seedSettledSplitHistory } from "./support/settled-split-history.mjs";
@@ -328,4 +329,41 @@ test("the Splits page never sends settled rows; a settled section's rows are one
   assert.equal(JSON.parse(rows.body).items.length, 287);
   assert.ok(rows.statements <= 8, `settled-rows: ${rows.statements} round trips (max 8)`);
   assert.ok(rows.medianMs <= MAX_MEDIAN_NODE_CPU_MS, `settled-rows: ${rows.medianMs.toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);
+});
+
+// "Usually shared, not on Splits yet" (DOMAIN.md "Usually Shared") on the 10k
+// household: the sweep reads at most 500 candidate entries (last 90 days, on
+// no split) and at most 6,000 history entries (the year before), each by a
+// date window and a LIMIT, in a few round trips, and answers every candidate
+// through the single-entry rule without a scan per candidate. The fixture's
+// entries run to the end of August 2026, so the list is read as of 2026-08-24.
+test("Usually shared reads a bounded window on the 10k household and stays within the CPU bound", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  const counting = countingDatabase(db);
+  await buildUsuallySharedDto(counting.db, { today: "2026-08-24" });
+  const cpuSamples = [];
+  let measured;
+  let dto;
+  for (let run = 0; run < 5; run += 1) {
+    counting.reset();
+    const before = process.cpuUsage();
+    dto = await buildUsuallySharedDto(counting.db, { today: "2026-08-24" });
+    const used = process.cpuUsage(before);
+    cpuSamples.push((used.user + used.system) / 1000);
+    measured = { ...counting.summary(), calls: [...counting.calls] };
+  }
+  cpuSamples.sort((left, right) => left - right);
+  console.log(`# usually-shared: ${measured.statements} round trips, ${measured.rowsRead} rows read, ${measured.rowBytes} row bytes, ${cpuSamples[2].toFixed(0)} ms node CPU, ${dto.entryCount} entries in ${dto.shopCount} groups`);
+  const entryReads = measured.calls.filter((call) => /FROM transactions/.test(call.sql));
+  assert.equal(entryReads.length, 2, "one candidate read and one history read");
+  assert.ok(entryReads.every((call) => /LIMIT \?/.test(call.sql) && /transaction_date BETWEEN/.test(call.sql)), "both reads are bounded by a date window and a LIMIT");
+  assert.ok(entryReads[0].rows <= 500, `candidates: ${entryReads[0].rows} rows (max 500)`);
+  assert.ok(entryReads[1].rows <= 6_000, `history: ${entryReads[1].rows} rows (max 6,000)`);
+  assert.ok(measured.statements <= 6, `usually-shared: ${measured.statements} round trips (max 6)`);
+  // Measured: 4 round trips, 77,323 rows read, 1.69 MB of rows, ~240 ms node CPU.
+  assert.ok(measured.rowsRead <= 120_000, `usually-shared: ${measured.rowsRead} rows read (max 120,000)`);
+  assert.ok(measured.rowBytes <= 2_100_000, `usually-shared: ${measured.rowBytes} row bytes (max 2,100,000)`);
+  assert.ok(JSON.stringify(dto).length <= 400_000, "the answer stays small");
+  assert.ok(cpuSamples[2] <= MAX_MEDIAN_NODE_CPU_MS, `usually-shared: median node CPU ${cpuSamples[2].toFixed(0)} ms (max ${MAX_MEDIAN_NODE_CPU_MS})`);
 });

@@ -8,9 +8,9 @@
 // deterministic (no AI, no reads, no writes); pages/usually-shared.ts loads
 // the inputs.
 
-import { normalizeDescriptionForMatch } from "./app-repository-helpers";
 import {
   NON_GROUP_SPLIT_ID,
+  normalizeDescriptionForMatch,
   suggestSplitForEntry,
   type SplitSuggestionGroup,
   type SplitSuggestionHistoryEntry,
@@ -54,6 +54,7 @@ export function suggestUsuallyShared(input: {
   const { candidates, history, groups, sharePeople } = input;
   const personName = new Map(sharePeople.map((person) => [person.id, person.name]));
   const byKey = new Map<string, { group: UsuallySharedGroupDto; latest: string }>();
+  const index = indexHistory(history);
 
   for (const candidate of candidates) {
     if (input.since && candidate.date < input.since) continue;
@@ -68,7 +69,11 @@ export function suggestUsuallyShared(input: {
         date: candidate.date,
         onSplits: false
       },
-      history,
+      // Only the owner's entries at this shop and in this category can
+      // matter to the rule, so it is handed just those (it still applies its
+      // own window and owner checks): the same answer, without scanning the
+      // whole year for every candidate.
+      history: index.relevantTo(candidate),
       groups: withNonGroup(groups, candidate.currency),
       sharePeople
     });
@@ -134,6 +139,27 @@ export function suggestUsuallyShared(input: {
       || right.entries[0].date.localeCompare(left.entries[0].date)
       || left.shopName.localeCompare(right.shopName)
       || left.key.localeCompare(right.key));
+}
+
+// The history by owner and shop, and by owner and category.
+function indexHistory(history: SplitSuggestionHistoryEntry[]) {
+  const byShop = new Map<string, SplitSuggestionHistoryEntry[]>();
+  const byCategory = new Map<string, SplitSuggestionHistoryEntry[]>();
+  const push = (map: Map<string, SplitSuggestionHistoryEntry[]>, key: string, entry: SplitSuggestionHistoryEntry) => {
+    const list = map.get(key);
+    if (list) list.push(entry); else map.set(key, [entry]);
+  };
+  for (const entry of history) {
+    push(byShop, `${entry.ownerPersonId}|${normalizeDescriptionForMatch(entry.description ?? "")}`, entry);
+    if (entry.categoryName) push(byCategory, `${entry.ownerPersonId}|${entry.categoryName}`, entry);
+  }
+  return {
+    relevantTo(candidate: Pick<UsuallySharedCandidate, "description" | "categoryName" | "ownerPersonId">) {
+      const shop = byShop.get(`${candidate.ownerPersonId}|${normalizeDescriptionForMatch(candidate.description ?? "")}`) ?? [];
+      const category = candidate.categoryName ? byCategory.get(`${candidate.ownerPersonId}|${candidate.categoryName}`) ?? [] : [];
+      return category.length ? [...new Set([...shop, ...category])] : shop;
+    }
+  };
 }
 
 // Non-group expenses take any currency (as the single-entry loader adds it).

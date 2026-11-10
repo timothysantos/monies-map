@@ -387,6 +387,19 @@ const SHOTS = [
     run: (page) => open(page, splitsUrl("person-ethan", "&split_mode=matches"))
   },
   {
+    // Serene's FairPrice top-ups of the last months wait in "Usually shared,
+    // not on Splits yet" (the showcase leaves them off Splits on purpose).
+    name: "splits-usually-shared", device: "desktop",
+    run: async (page) => {
+      await open(page, splitsUrl());
+      const section = page.getByRole("region", { name: "Usually shared, not on Splits yet" });
+      await section.waitFor({ timeout: 30_000 });
+      await section.getByRole("button", { name: "Review" }).click();
+      await section.locator(".split-usually-group").first().waitFor();
+      await scrollToLocator(page, section, 90);
+    }
+  },
+  {
     name: "splits-create-group", device: "desktop",
     run: async (page) => {
       await open(page, splitsUrl());
@@ -664,6 +677,20 @@ const SHOTS = [
   {
     name: "phone-splits", device: "phone",
     run: (page) => open(page, splitsUrl())
+  },
+  {
+    // On a phone the section is one count row; its sheet opens the shops.
+    name: "phone-splits-usually-shared", device: "phone", also: ["phone-splits-usually-shared-sheet"],
+    run: async (page, capture) => {
+      await open(page, splitsUrl());
+      const section = page.getByRole("region", { name: "Usually shared, not on Splits yet" });
+      await section.waitFor({ timeout: 30_000 });
+      await scrollToLocator(page, section, 120);
+      await capture("phone-splits-usually-shared");
+      await section.getByRole("button", { name: "Review" }).click();
+      await page.getByRole("dialog", { name: "Usually shared" }).waitFor();
+      await page.waitForTimeout(500);
+    }
   },
   {
     name: "phone-faq", device: "phone",

@@ -20,7 +20,7 @@
 //   entries and at least `minShare` of all matching entries (split or not).
 //   Two habits tied for first suggest nothing.
 
-import { normalizeDescriptionForMatch } from "./app-repository-helpers";
+import { normalizeDescriptionForMatch as normalizeDescription } from "./app-repository-helpers";
 import type { SplitSuggestionDto } from "../types/dto";
 
 export const SPLIT_SUGGESTION_POLICY = Object.freeze({
@@ -30,6 +30,21 @@ export const SPLIT_SUGGESTION_POLICY = Object.freeze({
 });
 
 export const NON_GROUP_SPLIT_ID = "split-group-none";
+
+// The shop key of a description (the same normalisation as everywhere else),
+// remembered: the Usually shared sweep asks the rule about hundreds of
+// entries against the same history, and re-normalising every history row for
+// each one cost seconds. The memory is small and cleared when it grows.
+const SHOP_KEY_MEMORY_LIMIT = 20_000;
+const shopKeyMemory = new Map<string, string>();
+export function normalizeDescriptionForMatch(value: string) {
+  const known = shopKeyMemory.get(value);
+  if (known !== undefined) return known;
+  if (shopKeyMemory.size >= SHOP_KEY_MEMORY_LIMIT) shopKeyMemory.clear();
+  const key = normalizeDescription(value);
+  shopKeyMemory.set(value, key);
+  return key;
+}
 
 // Categories that hold anything: sharing one says nothing about a habit.
 const CATCH_ALL_CATEGORIES = new Set(["Other", "Other - Income", "Income", "Transfer"]);
