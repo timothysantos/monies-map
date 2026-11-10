@@ -765,6 +765,17 @@ of nine intents:
   one, and one naming a wallet, or a category other than the jobs' own
   Investments, Savings and Salary, stays a filter request, as does one
   measured against another month ("did I save more than in July?").
+- `pace` (If this keeps up, DOMAIN.md "Pace"; `src/domain/ask-pace.ts`):
+  "how will November end if this keeps up?", "where will this month end
+  up?" (read before "usual" and "what changed"; "how did October end?" is
+  about a month that has ended and is left to the other readers). The
+  facts are the Subscriptions and bills read's `pace` on Month's Actual and
+  Planned spend; the card is "If this keeps up" with the spent lead and the
+  parts as low-to-high rows, the wording the same range as the line ("about
+  $4,700 to $5,100 by 30 Nov, under the $5,200 plan") or a plain quiet
+  reason (too early, too little history, statements behind, a month that
+  has ended). AI never words it. The turn topic is `pace`; the figure menu's
+  Ask about this asks it.
 
 A period reads as its months, oldest first, up to this month: a quarter
 ("Q3", "q2 2026", "the third quarter", "this quarter", "last quarter";

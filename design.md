@@ -1992,8 +1992,10 @@ Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
   lists the next 30 days by week ("This week" to Sunday, "Next week",
   "Later"), each row "Usually around 14 Nov" with its last amount ("last
   one") or, for a bill that changes, the range of its last 3 ("last 3").
-  These amounts are not figures (nothing has happened yet) and there is no
-  total. A phone shows the first five and "3 more by 10 Dec ›". Nothing due:
+  These amounts are not figures (nothing has happened yet). Above the list,
+  in the plan (sky) tone, the 30 days' total under the "If this keeps up"
+  rule: "About $500 to $540 by 10 Dec, if they come as usual" (one amount
+  when every bill is fixed, rounded to its step: `roundRange` in `pace.ts`). A phone shows the first five and "3 more by 10 Dec ›". Nothing due:
   "Nothing is due to come in the next 30 days." (`buildComingUp` in
   `subscriptions-model.js`, `upcomingCharges` in the engine.)
 - Code: the card rides in Spending Mix's lazy chunk (`spending-mix-section`
@@ -2042,6 +2044,43 @@ is never out of sight.
   Summary lead's "more than usual so far" line is part of the top summary
   and Money insights, not a card. Owner decision D5 stands: Money insights
   is movable but never hideable.
+
+## If this keeps up
+
+The pace (owner decision, 2026-11-10; DOMAIN.md "Pace"; the approved design's
+section 5 and decisions D6 to D8): where this month's spending ends if the
+month keeps going as it has.
+
+- One pure function: `src/domain/pace.ts` (`buildPaceRange`, `paceTotals`,
+  `roundOutward`, `roundRange`). Its facts come from the Subscriptions and
+  bills read (`pages/pace-facts.ts`, `buildPaceDto`): the same grouped rows,
+  the series, each account's latest entry, plus one read of the view's money
+  in over the last 4 months, in the same parallel step. The answer is the
+  `pace` field of `GET /api/repeating-charges`; nothing else is read.
+- Summary: `PaceSection` (in the Subscriptions chunk) inside the `plan`
+  card (Arrange Summary), under the month-by-month chart when the range ends in today's month, with what is
+  left of what comes in; the plan is named only in the Plan view.
+- Month: `month-panel.jsx` reads the same answer with `useRepeatingCharges`
+  once the page is usable (today's month only) and draws `PaceLine` under the
+  lead; the Month insight lines get it too (`MonthSignalInput.pace`):
+  paceSteady and paceAhead give the range when the whole range is under the
+  plan, and paceOver (Worth knowing) says when even the low end is over it.
+- The line (`pace-line.jsx`, words in `pace-line-model.js`): a bar with what
+  is spent (plain, muted), a dashed sky continuation to the low end, a
+  hatched sky block to the high end and a sky plan mark; then "If this keeps
+  up: about $4,700 to $5,100 by 30 Nov, under the $5,200 plan." The plan's
+  side is named only when the whole range is on one side; over the plan is
+  said in words, never in rose. Hidden money draws nothing.
+- Its figure (`data-fig="pace"`): the menu's note is "How this is worked
+  out" with its sums (spent so far, everyday spending for the days to go,
+  bills still to come, what is counted once, the rounding); its only item
+  is Ask about this ("How will Nov 2026 end if this keeps up?"). Never View
+  entries or Open plan: nothing in it has happened yet.
+- Ask: the `pace` money question (`ask-pace.ts`) answers with the same sums
+  on Month's Actual and Planned spend, or a plain reason when it is quiet;
+  AI never words it.
+- Colour guard: `tests/money-colour-guard.test.mjs` ("a pace is drawn in the
+  plan tone only").
 
 ## Apple Shortcut Install Boundary
 

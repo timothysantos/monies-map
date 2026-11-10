@@ -393,8 +393,21 @@ over plan.
   household, so both of you see them, and each has **Undo**. **Coming up** lists what
   should come in the next 30 days, week by week, each on its usual day with
   what it cost last time (a bill that changes shows the lowest and highest
-  of its last three). It is a guide from your past entries, not a bill. On a phone the four rows most worth a look come
+  of its last three), and over it what they come to in all: "About $500 to
+  $540 by 10 Dec, if they come as usual". It is a guide from your past entries, not a bill. On a phone the four rows most worth a look come
   first; **See all** shows the rest. Hide money totals and the amounts go.
+- **If this keeps up**: under the month-by-month chart (and on Month, under
+  the top card), from the 6th of the month, a dotted line in the plan colour
+  says where this month's spending ends if the month keeps going as it has:
+  "If this keeps up: about $4,700 to $5,100 by 30 Nov, under the $5,200 plan.
+  About $7,350 to $7,750 left of what comes in." It is always a range. It
+  adds what you spent so far, your everyday spending for the days left (at
+  this month's pace and at your usual pace from the last 3 months), and the
+  bills still to come on their usual days. A big one-off, like an aircon
+  service, is counted once and not repeated. Nothing else is guessed. Click
+  it (on a phone, tap it) to see how it is worked out, or **Ask about this**.
+  It stays away in the first 5 days of a month, until you have 3 months of
+  entries, and while your latest statements aren't in yet.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
   amount, its share and a thin bar. The bigger slices are named on the donut
@@ -1229,6 +1242,14 @@ you say "usual"): the categories that went up most, then those that went
 down, each with the shops behind it. While a month is still going, it is
 compared up to the same day of the month before. Click an amount (on a
 phone, tap it) for exactly those entries.
+
+### How will this month end?
+
+Ask "how will November end if this keeps up?" or "where will this month end
+up?" and Ask gives the same range as the dotted line on Summary and Month,
+with what makes it up: your everyday spending for the days left, the bills
+still to come and any big cost counted once. A month that has already ended
+has nothing still to come. It works with AI off too.
 
 ### Is that more than usual?
 
