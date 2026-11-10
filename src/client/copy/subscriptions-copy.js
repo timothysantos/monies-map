@@ -82,5 +82,13 @@ export const subscriptionsCopy = {
     restore: "Undone"
   },
   undo: "Undo",
+  // Coming up: the next 30 days, by week.
+  comingUp: "Coming up",
+  tabsLabel: "Subscriptions and bills lists",
+  weeks: { this: "This week", next: "Next week", later: "Later" },
+  usuallyAround: (date) => `Usually around ${dayMonth(date)}`,
+  lastThree: "last 3",
+  moreBy: (count, date) => `${count} more by ${dayMonth(date)} ›`,
+  nothingComing: "Nothing is due to come in the next 30 days.",
   saveFailed: "That didn't save. Try again."
 };

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { findRepeatingCharges, repeatingWindowStart } from "../src/domain/repeating-charges.ts";
+import { findRepeatingCharges, repeatingWindowStart, upcomingCharges } from "../src/domain/repeating-charges.ts";
 import { priceChangeReminders } from "../src/domain/reminders/price-change-reminders.ts";
 
 const TODAY = "2026-11-10";
@@ -209,4 +209,35 @@ test("the list is sorted by cost over 12 months, stopped ones last", () => {
     ...monthly("DISNEY PLUS", Array(5).fill(10000), { firstMonth: "2026-03", day: 20 })
   ];
   assert.deepEqual(names(find(rows).series), ["Great Eastern", "Netflix", "Disney Plus"]);
+});
+
+// Coming up: the next 30 days of charges on their usual days, dates and
+// recorded amounts only.
+test("coming up: each series on its usual day within 30 days, once a month, never one already charged or not seen lately", () => {
+  const rows = [
+    ...monthly("NETFLIX.COM", Array(6).fill(1998), { firstMonth: "2026-05", day: 14 }),
+    ...monthly("SP SERVICES", [11860, 14285, 9800, 13110, 16420, 12050], { firstMonth: "2026-05", day: 18, categoryName: "Bills" }),
+    // Charged on 3 Nov already: next one is 3 Dec.
+    ...monthly("APPLE.COM/BILL", Array(6).fill(448), { firstMonth: "2026-06", day: 3 }),
+    // Not seen since August: not coming as usual.
+    ...monthly("DISNEY PLUS", Array(4).fill(1198), { firstMonth: "2026-05", day: 20 }),
+    row("2025-11-28", "NTUC INCOME INSURANCE", 124800, { categoryName: "Insurance" }),
+    row("2024-11-27", "NTUC INCOME INSURANCE", 124800, { categoryName: "Insurance" })
+  ];
+  const { series } = find(rows);
+  const asSource = (item) => ({ ...item, key: item.seriesKey, kind: item.amountKind, lowMinor: item.lastThree.lowMinor, highMinor: item.lastThree.highMinor });
+  assert.deepEqual(upcomingCharges(series.map(asSource), TODAY), [
+    { key: "NETFLIX COM|monthly", date: "2026-11-14", lowMinor: 1998, highMinor: 1998 },
+    { key: "SP SERVICES|monthly", date: "2026-11-18", lowMinor: 12050, highMinor: 16420 },
+    { key: "NTUC INCOME INSURANCE|yearly", date: "2026-11-28", lowMinor: 124800, highMinor: 124800 },
+    { key: "APPLE COM BILL|monthly", date: "2026-12-03", lowMinor: 448, highMinor: 448 }
+  ]);
+  // A shorter window ends sooner; a later today moves Netflix to December.
+  assert.deepEqual(upcomingCharges(series.map(asSource), TODAY, 5).map((item) => item.key), ["NETFLIX COM|monthly"]);
+  assert.deepEqual(upcomingCharges(series.map(asSource), "2026-11-20", 30).map((item) => [item.key, item.date]), [
+    ["NTUC INCOME INSURANCE|yearly", "2026-11-28"],
+    ["APPLE COM BILL|monthly", "2026-12-03"],
+    ["NETFLIX COM|monthly", "2026-12-14"],
+    ["SP SERVICES|monthly", "2026-12-18"]
+  ]);
 });

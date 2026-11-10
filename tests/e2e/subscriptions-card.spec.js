@@ -80,6 +80,22 @@ test.describe("Subscriptions and bills", () => {
     await expect(card.locator(".subs-total-figure").first()).toHaveText("••••");
   });
 
+  test("Coming up lists the next 30 days on their usual days, by week, with no total", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const card = await openSummary(page);
+    await card.getByRole("tab", { name: "Coming up" }).click();
+    await expect(card.getByRole("tab", { name: "Coming up" })).toHaveAttribute("aria-selected", "true");
+    const netflix = card.locator('[data-coming="NETFLIX COM|monthly"]');
+    await expect(netflix).toContainText(/Usually around 14 [A-Z][a-z]{2}/);
+    await expect(netflix).toContainText("$19.98");
+    await expect(netflix).toContainText("last one");
+    await expect(card.locator(".subs-week").first()).toHaveText(/This week|Next week|Later/i);
+    // Not figures: nothing here has happened yet.
+    await expect(netflix.locator("[data-fig]")).toHaveCount(0);
+    await card.getByRole("tab", { name: /^All \d+$/ }).click();
+    await expect(card.locator('[data-series="NETFLIX COM|monthly"]')).toBeVisible();
+  });
+
   test("a row opens its details; taking it off the list, Undo and Rename change the card at once", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const card = await openSummary(page);

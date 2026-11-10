@@ -4,6 +4,9 @@
 // figures are tested without a page: every amount shown is the sum the
 // server named, with the entry ids behind it.
 
+import { addDays } from "../domain/money-signals/format";
+import { COMING_UP_DAYS, upcomingCharges } from "../domain/repeating-charges";
+
 const PHONE_ROWS = 4;
 
 const sumOf = (list, pick) => ({
@@ -51,3 +54,30 @@ export function buildSubscriptionsModel(answer) {
 
 // The month a figure's charges fall in, as a figure period.
 export const monthPeriod = (date) => `${String(date).slice(0, 7)}:${String(date).slice(0, 7)}`;
+
+// Coming up (design.md "Subscriptions and bills"): the next 30 days of the
+// listed charges on their usual days, grouped by week: this week (to
+// Sunday), next week, later. Dates and the last amounts only; the total
+// comes with "If this keeps up".
+export function buildComingUp(answer, days = COMING_UP_DAYS) {
+  if (!answer) {
+    return null;
+  }
+  const today = answer.today;
+  const byKey = new Map(answer.series.map((series) => [series.key, series]));
+  const upcoming = upcomingCharges(answer.series, today, days);
+  // Sunday ends a week: the days left in this one, then seven more.
+  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const thisWeekEnd = addDays(today, (7 - weekday) % 7);
+  const nextWeekEnd = addDays(thisWeekEnd, 7);
+  const groups = [
+    { key: "this", items: [] },
+    { key: "next", items: [] },
+    { key: "later", items: [] }
+  ];
+  for (const charge of upcoming) {
+    const group = charge.date <= thisWeekEnd ? groups[0] : charge.date <= nextWeekEnd ? groups[1] : groups[2];
+    group.items.push({ ...charge, series: byKey.get(charge.key) });
+  }
+  return { endDate: addDays(today, days), count: upcoming.length, groups: groups.filter((group) => group.items.length) };
+}

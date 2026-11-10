@@ -1936,6 +1936,14 @@ Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
   list", "Kept on the list", "Back on the list", "Renamed") with Undo
   ("Undone" after it). The intro says "Tap one to keep it, rename it or take
   it off the list."
+- Coming up: two tabs under the totals, "All N" and "Coming up". Coming up
+  lists the next 30 days by week ("This week" to Sunday, "Next week",
+  "Later"), each row "Usually around 14 Nov" with its last amount ("last
+  one") or, for a bill that changes, the range of its last 3 ("last 3").
+  These amounts are not figures (nothing has happened yet) and there is no
+  total. A phone shows the first five and "3 more by 10 Dec ›". Nothing due:
+  "Nothing is due to come in the next 30 days." (`buildComingUp` in
+  `subscriptions-model.js`, `upcomingCharges` in the engine.)
 - Code: the card rides in Spending Mix's lazy chunk (`spending-mix-section`
   re-exports it); a chunk of its own made the bundler move React into a new
   first-screen file. While its answer loads, Summary reserves the height it

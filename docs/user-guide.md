@@ -348,7 +348,10 @@ over plan.
   subscription or bill** moves it to **taken off the list** (an allowance
   or a loan, say), where **Show again** brings it back. A charge taken off
   also stops the price change reminder in Ask. Choices are for the whole
-  household, so both of you see them, and each has **Undo**. On a phone the four rows most worth a look come
+  household, so both of you see them, and each has **Undo**. **Coming up** lists what
+  should come in the next 30 days, week by week, each on its usual day with
+  what it cost last time (a bill that changes shows the lowest and highest
+  of its last three). It is a guide from your past entries, not a bill. On a phone the four rows most worth a look come
   first; **See all** shows the rest. Hide money totals and the amounts go.
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its

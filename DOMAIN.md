@@ -543,6 +543,12 @@ Canonical terms:
   charge, while the account it came from has later entries. Two missed
   months make it `stopped` (in the fold). It never says "cancelled".
 - Expenses only: never a transfer, and never Investments or Savings.
+- `coming up`: the next 30 days of the listed series on their usual days
+  (`upcomingCharges`): a monthly one once a month after the month of its
+  last charge, a yearly one on its next date, at its last amount (one that
+  changes each month: the lowest and highest of its last 3). Never a series
+  not seen lately, stopped, taken off or only found twice. Dates and
+  recorded amounts only, with no total (the total waits for "Pace").
 - `choice` (`repeating_charge_choices`, one per series key, the whole
   household's, owner decision D3): `kept` ("Keep it on the list": stays
   even when a month is missed, and counts from two in a row; a kept bill may

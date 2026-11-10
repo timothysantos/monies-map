@@ -198,6 +198,53 @@
   color: var(--muted);
 }
 
+.subs-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.subs-tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subs-tab[aria-selected="true"] {
+  border-color: var(--text);
+  background: var(--chip);
+  color: var(--text);
+}
+
+.subs-tabs .subs-sorted {
+  margin: 0 0 0 6px;
+}
+
+.subs-week {
+  padding: 10px 14px 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subs-empty {
+  padding: 14px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 @media (max-width: 760px) {
   .subs-row {
     grid-template-columns: 34px minmax(0, 1fr) auto;

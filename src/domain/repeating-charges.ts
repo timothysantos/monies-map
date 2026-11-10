@@ -477,3 +477,60 @@ export function findRepeatingCharges(input: RepeatingChargesInput): RepeatingCha
   takenOff.sort(byCost);
   return { focusMonth, yearStartMonth, series, mightRepeat, takenOff };
 }
+
+// What a series needs to say when it comes next (the server's DTO or the
+// engine's own series).
+export interface UpcomingSource {
+  key: string;
+  period: RepeatingPeriod;
+  status: RepeatingStatus;
+  usualDay: number;
+  nextDate: string;
+  kind: "fixed" | "varies";
+  latest: { date: string; amountMinor: number };
+  lowMinor: number;
+  highMinor: number;
+}
+
+export interface UpcomingCharge {
+  key: string;
+  date: string;
+  // A fixed charge: its last amount (low = high). One that changes each
+  // month: the lowest and highest of its last 3.
+  lowMinor: number;
+  highMinor: number;
+}
+
+export const COMING_UP_DAYS = 30;
+
+/**
+ * Coming up (DOMAIN.md "Repeating Charge"): each listed series' next charges
+ * from today to `days` ahead, on its usual day (a monthly one once a month
+ * after the month of its last charge, a yearly one on its next date), in
+ * date order. Only series that are coming as usual: never one not seen
+ * lately, stopped, taken off or only found twice. Dates and recorded
+ * amounts only; nothing here adds them up.
+ */
+export function upcomingCharges(series: UpcomingSource[], today: string, days = COMING_UP_DAYS): UpcomingCharge[] {
+  const end = addDays(today, days);
+  const upcoming: UpcomingCharge[] = [];
+  for (const item of series) {
+    if (item.status !== "active") {
+      continue;
+    }
+    const amounts = item.kind === "varies"
+      ? { lowMinor: item.lowMinor, highMinor: item.highMinor }
+      : { lowMinor: item.latest.amountMinor, highMinor: item.latest.amountMinor };
+    const lastMonth = item.latest.date.slice(0, 7);
+    const dates = item.period === "yearly"
+      ? [item.nextDate]
+      : [0, 1, 2].map((ahead) => dayIn(addMonths(today.slice(0, 7), ahead), item.usualDay))
+        .filter((date) => date.slice(0, 7) > lastMonth);
+    for (const date of dates) {
+      if (date >= today && date <= end) {
+        upcoming.push({ key: item.key, date, ...amounts });
+      }
+    }
+  }
+  return upcoming.sort((left, right) => left.date.localeCompare(right.date) || left.key.localeCompare(right.key));
+}

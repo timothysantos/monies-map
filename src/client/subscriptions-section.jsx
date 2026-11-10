@@ -8,7 +8,7 @@ import { getCategory } from "./category-utils";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { paletteColour } from "./palette-colour";
-import { buildSubscriptionsModel, monthPeriod } from "./subscriptions-model";
+import { buildComingUp, buildSubscriptionsModel, monthPeriod } from "./subscriptions-model";
 import { ICON_REGISTRY } from "./ui-options";
 import { useIsMobileLayout } from "./use-viewport";
 import { useRepeatingCharges } from "./use-repeating-charges";
@@ -139,6 +139,53 @@ function SeriesRow({ series, categories, yearPeriod, phone, onOpen }) {
   );
 }
 
+// Coming up: the next 30 days on their usual days, by week, each with its
+// last amount (a bill that changes: the lowest and highest of its last 3).
+// These are not figures: nothing here has happened yet.
+const PHONE_COMING = 5;
+
+function ComingUpList({ comingUp, categories, phone }) {
+  const [showAll, setShowAll] = useState(false);
+  if (!comingUp.count) {
+    return <li className="subs-empty">{copy.nothingComing}</li>;
+  }
+  let shown = 0;
+  const limit = phone && !showAll ? PHONE_COMING : Infinity;
+  const blocks = [];
+  for (const group of comingUp.groups) {
+    const items = group.items.slice(0, Math.max(0, limit - shown));
+    shown += items.length;
+    if (!items.length) continue;
+    blocks.push(<li key={`week-${group.key}`} className="subs-week">{copy.weeks[group.key]}</li>);
+    for (const item of items) {
+      const varies = item.lowMinor !== item.highMinor;
+      blocks.push(
+        <li key={`${item.key}:${item.date}`} className="subs-row" data-coming={item.key}>
+          <CategoryIcon categories={categories} name={item.series?.category} />
+          <div className="subs-row-main">
+            <span className="subs-name">{item.series?.name ?? ""}</span>
+            <span className="subs-meta">{copy.usuallyAround(item.date)}</span>
+          </div>
+          <span className="subs-usual">
+            <span>{varies ? `${money(item.lowMinor)}–${money(item.highMinor)}` : money(item.lowMinor)}</span>
+            <span className="subs-label">{varies ? copy.lastThree : copy.lastOne}</span>
+          </span>
+        </li>
+      );
+    }
+  }
+  if (comingUp.count > shown) {
+    blocks.push(
+      <li key="more" className="subs-fold">
+        <button type="button" className="subs-fold-button" onClick={() => setShowAll(true)}>
+          <span>{copy.moreBy(comingUp.count - shown, comingUp.endDate)}</span>
+        </button>
+      </li>
+    );
+  }
+  return blocks;
+}
+
 function Fold({ label, hint, rows, categories, yearPeriod, phone, onOpen }) {
   const [open, setOpen] = useState(false);
   if (!rows.length) {
@@ -166,6 +213,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   const queryClient = useQueryClient();
   const phone = useIsMobileLayout();
   const [showAll, setShowAll] = useState(false);
+  const [tab, setTab] = useState("all");
   const [openSeries, setOpenSeries] = useState(null);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -173,6 +221,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   const [notice, setNotice] = useState(null);
   const { answer, refresh } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildSubscriptionsModel(answer), [answer]);
+  const comingUp = useMemo(() => buildComingUp(answer), [answer]);
   const cardRef = useRef(null);
   // The height Summary reserves next time on this device (0: nothing shown).
   useLayoutEffect(() => {
@@ -185,7 +234,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
     } catch {
       // Blocked storage: the next visit reserves nothing.
     }
-  }, [model, phone, showAll]);
+  }, [model, phone, showAll, tab]);
 
   // Read the list again after a choice; a failure keeps the saved choice and
   // shows the shell's retryable refresh notice. The price change reminder
@@ -258,7 +307,17 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           {notice.action !== "restore" ? <button type="button" className="subtle-action" onClick={undo}>{copy.undo}</button> : null}
         </p>
       ) : null}
-      {phone ? null : <p className="subs-sorted">{copy.all(model.rows.length)} · {copy.sorted}</p>}
+      <div className="subs-tabs" role="tablist" aria-label={copy.tabsLabel}>
+        {[["all", copy.all(model.rows.length)], ["coming", copy.comingUp]].map(([key, label]) => (
+          <button key={key} type="button" role="tab" className="subs-tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>
+        ))}
+        {!phone && tab === "all" ? <span className="subs-sorted">{copy.sorted}</span> : null}
+      </div>
+      {tab === "coming" ? (
+        <ul className="subs-list" aria-label={copy.comingUp}>
+          <ComingUpList comingUp={comingUp} categories={categories} phone={phone} />
+        </ul>
+      ) : (
       <ul className="subs-list" aria-label={copy.title}>
         {rows.map((series) => <SeriesRow key={series.key} series={series} {...rowProps} />)}
         {phone && !showAll && model.rows.length > rows.length ? (
@@ -276,6 +335,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           </>
         ) : null}
       </ul>
+      )}
       {openSeries ? (
         <Suspense fallback={null}>
           <SubscriptionsChargeDialog
