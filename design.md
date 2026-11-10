@@ -1948,7 +1948,8 @@ words in `copy/summary-changed-copy.js`).
 ## Miles and cashback
 
 A Summary card (owner-approved, 2026-11-10; DOMAIN.md "Card Reward Rule"),
-registered as `miles` beside Subscriptions and bills (`SUMMARY_CARD_IDS`,
+registered as `miles`, last in the usual order so nothing under it moves when it
+loads (`SUMMARY_CARD_IDS`,
 `cardBody`, `NAMES`). Lazy code in Spending Mix's chunk
 (`card-rewards-section.jsx`, `card-rewards-section.css`,
 `card-rewards-model.js`, words in `copy/card-rewards-copy.js`), read once the
