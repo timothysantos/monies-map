@@ -25,9 +25,6 @@ async function shoot(locator, name) {
   }
 }
 
-// The card that holds the month-by-month chart (Plan: Intent vs Outcome).
-const chartCard = (page) => page.locator(".chart-card").filter({ has: page.locator("[data-earned-spent-chart]") });
-
 // The chart and what sits under it (the sentence or the quiet note), once the
 // chart has played its first-view motion: a clip from the chart's top to the
 // bottom of `under`.

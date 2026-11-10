@@ -1220,7 +1220,7 @@ read-only tools (find_entries, get_entry, get_split_balances,
 list_recent_entries, get_category_history; `ask-lookup-tools.ts`). The route
 runs it and asks again with the result in a `<lookups>` block (untrusted
 data), up to 3 lookups and 4 model calls a turn (a repair counts) and a token
-cap, each call one allowance unit. Results are household-scoped and compact
+cap of 8,000 estimated tokens, each call one allowance unit. Results are household-scoped and compact
 (names through `promptEntryName`, no amounts, a balance is only who owes
 whom). The final action may carry `target_entry`; it becomes the entry in
 focus only if a lookup in that turn returned that exact id. "Split last

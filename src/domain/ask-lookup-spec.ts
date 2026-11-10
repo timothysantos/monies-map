@@ -8,8 +8,10 @@ export const ASK_LOOKUP_LIMITS = Object.freeze({
   maxRows: 8,
   maxResultChars: 1_200,
   maxNoteChars: 80,
-  // Tokens one turn may spend across all its model calls (estimated).
-  maxTurnTokens: 6_000
+  // Tokens one turn may spend across all its model calls (estimated: each call
+  // counts its prompt over 4 plus the output cap, about 1,950 at today's first
+  // prompt size, so 8,000 leaves room for the 4-call limit).
+  maxTurnTokens: 8_000
 });
 
 export const ASK_LOOKUP_TOOL_NAMES = ["find_entries", "get_entry", "get_split_balances", "list_recent_entries", "get_category_history"] as const;

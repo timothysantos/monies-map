@@ -322,7 +322,7 @@ or foreign id is no target; `tests/ask-lookup-route.test.mjs`).
 
 Cost. A plain turn is still one allowance unit. A lookup adds a model call
 (about 1 to 2k tokens each, prompts stay under the existing caps): at most 4
-calls and 6,000 estimated tokens a turn, so at most 4 units; a repair counts.
+calls and 8,000 estimated tokens a turn (raised from 6,000 on 2026-11-10: 3 calls used it up), so at most 4 units; a repair counts.
 Suggestions, habit learning and auto-apply make no AI call and use no
 allowance.
 

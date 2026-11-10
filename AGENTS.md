@@ -324,7 +324,7 @@ Details and the reasons are in `docs/code-spec.md` and
 - Lookups: within a turn the model may call read-only tools (`look_up`:
   find_entries, get_entry, get_split_balances, list_recent_entries,
   get_category_history; `src/domain/ask-lookup-tools.ts`). At most 4 model
-  calls a turn (a repair counts) and a token cap, each call one allowance
+  calls a turn (a repair counts) and a token cap (8,000 estimated), each call one allowance
   unit; household rows only; results compact, names through
   `promptEntryName`, no amount, balance figure or account number, shown to
   the model as untrusted data; the model may name as its target only an
