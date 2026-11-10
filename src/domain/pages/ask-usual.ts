@@ -25,9 +25,27 @@ export interface UsualRequest {
   categories: string[];
   people: Array<{ id: string; name: string }>;
   trackedMonths: string[];
+  today?: string;
 }
 
 export type UsualRead = { ok: true; facts: UsualFacts } | { ok: false; reason: "unknown_subject" | "untracked"; subject: string };
+
+/** The view's spending and money-in entries of `month` and the 6 before. */
+export async function loadUsualEntries(db: D1Database, viewId: string, scope: PersonScope, month: string): Promise<UsualEntry[]> {
+  const start = `${addMonths(month, -USUAL_MONTHS)}-01`;
+  const end = `${addMonths(month, 1)}-01`;
+  const loaded = await loadEntriesForDateRange(db, start, end);
+  return filterEntriesForView(adjustEntriesForView(loaded, viewId), viewId, scope)
+    .filter((entry) => entry.entryType === "expense" || entry.entryType === "income")
+    .map((entry) => ({
+      id: entry.id,
+      date: entry.date,
+      description: entry.description ?? "",
+      categoryName: entry.categoryName ?? "Other",
+      entryType: entry.entryType,
+      amountMinor: entry.amountMinor
+    }));
+}
 
 export async function readUsual(db: D1Database, request: UsualRequest): Promise<UsualRead> {
   const raw = String(request.subject ?? "").replace(/'s\b/gi, "").replace(/\s+/g, " ").trim();
@@ -89,6 +107,6 @@ export async function readUsual(db: D1Database, request: UsualRequest): Promise<
   }
   return {
     ok: true,
-    facts: buildUsualFacts({ subject, label, month: request.month, viewId, scope, entries, trackedMonths: request.trackedMonths })
+    facts: buildUsualFacts({ subject, label, month: request.month, viewId, scope, entries, trackedMonths: request.trackedMonths, today: request.today })
   };
 }

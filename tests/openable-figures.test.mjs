@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, changedFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
@@ -714,4 +714,40 @@ test("Bank fees this year: the year's fee rows add up to the line's total in eve
     assert.equal(shownTotal(model), fees.netMinor, `${view.viewId}:${view.scope} Entries total`);
     assert.equal(bankFeesFigureMinor(fees.ids, derived.filteredEntries), fees.netMinor, `${view.viewId}:${view.scope} rule`);
   }
+});
+
+// "What changed?" rows and "more than usual so far" (ask-changed.ts,
+// usual-so-far.ts): each row's amount and the line's "so far" figure open
+// exactly their entries, and Entries' Spent total is the figure.
+test("What changed and More than usual so far: every figure opens entries that add up to it", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  const today = todayInAppTimeZone();
+  const thisMonth = today.slice(0, 7);
+  const day = Math.min(Number(today.slice(8, 10)), 28);
+  const on = (month, d) => `${month}-${String(d).padStart(2, "0")}`;
+  for (let back = 1; back <= 3; back += 1) {
+    await createEntry(api, { date: on(addMonths(thisMonth, -back), 1), description: "KOUFU FOOD COURT", categoryName: "Food & Drinks", amountMinor: 2_000 });
+  }
+  await createEntry(api, { date: on(thisMonth, 1), description: "KOUFU FOOD COURT", categoryName: "Food & Drinks", amountMinor: 9_000 });
+  await createEntry(api, { date: on(thisMonth, 1), description: "BURNT ENDS", categoryName: "Food & Drinks", amountMinor: 80_000 });
+  await createEntry(api, { date: on(addMonths(thisMonth, -1), day), description: "COURTS", categoryName: "Home", amountMinor: 30_000 });
+  const ask = async (text) => (await api("/api/ai-assist/answer", { text, viewId: "household", month: thisMonth, scope: "direct_plus_shared" })).payload;
+  const search = viewSearch(VIEWS[0], thisMonth);
+  const changed = await ask("what changed this month?");
+  assert.equal(changed.intent, "changed");
+  const lines = changed.answer.lines;
+  assert.ok(lines.some((line) => line.label === "Food & Drinks"), JSON.stringify(lines));
+  for (const line of lines.filter((item) => item.figure?.ids?.length)) {
+    const [startMonth, endMonth] = line.figure.period.split(":");
+    const { model, derived } = await viewEntries(api, accounts, "spent", { search, period: { startMonth, endMonth }, ids: line.figure.ids });
+    assert.equal(shownTotal(model), line.amountMinor, line.label);
+    assert.equal(changedFigureMinor(line.figure.ids, derived.filteredEntries), line.amountMinor, `${line.label} (rule)`);
+  }
+  const summary = await get(api, `/api/summary-page?view=household&month=${thisMonth}&scope=direct_plus_shared&summary_start=${addMonths(thisMonth, -6)}&summary_end=${thisMonth}`);
+  const above = summary.summaryPage.aboveUsual;
+  assert.equal(above.lines[0].category, "Food & Drinks");
+  assert.equal(above.lines[0].nowMinor, 89_000);
+  const { model } = await viewEntries(api, accounts, "spent", { search, period: { startMonth: thisMonth, endMonth: thisMonth }, ids: above.lines[0].ids });
+  assert.equal(shownTotal(model), 89_000);
 });

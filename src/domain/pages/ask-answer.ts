@@ -13,7 +13,8 @@ import { buildMonthPageDto } from "./month-page";
 import { buildSkewCandidatesDto } from "./skew-candidates";
 import { buildSplitsPageDto } from "./splits-page";
 import { loadRoutePageContext } from "../route-context";
-import { readUsual } from "./ask-usual";
+import { loadUsualEntries, readUsual } from "./ask-usual";
+import { buildChangedFacts, type ChangedFacts } from "../ask-changed";
 import type { UsualFacts } from "../ask-usual";
 import { askTermByKey } from "../ask-terms";
 import { buildTermFacts, type TermFacts } from "../ask-term-answer";
@@ -52,7 +53,7 @@ interface AnsweredBase {
 export type AskAnswerBuild =
   | { supported: false }
   | (AnsweredBase & { needsConfirmation: true; candidates: SkewCandidateDto[] })
-  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts | TermFacts; knownNames: string[] });
+  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts; knownNames: string[] });
 
 export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, today: string): Promise<AskAnswerBuild> {
   const { household, categories, trackedMonths, viewId } = await loadRoutePageContext(db, request.viewId);
@@ -80,6 +81,14 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     return facts ? { ...base, needsConfirmation: false, facts, knownNames: knownNames() } : { supported: false };
   }
 
+  // What changed: the 7 months' entries in one range read.
+  if (intent.kind === "changed") {
+    if (!trackedMonths.includes(intent.month)) return { supported: false };
+    const entries = await loadUsualEntries(db, viewId, scope, intent.month);
+    const facts = buildChangedFacts({ month: intent.month, base: intent.base, viewId, scope, entries, trackedMonths, today });
+    return { ...base, needsConfirmation: false, facts, knownNames: knownNames() };
+  }
+
   // Against the usual level: its own read (one range read of 7 months).
   if (intent.kind === "usual") {
     const read = await readUsual(db, {
@@ -89,7 +98,8 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
       scope,
       categories: categories.map((category) => category.name),
       people,
-      trackedMonths
+      trackedMonths,
+      today
     });
     if (!read.ok) {
       return { supported: false };
@@ -185,7 +195,7 @@ function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: stri
 // spending against income, with either.
 function changesFacts(candidate: SkewCandidateDto, kind: AskAnswerIntentKind) {
   if (kind === "owed") return candidate.kind === "settlement";
-  if (kind === "usual" || kind === "term") return false;
+  if (kind === "usual" || kind === "term" || kind === "changed") return false;
   if (kind === "income") return candidate.skew.incomeMinor !== 0;
   if (kind === "saved" || kind === "spentVsEarned") return candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0;
   return candidate.skew.spendingMinor !== 0;

@@ -106,7 +106,10 @@ export const ASK_TURN_TOPICS = [
   // A bank or app word explained: question.subject is the word as written.
   "explain_term",
   // How much one trip or event cost (question.trip names it).
-  "trip"
+  "trip",
+  // What changed in a month (question.month as a word; question.subject
+  // "usual" to compare with the usual month).
+  "what_changed"
 ] as const;
 export type AskTurnTopic = typeof ASK_TURN_TOPICS[number];
 
@@ -1341,7 +1344,8 @@ const QUESTION_KIND: Record<Exclude<AskTurnTopic, "trip">, AskAnswerIntentKind> 
   saved: "saved",
   spent_vs_earned: "spentVsEarned",
   usual: "usual",
-  explain_term: "term"
+  explain_term: "term",
+  what_changed: "changed"
 };
 
 // A money question as one canonical sentence the answer route's own reader
@@ -1394,6 +1398,8 @@ function validateQuestion(action: AskTurnAction, context: AskTurnContext, ground
     ? `Is ${subject ?? `${person?.name}'s spending`} more than usual ${when}?`
     : topic === "explain_term"
       ? `What is ${subject}?`
+      : topic === "what_changed"
+        ? `What changed ${when}${/\b(?:usual|normal)\b/i.test(String(raw.subject ?? "")) ? " against usual" : ""}?`
       : canonicalQuestion(topic, when, target, other.month, person);
   if (!text) return askBack({ code: "month_invalid", field: "question.other_month" }, COPY.compareWhich);
   const intent = readAnswerIntent(text, { today: context.today, month: context.month, people: context.people });

@@ -23,6 +23,7 @@ import {
 } from "./ask-answer-facts";
 import { buildUsualCard, buildUsualPromptFacts, buildUsualWording, type UsualFacts } from "./ask-usual";
 import { buildTermCard, buildTermPromptFacts, buildTermWording, type TermFacts } from "./ask-term-answer";
+import { buildChangedCard, buildChangedPromptFacts, buildChangedWording, type ChangedFacts } from "./ask-changed";
 import { isInvestmentsCategoryName, isSavingsCategoryName } from "./money-jobs";
 import { joinWithAnd, lowerLabel, monthName, plural, tidyName } from "./money-signals/format";
 import { flowTone, signTone, spendTone } from "./money-tone";
@@ -428,18 +429,21 @@ function inSpendJob(facts: AskAnswerFacts): AskAnswerFacts {
 
 /** The answer card: Lead, Support, Detail and the links to the screens. */
 // "More than usual" (ask-usual.ts) and every month answer, one way in.
-export function buildAnyAnswerCard(facts: AskAnswerFacts | UsualFacts | TermFacts, context: WordingContext): AskAnswerCardDto {
+export function buildAnyAnswerCard(facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts, context: WordingContext): AskAnswerCardDto {
   if (facts.kind === "term") return buildTermCard(facts);
+  if (facts.kind === "changed") return buildChangedCard(facts, money);
   return facts.kind === "usual" ? buildUsualCard(facts, money) : buildAnswerCard(facts, context);
 }
 
-export function buildAnyTemplateWording(facts: AskAnswerFacts | UsualFacts | TermFacts, context: WordingContext): string {
+export function buildAnyTemplateWording(facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts, context: WordingContext): string {
   if (facts.kind === "term") return buildTermWording(facts, money);
+  if (facts.kind === "changed") return buildChangedWording(facts, money);
   return facts.kind === "usual" ? buildUsualWording(facts, money) : buildTemplateWording(facts, context);
 }
 
-export function buildAnyPromptFacts(facts: AskAnswerFacts | UsualFacts | TermFacts, context: WordingContext): string[] {
+export function buildAnyPromptFacts(facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts, context: WordingContext): string[] {
   if (facts.kind === "term") return buildTermPromptFacts(facts, money);
+  if (facts.kind === "changed") return buildChangedPromptFacts(facts, money);
   return facts.kind === "usual" ? buildUsualPromptFacts(facts, money) : buildPromptFacts(facts, context);
 }
 

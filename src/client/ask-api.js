@@ -326,7 +326,7 @@ export function addSavedEntryToSplits({ entryId, splitGroupId, splitBasisPoints 
   );
 }
 
-const ANSWER_INTENTS = new Set(["spending", "plan", "compare", "biggest", "owed", "income", "invested", "saved", "spentVsEarned", "usual", "term"]);
+const ANSWER_INTENTS = new Set(["spending", "plan", "compare", "biggest", "owed", "income", "invested", "saved", "spentVsEarned", "usual", "term", "changed"]);
 
 /**
  * @typedef {{ supported: boolean, needsConfirmation?: boolean, intent?: string, viewId?: string, scope?: string, months?: string[], candidates?: any[], answer?: { title: string, lead: any, support: any[], lines: any[], links: any[] }, wording?: { text: string, source: "ai" | "template" } }} MoneyAnswer

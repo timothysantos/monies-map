@@ -496,6 +496,25 @@ Way to think about it, in turn:
 
 Action: Show those fees
 
+### aboveUsualSoFar (Worth knowing)
+
+A category more than 20% and more than $50 above its usual so far this month: spending up to today's day of the month against the same day of the last 6 months with data (the 10th with earlier 10ths, never whole months), averaged; at least 2 such months; at most 2 lines. It reports what has happened and never predicts. See what changed asks Ask "Is Food more than usual this month?", which shows the shops behind it.
+
+Phrasings:
+
+- {category} is {diff} more than usual so far this month: {now} against about {usual} by this day.
+- So far this month, {category} came to {now}, about {diff} more than the {usual} it usually is by the {day}.
+- {category} spending is {now} so far this month. By the {day} it's usually about {usual}.
+- By the {day}, {category} usually comes to about {usual}. This month it's {now} so far, {diff} more.
+
+Way to think about it, in turn:
+
+- This compares the same days of each month, so it only counts what has happened so far.
+- One busier week can do this. See what changed shows which shops made the difference.
+- Usual here is the average of up to 6 recent months at this point in the month.
+
+Action: See what changed
+
 ### subscriptions (Worth knowing)
 
 Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability).

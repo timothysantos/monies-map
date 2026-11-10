@@ -28,7 +28,7 @@ export const SIGNAL_KIND_LABELS: Record<SignalKind, string> = {
 export const HEADLINE_KIND_ORDER: SignalKind[] = ["quick_fix", "bigger_question", "worth_a_look", "going_well"];
 
 // Actions only reuse navigations the page already has.
-export type CheckInActionId = "review-statement" | "show-entries" | "open-category" | "settle-group" | "review-matches";
+export type CheckInActionId = "review-statement" | "show-entries" | "open-category" | "settle-group" | "review-matches" | "ask-question";
 
 export interface CheckInAction {
   id: CheckInActionId;
@@ -40,6 +40,8 @@ export interface CheckInAction {
   // The first month of a period of months the entries span (Bank fees this
   // year: January to `month`).
   fromMonth?: string;
+  // "ask-question": the question Ask answers (See what changed).
+  askText?: string;
 }
 
 // What a quote fits: matched to the headline (or the long view on a calm

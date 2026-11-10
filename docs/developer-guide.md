@@ -2873,6 +2873,21 @@ phrasing may use (`validateAiWording` checks every sum). Tests:
 `tests/ask-answer-intent.test.mjs` and the `usual-*` entries of the eval
 bank.
 
+## How do "what changed?" and "more than usual so far" work?
+
+`src/domain/usual-so-far.ts` is the one engine for the month in progress:
+`sameDayUsual` compares spending up to today's day with the same day of
+the last 6 months that have data. Summary computes
+`categoriesAboveUsualSoFar` from the entries it already read (no new read)
+into the DTO's `aboveUsual`, which `aboveUsualSoFarSignals` words; Ask's
+usual answer for the month in progress uses `sameDayUsual` too. "What
+changed?" is `src/domain/ask-changed.ts` (the `changed` intent and
+`what_changed` topic), read from the same 7-month range read as the usual
+answer. Answer lines may carry `figure` (entry ids and period), which the
+answer card turns into an openable figure. Tests:
+`tests/usual-so-far.test.mjs`, `tests/ask-changed.test.mjs`, the
+`changed-*` eval entries and `tests/openable-figures.test.mjs`.
+
 ## Where do Ask's word explanations come from?
 
 `src/domain/ask-terms.ts` holds the fixed explanations and the words that

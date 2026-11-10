@@ -1312,6 +1312,10 @@ export interface SummaryPageDto {
   // Bank fees from 1 January to the range's last month (bank-fees-year.ts),
   // for the "fees this year" Money insights line; left out with no fee.
   bankFeesYear?: import("../domain/bank-fees-year").BankFeesYear;
+  // The categories well above their usual so far this month (usual-so-far.ts:
+  // more than 20% and $50 above the same day of the last 6 months with
+  // data), at most 2; left out when none is.
+  aboveUsual?: { month: string; day: number; months: number; lines: Array<{ category: string; nowMinor: number; usualMinor: number; ids: string[] }> };
   notes: string[];
 }
 
@@ -1713,7 +1717,7 @@ export interface SkewCandidatesDto {
 // POST /api/ai-assist/answer). Every figure comes from the same projections
 // the screens show; only `wording.text` may be AI-phrased, and only after
 // validation against the facts it was given.
-export type AskAnswerIntentKind = "spending" | "plan" | "compare" | "biggest" | "owed" | "income" | "invested" | "saved" | "spentVsEarned" | "usual" | "term";
+export type AskAnswerIntentKind = "spending" | "plan" | "compare" | "biggest" | "owed" | "income" | "invested" | "saved" | "spentVsEarned" | "usual" | "term" | "changed";
 
 export interface AskAnswerLeadDto {
   label: string;
@@ -1743,6 +1747,9 @@ export interface AskAnswerLineDto {
   currency: string;
   tone: MoneyTone;
   secondary?: { kind: "plan" | "compare"; label: string; amountMinor: number };
+  // An openable figure (design.md "Openable figures"): the entries behind
+  // the amount, opened as Spent narrowed to them over the period.
+  figure?: { ids: string[]; period: string };
 }
 
 // The Entries filter an answer opens, read back by Entries' own reader

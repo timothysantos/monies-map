@@ -104,7 +104,21 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
                     {line.detail ? <small>{line.detail}</small> : null}
                   </span>
                   <span className="ask-money-line-figures">
-                    <strong className={moneyToneClass(line.tone)}>{moneyWithCurrency(line.amountMinor, line.currency)}</strong>
+                    {line.figure?.ids?.length ? (
+                      // An openable figure: View entries lists exactly these
+                      // entries, whose Spent total is this amount.
+                      <strong
+                        className={moneyToneClass(line.tone)}
+                        data-fig="spent"
+                        data-fig-ids={line.figure.ids.join(" ")}
+                        data-fig-period={line.figure.period}
+                        data-fig-name={line.label}
+                        tabIndex={0}
+                        role="button"
+                      >
+                        {moneyWithCurrency(line.amountMinor, line.currency)}
+                      </strong>
+                    ) : <strong className={moneyToneClass(line.tone)}>{moneyWithCurrency(line.amountMinor, line.currency)}</strong>}
                     {line.secondary ? (
                       <small className={line.secondary.kind === "plan" ? "money-plan" : undefined}>
                         {line.secondary.kind === "plan"

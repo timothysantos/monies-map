@@ -112,6 +112,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
       bankFeesYear: safeSummaryPage.bankFeesYear,
+      aboveUsual: safeSummaryPage.aboveUsual,
       formatMoney: unmaskedMoney
     })),
     page: "summary",
@@ -127,6 +128,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       handleOpenImports();
     } else if (action.id === "open-category" && action.categoryName) {
       handleOpenEntriesForCategory(action.categoryName);
+    } else if (action.id === "ask-question" && action.askText) {
+      // The shell asks Ask, as a figure's Ask about this does.
+      window.dispatchEvent(new CustomEvent("monies:money-action", { detail: { askText: action.askText } }));
     } else if (action.id === "show-entries" && action.entryIds?.length) {
       navigate(buildSummaryEntriesForIdsLocation(location.search, action));
     }

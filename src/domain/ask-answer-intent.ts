@@ -41,7 +41,11 @@ export type AskAnswerIntent =
   // person or the month's spending, as written (null: the month's spending).
   | { kind: "usual"; subject: string | null; month: string }
   // A bank or app word explained (ask-terms.ts): "what's an FX fee?".
-  | { kind: "term"; term: string; month: string };
+  | { kind: "term"; term: string; month: string }
+  // What changed in a month, against the month before or its usual
+  // (ask-changed.ts): "what changed this month?", "why did we spend more in
+  // October?".
+  | { kind: "changed"; month: string; base: "previous" | "usual" };
 
 export type AskAnswerIntentKind = AskAnswerIntent["kind"];
 
@@ -72,7 +76,7 @@ const THAN_A_MONTH = new RegExp(`\\bthan (?:in |during |for )?(?:(?:this|last|pr
 const RANGE_START_LEADS = new Set(["from", "between"]);
 const RANGE_END_LEADS = new Set(["to", "until", "till", "through", "and"]);
 const QUESTION_STARTS = new Set([
-  "how", "what", "whats", "when", "where", "which", "who", "whos", "why", "did", "do", "does", "is", "are", "am",
+  "how", "what", "whats", "wat", "when", "where", "which", "who", "whos", "why", "did", "do", "does", "is", "are", "am",
   "was", "were", "can", "could", "have", "has", "compare", "tell", "explain", "show", "give", "break",
   "top", "biggest", "largest"
 ]);
@@ -145,6 +149,11 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
     return { kind: "owed", personId: findPerson(tokens, context.people)?.id ?? null };
   }
 
+  // What changed in a month, before "usual" or "why" read it otherwise.
+  if (CHANGED_WORDS.test(normalized) && !period && distinctMonths < 2) {
+    return { kind: "changed", month, base: /\b(?:usual|usually|normal)\b/.test(normalized) ? "usual" : "previous" };
+  }
+
   // Against the usual level: "is Grab more than usual?", "groceries
   // normal?", "do we usually spend this much on Taxi?".
   if (USUAL_WORDS.test(normalized) && !period) {
@@ -210,6 +219,9 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
 
   return null;
 }
+
+// The words of a "what changed?" question ("wat" is a common slip).
+const CHANGED_WORDS = /\b(?:what|wat|wht)\s+(?:has\s+)?changed\b|\bwhy\s+did\s+(?:we|i|you)\s+spend\s+(?:more|less)\b(?!\s+than)|\bwhat\s+(?:is|was|s)\s+different\b/;
 
 // The words of a "more than usual" question ("mor" is a common slip).
 const USUAL_WORDS = /\b(?:than (?:usual|normal|average)|(?:more|mor|higher|lower|less|bigger) than (?:usual|normal)|usually|normal(?: for)?|is (?:that|this|it) a lot|a lot for)\b|\bnormal$/;

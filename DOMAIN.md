@@ -1577,6 +1577,32 @@ Important distinctions:
 - One range read of 7 months (two parallel statements), never a page build
   per month. With AI off the rules reader reads the same questions.
 
+### What Changed
+
+A month's spending against the month before, or (when the person says
+"usual") against each category's usual month, by category and then by the
+shops behind each category's difference (`src/domain/ask-changed.ts`; owner
+approval 2026-11-10). The biggest increases first, then the biggest
+decreases, at most 5 of each. Asked in Ask ("what changed this month?",
+"why did we spend more in October?"; answer intent `changed`, turn topic
+`what_changed` with the month as a word). The month in progress is compared
+up to the same day of the month. Each row's amount is that month's entries
+of its category, an openable figure (`changed` in `money-figures.ts`). It
+looks back only.
+
+### More Than Usual So Far
+
+A month in progress compared like for like (`src/domain/usual-so-far.ts`):
+spending up to today's day of the month against the same day-of-month point
+of the last 6 months that have data (the 10th with earlier 10ths, never
+whole months), averaged. Summary's Money insights shows at most 2 lines
+(`aboveUsualSoFar`), only for a category more than 20% and more than $50
+above that usual, and only with at least 2 such months; "See what changed"
+asks Ask "Is Food more than usual this month?", which uses the same engine
+and names the shops behind it. It reports what has happened and never
+predicts. The "so far" figure opens exactly this month's entries of the
+category.
+
 ### Words Used
 
 Fixed plain explanations of the bank and app words Ask's answers use

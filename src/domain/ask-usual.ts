@@ -10,6 +10,7 @@ import { spendingMinor } from "./category-offset";
 import { addMonths } from "./money-signals/format";
 import type { AskAnswerCardDto, AskAnswerLineDto, PersonScope } from "../types/dto";
 import { askTermByKey } from "./ask-terms";
+import { sameDayUsual } from "./usual-so-far";
 
 const USUAL_TERM_TEXT = askTermByKey("usual")?.text ?? "";
 
@@ -59,6 +60,9 @@ export interface UsualFacts {
   drivers: Array<{ label: string; amountMinor: number; usualMinor?: number; date?: string; isNew?: boolean }>;
   entryCount: number;
   usualEntryCount: number;
+  // The month in progress: compared up to this day of the month with the
+  // same day of earlier months (usual-so-far.ts), averaged.
+  soFarDay?: number;
   // The terms the answer uses ("Words used"; ask-terms.ts).
   terms: string[];
 }
@@ -128,8 +132,13 @@ export function buildUsualFacts(input: {
   scope: PersonScope;
   entries: UsualEntry[];
   trackedMonths: string[];
+  // Today: a question about the month in progress compares like for like.
+  today?: string;
 }): UsualFacts {
   const { subject, month } = input;
+  if (input.today && input.today.slice(0, 7) === month && subject.kind !== "shop") {
+    return soFarFacts(input as typeof input & { today: string });
+  }
   const months = usualHistoryMonths(month).filter((item) => input.trackedMonths.includes(item));
   const mine = input.entries.filter((entry) => spend(entry) !== 0 && belongs(subject, entry));
   const inMonth = (item: string) => mine.filter((entry) => entry.date.slice(0, 7) === item);
@@ -189,6 +198,41 @@ export function buildUsualFacts(input: {
   };
 }
 
+// The month in progress, through the Summary line's engine: the subject's
+// spending so far against the same day of the last 6 months with data, and
+// the shops (for a category) or categories (otherwise) that rose most.
+function soFarFacts(input: { subject: UsualSubject; label: string; month: string; viewId: string; scope: PersonScope; entries: UsualEntry[]; today: string }): UsualFacts {
+  const mine = input.entries.filter((entry) => belongs(input.subject, entry));
+  const total = sameDayUsual(mine, input.today, () => "all");
+  const whole = total.groups[0] ?? { nowMinor: 0, usualMinor: 0, ids: [] };
+  const keyOf = input.subject.kind === "category" ? (entry: UsualEntry) => payeeName(entry.description) || entry.description : (entry: UsualEntry) => entry.categoryName;
+  const byGroup = sameDayUsual(mine.map((entry) => ({ ...entry, categoryName: entry.categoryName })), input.today, keyOf as (entry: { categoryName: string }) => string);
+  const { verdict, diffMinor } = verdictOf(whole.nowMinor, whole.usualMinor);
+  const drivers = verdict === "more"
+    ? byGroup.groups.filter((group) => group.diffMinor > 0).sort((left, right) => right.diffMinor - left.diffMinor || left.key.localeCompare(right.key)).slice(0, 3)
+      .map((group) => ({ label: group.key, amountMinor: group.nowMinor, usualMinor: group.usualMinor, ...(group.usualMinor === 0 ? { isNew: true } : {}) }))
+    : [];
+  return {
+    kind: "usual",
+    subject: input.subject,
+    label: input.label,
+    month: input.month,
+    viewId: input.viewId,
+    scope: input.scope,
+    amountMinor: whole.nowMinor,
+    usualMinor: whole.usualMinor,
+    history: total.months.map((item) => ({ month: item, amountMinor: 0 })),
+    regular: true,
+    verdict,
+    diffMinor,
+    drivers,
+    entryCount: whole.ids.length,
+    usualEntryCount: 0,
+    terms: ["usual"],
+    soFarDay: total.day
+  };
+}
+
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthWord = (month: string) => MONTH_NAMES[Number(month.slice(5, 7)) - 1] ?? month;
 const shortDay = (date: string) => `${Number(date.slice(8, 10))} ${monthWord(date.slice(0, 7)).slice(0, 3)}`;
@@ -238,6 +282,17 @@ export function buildUsualWording(facts: UsualFacts, money: (minor: number) => s
     return `${facts.label} came to ${money(facts.amountMinor)} in ${month}. There are no months before it to compare with yet.`;
   }
   const sentences: string[] = [];
+  if (facts.soFarDay) {
+    const day = `${facts.soFarDay}${facts.soFarDay % 100 >= 11 && facts.soFarDay % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[facts.soFarDay % 10] ?? "th"}`;
+    sentences.push(`${facts.label} came to ${money(facts.amountMinor)} so far this month. By the ${day} it's usually about ${money(facts.usualMinor)}, the average of the last ${facts.history.length} months at this point.`);
+    sentences.push(facts.verdict === "about" ? "So far it's about usual." : `So far it's ${money(Math.abs(facts.diffMinor))} ${facts.verdict} than usual.`);
+    if (facts.drivers.length && facts.verdict === "more") {
+      const names = facts.drivers.map((driver) => (driver.isNew ? `${driver.label} (new this month)` : driver.label));
+      sentences.push(`Most of the rise came from ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0]}.`);
+    }
+    sentences.push(`Words used: ${USUAL_TERM_TEXT}`);
+    return sentences.join(" ");
+  }
   if (facts.regular) {
     sentences.push(`${facts.label} came to ${money(facts.amountMinor)} in ${month}.`);
     const how = facts.verdict === "about"

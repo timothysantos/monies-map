@@ -269,3 +269,10 @@ export function tripEventFigures(entries: TripFigureEntry[], trip: { startDate?:
       .sort((left, right) => (left.key === "before" ? -1 : right.key === "before" ? 1 : left.key.localeCompare(right.key)))
   };
 }
+
+/**
+ * Ask's "what changed?" rows (the `changed` figure, ask-changed.ts): each
+ * row's amount is that month's entries of its category, named by id, opened
+ * as Spent narrowed to them, so Entries' total is the row's amount.
+ */
+export const changedFigureMinor = repeatingFigureMinor;
