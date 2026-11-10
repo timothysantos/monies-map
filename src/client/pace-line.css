@@ -59,3 +59,23 @@
 .pace-text [data-fig] {
   color: inherit;
 }
+
+/* Why there is no pace (PaceQuietNote): one calm line under Summary's chart.
+   Plain neutral text; the action is the plan tone (sky), underlined. */
+.pace-quiet {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.pace-quiet-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pastel-sky-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

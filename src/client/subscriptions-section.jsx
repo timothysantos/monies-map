@@ -5,7 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { subscriptionsCopy as copy } from "./copy/subscriptions-copy";
 import { paceCopy } from "./copy/pace-copy";
-import { PaceLine } from "./pace-line";
+import { PaceLine, PaceQuietNote } from "./pace-line";
+import { paceLineWords } from "./pace-line-model";
 import { getCategory } from "./category-utils";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -364,18 +365,35 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
 
 /**
  * If this keeps up for today's month, from the same answer as the card (one
- * request for both). Summary shows it under its month-by-month chart
- * (owner decision D6); Month reads the same answer itself (month-panel.jsx),
- * for its insight lines too.
- * `yearMonths` (Summary's months) adds the year-end line from April.
- * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, spentSoFarMinor?: number | null, planMinor?: number | null, showLeft?: boolean, yearMonths?: any[] | null }} props
+ * request for both). Summary draws it into its month-by-month chart (the
+ * current month's column carries the low-to-high range, owner decision,
+ * 2026-11-10) and puts the sentence directly under the chart, or, when it
+ * cannot show, one plain line saying why (PaceQuietNote). `renderChart`
+ * draws the chart with the range (or null while there is none), so the chart
+ * stays in one place in the tree whether or not the answer has arrived.
+ * Month reads the same answer itself (month-panel.jsx), for its insight
+ * lines too. `yearMonths` (Summary's months) adds the year-end line from April.
+ * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, renderChart: (extension: { month: string, lowMinor: number, highMinor: number } | null) => any, spentSoFarMinor?: number | null, planMinor?: number | null, showLeft?: boolean, yearMonths?: any[] | null, onOpenImports?: () => void }} props
  */
-export function PaceSection({ view, enabled, fetchRequiredQuery, spentSoFarMinor = null, planMinor = null, showLeft = false, yearMonths = null }) {
+export function PaceChartSection({ view, enabled, fetchRequiredQuery, renderChart, spentSoFarMinor = null, planMinor = null, showLeft = false, yearMonths = null, onOpenImports }) {
   const queryClient = useQueryClient();
   const { areTotalsVisible } = useMoneyPrivacy();
   const { answer } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
-  if (!answer?.pace?.range || !areTotalsVisible) {
-    return null;
-  }
-  return <PaceLine pace={answer.pace} spentSoFarMinor={spentSoFarMinor} planMinor={planMinor} money={money} hidden={!areTotalsVisible} showLeft={showLeft} yearMonths={yearMonths} />;
+  const pace = answer?.pace;
+  const showRange = Boolean(pace?.range && areTotalsVisible);
+  const extension = useMemo(() => {
+    if (!showRange) {
+      return null;
+    }
+    const { totals } = paceLineWords({ pace, spentSoFarMinor, planMinor, money });
+    return { month: pace.month, lowMinor: totals.shown.lowMinor, highMinor: totals.shown.highMinor };
+  }, [showRange, pace, spentSoFarMinor, planMinor]);
+  return (
+    <>
+      {renderChart(extension)}
+      {showRange
+        ? <PaceLine pace={pace} spentSoFarMinor={spentSoFarMinor} planMinor={planMinor} money={money} hidden={!areTotalsVisible} showLeft={showLeft} showBar={false} yearMonths={yearMonths} />
+        : areTotalsVisible && pace?.quiet ? <PaceQuietNote pace={pace} onOpenImports={onOpenImports} /> : null}
+    </>
+  );
 }

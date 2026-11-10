@@ -46,7 +46,7 @@ const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcom
 // a new first-screen file, check:bundle); it renders, and reads its data,
 // only once the top summary is usable.
 const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SubscriptionsSection })));
-const PaceSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.PaceSection })));
+const PaceChartSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.PaceChartSection })));
 // Investments over time and Tax reliefs ride in the same chunk and read
 // their data only once the top summary is usable; each shows nothing until
 // it has something to show.
@@ -99,30 +99,34 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   // The column + line chart above the month-by-month list: only for two or
   // more months, and never while money is hidden (it would show the money).
   const { areTotalsVisible: isMoneyShown } = useMoneyPrivacy();
-  // If this keeps up (DOMAIN.md "Pace"), under the chart when the range
-  // ends in this month: read once the top summary is usable.
+  // If this keeps up (DOMAIN.md "Pace"): when the range ends in this month,
+  // the current month's column carries the low-to-high range and the
+  // sentence sits under the chart (or, when it cannot show, one line saying
+  // why). The section owns the chart then, so it stays in one place in the
+  // tree; its data is read once the top summary is usable.
   const thisMonth = useCheckInClock().today.slice(0, 7);
   const currentMonthRow = safeSummaryPage.months.find((month) => month.month === thisMonth);
-  const paceUnderChart = cardsUsable && fetchRequiredQuery && currentMonthRow && safeSummaryPage.rangeEndMonth === thisMonth ? (
-    <Suspense fallback={null}>
-      <PaceSection
-        view={view}
-        enabled={cardsUsable}
-        fetchRequiredQuery={fetchRequiredQuery}
-        spentSoFarMinor={currentMonthRow.realExpensesMinor ?? null}
-        planMinor={leadView === "plan" ? currentMonthRow.estimatedExpensesMinor ?? null : null}
-        showLeft
-        yearMonths={safeSummaryPage.months}
-      />
+  const renderMonthChart = (pace) => (
+    <Suspense fallback={<div className="earned-spent-chart-reserve" aria-hidden="true" />}>
+      <EarnedSpentChart key={leadView} mode={leadView} page={safeSummaryPage} pace={pace} />
     </Suspense>
-  ) : null;
+  );
   const monthChart = safeSummaryPage.months.length > 1 && isMoneyShown ? (
-    <>
+    fetchRequiredQuery && currentMonthRow && safeSummaryPage.rangeEndMonth === thisMonth ? (
       <Suspense fallback={<div className="earned-spent-chart-reserve" aria-hidden="true" />}>
-        <EarnedSpentChart key={leadView} mode={leadView} page={safeSummaryPage} />
+        <PaceChartSection
+          view={view}
+          enabled={cardsUsable}
+          fetchRequiredQuery={fetchRequiredQuery}
+          renderChart={renderMonthChart}
+          spentSoFarMinor={currentMonthRow.realExpensesMinor ?? null}
+          planMinor={leadView === "plan" ? currentMonthRow.estimatedExpensesMinor ?? null : null}
+          showLeft
+          yearMonths={safeSummaryPage.months}
+          onOpenImports={handleOpenImports}
+        />
       </Suspense>
-      {paceUnderChart}
-    </>
+    ) : renderMonthChart(null)
   ) : null;
 
   // Summary is the Summary tab's "All months": its Spending Mix covers the

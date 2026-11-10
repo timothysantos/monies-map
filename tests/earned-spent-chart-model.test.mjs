@@ -270,3 +270,13 @@ test("pointFigure: each point's menu names the month and series and keeps the li
   assert.deepEqual(noPlan.note, ["$1,600.00", "No plan for this month"]);
   assert.equal(noPlan.plan, null);
 });
+
+test("the left scale reaches a pace's high end, and ignores it when none is given", () => {
+  const rows = [
+    { month: "2026-03", earnedMinor: 480_000, spentMinor: 250_000, lineMinor: null },
+    { month: "2026-04", earnedMinor: 480_000, spentMinor: 250_000, lineMinor: null }
+  ];
+  assert.deepEqual(chartScales(rows).left, niceScale([480_000, 250_000, null, 480_000, 250_000, null]));
+  assert.ok(chartScales(rows).left.max < 900_000);
+  assert.ok(chartScales(rows, [950_000]).left.max >= 950_000);
+});

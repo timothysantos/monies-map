@@ -63,10 +63,12 @@ export function createEarnedSpentChart(react) {
 }
 
 /**
- * @param {{ mode: "plan" | "simple", page: { months: any[], categoryShareByMonth?: any[], investmentMovesByMonth?: any[] } }} props
- *   `page` is the Summary page's own slice (summary-panel.jsx).
+ * @param {{ mode: "plan" | "simple", page: { months: any[], categoryShareByMonth?: any[], investmentMovesByMonth?: any[] }, pace?: { month: string, lowMinor: number, highMinor: number } | null }} props
+ *   `page` is the Summary page's own slice (summary-panel.jsx). `pace` is
+ *   If this keeps up (DOMAIN.md "Pace"): the low and high end of where the
+ *   month's spending lands, drawn above that month's Spent column.
  */
-function EarnedSpentChart({ mode, page }) {
+function EarnedSpentChart({ mode, page, pace = null }) {
   const rows = R.useMemo(() => buildChartMonths({ mode, ...page }), [mode, page]);
   // The panel draws no chart while money is hidden; this is the second guard.
   // It reads the page's privacy mark, as money() does.
@@ -74,7 +76,7 @@ function EarnedSpentChart({ mode, page }) {
   if (isHidden || rows.length < 2) {
     return null;
   }
-  return h(EarnedSpentChartBody, { mode, rows });
+  return h(EarnedSpentChartBody, { mode, rows, pace: pace && rows.some((row) => row.month === pace.month) ? pace : null });
 }
 
 const prefersReducedMotion = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -83,7 +85,7 @@ const prefersReducedMotion = () => typeof window !== "undefined" && typeof windo
 // wait at their starting state until the chart is on screen, then play.
 const initialMotion = () => (typeof window === "undefined" || prefersReducedMotion() ? "off" : "armed");
 
-function EarnedSpentChartBody({ mode, rows }) {
+function EarnedSpentChartBody({ mode, rows, pace }) {
   const series = R.useMemo(() => chartSeries(mode), [mode]);
   const allKeys = series.map((item) => item.key);
   const rootRef = R.useRef(null);
@@ -133,7 +135,7 @@ function EarnedSpentChartBody({ mode, rows }) {
   const lines = visible.filter((item) => item.kind === "line");
   // The left scale is of every month figure, so hiding one never rescales
   // the rest; the two running totals share the right one.
-  const scales = R.useMemo(() => chartScales(rows), [rows]);
+  const scales = R.useMemo(() => chartScales(rows, pace ? [pace.highMinor] : []), [rows, pace]);
   const scale = scales.left;
   const rightScale = lines.some((line) => line.axis === "right") ? scales.right : null;
   const geometry = chartGeometry({ width, monthCount: rows.length, barCount: bars.length, rightAxis: Boolean(rightScale) });
@@ -246,6 +248,26 @@ function EarnedSpentChartBody({ mode, rows }) {
     );
   });
 
+  // If this keeps up: above the current month's Spent column, a dotted
+  // block up to the low end and a hatched one from there to the high end, in
+  // the plan tone (sky) only. Not a figure (nothing in it has happened; the
+  // sentence under the chart is the openable one) and hidden with the Spent
+  // series, whose column it extends.
+  const spentBarIndex = bars.findIndex((item) => item.key === "spent");
+  const paceIndex = pace ? rows.findIndex((row) => row.month === pace.month) : -1;
+  const paceShapes = pace && spentBarIndex >= 0 && paceIndex >= 0 ? (() => {
+    const x = geometry.barX(paceIndex, spentBarIndex);
+    const spentY = yOf(rows[paceIndex].spentMinor);
+    const lowY = Math.min(yOf(pace.lowMinor), spentY);
+    const highY = Math.min(yOf(pace.highMinor), lowY);
+    return h(
+      "g",
+      { className: "ec-pace", "aria-hidden": "true", "data-ec-pace": pace.month, style: { "--ec-i": paceIndex } },
+      h("rect", { className: "ec-pace-low", x, y: lowY, width: geometry.barWidth, height: Math.max(0, spentY - lowY), rx: 2 }),
+      h("rect", { className: "ec-pace-high", x, y: highY, width: geometry.barWidth, height: Math.max(0, lowY - highY), rx: 2, fill: "url(#ec-pace-hatch)" })
+    );
+  })() : null;
+
   // A dashed line keeps its dashes in pixels, so it is revealed left to
   // right by a clip instead (the solid ones draw on with a one-unit path
   // length and dash).
@@ -322,6 +344,8 @@ function EarnedSpentChartBody({ mode, rows }) {
               yearShown(row, index) ? h("tspan", { className: "ec-year-label", x, dy: 12 }, yearWord) : null
             );
           }),
+          pace ? h("defs", null, h("pattern", { id: "ec-pace-hatch", width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, h("rect", { className: "ec-pace-hatch-fill", width: 5, height: 5 }), h("line", { className: "ec-pace-hatch-line", x1: 0, y1: 0, x2: 0, y2: 5 }))) : null,
+          paceShapes,
           barPoints,
           linePaths,
           linePoints

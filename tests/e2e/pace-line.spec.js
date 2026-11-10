@@ -25,6 +25,27 @@ async function shoot(locator, name) {
   }
 }
 
+// The card that holds the month-by-month chart (Plan: Intent vs Outcome).
+const chartCard = (page) => page.locator(".chart-card").filter({ has: page.locator("[data-earned-spent-chart]") });
+
+// The chart and what sits under it (the sentence or the quiet note), once the
+// chart has played its first-view motion: a clip from the chart's top to the
+// bottom of `under`.
+async function shootChartAndLine(page, under, name) {
+  if (!SHOT_DIR) return;
+  const chart = page.locator("[data-earned-spent-chart]");
+  await chart.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(2200);
+  const top = await chart.boundingBox();
+  const bottom = await under.boundingBox();
+  await mkdir(SHOT_DIR, { recursive: true });
+  const viewport = page.viewportSize();
+  await page.screenshot({
+    path: path.join(SHOT_DIR, name),
+    clip: { x: 0, y: Math.max(0, top.y - 8), width: viewport.width, height: Math.min(viewport.height, bottom.y + bottom.height - top.y + 16) }
+  });
+}
+
 const TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
 const THIS_MONTH = TODAY.slice(0, 7);
 const DAY = Number(TODAY.slice(8, 10));
@@ -83,6 +104,7 @@ test.describe("If this keeps up", () => {
     if (QUIET) {
       await expect(page.locator(".subs-card")).toBeVisible({ timeout: 30_000 });
       await expect(line).toHaveCount(0);
+      await expect(page.locator("[data-pace-quiet]")).toHaveText(/^No pace yet: it's too early in [A-Z][a-z]+\.$/);
       return;
     }
     await expect(line).toBeVisible({ timeout: 30_000 });
@@ -91,10 +113,22 @@ test.describe("If this keeps up", () => {
     if (DAY < 25) {
       await expect(line).toContainText(/About \$[\d,]+ to \$[\d,]+ left of what comes in\./);
     }
-    await expect(line.locator(".pace-bar-high")).toHaveCount(1);
+    // The range is part of "Earned vs spent by month": the current month's
+    // column carries it, and the sentence sits directly under the chart. No
+    // second bar on Summary, and no quiet note beside a range.
+    const chart = page.locator("[data-earned-spent-chart]");
+    await expect(chart.locator(`[data-ec-pace="${THIS_MONTH}"]`)).toHaveCount(1);
+    await expect(chart.locator(".ec-pace-low")).toHaveCount(1);
+    await expect(chart.locator(".ec-pace-high")).toHaveCount(1);
+    await expect(line.locator(".pace-bar")).toHaveCount(0);
+    await expect(page.locator("[data-pace-quiet]")).toHaveCount(0);
+    const chartBox = await chart.boundingBox();
+    const lineBox = await line.boundingBox();
+    expect(lineBox.y).toBeGreaterThanOrEqual(chartBox.y + chartBox.height - 2);
+    expect(lineBox.y - (chartBox.y + chartBox.height)).toBeLessThan(40);
     // A range that starts after January: no year-end line.
     await expect(line.locator("[data-pace-year]")).toHaveCount(0);
-    await shoot(line.locator("xpath=.."), "summary-desktop.png");
+    await shootChartAndLine(page, line, "summary-desktop.png");
 
     await figure.click();
     const menu = page.locator(".figure-menu");
@@ -135,6 +169,18 @@ test.describe("If this keeps up", () => {
     await shoot(line, "summary-year.png");
   });
 
+  test("Summary on a phone: the range on the chart and the sentence under it", async ({ page }) => {
+    test.skip(QUIET, "quiet days");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await revealMoney(page);
+    await page.goto(`/?view=household&summary_start=${monthsAgo(5)}&summary_end=${THIS_MONTH}`);
+    const line = page.locator(".pace-line");
+    await expect(line).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("[data-earned-spent-chart] [data-ec-pace]")).toHaveCount(1);
+    await expect(line.locator('[data-fig="pace"]')).toHaveText(RANGE);
+    await shootChartAndLine(page, line, "summary-phone.png");
+  });
+
   test("Month on a phone: the line under the lead; hidden money draws nothing", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await revealMoney(page);
@@ -169,5 +215,67 @@ test.describe("If this keeps up", () => {
     await card.getByRole("tab", { name: "Coming up" }).click();
     await expect(card.locator('[data-pace="coming-up"]')).toHaveText(/^About \$[\d,]+(?: to \$[\d,]+)? by \d{1,2} [A-Z][a-z]{2}, if they come as usual$/);
     await shoot(card, "coming-up.png");
+  });
+});
+
+// The quiet note (owner decision, 2026-11-10): when the pace cannot show for a
+// reason the person can fix or wait out, one plain line under the chart says
+// why. Here the only account's last entry is the 24th of last month, more than
+// 10 days ago on every day from the 6th, so its statement is behind (on days
+// 1 to 5 the reason is the start of the month instead). The link opens Imports.
+// A small charge on a second card today keeps this month on the chart.
+test.describe("If this keeps up, quiet", () => {
+  test.beforeEach(async ({ page }) => {
+    await reseedDemo(page);
+    const expense = (date, description, amountMinor) => postJson(page, "/api/entries/create", {
+      date, description, accountName: "UOB One", categoryName: "Food & Drinks", entryType: "expense", ownershipType: "direct", ownerName: "Tim", amountMinor
+    });
+    const shops = ["KOPI CORNER", "TOAST HOUSE", "NOODLE BAR", "RICE STALL"];
+    for (let back = 3; back >= 1; back -= 1) {
+      for (const [index, day] of [3, 10, 17, 24].entries()) {
+        await expense(`${monthsAgo(back)}-${String(day).padStart(2, "0")}`, `${shops[index]} ${String.fromCharCode(65 + back)}`, 25_000);
+      }
+    }
+    await postJson(page, "/api/entries/create", {
+      date: TODAY, description: "BAKERY TWO", accountName: "Citi Rewards", categoryName: "Food & Drinks", entryType: "expense", ownershipType: "direct", ownerName: "Tim", amountMinor: 500
+    });
+  });
+
+  test("Summary: a note under the chart names the account and opens Imports; no range, no second bar", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await revealMoney(page);
+    await page.goto(`/?view=household&summary_start=${monthsAgo(5)}&summary_end=${THIS_MONTH}`);
+    const note = page.locator("[data-pace-quiet]");
+    await expect(note).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".pace-line")).toHaveCount(0);
+    await expect(page.locator("[data-ec-pace]")).toHaveCount(0);
+    if (QUIET) {
+      await expect(note).toHaveAttribute("data-pace-quiet", "early");
+      await expect(note).toHaveText(/^No pace yet: it's too early in [A-Z][a-z]+\.$/);
+      return;
+    }
+    await expect(note).toHaveAttribute("data-pace-quiet", "imports");
+    await expect(note).toHaveText(/^No pace yet: UOB One has nothing after \d{1,2} [A-Z][a-z]{2}\. Import its statement to see it\.$/);
+    await shootChartAndLine(page, note, "summary-quiet-desktop.png");
+    await note.getByRole("button", { name: "Import its statement" }).click();
+    await expect(page).toHaveURL(/\/imports/);
+  });
+
+  test("Summary on a phone, and nothing at all while money is hidden", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await revealMoney(page);
+    await page.goto(`/?view=household&summary_start=${monthsAgo(5)}&summary_end=${THIS_MONTH}`);
+    const note = page.locator("[data-pace-quiet]");
+    await expect(note).toBeVisible({ timeout: 30_000 });
+    await shootChartAndLine(page, note, "summary-quiet-phone.png");
+
+    const hidden = await page.context().newPage();
+    await hidden.setViewportSize({ width: 390, height: 844 });
+    await revealMoney(hidden, false);
+    await hidden.goto(`/?view=household&summary_start=${monthsAgo(5)}&summary_end=${THIS_MONTH}`);
+    await expect(hidden.locator("main")).toBeVisible({ timeout: 30_000 });
+    await hidden.waitForTimeout(2000);
+    await expect(hidden.locator("[data-pace-quiet]")).toHaveCount(0);
+    await expect(hidden.locator("[data-ec-pace]")).toHaveCount(0);
   });
 });

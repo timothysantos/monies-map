@@ -163,6 +163,39 @@
 .ec-bar.is-earned { fill: var(--ec-earned); }
 .ec-bar.is-spent { fill: var(--ec-spent); }
 
+/* If this keeps up (DOMAIN.md "Pace"): above the current month's Spent
+   column, a dotted block up to the low end and a hatched block to the high
+   end, in the plan tone (sky) only (tests/money-colour-guard.test.mjs, "a
+   pace is drawn in the plan tone"). Nothing in it has happened, so it is
+   never a column fill and it never takes pointer or focus. */
+.ec-pace {
+  pointer-events: none;
+}
+
+.ec-pace-low {
+  fill: var(--pastel-sky);
+  fill-opacity: 0.55;
+  stroke: var(--pastel-sky-ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 1.5 3;
+  stroke-linecap: round;
+}
+
+.ec-pace-high {
+  stroke: var(--pastel-sky-ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.ec-pace-hatch-fill {
+  fill: var(--pastel-sky);
+}
+
+.ec-pace-hatch-line {
+  stroke: var(--pastel-sky-line);
+  stroke-width: 2;
+}
+
 .ec-line {
   stroke-width: 2.5;
   stroke-linecap: round;
@@ -286,8 +319,13 @@
     animation: ec-reveal 800ms ease-out 250ms both;
   }
 
-  [data-chart-motion="armed"] .ec-dot {
+  [data-chart-motion="armed"] .ec-dot,
+  [data-chart-motion="armed"] .ec-pace {
     opacity: 0;
+  }
+
+  [data-chart-motion="playing"] .ec-pace {
+    animation: ec-pace-in 400ms ease-out 700ms both;
   }
 
   [data-chart-motion="playing"] .ec-bar {
@@ -303,6 +341,11 @@
     animation: ec-pop 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
     animation-delay: calc(450ms + var(--ec-i, 0) * 30ms);
   }
+}
+
+@keyframes ec-pace-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes ec-grow {

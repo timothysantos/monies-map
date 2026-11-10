@@ -103,10 +103,13 @@ function spendJobOfMonth(row, categoryShare, plannedInvestMinor) {
  * The chart's scales: the left one of every month figure (so hiding a series
  * never rescales the rest), and in Plan a right one for both running totals
  * (null in Simple), so the gap between them reads off one axis.
+ * `extraMinor` are further values the left scale must reach (the pace's
+ * high end, drawn above the current month's Spent column).
  * @param {Array<{ earnedMinor: number, spentMinor: number, lineMinor: number | null, spentSoFarMinor?: number, plannedSoFarMinor?: number }>} rows
+ * @param {number[]} [extraMinor]
  */
-export function chartScales(rows) {
-  const left = niceScale(rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor]));
+export function chartScales(rows, extraMinor = []) {
+  const left = niceScale([...rows.flatMap((row) => [row.earnedMinor, row.spentMinor, row.lineMinor]), ...extraMinor]);
   const hasRunning = rows.some((row) => Number.isFinite(row.spentSoFarMinor));
   return { left, right: hasRunning ? niceScale(rows.flatMap((row) => [row.spentSoFarMinor, row.plannedSoFarMinor])) : null };
 }

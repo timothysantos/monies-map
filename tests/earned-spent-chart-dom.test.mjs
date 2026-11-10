@@ -168,3 +168,35 @@ test("the donut sweeps in only where motion is allowed, clips only the ring, and
   assert.match(chart, /import "\.\/donut-motion\.css"/);
   assert.match(chart, /data-donut-motion=\{motion\}/);
 });
+
+// If this keeps up (DOMAIN.md "Pace"): the current month's Spent column
+// carries the low-to-high range as a dotted block and a hatched block, in the
+// plan tone, never an openable figure, never when it has nowhere to stand.
+test("a pace range extends the current month's Spent column, above it and in the plan tone's classes", () => {
+  const pace = { month: "2026-04", lowMinor: 470_000, highMinor: 510_000 };
+  const html = render({ mode: "simple", page: { months: FOUR }, pace });
+  assert.equal(count(html, /class="ec-pace"/g), 1);
+  assert.match(html, /data-ec-pace="2026-04"/);
+  assert.equal(count(html, /class="ec-pace-low"/g), 1);
+  assert.equal(count(html, /class="ec-pace-high"/g), 1);
+  assert.match(html, /fill="url\(#ec-pace-hatch\)"/);
+  // Aria-hidden, and not one more openable figure or tab stop.
+  assert.match(html, /class="ec-pace"[^>]*aria-hidden="true"/);
+  assert.equal(count(html, /class="ec-point is-bar"/g), 8);
+  assert.equal(count(html, /tabindex="0"/g), 1);
+  // The blocks stand above the Spent column's top (a smaller y), the hatched
+  // one above the dotted one, and the left axis now reaches the high end.
+  const y = (cls) => Number(html.match(new RegExp(`class="${cls}"[^>]* y="([\\d.]+)"`))[1]);
+  const spentTops = [...html.matchAll(/class="ec-bar is-spent"[^>]* y="([\d.]+)"/g)].map((match) => Number(match[1]));
+  assert.ok(y("ec-pace-low") < spentTops.at(-1));
+  assert.ok(y("ec-pace-high") < y("ec-pace-low"));
+  assert.match(html, />\$6k</);
+});
+
+test("no pace draws no blocks: none given, a month not in the chart, or hidden money", () => {
+  assert.equal(count(render({ mode: "simple", page: { months: FOUR } }), /ec-pace/g), 0);
+  assert.equal(count(render({ mode: "simple", page: { months: FOUR }, pace: { month: "2026-09", lowMinor: 1, highMinor: 2 } }), /ec-pace/g), 0);
+  assert.equal(count(render({ mode: "simple", page: { months: FOUR }, pace: null }), /ec-pace/g), 0);
+  // Hidden money draws no chart at all, so no range either.
+  assert.equal(render({ mode: "simple", page: { months: FOUR }, pace: { month: "2026-04", lowMinor: 470_000, highMinor: 510_000 } }, { visible: false }), "");
+});

@@ -98,7 +98,7 @@ test("components choose money colour through the money tones", () => {
 // (sky) only, at one strength, even when its high end is over the plan; it
 // has not happened, so it is never rose, mint, butter or plum, and it never
 // picks a money tone.
-const PACE_RULE = /([^{}]*(?:\.pace-|\.subs-coming-total)[^{}]*)\{([^}]*)\}/g;
+const PACE_RULE = /([^{}]*(?:\.(?:ec-)?pace-|\.ec-pace\b|\.subs-coming-total)[^{}]*)\{([^}]*)\}/g;
 export function paceColourProblems(css) {
   const problems = [];
   for (const [, selector, body] of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(PACE_RULE)) {
@@ -111,8 +111,10 @@ export function paceColourProblems(css) {
 }
 
 test("a pace is drawn in the plan tone only, and never picks a money tone", () => {
-  const css = ["src/client/pace-line.css", "src/client/subscriptions-section.css"].map((file) => readFileSync(path.join(root, file), "utf8")).join("\n");
+  const css = ["src/client/pace-line.css", "src/client/subscriptions-section.css", "src/client/earned-spent-chart.css"].map((file) => readFileSync(path.join(root, file), "utf8")).join("\n");
   assert.match(css, /\.pace-bar-high[^{]*\{[^}]*--pastel-sky/, "the high end is sky");
+  assert.match(css, /\.ec-pace-high[^{]*\{[^}]*--pastel-sky/, "the chart's high end is sky");
+  assert.match(css, /\.ec-pace-low[^{]*\{[^}]*--pastel-sky/, "the chart's low end is sky");
   assert.match(css, /\.subs-coming-total[^{]*\{[^}]*--pastel-sky-ink/, "Coming up's total is sky");
   assert.deepEqual(paceColourProblems(css), []);
   for (const file of ["src/client/pace-line.jsx", "src/client/pace-line-model.js"]) {
@@ -121,4 +123,6 @@ test("a pace is drawn in the plan tone only, and never picks a money tone", () =
   // Not blind: rose on a pace, or a raw colour, is caught.
   assert.deepEqual(paceColourProblems(".pace-bar-high { background: var(--pastel-rose); }"), [".pace-bar-high: --pastel-rose"]);
   assert.deepEqual(paceColourProblems(".pace-text { color: #2d5d5e; }"), [".pace-text: a raw colour"]);
+  assert.deepEqual(paceColourProblems(".ec-pace-low { fill: var(--pastel-rose); }"), [".ec-pace-low: --pastel-rose"]);
+  assert.deepEqual(paceColourProblems(".ec-pace { stroke: #123456; }"), [".ec-pace: a raw colour"]);
 });
