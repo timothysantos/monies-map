@@ -1064,6 +1064,11 @@ its padding. Month's return-to-current-month action stays within the displayed
 range. Splits clears its search through the group strip. No API, DTO, query,
 persistence, or optional AI boundary changes. See design.md, "Island context line",
 and `tests/e2e/island-context.spec.js` for layout and continuity contracts.
+Summary's cards under the top summary render in each person's own order and
+can be hidden (`summary-card-order.js`, DOMAIN.md "Summary Card", design.md
+"Arrange Summary"): a per-login viewer preference like the lead view, its
+editor in a lazy chunk, and a registry test that fails for any card that is
+not registered.
 The desktop floating island shares the lead-view preference on Summary and
 Month. Entries names its selected month between matching navigation arrows;
 the Splits bar exposes only groups with open entries and keeps archived batches

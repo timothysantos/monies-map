@@ -2011,6 +2011,14 @@ is never out of sight.
   Escape or the close button leave it as it was. (Deviation from the design:
   Up and Down on every screen instead of dragging on desktop, and no
   Settings row yet.)
+- Registering a card: three one-line additions (the id in
+  `SUMMARY_CARD_IDS`, the body in the panel's `cardBody`, the name in the
+  editor's `NAMES`), enforced by `tests/summary-card-registry.test.mjs`,
+  which fails for a card that exists but is not registered or is drawn
+  outside the registered list. `subs` holds Coming up and Bank fees; the
+  Summary lead's "more than usual so far" line is part of the top summary
+  and Money insights, not a card. Owner decision D5 stands: Money insights
+  is movable but never hideable.
 
 ## Apple Shortcut Install Boundary
 

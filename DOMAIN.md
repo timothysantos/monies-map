@@ -1449,6 +1449,29 @@ Definitions:
   development) it is kept on the device (`monies-map:lead-view`), which is
   otherwise only a first-paint cache.
 
+### Summary Card
+
+One block of Summary under the top summary that a person can move or hide:
+a display preference, never data (design.md "Arrange Summary").
+
+Canonical terms:
+- `summary card` (code: an id in `SUMMARY_CARD_IDS`)
+- `Arrange cards` (desktop) and `Edit cards` (phone), the UI labels
+
+Definitions:
+- The registered summary cards are `insights` (Money insights), `subs`
+  (Subscriptions and bills, which holds Coming up and Bank fees), `mix`
+  (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent by month in
+  Simple) and `accounts` (The accounts shown). The top summary is not a
+  summary card and always stays first.
+- A person's order is one string ("insights,mix,subs,plan,-accounts", a
+  leading "-" hides), kept per login in the viewer preferences and on the
+  device without a login. An id it does not know is dropped; a card it does
+  not name (one added later) shows in its usual place. Money insights can be
+  moved but never hidden.
+- Every card Summary draws must be registered
+  (`tests/summary-card-registry.test.mjs`).
+
 ### Ask Page
 
 The one page where a person adds an entry by hand, from a typed sentence or

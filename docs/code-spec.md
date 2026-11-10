@@ -994,7 +994,8 @@ A persistence command is all-or-nothing:
   is one upsert in one batch, merged with `json_patch`, under a hashed key.
   It is a display preference, not household data, so it writes no audit
   event (`tests/viewer-preferences.test.mjs`, with a `failingStatement`
-  case)
+  case). Summary's card order (`summaryCards`) is the same upsert, with its
+  own `failingStatement` case
 - a repeated destructive command is rejected, not re-run (rolling back a
   rolled-back import returns 409)
 - a check on the record's own state that a concurrent request can make stale

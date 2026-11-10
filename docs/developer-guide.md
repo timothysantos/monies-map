@@ -2909,6 +2909,27 @@ in that order; the editor is the lazy `summary-card-editor.jsx`. Tests:
 `tests/summary-card-order.test.mjs`, `tests/viewer-preferences.test.mjs`
 and `tests/e2e/summary-arrange.spec.js`.
 
+### How to register a Summary card
+
+Every card Summary draws under the top summary must be registered, or a
+person cannot hide or move it. Three one-line additions, and a test that
+fails if any is missing (`tests/summary-card-registry.test.mjs`):
+
+1. Add its id (lowercase letters only, at most 20) to `SUMMARY_CARD_IDS` in
+   `src/client/summary-card-order.js`, at the place it should usually sit.
+   Anyone who saved an order before it existed sees it in that place,
+   shown, with no migration.
+2. Add its body to `cardBody` in `summary-panel.jsx` (lazy-load a heavy one
+   as the others do, and keep any request inside it so a hidden card reads
+   nothing). Do not draw a card anywhere else in the panel.
+3. Add its `{ name, about }` to `NAMES` in `summary-card-editor.jsx`, in
+   plain words a grandparent follows.
+
+Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
+only on an owner decision. Registered today: `insights`, `subs` (which holds
+Coming up and Bank fees), `mix`, `plan`, `accounts`. The server only checks
+the stored string's shape, so no server change is needed for a new card.
+
 ## How are bank fees this year worked out?
 
 The Summary page reads one more thing beside its other reads (same step):
