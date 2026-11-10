@@ -21,7 +21,7 @@
 //   on its usual day. Nothing else is assumed.
 // - Quiet: days 1 to 5, fewer than 3 complete months with entries, a past
 //   month, or statement imports behind.
-import { daysInMonth } from "./money-signals/format";
+import { addMonths, daysInMonth } from "./money-signals/format";
 
 export const PACE_QUIET_DAYS = 5;
 export const PACE_MIN_MONTHS = 3;
@@ -203,17 +203,20 @@ export interface KeptMonth {
   keptMinor: number;
 }
 
+// Quiet (null) before April, and unless every month from January and each
+// of the last 6 complete months is known: a gap would count as $0 kept.
 export function yearEndKept(months: KeptMonth[], thisMonth: string, leftLowMinor: number, leftHighMinor: number) {
   const number = Number(thisMonth.slice(5, 7));
   if (number < YEAR_PACE_FIRST_MONTH) return null;
   const year = thisMonth.slice(0, 4);
-  const complete = months.filter((month) => month.month < thisMonth).sort((left, right) => left.month.localeCompare(right.month));
-  const lastSix = complete.slice(-6);
-  if (lastSix.length < 6) return null;
-  const sorted = lastSix.map((month) => month.keptMinor).sort((left, right) => left - right);
+  const kept = new Map(months.map((month) => [month.month, month.keptMinor]));
+  const lastSixMonths = [6, 5, 4, 3, 2, 1].map((back) => addMonths(thisMonth, -back));
+  const yearMonths = Array.from({ length: number - 1 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
+  if (![...lastSixMonths, ...yearMonths].every((month) => kept.has(month))) return null;
+  const sorted = lastSixMonths.map((month) => kept.get(month)!).sort((left, right) => left - right);
   const secondLowest = sorted[1];
   const secondHighest = sorted[sorted.length - 2];
-  const keptSoFar = complete.filter((month) => month.month.startsWith(`${year}-`)).reduce((sum, month) => sum + month.keptMinor, 0);
+  const keptSoFar = yearMonths.reduce((sum, month) => sum + kept.get(month)!, 0);
   const monthsLeft = 12 - number;
   const low = keptSoFar + leftLowMinor + monthsLeft * secondLowest;
   const high = keptSoFar + leftHighMinor + monthsLeft * secondHighest;
