@@ -341,6 +341,22 @@ over plan.
   bank refunded is left out and named in its own sentence. **Show those
   fees** lists exactly those entries; the total at the top of that list is
   the line's total.
+- **Investments**: under Subscriptions and bills, when an investment account
+  has a statement. It shows what your investments were worth on their latest
+  statements, what you put in since January, how much they grew by (green when
+  up, red when down) and what they paid out in dividends and interest. The
+  chart shows the worth only in the months a statement says, with no line across
+  months that have none, and a stepped line for the money you put in. There is
+  no forecast. Each account has its own row. Tap the worth to see the statement
+  and the money you put in to see exactly those transfers.
+- **Tax reliefs**: for each person, what was put into the SRS, into CPF as a
+  cash top-up (for yourself and for family) and into charity gifts this year,
+  against the yearly limits, with a bar and the room left. Gifts to approved
+  charities are counted 2½ times. The card says how many days are left until
+  31 Dec. It does not know your income, so it never says how much tax you save.
+  Mark an entry with the categories **SRS top-up**, **CPF top-up** or **Charity
+  gift** (for a transfer, choose one as its purpose, and name the person it is
+  for if it is for family). The card is hidden until something is marked.
 - **Subscriptions and bills**: under Money insights, one list of every
   charge that comes back each month or each year: streaming, phone,
   broadband, the town council, insurance, utilities. The app finds them in
@@ -1349,6 +1365,10 @@ Good to know:
   Ask has read your reminders in this visit: when a card you put off comes
   back, or when a refresh finds a new one. A reminder that appeared while the
   app was closed is simply on the cards the next time you open Ask.
+- **Tax relief room, in December.** From 1 to 31 December, if you have put
+  something into the SRS or a CPF cash top-up this year and it is below its
+  limit, one card says how much more would still count and how many days are
+  left. It opens Summary, and you can put it off or hide it for the year.
 - These are about what is coming up. Problems with your records, such as a
   month with a missing statement, are on **Check my books**.
 

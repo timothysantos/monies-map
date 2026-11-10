@@ -377,6 +377,23 @@ view counts each charge at their share (`personEntryAmountMinor`). The card
 usable. Every amount opens exactly its charges (`repeating` figure). No AI,
 no write.
 
+### Investments over time and Tax reliefs on Summary (current, 2026-11)
+
+Two read-only Summary cards (owner-approved design, 2026-11-10). `GET
+/api/investments-over-time?view=` (`src/domain/pages/investments-over-time.ts`,
+pure rules in `src/domain/investments-over-time.ts`) reads the investment
+accounts, their `investment_statement_values` and the people in one step and,
+only when an account in view has a statement value, the household's entries
+from 1 January (figures only): worth, put in, grew by, paid out and a chart
+with worth points only at statement months. `GET /api/tax-reliefs?view=`
+(`src/domain/pages/tax-reliefs.ts`, rules in `src/domain/tax-reliefs.ts`,
+limits in the one dated `src/domain/sg-tax-relief-limits.ts`) reads the year's
+entries whose category or transfer purpose is one of the three seeded relief
+categories (matched in SQL) and gives each person's use against the limits.
+In December the same facts feed one Reminders To do (`tax_relief`, read only
+in December). The cards are lazy code in Spending Mix's chunk, read once the
+top summary is usable. No AI, no write, no new table.
+
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
 The household asks "Check my books" and gets a list of problems in its own data

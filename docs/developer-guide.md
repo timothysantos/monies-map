@@ -2940,6 +2940,32 @@ their negatives), `tests/repeating-charges-api.test.mjs` (the real Worker),
 `tests/openable-figures.test.mjs` (every figure equals its entries) and
 `tests/e2e/subscriptions-card.spec.js`.
 
+## How do the Investments and Tax reliefs cards work?
+
+Two Summary cards (DOMAIN.md "Investments Over Time" and "Tax Relief"), both
+read-only, no AI, no new table. `GET /api/investments-over-time[?view=]`
+(`src/domain/pages/investments-over-time.ts`, pure rules in
+`src/domain/investments-over-time.ts`): worth is each investment account's
+latest `investment_statement_values` row, put in is this year's moves into the
+accounts less moves out as the Invested figure counts them, grew by is worth
+less the starting worth less what was put in after it, and paid out is
+`income_minor`. `GET /api/tax-reliefs[?view=]` (`src/domain/pages/tax-reliefs.ts`,
+`src/domain/tax-reliefs.ts`) counts entries whose category (or a transfer's
+purpose, `transfer_purpose_category_id`) is `SRS top-up`, `CPF top-up` or
+`Charity gift`; `transfer_purpose_person_id` decides self or family for CPF.
+The limits are one dated list, `src/domain/sg-tax-relief-limits.ts`: **check
+it against IRAS every year before 1 December** and add the new year's entry
+(a missing year falls back to the latest, and the card's footnote says so).
+The three categories are seeded additively in `seedEmptyStateReferenceData`
+(a household's same-named category is kept); the demo household gets SRS and
+CPF top-ups and a charity gift. In December, the facts also feed the
+`tax_relief` Reminder (`src/domain/reminders/tax-relief-reminder.ts`). The
+cards are lazy code in the Spending Mix chunk (`investments-card.jsx`,
+`tax-reliefs-card.jsx`). Tests: `tests/investments-over-time.test.mjs`,
+`tests/investments-card-model.test.mjs`, `tests/tax-reliefs.test.mjs`,
+`tests/reminders-rules.test.mjs`, `tests/openable-figures.test.mjs` (every
+amount equals its entries) and `tests/e2e/summary-investments-tax.spec.js`.
+
 ## What are reminders in Ask?
 
 `GET /api/reminders[?view=]` (DOMAIN.md "Reminder") answers what the fixed rules

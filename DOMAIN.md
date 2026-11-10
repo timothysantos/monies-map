@@ -521,6 +521,66 @@ Important distinctions:
 - Insights are only as fresh as imports: a statement imported late moves
   the scheduled check and the missed payment late too.
 
+### Investments Over Time
+
+Summary's "Investments" card (owner-approved design, 2026-11-10): what the
+investment accounts were worth on their statements and what the household put
+in this calendar year. Built only from `investment_statement_values` and the
+ledger's transfers; read-only, no AI, no forecast.
+
+Canonical terms:
+- `worth`: the latest statement value (`total_assets_minor`) of each
+  investment account, added up, "Worth on the latest statements, <date>".
+  It opens the statement (Imports, that account's imports).
+- `put in`: this year's transfers into the investment accounts less the
+  transfers out, as the Invested money job counts them
+  (`findInvestmentMoves`). It opens as `invested` (or `took_out` when more
+  came out) narrowed to those moves, so Entries' total equals it to the cent
+  (`investmentPutInFigureMinor`).
+- `grew by`: worth less the account's starting worth less what was put in
+  after the start. The start is the last statement before 1 January, or for an
+  account whose first statement is this year, that statement ("from Jun").
+  Market moves are included, so it can be below zero (mint when up, brick red
+  when down).
+- `paid out`: the statements' dividends and interest (`income_minor`) dated
+  this year.
+- The chart has a worth point only in a month every started account has a
+  statement for, no line across months without one, and a stepped line for
+  money put in. An account is a row in its person's colour. No statement, no
+  card.
+
+### Tax Relief
+
+Summary's "Tax reliefs" card and the December To do (owner-approved design,
+2026-11-10): for each person, what was put into the reliefs that lower next
+year's Singapore income tax, against each yearly limit. Read-only, no AI. It
+never shows the tax saved (the app does not know anyone's income) and never
+advises.
+
+Canonical terms:
+- `relief`: `SRS top-ups`, `CPF cash top-up, for yourself` and `CPF cash
+  top-up, for family` (each with a limit), and `charity gifts` (no limit,
+  deducted at 2.5 times the gift: "counted 2½ times").
+- Three categories mark an entry: `SRS top-up`, `CPF top-up` and `Charity
+  gift`, seeded additively (`seedEmptyStateReferenceData`; a household's own
+  same-named category is kept). The marker is an expense's category, or a
+  transfer out's purpose (`transfer_purpose_category_id`) or own category. A
+  CPF top-up is "for family" when `transfer_purpose_person_id` is someone
+  other than the owner. It counts for the entry's owner, at its whole amount,
+  in the calendar year of its date; money in is never counted.
+- `limits`: one dated list (`src/domain/sg-tax-relief-limits.ts`: SRS
+  $15,300, CPF self $8,000, CPF family $8,000, charity 2.5), checked against
+  IRAS every year. A year with no entry uses the latest known year and the
+  footnote says so. No Settings screen.
+- `room left`: limit less used. The card shows bars, "N days left, until
+  31 Dec" and a footnote on the IRAS limits and that income is unknown.
+- `tax relief reminder`: from 1 to 31 December, one dismissible To do
+  (a Reminder, kind `tax_relief`, key `tax_relief:<year>`) while a relief the
+  person has started is below its limit. A relief nobody started and charity
+  gifts are never named; the words state the room and never say "should".
+  Each used amount opens as `outflow` narrowed to its entries
+  (`taxReliefFigureMinor`).
+
 ### Repeating Charge
 
 A charge that comes back every month or every year (streaming, phone,

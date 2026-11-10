@@ -1893,6 +1893,35 @@ more than its spending reads $0 actual (it never goes below zero), while
 its entries add up to the refund below zero. Daily spend is an average, so
 View entries shows the spending it divides.
 
+## Investments over time and Tax reliefs
+
+Two Summary cards (owner-approved, 2026-11-10; DOMAIN.md "Investments Over
+Time" and "Tax Relief"), under Subscriptions and bills. Both are lazy code in
+Spending Mix's chunk (`investments-card.jsx`, `tax-reliefs-card.jsx`,
+`summary-cards.css`, words in `copy/summary-cards-copy.js`), registered in
+`summary-panel.jsx` beside Subscriptions and bills and rendered only once the
+top summary is usable (`cardsUsable`). Each reads its own API
+(`GET /api/investments-over-time`, `GET /api/tax-reliefs`, `?view=`) through
+`fetchRequiredQuery` into the query cache (`use-summary-card-query.js`,
+`queryKeys.investmentsOverTime` and `taxReliefs`) and reads again after a save
+that invalidates a page. A failed read, or nothing to show, shows nothing.
+
+- Investments: four figures (Worth on the latest statements, You put in since
+  Jan, Grew by in the money tone, Paid out), the chart (worth points at
+  statement months only, no line across a gap, a stepped sky line for money
+  put in) and one row per account in the person's colour. Compact on a phone
+  with "Tap for each account".
+- Tax reliefs: a person block per person in their colour with a bar for each
+  relief, the room left ("$4,300 more would still count this year."), "Full
+  limit reached.", gifts "counted 2½ times, so $1,250 off your income", the
+  pill "N days left, until 31 Dec" and the IRAS footnote. Never tax saved.
+- Figures: both cards count whole amounts, so `data-fig-view="household"`.
+  Put in opens as `invested`/`took_out`, each relief amount as `outflow`,
+  narrowed to its ids; worth, grew by and paid out open the statements.
+  Hidden money hides the bars and room left.
+- The December To do is a Reminder card in Ask (kind `tax_relief`, butter
+  tone, Later and "Not for this year"), opens Summary.
+
 ## Subscriptions and bills
 
 A Summary card under Money insights (owner decision D1, 2026-11-10;
