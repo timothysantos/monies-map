@@ -681,13 +681,17 @@ Important distinctions:
 
 "If this keeps up" (owner decision, 2026-11-10): where this month's
 spending, and what is left of what comes in, end up if the month keeps
-going as it has (`src/domain/pace.ts`). Shown on Summary under the
-month-by-month chart and on Month under the lead (owner decision D6).
+going as it has (`src/domain/pace.ts`). Shown on Summary, drawn into the
+month-by-month chart itself (the current month's column carries the range)
+with its sentence directly under the chart, and on Month under the lead
+(owner decisions D6 and 2026-11-10).
 
 Canonical terms:
 - `pace`: a range, low to high, rounded outward ($10 under $1,000, $50 under
   $10,000, then $100; the low end down, the high end up), always labelled
-  "If this keeps up" and drawn in the plan (sky) tone, dotted or hatched.
+  "If this keeps up" and drawn in the plan (sky) tone, dotted or hatched: on
+  Summary a dotted block up to the low end and a hatched block to the high
+  end above the current month's Spent column; on Month a bar.
 - `spent so far`: the month's recorded spending, the figure the page shows.
 - `lumpy parts`: charges in a repeating series and one-offs (a single entry
   of at least $300, or at least 3 times the month's middle entry, not in a
@@ -712,8 +716,29 @@ Canonical terms:
   Dec." Quiet unless every month from January and each of the last 6 is in
   Summary's range, or when nothing comes in this month.
 - `quiet`: days 1 to 5, fewer than 3 complete months with entries, a past
-  month, imports behind (the busiest account's latest entry is more than 10
-  days old), or money hidden (no shape either).
+  month, imports behind (below), or money hidden (no shape either). It is
+  never silent: Summary shows one plain line under the chart saying why
+  (`quiet note`, `src/domain/pace-quiet.ts`, shared with Ask): "No pace yet:
+  it's too early in November." / "No pace yet: it needs 3 complete months of
+  entries." / "No pace yet: Citi Rewards has nothing after 15 Oct. Import its
+  statement to see it." (the last part opens Imports; up to 2 accounts are
+  named, the rest counted: "and 2 more accounts are behind too"). No
+  amounts, no alarm words; a month that has ended has no note.
+- `imports behind` (`paceAccountsBehind`): an account whose statement is
+  missing in a way that would make the pace wrong. An account is behind when
+  its latest entry (any kind) is older than its own cadence allows: twice the
+  usual gap between its charge days in the last 3 months, never sooner than
+  10 days (`PACE_IMPORTS_BEHIND_DAYS`) and never later than 21
+  (`PACE_BEHIND_MAX_DAYS`). A behind account counts only when it matters this
+  month: it carries at least 25% of the last 3 months' spending
+  (`PACE_BEHIND_MAIN_SHARE`), is the account spending the most, or has
+  charges this month. Several smaller accounts count together: when the
+  accounts behind carry 25% between them, each with at least 5%
+  (`PACE_BEHIND_MINOR_SHARE`) counts too. A minor account that stopped long
+  ago with nothing this month is ignored. The rule leans towards quiet: a
+  pace built on missing statements is worse than none. (It replaced "the
+  account with the most charges is more than 10 days behind", which let a
+  household with most of its cards weeks behind show a pace.)
 
 Important distinctions:
 - A pace is never a safe-to-spend figure, an account balance, a savings

@@ -2086,15 +2086,31 @@ month keeps going as it has.
   the series, each account's latest entry, plus one read of the view's money
   in over the last 4 months, in the same parallel step. The answer is the
   `pace` field of `GET /api/repeating-charges`; nothing else is read.
-- Summary: `PaceSection` (in the Subscriptions chunk) inside the `plan`
-  card (Arrange Summary), under the month-by-month chart when the range ends in today's month, with what is
-  left of what comes in; the plan is named only in the Plan view.
+- Summary: `PaceChartSection` (in the Subscriptions chunk) inside the `plan`
+  card (Arrange Summary) owns the month-by-month chart when the range ends in
+  today's month (`renderChart`, so the chart stays in one place in the tree
+  whether or not the answer has arrived). The range is part of "Earned vs
+  spent by month": `EarnedSpentChart` takes `pace` ({ month, lowMinor,
+  highMinor }, the rounded ends) and draws, above the current month's Spent
+  column, a dotted block up to the low end and a hatched block to the high end
+  (`.ec-pace-low`, `.ec-pace-high`; sky only, aria-hidden, never a figure; the
+  left scale reaches the high end; hidden with the Spent series). The sentence
+  sits directly under the chart with what is left of what comes in; the plan
+  is named only in the Plan view. No bar on Summary (`showBar` false).
+- When it cannot show, `PaceQuietNote` is one plain line in the same place
+  (`data-pace-quiet`: `early`, `history`, `imports`), words from
+  `pace-quiet.ts` (shared with Ask); for `imports` its action opens Imports
+  (the page's `handleOpenImports`). Hidden money shows neither chart nor note.
+  When the range does not end in today's month there is no pace and no note.
+- Imports behind (`paceAccountsBehind`, DOMAIN.md "Pace"): by each account's
+  own cadence and only if it matters this month; the dto's `behind` names the
+  accounts for the note (the same name on two accounts carries its owner).
 - Month: `month-panel.jsx` reads the same answer with `useRepeatingCharges`
   once the page is usable (today's month only) and draws `PaceLine` under the
   lead; the Month insight lines get it too (`MonthSignalInput.pace`):
   paceSteady and paceAhead give the range when the whole range is under the
   plan, and paceOver (Worth knowing) says when even the low end is over it.
-- The line (`pace-line.jsx`, words in `pace-line-model.js`): a bar with what
+- Month's line (`pace-line.jsx`, words in `pace-line-model.js`): a bar with what
   is spent (plain, muted), a dashed sky continuation to the low end, a
   hatched sky block to the high end and a sky plan mark; then "If this keeps
   up: about $4,700 to $5,100 by 30 Nov, under the $5,200 plan." The plan's

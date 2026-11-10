@@ -843,6 +843,24 @@ start and page read rules above, measured in `tests/ledger-checkup-budget.test.m
   round trip (the columns are repaired from the `PRAGMA table_info` it already
   reads).
 
+## If this keeps up reads
+
+The pace (DOMAIN.md "Pace") adds no read: `buildPaceDto` works from the
+Subscriptions and bills rows and the one income read already in
+`buildRepeatingChargesDto`. "Imports behind" is `paceAccountsBehind`
+(`src/domain/pace.ts`), a pure function over per-account activity (spend and
+charge days of the last 3 months, charges this month, the latest entry): the
+thresholds are the named `PACE_*` constants, and a change to the rule needs a
+case in `tests/pace-behind.test.mjs` (a main account behind, a minor one, a
+fresh one, charges this month with old statements, accounts counting
+together) and a backtest on a copy of production (read-only). The quiet
+reasons are worded once in `src/domain/pace-quiet.ts`; Summary's note and
+Ask both read it, and a new reason goes there with its pace lint case. On
+Summary the chart is drawn by `PaceChartSection` (lazy, with the Subscriptions
+chunk) through `renderChart`, so the page's first screen does not import the
+repeating-charges query; the `behind` list rides the dto only when quiet is
+`imports`, so a pace that shows costs no extra bytes.
+
 ## Persistence Atomicity Contract
 
 A persistence command is all-or-nothing:

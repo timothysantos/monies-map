@@ -773,8 +773,9 @@ of nine intents:
   Planned spend; the card is "If this keeps up" with the spent lead and the
   parts as low-to-high rows, the wording the same range as the line ("about
   $4,700 to $5,100 by 30 Nov, under the $5,200 plan") or a plain quiet
-  reason (too early, too little history, statements behind, a month that
-  has ended). AI never words it. The turn topic is `pace`; the figure menu's
+  reason (too early, too little history, statements behind, naming the
+  account and its last entry date as Summary's note does, `pace-quiet.ts`; a
+  month that has ended). AI never words it. The turn topic is `pace`; the figure menu's
   Ask about this asks it.
 
 A period reads as its months, oldest first, up to this month: a quarter

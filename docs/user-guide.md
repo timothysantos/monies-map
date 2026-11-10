@@ -404,9 +404,11 @@ over plan.
   of its last three), and over it what they come to in all: "About $500 to
   $540 by 10 Dec, if they come as usual". It is a guide from your past entries, not a bill. On a phone the four rows most worth a look come
   first; **See all** shows the rest. Hide money totals and the amounts go.
-- **If this keeps up**: under the month-by-month chart (and on Month, under
-  the top card), from the 6th of the month, a dotted line in the plan colour
-  says where this month's spending ends if the month keeps going as it has:
+- **If this keeps up**: on the month-by-month chart (and on Month, under
+  the top card), from the 6th of the month, this month's column grows a
+  dotted and hatched block in the plan colour, and the sentence under the
+  chart says where this month's spending ends if the month keeps going as it
+  has:
   "If this keeps up: about $4,700 to $5,100 by 30 Nov, under the $5,200 plan.
   About $7,350 to $7,750 left of what comes in." It is always a range. It
   adds what you spent so far, your everyday spending for the days left (at
@@ -414,8 +416,12 @@ over plan.
   bills still to come on their usual days. A big one-off, like an aircon
   service, is counted once and not repeated. Nothing else is guessed. Click
   it (on a phone, tap it) to see how it is worked out, or **Ask about this**.
-  It stays away in the first 5 days of a month, until you have 3 months of
-  entries, and while your latest statements aren't in yet. From April, when
+  It waits for the 6th of the month, for 3 months of entries, and for your
+  latest statements, and when it waits, one line under the chart says why,
+  for example "No pace yet: Citi Rewards has nothing after 15 Oct. Import its
+  statement to see it." (the last part opens Imports). A card you no longer
+  use doesn't hold it back, but the cards you spend on most do, because a
+  guess built without their latest statements would be wrong. From April, when
   the months shown start in January, a second line says what you keep by the
   end of the year if this keeps up: what you kept so far, plus each month
   still to come at a typical amount from your last 6 months (the highest and

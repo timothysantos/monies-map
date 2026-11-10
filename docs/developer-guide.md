@@ -3032,14 +3032,21 @@ The pace (DOMAIN.md "Pace"; design.md "If this keeps up") is the pure
 plus `PACE_INCOME_SQL` (the view's money in over the last 4 months) in the
 same parallel step, and arrive as the `pace` field of
 `GET /api/repeating-charges`: a range, or `quiet` (`early`, `history`,
-`past`, `imports`). Summary (`PaceSection`), Month (`month-panel.jsx`, also
+`past`, `imports`; for `imports` also `behind`, the accounts to name, from
+`paceAccountsBehind`: behind by their own cadence and mattering this month,
+DOMAIN.md "Pace"). The reasons are put into words once, in
+`src/domain/pace-quiet.ts`, for Summary's note and Ask. Summary
+(`PaceChartSection` draws the range into `EarnedSpentChart`, the sentence
+under it, or `PaceQuietNote`), Month (`month-panel.jsx`, also
 its insight lines through `MonthSignalInput.pace`) and Ask's `pace` money
 question (`src/domain/ask-pace.ts`, the turn topic `pace`) all add the same
 range to the page's spent figure with `paceTotals`. No AI, no write. The
 words are linted by `findPaceProblems` (no "safe", "can afford", "will have",
 "forecast"...). Tests: `tests/pace.test.mjs` (the design's November to the
 cent), `tests/pace-surfaces.test.mjs` (facts, line, menu, insight lines and
-Ask), `tests/pace-copy-lint.test.mjs`, the colour guard,
+Ask), `tests/pace-behind.test.mjs` (the behind rule and the quiet words),
+`tests/earned-spent-chart-dom.test.mjs` (the range on the chart),
+`tests/pace-copy-lint.test.mjs`, the colour guard,
 `tests/ask-answer-route.test.mjs` and `tests/e2e/pace-line.spec.js`
 (`PACE_SHOT_DIR` saves screenshots).
 
