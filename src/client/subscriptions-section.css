@@ -239,6 +239,13 @@
   text-transform: uppercase;
 }
 
+.subs-coming-total {
+  margin: 0 0 8px;
+  color: var(--pastel-sky-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
 .subs-empty {
   padding: 14px;
   color: var(--muted);

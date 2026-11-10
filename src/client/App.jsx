@@ -2148,6 +2148,7 @@ export function App() {
   // Summary's Subscriptions and bills reads its data once the top summary is
   // usable; only Summary sees the flag, for the same reason.
   const summaryCardsUsable = renderedTabId === "summary" && routeWork.usable;
+  const monthCardsUsable = renderedTabId === "month" && routeWork.usable;
   const renderedRouteElement = useMemo(() => {
     if (!appShell || !pageView || !referenceData) {
       return null;
@@ -2181,6 +2182,8 @@ export function App() {
           onRefresh={refreshCurrentMonthPage}
           runBackgroundRefresh={runBackgroundRefresh}
           isDemoEnvironment={appEnvironment === "demo"}
+          cardsUsable={monthCardsUsable}
+          fetchRequiredQuery={fetchRequiredQuery}
         />
       );
     }
@@ -2314,6 +2317,7 @@ export function App() {
     categories,
     creditStatusRouteUsable,
     summaryCardsUsable,
+    monthCardsUsable,
     fetchAskEntriesPage,
     fetchRequiredQuery,
     closeMobileContext,

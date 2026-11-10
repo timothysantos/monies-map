@@ -85,6 +85,18 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
     const askOnly = [{ action: "ask-insight", label: copy.ask }];
     return { label: copy.menuLabel(copy.names.insight), title: { name: "", period: "" }, items: askOnly };
   }
+  // If this keeps up (data-fig="pace"; DOMAIN.md "Pace"): a range, not
+  // entries. Its note says how it is worked out; Ask about this is its only
+  // item, never View entries or Open plan.
+  if (fig === "pace") {
+    const paceMonth = period?.endMonth ?? new URLSearchParams(search).get("month") ?? "";
+    const monthLabel = paceMonth ? formatMonthLabel(paceMonth) : "";
+    return {
+      label: copy.menuLabel(copy.names.pace),
+      title: { name: copy.names.pace, period: monthLabel },
+      items: [{ action: "ask", label: copy.ask, question: copy.questions.pace(monthLabel || copy.thisMonth) }]
+    };
+  }
   const current = new URLSearchParams(search);
   const viewId = current.get("view") || "household";
   const scope = current.get("entries_scope") || current.get("scope") || "direct_plus_shared";

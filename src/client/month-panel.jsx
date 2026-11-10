@@ -4,6 +4,7 @@ import { PlanIslandActions } from "./plan-island-actions";
 import { spendingMinor } from "../domain/category-offset";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { messages } from "./copy/en-SG";
 import { monthMessages } from "./copy/en-SG-month";
@@ -43,6 +44,9 @@ import { getRowDateValue } from "./table-helpers";
 import { selectMonthInsightEntries } from "./month-insight-facts";
 import { selectMonthSpendingMix } from "./month-spending-mix";
 import { SpendingMixSection } from "./spending-mix-section";
+import { PaceLine } from "./pace-line";
+import { useRepeatingCharges } from "./use-repeating-charges";
+import { useMoneyPrivacy } from "./money-privacy";
 import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
 import { withoutPlanSignals } from "../domain/money-signals/plan-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
@@ -82,12 +86,19 @@ function pickPlanLinkSelection(dialog) {
   return [dialog.rowId, [...(dialog.draftEntryIds ?? [])].sort()];
 }
 
+// The pace's read when the shell hands none (it then never runs).
+function rejectRead() {
+  return Promise.reject(new Error("No read"));
+}
+
 function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, isDemoEnvironment = false }) {
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, isDemoEnvironment = false, cardsUsable = false, fetchRequiredQuery = undefined }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { areTotalsVisible } = useMoneyPrivacy();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
   const [editingRowId, setEditingRowId] = useState(null);
@@ -287,6 +298,18 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   );
   // A plan figure's "Open plan" (figure-menu.js) lands on the plan.
   useHashTarget(!isSimple && Boolean(monthLead.model));
+  // If this keeps up (DOMAIN.md "Pace"): today's month only, read once the
+  // page is usable, the same answer Summary's Subscriptions and bills card
+  // reads (one request for both). Month's insight lines use it too.
+  const isPaceMonth = view.monthPage.month === checkInClock.today.slice(0, 7);
+  const { answer: repeatingAnswer } = useRepeatingCharges({
+    queryClient,
+    viewId: view.id,
+    scope: view.monthPage.selectedScope,
+    enabled: Boolean(cardsUsable && fetchRequiredQuery && isPaceMonth),
+    fetchRequiredQuery: fetchRequiredQuery ?? rejectRead
+  });
+  const pace = isPaceMonth && repeatingAnswer?.pace?.month === view.monthPage.month && repeatingAnswer.pace.range ? repeatingAnswer.pace : null;
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
     contextKey: `${view.monthPage.month}|${view.monthPage.selectedScope}${isSimple ? "|simple" : ""}`,
@@ -301,7 +324,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       incomeRows,
       summary: selectedMonthSummary,
       accountPills: view.accountPills,
-      formatMoney: formatService.unmaskedMoney
+      formatMoney: formatService.unmaskedMoney,
+      pace
     })),
     page: "month",
     period: view.monthPage.month,
@@ -312,7 +336,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     // Wallet health arrives beside the month page; until it does, nothing
     // may be called sorted from a partial picture.
     ready: Array.isArray(view.accountPills)
-  }), [checkInClock, incomeRows, insightEntries, isSimple, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
+  }), [checkInClock, incomeRows, insightEntries, isSimple, pace, planSections, selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage.month, view.monthPage.selectedScope]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -1650,6 +1674,15 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         month={view.monthPage.month}
         categoryShare={view.monthPage.categoryShareChart}
         isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData}
+      />
+
+      {/* If this keeps up (DOMAIN.md "Pace"), under the lead. */}
+      <PaceLine
+        pace={pace}
+        spentSoFarMinor={selectedMonthSummary?.realExpensesMinor ?? null}
+        planMinor={isSimple ? null : selectedMonthSummary?.estimatedExpensesMinor ?? null}
+        money={formatService.money}
+        hidden={!areTotalsVisible}
       />
 
       <FinancialInsight

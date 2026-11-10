@@ -4,6 +4,8 @@ import { Receipt } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { subscriptionsCopy as copy } from "./copy/subscriptions-copy";
+import { paceCopy } from "./copy/pace-copy";
+import { PaceLine } from "./pace-line";
 import { getCategory } from "./category-utils";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -222,6 +224,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   const { answer, refresh } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildSubscriptionsModel(answer), [answer]);
   const comingUp = useMemo(() => buildComingUp(answer), [answer]);
+  const hiddenMoney = !useMoneyPrivacy().areTotalsVisible;
   const cardRef = useRef(null);
   // The height Summary reserves next time on this device (0: nothing shown).
   useLayoutEffect(() => {
@@ -314,9 +317,14 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
         {!phone && tab === "all" ? <span className="subs-sorted">{copy.sorted}</span> : null}
       </div>
       {tab === "coming" ? (
-        <ul className="subs-list" aria-label={copy.comingUp}>
-          <ComingUpList comingUp={comingUp} categories={categories} phone={phone} />
-        </ul>
+        <>
+          {comingUp?.count && !hiddenMoney ? (
+            <p className="subs-coming-total" data-pace="coming-up">{paceCopy.comingUpTotal(money(comingUp.total.lowMinor), money(comingUp.total.highMinor), comingUp.endDate)}</p>
+          ) : null}
+          <ul className="subs-list" aria-label={copy.comingUp}>
+            <ComingUpList comingUp={comingUp} categories={categories} phone={phone} />
+          </ul>
+        </>
       ) : (
       <ul className="subs-list" aria-label={copy.title}>
         {rows.map((series) => <SeriesRow key={series.key} series={series} {...rowProps} />)}
@@ -349,4 +357,21 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
       ) : null}
     </section>
   );
+}
+
+/**
+ * If this keeps up for today's month, from the same answer as the card (one
+ * request for both). Summary shows it under its month-by-month chart
+ * (owner decision D6); Month reads the same answer itself (month-panel.jsx),
+ * for its insight lines too.
+ * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, spentSoFarMinor?: number | null, planMinor?: number | null, showLeft?: boolean }} props
+ */
+export function PaceSection({ view, enabled, fetchRequiredQuery, spentSoFarMinor = null, planMinor = null, showLeft = false }) {
+  const queryClient = useQueryClient();
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const { answer } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
+  if (!answer?.pace?.range || !areTotalsVisible) {
+    return null;
+  }
+  return <PaceLine pace={answer.pace} spentSoFarMinor={spentSoFarMinor} planMinor={planMinor} money={money} hidden={!areTotalsVisible} showLeft={showLeft} />;
 }

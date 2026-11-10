@@ -1,7 +1,8 @@
 /* If this keeps up (pace-line.jsx): the plan tone (sky) only, one strength,
-   even when the high end is over the plan. What is spent is solid; the low
-   end continues dashed; the high end is hatched; the plan is a thin mark.
-   A forecast is never rose: it has not happened. */
+   even when the high end is over the plan. What is spent is a plain solid
+   bar; the low end continues dashed; the high end is hatched; the plan is a
+   thin sky mark. A forecast is never rose or mint: it has not happened
+   (tests/money-colour-guard.test.mjs, "a pace is drawn in the plan tone"). */
 
 .pace-line {
   margin: 10px 0 0;
@@ -12,7 +13,6 @@
   height: 10px;
   border-radius: 999px;
   background: var(--pastel-neutral);
-  overflow: hidden;
 }
 
 .pace-bar > span {
@@ -23,27 +23,34 @@
 
 .pace-bar-spent {
   left: 0;
-  background: var(--pastel-sky-ink);
+  border-radius: 999px 0 0 999px;
+  background: var(--muted);
 }
 
 .pace-bar-low {
+  top: 4px;
+  bottom: auto;
+  height: 0;
   border-top: 2px dashed var(--pastel-sky-ink);
-  border-bottom: 2px dashed var(--pastel-sky-ink);
-  background: var(--pastel-sky);
 }
 
 .pace-bar-high {
-  background: repeating-linear-gradient(135deg, var(--pastel-sky-line) 0 3px, var(--pastel-sky) 3px 7px);
+  border: 1.5px dashed var(--pastel-sky-ink);
+  border-radius: 4px;
+  background: repeating-linear-gradient(135deg, var(--pastel-sky-line) 0 2px, var(--pastel-sky) 2px 6px);
 }
 
 .pace-bar-plan {
-  width: 2px;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
   margin-left: -1px;
-  background: var(--text);
+  border-radius: 2px;
+  background: var(--pastel-sky-ink);
 }
 
 .pace-text {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--pastel-sky-ink);
   font-size: 0.86rem;
   font-weight: 600;

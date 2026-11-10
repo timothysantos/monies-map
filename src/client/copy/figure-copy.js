@@ -18,6 +18,8 @@ const names = {
   difference: "Difference",
   plan: "Plan",
   splits: "Splits",
+  // If this keeps up (pace-line.jsx): a range, not entries.
+  pace: "If this keeps up",
   trip: "Trip or event",
   statement: "Statements",
   // A Money insights line (its menu has no title; this names it for screen readers).
@@ -43,6 +45,7 @@ export const figureCopy = {
   openStatement: "Open the statement",
   openStatements: "Open the statements",
   ask: "Ask about this",
+  thisMonth: "this month",
   // The period as a question says it: "in Sep 2026", "from Oct 2025 to Sep 2026".
   inMonth: (monthLabel) => `in ${monthLabel}`,
   inRange: (startLabel, endLabel) => `from ${startLabel} to ${endLabel}`,
@@ -64,6 +67,8 @@ export const figureCopy = {
     owed: "Who owes whom?",
     trip: (name) => `How much did we spend on ${name}?`,
     investments: "How are my investments doing?",
-    taxRelief: (period) => `How much did I put into tax reliefs ${period}?`
+    taxRelief: (period) => `How much did I put into tax reliefs ${period}?`,
+    // If this keeps up: where the month's spending ends (Ask's pace answer).
+    pace: (monthLabel) => `How will ${monthLabel} end if this keeps up?`
   }
 };

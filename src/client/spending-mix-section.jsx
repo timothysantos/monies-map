@@ -200,7 +200,7 @@ export function SpendingMixSection({
 // the bundler move React out of the entry into a shared first-screen file
 // (check:bundle). Both load beside the first screen; its data waits for
 // the top summary to be usable.
-export { SubscriptionsSection } from "./subscriptions-section";
+export { PaceSection, SubscriptionsSection } from "./subscriptions-section";
 // Investments over time and Tax reliefs ride here too, for the same reason.
 export { InvestmentsCard } from "./investments-card";
 export { TaxReliefsCard } from "./tax-reliefs-card";

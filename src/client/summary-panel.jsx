@@ -46,6 +46,7 @@ const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcom
 // a new first-screen file, check:bundle); it renders, and reads its data,
 // only once the top summary is usable.
 const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SubscriptionsSection })));
+const PaceSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.PaceSection })));
 // Investments over time and Tax reliefs ride in the same chunk and read
 // their data only once the top summary is usable; each shows nothing until
 // it has something to show.
@@ -97,10 +98,29 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   // The column + line chart above the month-by-month list: only for two or
   // more months, and never while money is hidden (it would show the money).
   const { areTotalsVisible: isMoneyShown } = useMoneyPrivacy();
-  const monthChart = safeSummaryPage.months.length > 1 && isMoneyShown ? (
-    <Suspense fallback={<div className="earned-spent-chart-reserve" aria-hidden="true" />}>
-      <EarnedSpentChart key={leadView} mode={leadView} page={safeSummaryPage} />
+  // If this keeps up (DOMAIN.md "Pace"), under the chart when the range
+  // ends in this month: read once the top summary is usable.
+  const thisMonth = useCheckInClock().today.slice(0, 7);
+  const currentMonthRow = safeSummaryPage.months.find((month) => month.month === thisMonth);
+  const paceUnderChart = cardsUsable && fetchRequiredQuery && currentMonthRow && safeSummaryPage.rangeEndMonth === thisMonth ? (
+    <Suspense fallback={null}>
+      <PaceSection
+        view={view}
+        enabled={cardsUsable}
+        fetchRequiredQuery={fetchRequiredQuery}
+        spentSoFarMinor={currentMonthRow.realExpensesMinor ?? null}
+        planMinor={leadView === "plan" ? currentMonthRow.estimatedExpensesMinor ?? null : null}
+        showLeft
+      />
     </Suspense>
+  ) : null;
+  const monthChart = safeSummaryPage.months.length > 1 && isMoneyShown ? (
+    <>
+      <Suspense fallback={<div className="earned-spent-chart-reserve" aria-hidden="true" />}>
+        <EarnedSpentChart key={leadView} mode={leadView} page={safeSummaryPage} />
+      </Suspense>
+      {paceUnderChart}
+    </>
   ) : null;
 
   // Summary is the Summary tab's "All months": its Spending Mix covers the

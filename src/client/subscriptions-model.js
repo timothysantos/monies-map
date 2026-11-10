@@ -6,6 +6,7 @@
 
 import { addDays } from "../domain/money-signals/format";
 import { COMING_UP_DAYS, upcomingCharges } from "../domain/repeating-charges";
+import { roundOutward } from "../domain/pace";
 
 const PHONE_ROWS = 4;
 
@@ -79,5 +80,7 @@ export function buildComingUp(answer, days = COMING_UP_DAYS) {
     const group = charge.date <= thisWeekEnd ? groups[0] : charge.date <= nextWeekEnd ? groups[1] : groups[2];
     group.items.push({ ...charge, series: byKey.get(charge.key) });
   }
-  return { endDate: addDays(today, days), count: upcoming.length, groups: groups.filter((group) => group.items.length) };
+  // The 30 days' total, rounded outward (If this keeps up, DOMAIN.md "Pace").
+  const total = roundOutward(upcoming.reduce((sum, item) => sum + item.lowMinor, 0), upcoming.reduce((sum, item) => sum + item.highMinor, 0));
+  return { endDate: addDays(today, days), count: upcoming.length, total, groups: groups.filter((group) => group.items.length) };
 }

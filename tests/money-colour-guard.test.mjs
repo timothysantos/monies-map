@@ -93,3 +93,32 @@ test("components choose money colour through the money tones", () => {
   const offenders = scripts.filter((file) => legacy.test(readFileSync(path.join(root, file), "utf8")));
   assert.deepEqual(offenders, []);
 });
+
+// If this keeps up (DOMAIN.md "Pace"): a forecast is drawn in the plan tone
+// (sky) only, at one strength, even when its high end is over the plan; it
+// has not happened, so it is never rose, mint, butter or plum, and it never
+// picks a money tone.
+const PACE_RULE = /([^{}]*(?:\.pace-|\.subs-coming-total)[^{}]*)\{([^}]*)\}/g;
+export function paceColourProblems(css) {
+  const problems = [];
+  for (const [, selector, body] of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(PACE_RULE)) {
+    for (const token of body.match(/--pastel-[a-z-]+/g) ?? []) {
+      if (!/^--pastel-(?:sky|neutral)(?:-ink|-line)?$/.test(token)) problems.push(`${selector.trim()}: ${token}`);
+    }
+    if ((body.match(COLOUR_LITERAL) ?? []).length) problems.push(`${selector.trim()}: a raw colour`);
+  }
+  return problems;
+}
+
+test("a pace is drawn in the plan tone only, and never picks a money tone", () => {
+  const css = ["src/client/pace-line.css", "src/client/subscriptions-section.css"].map((file) => readFileSync(path.join(root, file), "utf8")).join("\n");
+  assert.match(css, /\.pace-bar-high[^{]*\{[^}]*--pastel-sky/, "the high end is sky");
+  assert.match(css, /\.subs-coming-total[^{]*\{[^}]*--pastel-sky-ink/, "Coming up's total is sky");
+  assert.deepEqual(paceColourProblems(css), []);
+  for (const file of ["src/client/pace-line.jsx", "src/client/pace-line-model.js"]) {
+    assert.doesNotMatch(readFileSync(path.join(root, file), "utf8"), /moneyToneClass|money-tone|is-short|is-in\b/, file);
+  }
+  // Not blind: rose on a pace, or a raw colour, is caught.
+  assert.deepEqual(paceColourProblems(".pace-bar-high { background: var(--pastel-rose); }"), [".pace-bar-high: --pastel-rose"]);
+  assert.deepEqual(paceColourProblems(".pace-text { color: #2d5d5e; }"), [".pace-text: a raw colour"]);
+});
