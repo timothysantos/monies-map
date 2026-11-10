@@ -837,7 +837,13 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     // Serene: OCBC 365 for the cat, the pharmacy and midweek top-ups.
     expense(A.sereneGroceryCard, d(6), "PET LOVERS CENTRE", between(rng, 4_800, 7_600), "Pet Care");
     expense(A.sereneGroceryCard, d(12), "GUARDIAN HEALTH & BEAUTY", between(rng, 1_250, 3_600), "Healthcare");
-    expense(A.sereneGroceryCard, d(17), "NTUC FAIRPRICE TAMPINES", between(rng, 2_400, 5_200), "Groceries");
+    const topUp = expense(A.sereneGroceryCard, d(17), "NTUC FAIRPRICE TAMPINES", between(rng, 2_400, 5_200), "Groceries");
+    // Serene always puts these top-ups on Splits, except the last two months'
+    // (not added yet), which Splits lists as "Usually shared, not on Splits
+    // yet" so the showcase shows that section.
+    if (offset <= -3) {
+      linkedSplit(HOME, SERENE, topUp, "NTUC FairPrice top-up", "Groceries");
+    }
 
     // Dinners the two of them split, from M-8 on, alternating who pays.
     if (offset >= -8) {

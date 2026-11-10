@@ -20,6 +20,7 @@ import { ensureAppData, invalidateAppDataCache } from "../src/domain/app-shell.t
 import { reseedDemoSettings } from "../src/domain/demo-settings.ts";
 import { reseedShowcaseData } from "../src/domain/app-repository-showcase-seed.ts";
 import { buildShowcaseDataset } from "../src/domain/demo-showcase-data.ts";
+import { buildUsuallySharedDto } from "../src/domain/pages/usually-shared.ts";
 
 const SEED_MONTH = "2026-05";
 const SHOWCASE_VARS = { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: SEED_MONTH };
@@ -346,12 +347,12 @@ test("splits: a JPY trip with home shares, settled batches, one simplification a
     WHERE split_batches.closed_on IS NOT NULL ORDER BY split_batches.closed_on
   `);
   assert.deepEqual(closed.map((row) => [row.closed_on, row.settlement_date === row.closed_on, row.amount_minor, row.expenses]), [
-    ["2025-07-28", true, 79_695, 15],
-    ["2026-01-28", true, 54_545, 12]
+    ["2025-07-28", true, 67_204, 22],
+    ["2026-01-28", true, 42_898, 18]
   ]);
 
   assert.deepEqual(household.settlementCheckpoints.map((item) => [item.status, item.currency, item.fromPersonName, item.toPersonName, item.amountMinor, item.includedRecordCount]), [
-    ["open", "SGD", "Serene", "Ethan", 79_851, 27]
+    ["open", "SGD", "Serene", "Ethan", 78_127, 28]
   ]);
   assert.deepEqual(household.activityHistory.map((item) => [item.action, item.recordKind, item.description]), [
     ["deleted", "expense", "Haidilao Vivocity (entered twice)"]
@@ -499,6 +500,21 @@ test("a cold start over a showcase database missing its rows reseeds the showcas
   assert.equal(count, 0, "no default-seed entries");
   const [{ income }] = await rows(db, "SELECT COUNT(*) AS income FROM monthly_plan_rows WHERE section_key = 'income'");
   assert.ok(income >= 34);
+});
+
+test("Splits lists Usually shared in the showcase: Serene's FairPrice top-ups of the last three months", async (t) => {
+  const { db } = await openSeededDatabase(t, showcase);
+  const { groups, entryCount, shopCount } = await buildUsuallySharedDto(db, { today: "2026-05-31" });
+  const group = groups.find((item) => item.shopName === "NTUC FAIRPRICE TAMPINES");
+  assert.ok(group, JSON.stringify(groups.map((item) => item.shopName)));
+  assert.equal(group.ownerName, "Serene");
+  assert.equal(group.otherPersonName, "Ethan");
+  assert.equal(group.groupName, "Home & Bills");
+  assert.equal(group.basisPoints, 5000);
+  assert.equal(group.matchedBy, "description");
+  assert.deepEqual(group.entries.map((entry) => entry.date.slice(0, 7)), ["2026-05", "2026-04", "2026-03"]);
+  assert.ok(group.evidenceCount >= 8, `evidence ${group.evidenceCount}`);
+  assert.ok(entryCount >= 3 && shopCount >= 1);
 });
 
 test("a failed showcase reseed leaves the previous data untouched", async (t) => {
