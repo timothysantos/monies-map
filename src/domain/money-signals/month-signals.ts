@@ -36,6 +36,7 @@ import { bankChargesSignal, cardBillSignal, penaltyInterestSignal, statementGapS
 import { buildAccountSignals } from "./account-signals";
 import type { Audience, MoneySignal } from "./types";
 import { tripInOtherSignal } from "./trip-signal";
+import { paceTotals, type PaceBill, type PaceRange } from "../pace";
 
 // The plan-balance lines point at the plan itself: the two ways to even it.
 const PLAN_SHORTFALL_THINKS = [
@@ -235,6 +236,50 @@ export const MONTH_COPY = {
       "There's still money left in the plan. Knowing the pace now keeps the rest of the month a choice."
     ]
   },
+  // If this keeps up (DOMAIN.md "Pace"): the mid-month pace lines with the
+  // range, when the whole range is under the plan. {still} is what the
+  // range counts that is still to come (pacePartsWords).
+  paceSteadyRange: {
+    phrasings: [
+      "If this keeps up, {month}'s spending ends at about {low} to {high}, under the {plan} plan.",
+      "If this keeps up, {month} ends with about {low} to {high} spent, under the {plan} plan.",
+      "If this keeps up, spending in {month} comes to about {low} to {high}, under the {plan} plan."
+    ],
+    think: [
+      "That counts {still}. Spending is on pace with what you planned.",
+      "That counts {still}. Nothing needs changing for now.",
+      "That counts {still}. A calm middle of the month usually makes for a calm end.",
+      "That counts {still}. The month is going as planned so far."
+    ]
+  },
+  paceAheadRange: {
+    phrasings: [
+      "If this keeps up, {month}'s spending ends at about {low} to {high}, under the {plan} plan.",
+      "If this keeps up, {month} ends with about {low} to {high} spent, under the {plan} plan.",
+      "If this keeps up, spending in {month} comes to about {low} to {high}, under the {plan} plan."
+    ],
+    think: [
+      "That counts {still}. Spending is a bit faster than the days gone by, and the rest of the month decides where it lands.",
+      "That counts {still}. Running a little ahead is a nudge to glance at what's still planned, nothing more.",
+      "That counts {still}. Some months run ahead early, and the second half often evens it out.",
+      "That counts {still}. Knowing the pace now keeps the rest of the month a choice."
+    ]
+  },
+  // Even the low end of the range is over the plan, while what is spent so
+  // far is still under it.
+  paceOver: {
+    phrasings: [
+      "If this keeps up, {month}'s spending ends at about {low} to {high}, over the {plan} plan.",
+      "If this keeps up, {month} ends with about {low} to {high} spent, over the {plan} plan.",
+      "If this keeps up, spending in {month} comes to about {low} to {high}, over the {plan} plan."
+    ],
+    think: [
+      "That counts {still}. Nothing is fixed yet: what is still to come decides where it lands.",
+      "That counts {still}. A look at what's still planned now leaves the rest of the month a choice.",
+      "That counts {still}. It's a range from what's recorded, and a quieter few weeks bring it down.",
+      "That counts {still}. Bills and big costs are counted once, so the everyday part is what can still move."
+    ]
+  },
   fixedCosts: {
     phrasings: [
       "Bills and subscriptions in your plan take {rate}% of {whose} income ({planned}).",
@@ -385,6 +430,9 @@ export interface MonthSignalInput {
   summary: { estimatedExpensesMinor?: number; realExpensesMinor?: number; plannedIncomeMinor?: number; actualIncomeMinor?: number } | null;
   accountPills: WalletHealthPill[] | null;
   formatMoney: FormatMoney;
+  // If this keeps up (pace.ts), for today's month once its read is in;
+  // left out or null while it is quiet or still loading.
+  pace?: { range: PaceRange; bills?: PaceBill[] } | null;
 }
 
 const SAVINGS = /saving/i;
@@ -808,15 +856,80 @@ export function upcomingBillsSignal(input: MonthSignalInput): MoneySignal | null
   };
 }
 
+// What a pace counts that is still to come, in plain words: "the 4 bills
+// still to come on their usual days, and 1 big cost once".
+export function pacePartsWords(range: PaceRange, bills: PaceBill[]) {
+  const billWords = bills.length === 1
+    ? "the 1 bill still to come on its usual day"
+    : bills.length > 1 ? `the ${bills.length} bills still to come on their usual days` : "";
+  const onceWords = range.oneOffs.length ? `${plural(range.oneOffs.length, "big cost", "big costs")} once` : "";
+  if (billWords && onceWords) return `${billWords}, and ${onceWords}`;
+  if (billWords) return billWords;
+  if (onceWords) return `everyday spending at its usual pace, and ${onceWords}`;
+  return "everyday spending at this month's pace and its usual pace";
+}
+
+// If this keeps up: the month's spending range against the plan (the same
+// sums as the pace line, pace.ts).
+function paceAgainstPlan(input: MonthSignalInput) {
+  if (!input.pace?.range || phaseOf(input) === "past" || phaseOf(input) === "ahead") return null;
+  const totals = paceTotals(spend(input), input.pace.range);
+  return {
+    totals,
+    values: {
+      month: monthName(input.month),
+      low: compactMoney(input.formatMoney, totals.shown.lowMinor),
+      high: compactMoney(input.formatMoney, totals.shown.highMinor),
+      plan: compactMoney(input.formatMoney, plan(input)),
+      still: pacePartsWords(input.pace.range, input.pace.bills ?? [])
+    }
+  };
+}
+
+function paceBasis(input: MonthSignalInput, totals: ReturnType<typeof paceTotals>, range: PaceRange) {
+  return {
+    lines: [
+      amountLine(`Spent so far in ${monthYear(input.month)}`, spend(input)),
+      amountLine("Everyday spending still to come, low", range.everydayLowMinor),
+      amountLine("Everyday spending still to come, high", range.everydayHighMinor),
+      amountLine("Bills still to come, low", range.billsLowMinor),
+      amountLine("Bills still to come, high", range.billsHighMinor),
+      amountLine("If this keeps up, low", totals.lowMinor),
+      amountLine("If this keeps up, high", totals.highMinor),
+      amountLine("Planned spending", plan(input))
+    ],
+    month: input.month
+  };
+}
+
 // Mid-month: spending against the plan and the calendar. Going well when
-// it keeps pace, worth a look when it runs ahead (still under plan).
+// it keeps pace, worth a look when it runs ahead (still under plan). With
+// a pace whose whole range is under the plan, the line gives that range;
+// one whose low end is already over the plan is paceOver (any day the pace
+// shows, while what is spent is still under the plan).
 export function planPaceSignal(input: MonthSignalInput): MoneySignal | null {
-  if (phaseOf(input) !== "mid" || plan(input) <= 0) {
+  if (plan(input) <= 0) {
     return null;
   }
   const spentMinor = spend(input);
   const leftMinor = plan(input) - spentMinor;
   if (leftMinor <= 0) {
+    return null;
+  }
+  const pace = paceAgainstPlan(input);
+  if (pace && input.pace && pace.totals.lowMinor > plan(input)) {
+    return {
+      key: "plan-pace",
+      kind: "worth_a_look",
+      weight: pace.totals.lowMinor - plan(input),
+      numbers: { primaryMinor: spentMinor },
+      phrasings: phrase(MONTH_COPY.paceOver, pace.values),
+      basis: paceBasis(input, pace.totals, input.pace.range),
+      topic: "plan",
+      moment: true
+    };
+  }
+  if (phaseOf(input) !== "mid") {
     return null;
   }
   const day = Number(input.today.slice(8, 10));
@@ -827,14 +940,16 @@ export function planPaceSignal(input: MonthSignalInput): MoneySignal | null {
     kind: steady ? "going_well" : "worth_a_look",
     weight: leftMinor,
     numbers: { primaryMinor: spentMinor },
-    phrasings: phrase(steady ? MONTH_COPY.paceSteady : MONTH_COPY.paceAhead, {
-      spent: input.formatMoney(spentMinor),
-      plan: compactMoney(input.formatMoney, plan(input)),
-      left: input.formatMoney(leftMinor),
-      days: total - day,
-      month: monthName(input.month)
-    }),
-    basis: {
+    phrasings: pace && input.pace && pace.totals.highMinor <= plan(input)
+      ? phrase(steady ? MONTH_COPY.paceSteadyRange : MONTH_COPY.paceAheadRange, pace.values)
+      : phrase(steady ? MONTH_COPY.paceSteady : MONTH_COPY.paceAhead, {
+        spent: input.formatMoney(spentMinor),
+        plan: compactMoney(input.formatMoney, plan(input)),
+        left: input.formatMoney(leftMinor),
+        days: total - day,
+        month: monthName(input.month)
+      }),
+    basis: pace && input.pace && pace.totals.highMinor <= plan(input) ? paceBasis(input, pace.totals, input.pace.range) : {
       lines: [
         amountLine(`Spent so far in ${monthYear(input.month)}`, spentMinor),
         amountLine("Planned spending", plan(input)),

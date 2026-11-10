@@ -14,6 +14,11 @@ wins count; one hard question at a time; no blame between partners; fun
 stays kind; perspective, not advice. No exclamation marks, no emoji, and
 no percentage without the money amount beside it.
 
+A look ahead says "If this keeps up" and gives a range ("about $4,700 to
+$5,100 by 30 Nov"), never one number. Words the pace lint rejects: safe,
+safely, can afford, you'll be fine, will have, guaranteed, forecast,
+projection.
+
 Plain words (owner, 2026-10-11): say what happened to the reader's money
 in everyday words, then the number. The fact says what happened; the
 think line says why it matters and what the link under it does. Never
@@ -1101,6 +1106,57 @@ Way to think about it, in turn:
 - Some months run ahead early. The second half often evens it out.
 - Running a little ahead is a nudge to glance at what's still planned, nothing more.
 - There's still money left in the plan. Knowing the pace now keeps the rest of the month a choice.
+
+### paceSteadyRange (Going well)
+
+paceSteady with "If this keeps up" (DOMAIN.md "Pace"): this month's pace is in and its whole range is under the plan.
+
+Phrasings:
+
+- If this keeps up, {month}'s spending ends at about {low} to {high}, under the {plan} plan.
+- If this keeps up, {month} ends with about {low} to {high} spent, under the {plan} plan.
+- If this keeps up, spending in {month} comes to about {low} to {high}, under the {plan} plan.
+
+Way to think about it, in turn:
+
+- That counts {still}. Spending is on pace with what you planned.
+- That counts {still}. Nothing needs changing for now.
+- That counts {still}. A calm middle of the month usually makes for a calm end.
+- That counts {still}. The month is going as planned so far.
+
+### paceAheadRange (Worth knowing)
+
+paceAhead with "If this keeps up": this month's pace is in and its whole range is under the plan.
+
+Phrasings:
+
+- If this keeps up, {month}'s spending ends at about {low} to {high}, under the {plan} plan.
+- If this keeps up, {month} ends with about {low} to {high} spent, under the {plan} plan.
+- If this keeps up, spending in {month} comes to about {low} to {high}, under the {plan} plan.
+
+Way to think about it, in turn:
+
+- That counts {still}. Spending is a bit faster than the days gone by, and the rest of the month decides where it lands.
+- That counts {still}. Running a little ahead is a nudge to glance at what's still planned, nothing more.
+- That counts {still}. Some months run ahead early, and the second half often evens it out.
+- That counts {still}. Knowing the pace now keeps the rest of the month a choice.
+
+### paceOver (Worth knowing)
+
+If this keeps up: even the low end of this month's pace is over the plan, while what is spent so far is still under it (any day the pace shows, from the 6th).
+
+Phrasings:
+
+- If this keeps up, {month}'s spending ends at about {low} to {high}, over the {plan} plan.
+- If this keeps up, {month} ends with about {low} to {high} spent, over the {plan} plan.
+- If this keeps up, spending in {month} comes to about {low} to {high}, over the {plan} plan.
+
+Way to think about it, in turn:
+
+- That counts {still}. Nothing is fixed yet: what is still to come decides where it lands.
+- That counts {still}. A look at what's still planned now leaves the rest of the month a choice.
+- That counts {still}. It's a range from what's recorded, and a quieter few weeks bring it down.
+- That counts {still}. Bills and big costs are counted once, so the everyday part is what can still move.
 
 ### fixedCosts (Big picture)
 
