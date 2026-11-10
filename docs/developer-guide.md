@@ -2877,16 +2877,29 @@ bank.
 
 `src/domain/usual-so-far.ts` is the one engine for the month in progress:
 `sameDayUsual` compares spending up to today's day with the same day of
-the last 6 months that have data. Summary computes
-`categoriesAboveUsualSoFar` from the entries it already read (no new read)
-into the DTO's `aboveUsual`, which `aboveUsualSoFarSignals` words; Ask's
-usual answer for the month in progress uses `sameDayUsual` too. "What
-changed?" is `src/domain/ask-changed.ts` (the `changed` intent and
-`what_changed` topic), read from the same 7-month range read as the usual
-answer. Answer lines may carry `figure` (entry ids and period), which the
+the last 6 months that have data, and `categoriesAboveUsual` lists the
+categories more than 20% and $50 above it. Summary's "What changed this
+month" card (`src/domain/summary-changed.ts`) takes `buildChangedFacts`
+(`ask-changed.ts`, last month's same point as the base) and
+`categoriesAboveUsual` and picks its rows; it adds no number of its own.
+`GET /api/summary-changed?view=&scope=` (`pages/summary-changed.ts`) reads
+the view's entries of this month and the 6 before with
+`loadUsualEntries`, the same one date-window read Ask uses (not grouped in
+SQL: the engine needs each entry's description, person share and offset
+rule), so the card and Ask never disagree; the client
+(`summary-changed-section.jsx`, riding in Spending Mix's chunk like
+Subscriptions' so the first screen gains no file; `use-summary-changed.js`;
+`queryKeys.summaryChanged`) reads it once the top summary is usable and only
+when the Summary range ends in the current month. Ask's usual answer for the
+month in progress uses `sameDayUsual` too. "What changed?" is
+`src/domain/ask-changed.ts` (the `changed` intent and `what_changed` topic),
+read from the same 7-month range read as the usual answer. Answer lines may carry `figure` (entry ids and period), which the
 answer card turns into an openable figure. Tests:
-`tests/usual-so-far.test.mjs`, `tests/ask-changed.test.mjs`, the
-`changed-*` eval entries and `tests/openable-figures.test.mjs`.
+`tests/usual-so-far.test.mjs`, `tests/ask-changed.test.mjs`,
+`tests/summary-changed.test.mjs`, `tests/summary-changed-client.test.mjs`,
+`tests/e2e/summary-changed-card.spec.js`, the `changed-*` eval entries,
+`tests/openable-figures.test.mjs` and the `summary-changed` rows of
+`tests/page-load-scale-guard.test.mjs`.
 
 ## Where do Ask's word explanations come from?
 

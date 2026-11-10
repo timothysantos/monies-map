@@ -1922,6 +1922,28 @@ that invalidates a page. A failed read, or nothing to show, shows nothing.
 - The December To do is a Reminder card in Ask (kind `tax_relief`, butter
   tone, Later and "Not for this year"), opens Summary.
 
+## What changed card
+
+A Summary card between Money insights and Subscriptions and bills (owner
+decision 2026-11-10; DOMAIN.md "What Changed Card"; `summary-changed-section.jsx`,
+words in `copy/summary-changed-copy.js`).
+
+- Loading: it rides in Spending Mix's lazy chunk (a chunk of its own added
+  two first-screen files); `use-summary-changed.js` reads
+  `GET /api/summary-changed?view=&scope=` through `fetchRequiredQuery` once
+  the top summary is usable, only when the Summary range ends in the
+  current month. No answer, nothing to compare or a failed read shows no card.
+- Desktop and phone share one block: the title, "November so far, against
+  the same days of October.", then one row per category: its name, a
+  "more than usual" chip (the butter tone), "up $240" or "down $150", and
+  "$610 so far" and "$370 at this point last month", each an openable figure
+  (`data-fig="spent"` with exact ids and its own month). A tap on the row
+  (or its name) opens "Shops behind it": each shop, "up $90" and its "so far"
+  figure. On a phone the first 3 rows show, then "Show all N ›".
+- Quiet: one line, "Nothing has moved much so far this month."
+- Hidden money: names only, A to Z, no amounts, no up or down, no mark.
+- Colours: tokens only; money is not toned (it lists what moved).
+
 ## Subscriptions and bills
 
 A Summary card under Money insights (owner decision D1, 2026-11-10;

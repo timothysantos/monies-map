@@ -394,6 +394,20 @@ In December the same facts feed one Reminders To do (`tax_relief`, read only
 in December). The cards are lazy code in Spending Mix's chunk, read once the
 top summary is usable. No AI, no write, no new table.
 
+### What changed this month: a Summary card (current, 2026-11)
+
+A Summary card under Money insights shows the month so far against the same
+point last month: the 3 categories that went up most and the 3 that went
+down most, each with the shops behind it on a tap, a "more than usual" mark
+from the same-day engine (`usual-so-far.ts`), and one quiet line when
+nothing moved much (owner decision 2026-11-10; DOMAIN.md "What Changed
+Card"). It replaced the two Money insights "more than usual so far" lines,
+so the same fact is not shown twice. `GET /api/summary-changed` reads the
+same 7-month date window Ask's "What changed?" reads and shares its engine
+(`ask-changed.ts`), so the two cannot disagree; the card is read after the
+first screen and adds nothing to the Summary payload. Deterministic, no AI,
+looks back only.
+
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
 The household asks "Check my books" and gets a list of problems in its own data

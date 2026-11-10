@@ -328,12 +328,19 @@ over plan.
   the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
-- **More than usual so far**: a Money insights line (at most two) when a
-  category's spending so far this month is well above what it usually is
-  by the same day: more than 20% and more than $50 above the average of
-  the same days of up to 6 recent months. It compares the 10th with
-  earlier 10ths, never with whole months, so it only says what has
-  happened. **See what changed** shows the shops behind it.
+- **What changed this month**: a card under Money insights. It compares
+  this month so far with the same days of last month (the 10th with the
+  10th, never a whole month) and lists the three categories that went up
+  most and the three that went down most, each with the difference, for
+  example "Food, up $240". A category that is also well above what it
+  usually is by this day (more than 20% and more than $50 above the average
+  of the same days of up to 6 recent months) carries a small **more than
+  usual** mark. Click a category (on a phone, tap it) to see the shops
+  behind the change, and click any amount for exactly those entries. On a
+  phone it shows three rows, then **Show all**. When nothing has moved much
+  it says so in one line. It only appears when the range ends in this month,
+  it follows the person and range you chose, and with money hidden it lists
+  the names only. It only says what has happened; it never guesses ahead.
 - **Bank fees this year**: one of the Money insights lines. When the banks
   have charged you $20 or more since 1 January, it adds them up by kind:
   late fees, interest, annual fees, foreign currency fees and bank account

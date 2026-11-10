@@ -1680,13 +1680,34 @@ looks back only.
 A month in progress compared like for like (`src/domain/usual-so-far.ts`):
 spending up to today's day of the month against the same day-of-month point
 of the last 6 months that have data (the 10th with earlier 10ths, never
-whole months), averaged. Summary's Money insights shows at most 2 lines
-(`aboveUsualSoFar`), only for a category more than 20% and more than $50
-above that usual, and only with at least 2 such months; "See what changed"
-asks Ask "Is Food more than usual this month?", which uses the same engine
-and names the shops behind it. It reports what has happened and never
-predicts. The "so far" figure opens exactly this month's entries of the
-category.
+whole months), averaged. A category is "more than usual" only when it is
+more than 20% and more than $50 above that usual, with at least 2 months of
+history. Summary's What Changed Card carries the "more than usual" mark for
+such a category (it replaced the two Money insights lines, 2026-11-10), and
+Ask's "Is Food more than usual this month?" uses the same engine and names
+the shops behind it. It reports what has happened and never predicts.
+
+### What Changed Card
+
+Summary's "What changed this month" card (`src/domain/summary-changed.ts`;
+owner decision 2026-11-10, built and released ahead of review, its wording
+logged for review): the month so far against the same point last month (the
+10th with the 10th, never a whole month), by category, from the same
+same-day engine Ask's What Changed uses. Rows: the 3 categories that went up
+most, then the 3 that went down most (a move is more than $20 and more than
+15% of last month's point), each with the dollar difference ("Food, up
+$240"); a category more than usual (above) carries a "more than usual" mark
+and is added even outside those 3 (at most 2), so the card says everything
+the retired Money insights lines said. Tapping a row opens the shops behind
+the change (the 2 that moved the same way). Savings and Investments are
+money put aside, not spending, and are left out. A quiet month has one line
+and no rows. Shown only when the Summary range ends in the month in
+progress; it follows the Summary scope (person and range end). Hidden money:
+names only, A to Z, no amounts, no up or down, no mark. Every amount
+(this month so far, last month at the same point, each shop's so far) is an
+openable figure (`changed` in `money-figures.ts`) whose Entries total equals
+it to the cent. Read after the first screen from `GET /api/summary-changed`;
+no AI, no write. It never predicts and never says "safe to spend".
 
 ### Words Used
 
