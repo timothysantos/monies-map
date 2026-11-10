@@ -122,3 +122,15 @@
     min-height: 420px;
   }
 }
+
+/* Arrange Summary (summary-card-order.js): a card on its own takes the whole
+   width; the quiet way into the editor sits at the end of Summary. */
+.summary-card-solo {
+  margin-bottom: 16px;
+}
+
+.summary-cards-arrange {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 4px;
+}

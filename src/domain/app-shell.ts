@@ -74,7 +74,7 @@ export async function loadAppShellContext(
     loadHousehold(db),
     loadTrackedMonths(db)
   ]);
-  const [viewerPersonId, { leadView, planMode }] = await Promise.all([
+  const [viewerPersonId, { leadView, planMode, summaryCards }] = await Promise.all([
     resolveLoginIdentityPersonId(db, viewerEmail),
     // The login's Plan | Simple and Studio | Tables choices (DOMAIN.md "Lead
     // View", "Plan view"), so the page knows them without a request of its
@@ -88,6 +88,9 @@ export async function loadAppShellContext(
   return {
     ...(leadView ? { leadView } : {}),
     ...(planMode ? { planMode } : {}),
+    // Only when this login arranged Summary, so the shell does not grow for
+    // anyone else.
+    ...(summaryCards ? { summaryCards } : {}),
     appEnvironment,
     household,
     availableViewIds: ["household", ...household.people.map((person) => person.id)],

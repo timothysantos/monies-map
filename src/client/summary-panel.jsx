@@ -13,6 +13,7 @@ import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "
 import { SummaryLead } from "./summary-lead";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 import { useLeadView } from "./lead-view";
+import { useSummaryCards } from "./summary-card-order";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
@@ -23,6 +24,8 @@ import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows } from "./ui/lead-support-detail";
 import { SimpleDetail } from "./ui/spend-lead-group";
+// Arrange cards loads only when it is opened.
+const SummaryCardEditor = lazy(() => import("./summary-card-editor").then((module) => ({ default: module.SummaryCardEditor })));
 // The Monthly Note dialog is only needed once a note is opened.
 const MonthNoteDialog = lazy(() => import("./month-note-dialog"));
 // Spending Mix sits under the lead and the insights: its section (the list,
@@ -55,6 +58,8 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   const location = useLocation();
   const isMobileLayout = useIsMobileLayout();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  const [summaryCards, saveSummaryCards] = useSummaryCards();
+  const [arrangingCards, setArrangingCards] = useState(false);
   // Subscriptions and bills keeps the height it had on this device last
   // time while it loads, so nothing under it moves (none the first time).
   const [subsReserveHeight] = useState(readSubscriptionsCardHeight);
@@ -183,6 +188,63 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     }
   }
 
+  // The cards under the top summary (design.md "Arrange Summary"), in the
+  // person's order; a hidden card is not drawn and reads nothing.
+  const cardBody = {
+    insights: (
+      <FinancialInsight
+        audienceName={view.id === "household" ? "" : view.label}
+        checkIn={checkIn}
+        onCheckInAction={handleCheckInAction}
+        className="financial-insight-summary"
+      />
+    ),
+    subs: cardsUsable && fetchRequiredQuery ? (
+      <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
+        <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
+      </Suspense>
+    ) : <SubscriptionsReserve height={subsReserveHeight} />,
+    mix: (
+      // All months: the whole range's spending by category.
+      <Suspense fallback={<div className="spending-mix-reserve" aria-hidden="true" />}>
+        <SpendingMixSection
+          donutData={safeSummaryPage.categoryShareChart}
+          categories={categories}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
+        />
+      </Suspense>
+    ),
+    plan: leadView === "simple" ? (
+      // The Simple view's month list, loaded only in Simple.
+      <Suspense fallback={null}>
+        <SimpleDetail
+          part="months"
+          months={safeSummaryPage.months}
+          categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
+          investmentMovesByMonth={safeSummaryPage.investmentMovesByMonth}
+          onOpenMonth={onOpenMonth}
+          chart={monthChart}
+        />
+      </Suspense>
+    ) : (
+      <Suspense fallback={null}>
+        <SummaryIntentVsOutcomeSection
+          months={safeSummaryPage.months}
+          onOpenMonth={onOpenMonth}
+          chart={monthChart}
+          onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
+        />
+      </Suspense>
+    ),
+    accounts: (
+      <SummaryAccountsSection
+        accountPills={safeSummaryPage.accountPills}
+        onOpenEntriesForAccount={handleOpenEntriesForAccount}
+      />
+    )
+  };
+
   return (
     <article className="panel panel-accent">
       <div className="panel-head summary-head">
@@ -203,58 +265,47 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         />
       </div>
 
-      <FinancialInsight
-        audienceName={view.id === "household" ? "" : view.label}
-        checkIn={checkIn}
-        onCheckInAction={handleCheckInAction}
-        className="financial-insight-summary"
-      />
+      {summaryCards.filter((card) => !card.hidden).reduce((blocks, card, index, shown) => {
+        // Spending Mix and the month-by-month card sit side by side when
+        // they are next to each other (in either order), as they always did.
+        const next = shown[index + 1];
+        if (blocks.paired.has(card.id)) return blocks;
+        if ((card.id === "mix" && next?.id === "plan") || (card.id === "plan" && next?.id === "mix")) {
+          blocks.paired.add(next.id);
+          blocks.list.push(
+            <div key="mix-plan" className="summary-top-grid has-intent-grid">
+              {cardBody[card.id]}
+              {cardBody[next.id]}
+            </div>
+          );
+        } else if (card.id === "mix" || card.id === "plan") {
+          blocks.list.push(<div key={card.id} className="summary-card-solo">{cardBody[card.id]}</div>);
+        } else {
+          blocks.list.push(<div key={card.id} className="summary-card-slot" data-summary-card={card.id}>{cardBody[card.id]}</div>);
+        }
+        return blocks;
+      }, { list: [], paired: new Set() }).list}
 
-      {cardsUsable && fetchRequiredQuery ? (
-        <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
-          <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
-        </Suspense>
-      ) : <SubscriptionsReserve height={subsReserveHeight} />}
+      <p className="summary-cards-arrange">
+        <button type="button" className="subtle-action" onClick={() => setArrangingCards(true)}>
+          {isMobileLayout ? "Edit cards" : "Arrange cards"}
+        </button>
+      </p>
 
-      <div className="summary-top-grid has-intent-grid">
-        {/* All months: the whole range's spending by category. */}
-        <Suspense fallback={<div className="spending-mix-reserve" aria-hidden="true" />}>
-          <SpendingMixSection
-            donutData={safeSummaryPage.categoryShareChart}
-            categories={categories}
-            onCategoryAppearanceChange={onCategoryAppearanceChange}
-            period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
+      {arrangingCards ? (
+        <Suspense fallback={null}>
+          <SummaryCardEditor
+            cards={summaryCards}
+            leadView={leadView}
+            phone={isMobileLayout}
+            onSave={(cards) => {
+              saveSummaryCards(cards);
+              setArrangingCards(false);
+            }}
+            onClose={() => setArrangingCards(false)}
           />
         </Suspense>
-
-        {leadView === "simple" ? (
-          // The Simple view's month list, loaded only in Simple.
-          <Suspense fallback={null}>
-            <SimpleDetail
-              part="months"
-              months={safeSummaryPage.months}
-              categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
-              investmentMovesByMonth={safeSummaryPage.investmentMovesByMonth}
-              onOpenMonth={onOpenMonth}
-              chart={monthChart}
-            />
-          </Suspense>
-        ) : (
-          <Suspense fallback={null}>
-            <SummaryIntentVsOutcomeSection
-              months={safeSummaryPage.months}
-              onOpenMonth={onOpenMonth}
-              chart={monthChart}
-              onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      <SummaryAccountsSection
-        accountPills={safeSummaryPage.accountPills}
-        onOpenEntriesForAccount={handleOpenEntriesForAccount}
-      />
+      ) : null}
 
       {monthNoteDialog ? (
         <Suspense fallback={null}>

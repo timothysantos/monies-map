@@ -2866,6 +2866,17 @@ fees this year read for a fee kind, a description match for S&CC) and
 `ask-term-answer.ts` builds the card and words; nothing is sent to AI.
 Tests: `tests/ask-terms.test.mjs` and the `term-fx-fee` eval entry.
 
+## How is Summary's card order kept?
+
+`src/client/summary-card-order.js` reads and writes the order string
+("insights,mix,subs,plan,-accounts") and is a `createPreferenceStore` like
+Plan or Simple: the app shell's `summaryCards` for a login (only when
+changed), POST `/api/viewer-preferences/summary-cards` (null resets), and
+this device's storage without a login. `summary-panel.jsx` draws the cards
+in that order; the editor is the lazy `summary-card-editor.jsx`. Tests:
+`tests/summary-card-order.test.mjs`, `tests/viewer-preferences.test.mjs`
+and `tests/e2e/summary-arrange.spec.js`.
+
 ## How are bank fees this year worked out?
 
 The Summary page reads one more thing beside its other reads (same step):

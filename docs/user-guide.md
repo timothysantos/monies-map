@@ -335,6 +335,11 @@ over plan.
   bank refunded is left out and named in its own sentence. **Show those
   fees** lists exactly those entries; the total at the top of that list is
   the line's total.
+- **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
+  move the cards under the top summary up or down, and tap a card's name to
+  hide or show it. **Done** keeps your order; **Reset to the usual order**
+  puts it back. Money insights can be moved but not hidden. Your order is
+  your own: someone else signed in keeps theirs.
 - **Subscriptions and bills**: under Money insights, one list of every
   charge that comes back each month or each year: streaming, phone,
   broadband, the town council, insurance, utilities. The app finds them in

@@ -1427,6 +1427,9 @@ export interface AppShellDto {
   // The login's Studio | Tables choice for the Month plan (DOMAIN.md "Plan
   // view"); absent without a login or a choice.
   planMode?: "studio" | "tables";
+  // The login's Summary card order (design.md "Arrange Summary"); absent
+  // without a login or a change.
+  summaryCards?: string;
   appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   availableViewIds: string[];

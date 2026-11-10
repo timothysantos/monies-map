@@ -1953,6 +1953,36 @@ Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
   and stopped series the server named, never of might-repeat or taken-off
   ones.
 
+## Arrange Summary
+
+Each person can move and hide the cards under the top summary (owner
+decisions D1 and D5, 2026-11-10). The top summary always stays first and is
+not one of them; Money insights can be moved but never hidden, so a To do
+is never out of sight.
+
+- Cards (`summary-card-order.js`): `insights`, `subs` (Subscriptions and
+  bills), `mix` (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent
+  by month in Simple) and `accounts` (The accounts shown), in that usual
+  order. Spending Mix and the month-by-month card sit side by side when they
+  are next to each other (either order); otherwise each takes the width. A
+  hidden card is not drawn and reads nothing (Subscriptions and bills makes
+  no request).
+- Stored as one string, "insights,mix,subs,plan,-accounts" (a leading "-"
+  hides): per login in the existing viewer preferences row (POST
+  `/api/viewer-preferences/summary-cards`, the app shell's `summaryCards`,
+  only when changed), on the device without one (`createPreferenceStore`).
+  Reading drops unknown ids and puts a card it does not name back in its
+  usual place; Reset saves null.
+- Editor (`summary-card-editor.jsx`, lazy): opened from a quiet "Arrange
+  cards" (desktop) or "Edit cards" (phone) link at the end of Summary, a
+  `SheetDialog` with a row per card (its name and what it shows; a tap on
+  the name shows or hides it), Shown or Hidden, and Up and Down 44 px
+  buttons (the first card's Up and the last card's Down are greyed out). A
+  move is announced to screen readers. Nothing is saved until Done; Cancel,
+  Escape or the close button leave it as it was. (Deviation from the design:
+  Up and Down on every screen instead of dragging on desktop, and no
+  Settings row yet.)
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display
