@@ -380,13 +380,25 @@ Details and the reasons are in `docs/code-spec.md` and
   Ask tab's dot is the only first-screen part and makes no request of its own
   (`docs/audits/reminders.md`, "The dot"). Rule changes need their adversarial
   negatives in `tests/reminders-rules.test.mjs`.
-- Money insights are a deterministic, read-only projection. They may show
-  recorded cash flow, plan variance, a same-season comparison that is
-  already loaded, and explicit bank-proof gaps. They never predict
-  spending, never give a safe-to-spend figure or a month-end balance, never
-  set a savings target, and never come from AI.
-- The one look ahead Money insights may make is the `scheduled check`
-  (DOMAIN.md): a bank account's latest recorded balance (a statement no
+- Money insights and the charts are a deterministic, read-only projection
+  and never come from AI. They may show recorded cash flow, plan variance,
+  a same-season comparison that is already loaded, explicit bank-proof
+  gaps, and the pace (owner decision, 2026-11-10; DOMAIN.md "Pace"): where
+  this month's spending, and what is left of what comes in, end up if the
+  month keeps going as it has, and (Summary only) what is kept by year end.
+  A pace is always a range, low to high, rounded outward, labelled "If this
+  keeps up", and drawn dotted or hatched in the plan (sky) tone, never a
+  new hue. It is built only from recorded entries: everyday spending at its
+  pace this month and its usual pace, repeating charges and regular income
+  still due on their usual days at their recorded amounts, and one-offs
+  counted once, never scaled. It is quiet in the first 5 days of a month,
+  with fewer than 3 complete months of history, and while imports are
+  behind. A pace is never a safe-to-spend figure, an account balance, a
+  savings target or a View entries figure, and its words never reassure
+  ("safe", "can afford", "you'll be fine"). Subscriptions and bills'
+  Coming up may total its next 30 days under the same rule.
+- Besides the pace, the one look ahead Money insights may make is the
+  `scheduled check` (DOMAIN.md): a bank account's latest recorded balance (a statement no
   older than 40 days, plus what is recorded since) against payments that
   have left that same account at the same amount for 2 or more months in a
   row and are due within 31 days. It names the statement date and the

@@ -515,7 +515,7 @@ Important distinctions:
 - A regular payment is still scheduled while it came in the latest month
   the data covers for it, or the bank tried and failed to make it. One that
   was due within the data and did not come has stopped, and is not counted.
-- The scheduled check is the only look ahead in Money insights. It never
+- The scheduled check and the pace (see "Pace") are the only looks ahead. It never
   guesses spending, never gives a month-end balance or a safe-to-spend
   figure, and never says an account is fine.
 - Insights are only as fresh as imports: a statement imported late moves
@@ -635,6 +635,44 @@ Important distinctions:
 - Amounts are the view's (a person view counts each charge at their share,
   the rule every figure uses), so "View entries" from any of its figures
   adds up to the figure.
+
+### Pace
+
+"If this keeps up" (owner decision, 2026-11-10): where this month's
+spending, and what is left of what comes in, end up if the month keeps
+going as it has (`src/domain/pace.ts`). Shown on Summary under the
+month-by-month chart and on Month under the lead (owner decision D6).
+
+Canonical terms:
+- `pace`: a range, low to high, rounded outward ($10 under $1,000, $50 under
+  $10,000, then $100; the low end down, the high end up), always labelled
+  "If this keeps up" and drawn in the plan (sky) tone, dotted or hatched.
+- `spent so far`: the month's recorded spending, the figure the page shows.
+- `lumpy parts`: charges in a repeating series and one-offs (a single entry
+  of at least $300, or at least 3 times the month's middle entry, not in a
+  series), counted once as recorded, never scaled up.
+- `everyday pace`: what is left per day gone (this month's rate) and the
+  middle of the last 3 complete months' everyday daily rates (the usual
+  rate). Low and high are the days left at the lower and the higher rate;
+  rates within 10% of each other widen to 10% either side of their middle
+  (owner decision D8).
+- `bills still to come`: each monthly series whose usual day is after today
+  and still this month, at its last amount (one that changes: the lowest and
+  highest of its last 3); a yearly one only when its date falls in the month.
+- `money in`: what came in so far plus regular income (at least $500 from
+  the same payer each of the last 2 months) still due this month on its
+  usual day. Nothing else is assumed.
+- `quiet`: days 1 to 5, fewer than 3 complete months with entries, a past
+  month, imports behind (the busiest account's latest entry is more than 10
+  days old), or money hidden (no shape either).
+
+Important distinctions:
+- A pace is never a safe-to-spend figure, an account balance, a savings
+  target or a View entries figure; its words never reassure. It is a figure
+  (`data-fig="pace"`) whose menu says how it is worked out and offers Ask
+  about this, never View entries.
+- Subscriptions and bills' Coming up may total its next 30 days under the
+  same rule ("About $500 to $540 by 10 Dec, if they come as usual").
 
 ### Category
 
