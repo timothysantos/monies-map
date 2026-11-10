@@ -6,34 +6,12 @@
    for their rows and bars (person-colour.js), and harvest gold (butter)
    for the deadline pill. */
 
-.invest-card,
-.tax-card {
-  margin-bottom: 16px;
-}
-
 .invest-head,
 .tax-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-}
-
-.invest-eyebrow,
-.tax-eyebrow {
-  margin: 0;
-  color: var(--eyebrow);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.invest-sub,
-.tax-sub {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: 0.88rem;
 }
 
 .invest-worth {
@@ -45,33 +23,21 @@
 .invest-tiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 16px 0;
 }
 
 .invest-tile {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--chip);
 }
 
-.invest-tile-label {
-  font-size: 0.82rem;
-}
-
-.invest-tile-figure {
-  font-size: 1.2rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
+/* The last month label is centred on the right end of the plot, so it may
+   reach past the svg into the card's own padding instead of being cut. */
 .invest-chart {
   display: block;
   width: 100%;
   height: auto;
+  overflow: visible;
 }
 
 .invest-spark {
@@ -115,7 +81,7 @@
   gap: 8px 20px;
   margin: 8px 0 12px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .invest-legend > span {
@@ -147,7 +113,7 @@
   grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   gap: 8px;
   align-items: baseline;
-  padding: 10px 0 10px 10px;
+  padding: 10px 0 10px 12px;
   border-bottom: 1px solid var(--line);
   border-left: 3px solid var(--person-colour, transparent);
   font-variant-numeric: tabular-nums;
@@ -181,17 +147,14 @@
 }
 
 .invest-phone-line {
-  margin: 6px 0 0;
-  font-size: 0.88rem;
+  margin: 8px 0 0;
+  font-size: 0.86rem;
 }
 
 .invest-toggle {
-  padding: 4px 0;
   border: 0;
   background: none;
-  color: var(--pastel-sky-ink);
   font: inherit;
-  font-size: 0.88rem;
   cursor: pointer;
 }
 
@@ -215,10 +178,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 0;
+  padding: 16px 0 0;
 }
 
 .tax-person + .tax-person {
+  margin-top: 16px;
   border-top: 1px solid var(--line);
 }
 
@@ -248,14 +212,11 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.9rem;
+  font-size: 0.93rem;
   font-variant-numeric: tabular-nums;
 }
 
 .tax-bar {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--chip);
   overflow: hidden;
 }
 
@@ -266,12 +227,12 @@
 
 .tax-room {
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .tax-full {
   color: var(--pastel-mint-ink);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .tax-charity {
@@ -279,14 +240,13 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 4px 12px;
-  padding-top: 4px;
-  font-size: 0.9rem;
+  font-size: 0.93rem;
 }
 
 .tax-footnote {
-  margin: 4px 0 0;
+  margin: 16px 0 0;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
 }
 
 @media (max-width: 760px) {

@@ -106,10 +106,6 @@
 /* And for Subscriptions and bills (subscriptions-section.jsx), under Money
    insights, until its data arrives: as tall as it was last time on this
    device (summary-panel.jsx), and nothing the first time. */
-.subs-reserve {
-  margin-bottom: 16px;
-}
-
 /* The same for the column + line chart above the month-by-month list: the
    height of its legend and plot (earned-spent-chart.css). */
 .earned-spent-chart-reserve {
@@ -134,3 +130,118 @@
   justify-content: flex-end;
   margin: 0 0 4px;
 }
+
+/* Summary card spacing (design.md "Summary card spacing"): the one set of
+   rules the cards under Money insights share, so they sit like the older
+   cards. The slot owns the 16px between cards (an empty slot takes none and
+   a card has no margin of its own); a card's head is a 1rem bold title, an
+   optional 0.86rem line under it 4px below, and 16px to its content; the
+   tiles, bars and chips below are the same size and colour on every card.
+   Prefixed with the slot so it wins whichever card stylesheet lands last.
+   Mobile keeps the cards' full-bleed 12px side padding (styles.css). */
+.summary-card-slot {
+  margin-bottom: 16px;
+}
+
+.summary-card-slot:empty {
+  margin-bottom: 0;
+}
+
+.summary-card-slot > .chart-card {
+  margin-bottom: 0;
+}
+
+.summary-card-slot .subs-head h3,
+.summary-card-slot .chg-head h3,
+.summary-card-slot .cr-head h3,
+.summary-card-slot .invest-eyebrow,
+.summary-card-slot .tax-eyebrow {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.3;
+  text-transform: none;
+}
+
+.summary-card-slot .subs-intro,
+.summary-card-slot .chg-intro,
+.summary-card-slot .cr-intro,
+.summary-card-slot .cr-quiet,
+.summary-card-slot .invest-sub,
+.summary-card-slot .tax-sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+/* Two or three figure tiles under a head: one bordered paper tile. */
+.summary-card-slot .subs-totals,
+.summary-card-slot .cr-totals,
+.summary-card-slot .invest-tiles {
+  margin: 16px 0;
+  gap: 12px;
+}
+
+.summary-card-slot .subs-total,
+.summary-card-slot .cr-total,
+.summary-card-slot .invest-tile {
+  padding: 10px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.summary-card-slot .subs-total-label,
+.summary-card-slot .cr-total-label,
+.summary-card-slot .invest-tile-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-card-slot .subs-total-figure,
+.summary-card-slot .cr-total-figure,
+.summary-card-slot .invest-tile-figure {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A progress bar (tax reliefs, miles caps): 10px, fully round, on the chip
+   track. */
+.summary-card-slot .tax-bar,
+.summary-card-slot .cr-bar {
+  height: 10px;
+  max-width: none;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+/* A mark beside a name or a title: 22px tall, 0.74rem, in the pill family. */
+.summary-card-slot .cr-estimate,
+.summary-card-slot .cr-owner {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--card-border);
+  line-height: 1;
+}
+
+.summary-card-slot .cr-owner {
+  border-color: var(--person-chip-border);
+}
+
+/* A quiet text action inside a card: the accent, 0.86rem, bold. */
+.summary-card-slot .invest-toggle {
+  min-height: 44px;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+

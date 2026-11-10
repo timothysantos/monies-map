@@ -5,47 +5,14 @@
    not seen lately is muted on the neutral wash. Money is never toned here:
    it is a list of what was paid, not over or under anything. */
 
-.subs-card {
-  margin-bottom: 16px;
-}
-
-.subs-head h3 {
-  margin: 0;
-}
-
-.subs-intro {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
 .subs-totals {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 12px 0;
   max-width: 420px;
-}
-
-.subs-total {
-  padding: 10px 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  background: var(--paper);
-}
-
-.subs-total-label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
 }
 
 .subs-total-figure {
   display: inline-block;
-  font-size: 1.1rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .subs-sorted {
@@ -202,8 +169,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 8px;
+  gap: 8px;
+  margin: 0 0 12px;
 }
 
 .subs-tab {

@@ -2074,6 +2074,36 @@ is never out of sight.
   and Money insights, not a card. Owner decision D5 stands: Money insights
   is movable but never hideable.
 
+## Summary card spacing
+
+The cards under Money insights (What changed, Subscriptions and bills,
+Investments over time, Tax reliefs, Miles and cashback, The accounts shown)
+share one block of rules at the end of `src/client/summary-body.css`, each
+prefixed with `.summary-card-slot` so it wins whichever card stylesheet loads
+last (visual polish pass, 2026-11-11; no copy or behaviour changed):
+
+- The slot owns the 16px between cards; a card has no margin of its own and an
+  empty slot takes none (so a card with no data leaves no gap). The accounts
+  list, which is not a card, gets the same gap under it.
+- Head: a 1rem bold title in the ink colour (Investments and Tax reliefs no
+  longer use the small uppercase eyebrow), an optional 0.86rem muted line 4px
+  below, then 16px to the content.
+- Figure tiles (Subscriptions, Miles, Investments): one bordered paper tile,
+  10px 14px, 0.8rem label over a 1.1rem bold figure, 12px apart.
+- Progress bars (tax reliefs, miles caps, the Month pace bar): 10px high, fully
+  round, on the `--chip` track.
+- Marks beside a name (Estimate, owner chip, more than usual, price went up):
+  22px high, 0.74rem, 9px side padding.
+- Text actions inside a card (Tap for each account) use the accent, 0.86rem,
+  bold, 44px tall, like Show all and Show every card.
+- Type steps in these cards: 0.8rem captions, 0.86rem second lines, 0.93rem
+  row text; no other sizes.
+- Under Summary's chart the pace sentence and its quiet note both sit 12px
+  below the axis and 14px above the month cards (`.summary-intent .pace-line`,
+  `.pace-quiet`); Month's pace bar keeps its own margins.
+
+On a phone the cards keep their full-bleed 12px side padding.
+
 ## If this keeps up
 
 The pace (owner decision, 2026-11-10; DOMAIN.md "Pace"; the approved design's

@@ -5,18 +5,8 @@
    money is not toned here, it is a list of what moved, not over or under
    anything. */
 
-.chg-card {
-  margin-bottom: 16px;
-}
-
-.chg-head h3 {
-  margin: 0;
-}
-
 .chg-intro {
-  margin: 4px 0 12px;
-  color: var(--muted);
-  font-size: 0.86rem;
+  margin-bottom: 16px;
 }
 
 .chg-quiet {

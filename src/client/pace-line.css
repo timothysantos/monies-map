@@ -12,7 +12,7 @@
   position: relative;
   height: 10px;
   border-radius: 999px;
-  background: var(--pastel-neutral);
+  background: var(--chip);
 }
 
 .pace-bar > span {
@@ -78,4 +78,21 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+/* Under Summary's chart the sentence (or the quiet note) is the last thing
+   in the Intent vs Outcome head: 12px under the axis and the same 14px
+   above the month cards that the chart's own reserve keeps. Month keeps the
+   bar's margins above. */
+.summary-intent .pace-line,
+.summary-intent .pace-quiet {
+  margin: 12px 0 14px;
+}
+
+.summary-intent .pace-line .pace-text {
+  margin: 0;
+}
+
+.summary-intent .pace-line .pace-text + .pace-text {
+  margin-top: 4px;
 }
