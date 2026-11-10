@@ -81,7 +81,7 @@ import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
 import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
 import { tripEventsCopy } from "./copy/trip-events-copy";
-import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent } from "./trip-events-api";
+import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent, setTripEventEntries } from "./trip-events-api";
 import {
   addPick,
   isPickKeyIgnored,
@@ -104,6 +104,9 @@ const TripEventPicker = lazy(() => import("./entries-trip-events").then((module)
 const TripEventNote = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventNote })));
 const TripEventLead = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventLead })));
 const TripEventsSheet = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventsSheet })));
+const TripEventEditSheet = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventEditSheet })));
+const TripEventReviewSheet = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventReviewSheet })));
+const TripEventsEmptyActions = lazy(() => import("./entries-trip-events").then((module) => ({ default: module.TripEventsEmptyActions })));
 // Picking many rows: the floating bar is its own lazy chunk, fetched when
 // picking starts.
 const EntriesPickBar = lazy(() => import("./entries-pick-bar").then((module) => ({ default: module.EntriesPickBar })));
@@ -184,6 +187,9 @@ export function EntriesPanel({
   const [tripPicker, setTripPicker] = useState({ mounted: false, open: false, entries: [] });
   const [tripNote, setTripNote] = useState(null);
   const [tripsSheet, setTripsSheet] = useState({ mounted: false, open: false });
+  // The New sheet (also Change) and the review list (design 2d).
+  const [tripEditSheet, setTripEditSheet] = useState({ mounted: false, open: false, tripEvent: null, entries: [], startGroupId: "" });
+  const [tripReviewSheet, setTripReviewSheet] = useState({ mounted: false, open: false, tripEvent: null });
   const tripPickerAnchorRef = useRef(null);
   // Picking many rows (entry-pick-model.js): kept here, not in the URL, and
   // ended when the month, view, scope or a filter changes.
@@ -300,6 +306,8 @@ export function EntriesPanel({
     busy: showMobileFilters
       || tripPicker.open
       || tripsSheet.open
+      || tripEditSheet.open
+      || tripReviewSheet.open
       || isQuickExpenseSaving
       || quickExpensePendingKey !== ""
       || pendingLinkedEntryId !== ""
@@ -940,6 +948,15 @@ export function EntriesPanel({
       return;
     }
 
+    // A trip linked to this split group follows it (owner decision 3 = A):
+    // the server put the entry on the trip too; say so, with Undo.
+    if (result.tripEventFollow?.undoId) {
+      const follow = result.tripEventFollow;
+      tripEvents.applyChanges(follow.changes, follow.tripEvent);
+      forgetTripEvents(queryClient);
+      setTripNote({ key: follow.undoId, undoId: follow.undoId, message: tripEventsCopy.alsoPutOn(follow.tripEvent.name), changes: follow.changes });
+    }
+
     setCreatedSplitAction({
       entryId: entry.id,
       splitExpenseId: result.splitExpenseId,
@@ -971,7 +988,7 @@ export function EntriesPanel({
       entries: pickedEntries.map((entry) => ({ id: entry.id, date: entry.date, tripEventId: tripEvents.tripEventIdOf(entry) }))
     });
   }, [tripEvents]);
-  const getTripChip = useCallback((entry) => tripEvents.chipOf(tripEvents.tripEventIdOf(entry)), [tripEvents]);
+  const getTripChip = useCallback((entry) => tripEvents.rowChipOf(entry), [tripEvents]);
   const handleTripEventSaved = useCallback((result) => {
     stopPicking();
     tripEvents.applyChanges(result.changes, result.tripEvent);
@@ -991,6 +1008,47 @@ export function EntriesPanel({
     void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
   }, [queryClient, refreshEntriesPage, runBackgroundRefresh, setSearchParams, tripEvents]);
   const dismissTripNote = useCallback(() => setTripNote(null), []);
+  // The dashed "Seoul trip?" chip's one tap (design 2f): this entry on the
+  // suggested trip, as a suggestion the person accepted, with Undo.
+  const acceptTripSuggestion = useCallback(async (entry, chip) => {
+    const result = await setTripEventEntries({ entryIds: [entry.id], tripEventId: chip.tripEventId, addedBy: "suggestion" }, tripEventsCopy.saveFailed);
+    if (!result.ok) {
+      setTripNote({ key: `suggestion-${Date.now()}`, undoId: "", message: result.error, changes: [] });
+      return;
+    }
+    forgetTripEvents(queryClient);
+    handleTripEventSaved({ ...result, message: tripEventsCopy.putOn(1, chip.name) });
+  }, [handleTripEventSaved, queryClient]);
+  // The New sheet: from the picker's "New trip or event" (with its entries),
+  // the Trips & events sheet's empty state, or a split group.
+  const openNewTrip = useCallback((pickedEntries = [], startGroupId = "") => {
+    setTripsSheet((current) => ({ ...current, open: false }));
+    setTripEditSheet({ mounted: true, open: true, tripEvent: null, entries: pickedEntries, startGroupId });
+  }, []);
+  const openChangeTrip = useCallback((trip) => {
+    setTripEditSheet({ mounted: true, open: true, tripEvent: trip, entries: [], startGroupId: "" });
+  }, []);
+  const openTripReview = useCallback((trip) => {
+    setTripReviewSheet({ mounted: true, open: true, tripEvent: trip });
+  }, []);
+  const handleTripEditSaved = useCallback((/** @type {{ tripEvent: any, check: boolean, setResult?: any }} */ { tripEvent, check, setResult = null }) => {
+    if (setResult) {
+      handleTripEventSaved({ ...setResult, message: tripEventsCopy.putOn(setResult.changed ?? 0, tripEvent.name) });
+    } else {
+      forgetTripEvents(queryClient);
+      void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+    }
+    if (check) {
+      setTripReviewSheet({ mounted: true, open: true, tripEvent });
+    }
+  }, [handleTripEventSaved, queryClient, refreshEntriesPage, runBackgroundRefresh]);
+  const handleTripReviewAdded = useCallback((result) => {
+    tripEvents.applyChanges(result.changes, result.tripEvent);
+    setTripNote(result.undoId
+      ? { key: result.undoId, undoId: result.undoId, message: result.message, changes: result.changes }
+      : { key: `same-${Date.now()}`, undoId: "", message: tripEventsCopy.nothingChanged, changes: [] });
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [refreshEntriesPage, runBackgroundRefresh, tripEvents]);
   const tripName = entriesPage.tripView?.tripEvent?.name
     ?? (tripViewId ? entriesPage.tripEvents?.[tripViewId]?.name ?? "" : "");
   const openTripsSheet = useCallback(() => setTripsSheet({ mounted: true, open: true }), []);
@@ -1485,6 +1543,8 @@ export function EntriesPanel({
                 onClear={clearTripView}
                 onPutAway={handlePutAwayTrip}
                 onDelete={handleDeleteTrip}
+                onChange={openChangeTrip}
+                onCheckDates={openTripReview}
               />
             </Suspense>
           ) : null}
@@ -1783,6 +1843,7 @@ export function EntriesPanel({
           renderInlineEditor={!useMobileEntrySheet}
           getTripChip={getTripChip}
           onOpenTripPicker={(entry, element) => openTripPicker([entry], element)}
+          onAcceptTripSuggestion={acceptTripSuggestion}
           renderTripEventRow={renderTripEventRow}
           isPicking={pick.picking}
           pickedIds={pick.ids}
@@ -1821,6 +1882,7 @@ export function EntriesPanel({
             anchorRef={tripPickerAnchorRef}
             entries={tripPicker.entries}
             onSaved={handleTripEventSaved}
+            onNew={openNewTrip}
             isMobile={useMobileEntrySheet}
           />
         </Suspense>
@@ -1835,6 +1897,35 @@ export function EntriesPanel({
             selectedScope={selectedScope}
             currentTripEventId={tripViewId}
             onChoose={chooseTripView}
+            emptyActions={(
+              <TripEventsEmptyActions
+                onMakeFirst={() => openNewTrip([])}
+                onStartFrom={(groupId) => openNewTrip([], groupId)}
+              />
+            )}
+          />
+        </Suspense>
+      ) : null}
+      {tripEditSheet.mounted ? (
+        <Suspense fallback={null}>
+          <TripEventEditSheet
+            key={`${tripEditSheet.tripEvent?.id ?? "new"}-${tripEditSheet.startGroupId}-${tripEditSheet.entries.length}`}
+            open={tripEditSheet.open}
+            onOpenChange={(open) => setTripEditSheet((current) => ({ ...current, open }))}
+            tripEvent={tripEditSheet.tripEvent}
+            entries={tripEditSheet.entries}
+            startGroupId={tripEditSheet.startGroupId}
+            onSaved={handleTripEditSaved}
+          />
+        </Suspense>
+      ) : null}
+      {tripReviewSheet.mounted ? (
+        <Suspense fallback={null}>
+          <TripEventReviewSheet
+            open={tripReviewSheet.open}
+            onOpenChange={(open) => setTripReviewSheet((current) => ({ ...current, open }))}
+            tripEvent={tripReviewSheet.tripEvent}
+            onAdded={handleTripReviewAdded}
           />
         </Suspense>
       ) : null}

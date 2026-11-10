@@ -20,7 +20,7 @@ import { tripEventsCopy as copy } from "./copy/trip-events-copy";
 import { SheetSwipeDismiss } from "./sheet-swipe";
 import { BottomActions } from "./ui-components";
 import { TripEventGlyph } from "./trip-event-glyph";
-import { forgetTripEvents, loadTripEvents, setTripEventEntries, undoTripEventChange } from "./trip-events-api";
+import { forgetTripEvents, loadTripEvents, loadTripEventsWithSplitGroups, setTripEventEntries, undoTripEventChange } from "./trip-events-api";
 import { todayInAppTimeZone } from "./app-dates";
 
 import { useKeyboardInset } from "./use-keyboard-inset";
@@ -71,14 +71,14 @@ export function buildTripEventPickRows({ tripEvents, query, today, currentTripEv
  * phone. `entries` are the entries it puts on (one, or the picked rows).
  * `onSaved(result)` gets the command's answer and the words for the note.
  */
-export function TripEventPicker({ open, onOpenChange, anchorRef, entries, onSaved, isMobile = false }) {
+export function TripEventPicker({ open, onOpenChange, anchorRef, entries, onSaved, onNew = undefined, isMobile = false }) {
   useRouteWorkBusy(open);
   const close = () => onOpenChange(false);
   const title = entries.length === 1 ? copy.rowLabel : copy.putManyTitle(entries.length);
   if (isMobile) {
     return (
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
-        {open ? <TripEventSheet title={title} entries={entries} onSaved={onSaved} onClose={close} /> : null}
+        {open ? <TripEventSheet title={title} entries={entries} onSaved={onSaved} onNew={onNew} onClose={close} /> : null}
       </Dialog.Root>
     );
   }
@@ -103,7 +103,7 @@ export function TripEventPicker({ open, onOpenChange, anchorRef, entries, onSave
             }}
           >
             {entries.length > 1 ? <p className="trip-pick-title">{title}</p> : null}
-            <TripEventPickList variant="popover" entries={entries} onSaved={onSaved} onClose={close} />
+            <TripEventPickList variant="popover" entries={entries} onSaved={onSaved} onNew={onNew} onClose={close} />
           </Popover.Content>
         </Popover.Portal>
       ) : null}
@@ -111,7 +111,7 @@ export function TripEventPicker({ open, onOpenChange, anchorRef, entries, onSave
   );
 }
 
-function TripEventSheet({ title, entries, onSaved, onClose }) {
+function TripEventSheet({ title, entries, onSaved, onNew, onClose }) {
   const [sheet, setSheet] = useState(/** @type {HTMLElement | null} */ (null));
   useKeyboardInset(sheet, { scrollFocused: false });
   return (
@@ -130,7 +130,7 @@ function TripEventSheet({ title, entries, onSaved, onClose }) {
             <X size={16} />
           </button>
         </div>
-        <TripEventPickList variant="sheet" entries={entries} onSaved={onSaved} onClose={onClose} />
+        <TripEventPickList variant="sheet" entries={entries} onSaved={onSaved} onNew={onNew} onClose={onClose} />
         <BottomActions
           className="is-sheet-bar"
           secondary={<button type="button" className="lsd-quiet" onClick={onClose}>{copy.close}</button>}
@@ -140,7 +140,7 @@ function TripEventSheet({ title, entries, onSaved, onClose }) {
   );
 }
 
-function TripEventPickList({ variant, entries, onSaved, onClose }) {
+function TripEventPickList({ variant, entries, onSaved, onNew, onClose }) {
   const queryClient = useQueryClient();
   const listId = useId();
   const inputRef = useRef(null);
@@ -184,7 +184,13 @@ function TripEventPickList({ variant, entries, onSaved, onClose }) {
   async function choose(row) {
     if (pending) return;
     if (row.kind === "new") {
-      inputRef.current?.focus();
+      // The full New sheet, with these entries' days and currency.
+      if (onNew) {
+        onClose();
+        onNew(entries);
+      } else {
+        inputRef.current?.focus();
+      }
       return;
     }
     setError("");
@@ -298,7 +304,7 @@ function TripEventPickList({ variant, entries, onSaved, onClose }) {
                       </span>
                       {row.kind === "trip" ? <span className="trip-pick-meta">{copy.tripMeta(row.trip)}</span> : null}
                       {row.kind === "make" ? <span className="trip-pick-meta">{copy.makeHint(entries.length)}</span> : null}
-                      {row.kind === "new" ? <span className="trip-pick-meta">{copy.newRowHint}</span> : null}
+                      {row.kind === "new" && !onNew ? <span className="trip-pick-meta">{copy.newRowHint}</span> : null}
                     </span>
                   </span>
                   {row.isNow ? <span className="category-pick-tag">{copy.nowTag}</span> : null}
@@ -367,5 +373,31 @@ export function describeTripEventChange(result, entryCount) {
   return moved ? copy.moved(result.name) : copy.putOn(changed, result.name);
 }
 
-// The trip view and the Trips & events sheet ride in this same chunk.
+// The Trips & events sheet's empty state (design: "Empty states that
+// teach"): make the first one, or start from the household's most recent
+// split group, which brings its name, icon and currency.
+export function TripEventsEmptyActions({ onMakeFirst, onStartFrom }) {
+  const queryClient = useQueryClient();
+  const [group, setGroup] = useState(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadTripEventsWithSplitGroups(queryClient, { signal: controller.signal })
+      .then((result) => setGroup(result.splitGroups[0] ?? null))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [queryClient]);
+  return (
+    <div className="trip-sheet-empty-actions">
+      <button type="button" className="lsd-primary" data-trip-make-first="" onClick={onMakeFirst}>{copy.makeFirst}</button>
+      {group ? (
+        <button type="button" className="subtle-action" data-trip-start-from={group.name} onClick={() => onStartFrom(group.id)}>{copy.startFrom(group.name)}</button>
+      ) : null}
+    </div>
+  );
+}
+
+// The trip view, the Trips & events sheet, the New sheet and the review
+// list ride in this same chunk.
 export { TripEventLead, TripEventsSheet } from "./trip-event-views";
+export { TripEventEditSheet } from "./trip-event-edit-sheet";
+export { TripEventReviewSheet } from "./trip-event-review-sheet";

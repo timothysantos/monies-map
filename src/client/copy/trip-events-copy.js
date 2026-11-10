@@ -103,5 +103,67 @@ export const tripEventsCopy = Object.freeze({
   transfersKeep: "A transfer keeps its Transfer category.",
   changedMeanwhile: "Some of these entries changed meanwhile. Pick them again to see them as they are now.",
   confirmAll: (count, name) => `Change all ${count} to ${name}?`,
-  yesAll: (count) => `Yes, change all ${count}`
+  yesAll: (count) => `Yes, change all ${count}`,
+  // The New sheet (design 2d), also used to change one.
+  newTitle: "New trip or event",
+  changeTitle: (name) => `Change ${name}`,
+  change: "Change",
+  name: "Name",
+  namePlaceholder: "Seoul trip",
+  icon: "Icon",
+  dates: "Dates (if it has some)",
+  firstDay: "First day",
+  lastDay: "Last day",
+  to: "to",
+  paidIn: "Paid in (optional)",
+  notAbroad: "Not abroad",
+  sharedCosts: "Shared costs",
+  linkSplits: (name) => `Link "${name}" splits`,
+  noLink: "No link",
+  startFromGroup: "Start from a split group",
+  checkThem: "Check them",
+  makeEmpty: "Make it empty",
+  save: "Save",
+  saving: "Saving…",
+  // "37 entries look like part of it. 28 paid in won and 9 already on Seoul
+  // trip splits. 12 more in these days were paid in dollars."
+  preview: ({ ticked, inCurrency, onSplits, others, currencyWord, groupName, abroad }) => {
+    const parts = [
+      inCurrency ? `${inCurrency} paid in ${currencyWord}` : "",
+      onSplits ? `${onSplits} already on ${groupName} splits` : ""
+    ].filter(Boolean);
+    const lead = ticked ? `${entriesWord(ticked)} look${ticked === 1 ? "s" : ""} like part of it.${parts.length ? ` ${parts.join(" and ")}.` : ""}` : "";
+    const rest = others
+      ? (ticked
+        ? ` ${others} more in these days ${abroad ? "were paid in dollars" : (others === 1 ? "is" : "are") + " not ticked"}.`
+        : `${entriesWord(others)} ${others === 1 ? "is" : "are"} in these days.`)
+      : "";
+    return `${lead}${rest}`.trim();
+  },
+  // The review list (design 2d).
+  reviewTitle: (name) => `Add to ${name}`,
+  groupCurrency: (word) => `Paid in ${word}`,
+  groupSplits: (name) => `On ${name} splits`,
+  groupDollars: "Also in these dates, in dollars",
+  groupInDates: "In these dates",
+  groupSearch: "Booked before you went?",
+  ofTicked: (ticked, total) => `${ticked} of ${total} ticked`,
+  ofCount: (ticked, total) => `${ticked} of ${total}`,
+  search: "Search",
+  searchWords: "Shop or note",
+  searchNothing: "Nothing found before the trip.",
+  addEntries: (count) => (count === 1 ? "Add 1 entry" : `Add ${count} entries`),
+  homeBillsLeft: "Home bills in these days (rent, standing orders) are left unticked.",
+  moreThanListed: "There are more entries in these days than this list shows.",
+  nothingToAdd: "No more entries look like part of it.",
+  added: (count, name) => `${entriesWord(count)} added to ${name}`,
+  checkDates: "Check entries from these dates",
+  // "Also ₩96,000 cash on Seoul trip splits, not in Entries", around the
+  // amount (an openable figure).
+  splitCash: (name) => ({ before: "Also ", after: ` cash on ${name} splits, not in Entries` }),
+  // Owner decision 3 = A: Add to splits on a linked group.
+  alsoPutOn: (name) => `Also put on ${name}`,
+  // The Trips & events sheet's empty state.
+  makeFirst: "Make your first one",
+  startFrom: (name) => `Start from "${name}" splits`
 });

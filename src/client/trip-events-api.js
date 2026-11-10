@@ -77,3 +77,55 @@ export function changeEntryCategories(changes, { confirmedCount = undefined } = 
 export function deleteTripEvent(tripEventId, fallbackError) {
   return postJson("/api/trip-events/delete", { tripEventId }, fallbackError);
 }
+
+async function getJson(path, { signal = undefined } = {}, fallbackError = "") {
+  try {
+    const response = await fetch(path, { cache: "no-store", signal });
+    const data = await response.json().catch(() => null);
+    return response.ok && data?.ok !== false ? { ...(data ?? {}), ok: true } : { ok: false, error: data?.error || fallbackError };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return { ok: false, error: fallbackError };
+  }
+}
+
+// The New sheet's lists: every trip (for a name clash) and the split groups
+// (for "Start from a split group" and "Shared costs"). Its own key, so the
+// picker's list stays small.
+export function loadTripEventsWithSplitGroups(queryClient, { signal = undefined } = {}) {
+  return fetchQueryWithLease(queryClient, {
+    queryKey: [...TRIP_EVENTS_QUERY_KEY, "split-groups"],
+    bypassCache: true,
+    signal,
+    abortMessage: "Trips and events request aborted.",
+    fetcher: async ({ signal: requestSignal }) => {
+      const result = await getJson("/api/trip-events?with=split-groups", { signal: requestSignal }, "Trips and events didn't load.");
+      if (!result.ok) throw new Error(result.error);
+      return { tripEvents: result.tripEvents ?? [], splitGroups: result.splitGroups ?? [] };
+    }
+  });
+}
+
+/**
+ * The review list (design 2d): for a saved trip `{ tripEventId }`, or for
+ * the New sheet's draft `{ start, end, currency, splitGroupId }`.
+ * @param {Record<string, string | null | undefined>} params
+ */
+export function loadTripSuggestions(params, { signal = undefined } = {}, fallbackError = "") {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value);
+  }
+  return getJson(`/api/trip-events/suggestions?${query.toString()}`, { signal }, fallbackError);
+}
+
+// "Booked before you went?": words, before the trip's first day.
+export function searchTripSuggestions(tripEventId, words, { signal = undefined } = {}, fallbackError = "") {
+  const query = new URLSearchParams({ tripEventId, q: words });
+  return getJson(`/api/trip-events/search?${query.toString()}`, { signal }, fallbackError);
+}
+
+// A New sheet from picked rows: their first and last day and currency.
+export function loadTripEventDefaults(entryIds, fallbackError) {
+  return postJson("/api/trip-events/new-defaults", { entryIds }, fallbackError);
+}

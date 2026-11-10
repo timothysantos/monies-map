@@ -364,3 +364,221 @@
   color: var(--muted);
 }
 
+
+.trip-sheet-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trip-sheet-empty-actions > button {
+  min-height: 44px;
+}
+
+/* The trip view's line for the linked split group's cash (not entries). */
+.trip-lead-cash {
+  margin: -4px 0 10px;
+}
+
+.trip-lead-actions {
+  flex-wrap: wrap;
+}
+
+/* The New sheet (design 2d): one field per row, the name first. */
+.trip-form {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.trip-form-row {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+}
+
+.trip-form-label {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.trip-form-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.trip-form-input:focus-visible,
+.trip-form-icon:focus-visible,
+.trip-review-row:focus-within {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.trip-form-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trip-form-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.trip-form-icon.is-selected {
+  border-color: var(--accent-strong);
+  background: rgb(var(--accent-strong-rgb) / 0.12);
+}
+
+.trip-form-dates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.trip-form-to {
+  color: var(--muted);
+}
+
+.trip-form-preview {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--chip);
+  color: var(--text);
+}
+
+/* The review list (design 2d): folded groups with their counts. */
+.trip-review-dates {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.trip-review-body {
+  display: grid;
+  gap: 10px;
+}
+
+.trip-review-group {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.trip-review-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trip-review-group-label {
+  font-weight: 600;
+}
+
+.trip-review-group-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.trip-review-list {
+  margin: 0;
+  padding: 0 4px 6px;
+  list-style: none;
+}
+
+.trip-review-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.trip-review-row input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  accent-color: var(--accent-strong);
+}
+
+.trip-review-text {
+  display: grid;
+  min-width: 0;
+}
+
+.trip-review-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-review-amount {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trip-review-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 10px;
+  color: var(--muted);
+}
+
+.trip-review-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.trip-review-search .subtle-action {
+  min-height: 44px;
+}
+
+.trip-review-note,
+.trip-review-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.trip-review-group .trip-review-note {
+  padding: 0 12px 10px;
+}

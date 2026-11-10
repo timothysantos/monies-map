@@ -125,6 +125,9 @@ export function EntriesDateGroups({
   // picker it opens, and the entry card's "Trip or event" row.
   getTripChip = undefined,
   onOpenTripPicker = undefined,
+  // The dashed "Seoul trip?" chip's one tap (design 2f): puts the row on
+  // the suggested trip.
+  onAcceptTripSuggestion = undefined,
   renderTripEventRow = undefined,
   // Picking many rows (design.md "Trips and events on Entries", "Picking
   // many"): while picking, a row's bubble is a tick box, a click picks it
@@ -235,6 +238,7 @@ export function EntriesDateGroups({
   const changeEntryCategory = useStableHandler(onChangeEntryCategory);
   const changeCategoryAppearance = useStableHandler(onCategoryAppearanceChange);
   const openTripPicker = useStableHandler((entry, element) => onOpenTripPicker?.(entry, element));
+  const acceptTripSuggestion = useStableHandler((entry, chip) => onAcceptTripSuggestion?.(entry, chip));
   const pickRow = useStableHandler((entry, event) => onPickRow?.(entry, event));
 
   // Only the open inline editor reads these, so they are built for that one
@@ -335,6 +339,7 @@ export function EntriesDateGroups({
                   editor={isEditing && renderInlineEditor ? buildEditor(entry.ledgerEntry ?? entry) : null}
                   tripChip={getTripChip?.(entry) ?? null}
                   onOpenTripPicker={onOpenTripPicker ? openTripPicker : undefined}
+                  onAcceptTripSuggestion={onAcceptTripSuggestion ? acceptTripSuggestion : undefined}
                   isPicking={isPicking}
                   isPicked={isPicking && pickedIds.has(entry.id)}
                   onPickRow={onPickRow ? pickRow : undefined}
@@ -446,6 +451,7 @@ function EntryRow({
   editor,
   tripChip = null,
   onOpenTripPicker = undefined,
+  onAcceptTripSuggestion = undefined,
   isPicking = false,
   isPicked = false,
   onPickRow = undefined
@@ -631,7 +637,21 @@ function EntryRow({
               {isLinkedToSplits && display.splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
               ) : null}
-              {tripChip ? (
+              {tripChip?.suggestion ? (
+                // A suggestion (design 2f): dashed, "Seoul trip?"; one tap
+                // puts the row on it, and nothing happens without the tap.
+                <button
+                  type="button"
+                  className="entry-chip entry-chip-trip is-suggestion"
+                  data-trip-suggestion={tripChip.name}
+                  title={tripEventsCopy.suggestionTitle(tripChip.name)}
+                  aria-label={tripEventsCopy.suggestionTitle(tripChip.name)}
+                  onClick={() => onAcceptTripSuggestion?.(entry, tripChip)}
+                >
+                  <TripEventGlyph iconKey={tripChip.iconKey} size={12} />
+                  <span>{tripEventsCopy.suggestionLabel(tripChip.name)}</span>
+                </button>
+              ) : tripChip ? (
                 <button
                   type="button"
                   className="entry-chip entry-chip-trip"

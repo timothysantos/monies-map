@@ -23,6 +23,7 @@ import { SheetSwipeDismiss } from "./sheet-swipe";
 import { fetchQueryWithLease } from "./query-leases";
 import { isWithinTripEventDates } from "../domain/trip-events";
 import { todayInAppTimeZone } from "./app-dates";
+import { formatForeignMoney } from "./trip-event-review-sheet";
 
 const money = (minor) => moniesClient.format.money(minor);
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -77,9 +78,12 @@ function Bars({ title, rows, maxMinor, showTitle = true }) {
 
 /**
  * The trip view's lead, in place of the Entries totals.
- * @param {{ tripView: any, aggregateEntries: any[], pageEntries: any[], entryFilters: any, viewId: string, people: any[], investmentAccountIds?: Set<string>, entryCount: number, isMobile?: boolean, onClear: () => void, onPutAway: (trip: any, putAway: boolean) => void, onDelete: (trip: any) => void }} props
+ * `onChange` opens the New sheet on this trip; `onCheckDates` its review
+ * list ("Check entries from these dates"), offered when it has dates or a
+ * linked split group.
+ * @param {{ tripView: any, aggregateEntries: any[], pageEntries: any[], entryFilters: any, viewId: string, people: any[], investmentAccountIds?: Set<string>, entryCount: number, isMobile?: boolean, onClear: () => void, onPutAway: (trip: any, putAway: boolean) => void, onDelete: (trip: any) => void, onChange?: (trip: any) => void, onCheckDates?: (trip: any) => void }} props
  */
-export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds, entryCount, isMobile = false, onClear, onPutAway, onDelete }) {
+export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds, entryCount, isMobile = false, onClear, onPutAway, onDelete, onChange = undefined, onCheckDates = undefined }) {
   const trip = tripView?.tripEvent ?? null;
   const model = useMemo(
     () => (trip ? buildTripEventLeadModel({ tripEvent: trip, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds }) : null),
@@ -150,6 +154,17 @@ export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFi
           <PrivateMoney>{money(model.spentMinor)}</PrivateMoney>
         </span>
       </p>
+      {(trip.splitCash ?? []).map((cash) => (
+        // The linked split group's cash in its own currency: not entries, so
+        // not in Spent (DOMAIN.md "Trip or Event").
+        <p key={cash.currency} className="trip-lead-meta trip-lead-cash" data-trip-split-cash={cash.currency}>
+          {copy.splitCash(trip.splitGroupName ?? trip.name).before}
+          <span {...figureProps(trip, { "data-fig-trip-list": "", "data-fig-trip-group": trip.splitGroupId, "data-fig-name": `${trip.name} · ${copy.groupSplits(trip.splitGroupName ?? trip.name)}` })}>
+            <PrivateMoney>{formatForeignMoney(cash.amountMinor, cash.currency)}</PrivateMoney>
+          </span>
+          {copy.splitCash(trip.splitGroupName ?? trip.name).after}
+        </p>
+      ))}
       {pills.length ? (
         <ul className="trip-lead-pills">
           {pills.map((pill) => (
@@ -181,6 +196,10 @@ export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFi
         </div>
       )}
       <div className="trip-lead-actions">
+        {onCheckDates && (trip.startDate || trip.splitGroupId) ? (
+          <button type="button" className="subtle-action" data-trip-check-dates="" onClick={() => onCheckDates(trip)}>{copy.checkDates}</button>
+        ) : null}
+        {onChange ? <button type="button" className="subtle-action" data-trip-change="" onClick={() => onChange(trip)}>{copy.change}</button> : null}
         <button type="button" className="subtle-action" onClick={() => onPutAway(trip, !trip.putAway)}>{trip.putAway ? copy.bringBack : copy.putAway}</button>
         <button type="button" className="subtle-action is-danger" onClick={() => onDelete(trip)}>{copy.delete}</button>
       </div>
