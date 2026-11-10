@@ -1,0 +1,126 @@
+/* "Usually shared, not on Splits yet" (splits-usually-shared.jsx): the count
+   row is the Review matches callout; each shop is a white card like a match
+   card (splits-matches.css) with its entries as ticks. Imported by the
+   component, so it ships with the lazy Splits section, not the first screen.
+   Colours are the page tokens only; money is plain ink (spend is neutral). */
+.panel-splits .split-usually-shared {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel-splits .split-usually-shared .split-match-inbox-callout {
+  margin-bottom: 0;
+}
+
+.panel-splits .split-usually-list {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-splits .split-usually-group,
+.split-usually-sheet .split-usually-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 6px 18px rgba(27, 24, 21, 0.08);
+  color: var(--text);
+}
+
+.split-usually-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.split-usually-title {
+  display: grid;
+  flex: 1 1 140px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.split-usually-title strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.split-usually-title span,
+.split-usually-detail {
+  color: var(--muted);
+}
+
+.split-usually-total {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-usually-detail {
+  margin: 0;
+}
+
+.split-usually-entries {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.split-usually-entries label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.split-usually-entries input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-strong);
+}
+
+.split-usually-entry-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.split-usually-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.split-usually-confirm-hint {
+  flex: 1 1 100%;
+  color: var(--muted);
+  text-align: right;
+}
+
+.split-usually-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--pastel-mint-line);
+  border-radius: 12px;
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+}
+
+@media (max-width: 860px) {
+  .panel-splits .split-usually-shared .split-match-inbox-callout {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

@@ -2,7 +2,7 @@
 // (ui/lead-support-detail.jsx, in the shared ui-components chunk), so they
 // load before this route's overrides.
 import "./splits-route.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -75,6 +75,11 @@ import { useSplitCorrection } from "./use-split-correction";
 import { entriesLocationForAction } from "./check-in-action";
 
 const { format: formatService } = moniesClient;
+
+// "Usually shared, not on Splits yet": its own chunk, read only when the
+// page is on the group's activity (never part of the first screen or of the
+// Splits page DTO).
+const SplitsUsuallyShared = lazy(() => import("./splits-usually-shared.jsx").then((module) => ({ default: module.SplitsUsuallyShared })));
 
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
 function runQuietly(task, _retry) {
@@ -1511,6 +1516,21 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
         settlementStatus={<>{splitSettlementStatus}{settlementFollowUps}</>}
+        usuallyShared={(
+          <Suspense fallback={null}>
+            <SplitsUsuallyShared
+              viewId={view.id}
+              readOnly={isHouseholdView}
+              fetchRequiredQuery={fetchRequiredQuery}
+              onChanged={() => refreshAfterSplitMutation({
+                broadcast: true,
+                invalidateEntries: true,
+                invalidateMonth: true,
+                invalidateSummary: true
+              })}
+            />
+          </Suspense>
+        )}
       />
       {checkpointError ? <p className="form-error" role="alert">{checkpointError}</p> : null}
       {checkpointNotice ? <p className="form-success" role="status">{checkpointNotice}</p> : null}

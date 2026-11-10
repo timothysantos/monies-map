@@ -63,7 +63,8 @@ export function SplitsMainSection({
   viewId,
   isRefreshingDerived = false,
   readOnly = false,
-  settlementStatus = null
+  settlementStatus = null,
+  usuallyShared = null
 }) {
   // Not even the shared group exists: one card says so and offers the way out.
   if (groupCount === 0) {
@@ -113,6 +114,7 @@ export function SplitsMainSection({
         />
       ) : (
         <>
+          {usuallyShared}
           {pendingMatchCount ? (
             <section className="split-match-inbox-callout">
               <div>
