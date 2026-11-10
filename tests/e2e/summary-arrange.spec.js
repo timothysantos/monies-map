@@ -68,5 +68,19 @@ test.describe("Arrange Summary", () => {
     const box = await sheet.getByRole("button", { name: "Move Spending Mix up" }).boundingBox();
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeGreaterThanOrEqual(44);
+    // Cancel, Reset and Done each have their own room: none overlaps another.
+    const bars = [];
+    for (const name of ["Cancel", "Reset to the usual order", "Done"]) {
+      const bar = await sheet.getByRole("button", { name }).boundingBox();
+      expect(bar, name).not.toBeNull();
+      expect(bar.x).toBeGreaterThanOrEqual(0);
+      expect(bar.x + bar.width).toBeLessThanOrEqual(390);
+      bars.push(bar);
+    }
+    for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) {
+      const apart = bars[a].x + bars[a].width <= bars[b].x + 1 || bars[b].x + bars[b].width <= bars[a].x + 1
+        || bars[a].y + bars[a].height <= bars[b].y + 1 || bars[b].y + bars[b].height <= bars[a].y + 1;
+      expect(apart, `buttons ${a} and ${b} overlap`).toBe(true);
+    }
   });
 });

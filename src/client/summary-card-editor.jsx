@@ -44,12 +44,13 @@ export function SummaryCardEditor({ cards, leadView, phone, onSave, onClose }) {
 
   return (
     <SheetDialog
+      className="is-three-actions"
       title={phone ? "Edit cards" : "Arrange cards"}
       primaryLabel="Done"
       onSubmit={() => onSave(draft)}
       isDirty={dirty}
       secondary={(
-        <button type="button" className="lsd-quiet" onClick={() => { onSave(null); }}>Reset to the usual order</button>
+        <button type="button" className="lsd-secondary" onClick={() => { onSave(null); }}>Reset to the usual order</button>
       )}
       onClose={onClose}
     >
