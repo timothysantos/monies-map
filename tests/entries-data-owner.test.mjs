@@ -208,3 +208,21 @@ test("a cancelled load or refresh never becomes a load error", async () => {
   await assert.rejects(refresh);
   assert.equal(owner.getSnapshot().loadError, null);
 });
+
+// The route view's copy of the month (the shell's warm start) carries no
+// trips or other Entries-page-only fields. When the App refreshes that copy
+// after the page loaded, re-seeding must not swap the server's page for it:
+// the current month's trip chips and the dashed "Seoul trip?" chip vanished.
+test("a later warm start never replaces the server's page for the same month and view", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const served = { ...page("2026-05", "from the server"), tripEvents: { "trip-seoul": { name: "Seoul trip", iconKey: "plane" } } };
+  owner.seed(page("2026-05", "warm start"), params("2026-05"));
+  const load = owner.load({ params: params("2026-05"), fetchPage });
+  calls[0].resolve(served);
+  assert.equal(await load, true);
+  owner.seed(page("2026-05", "route view refreshed"), params("2026-05"));
+  assert.equal(owner.getSnapshot().page, served);
+  // Another month's warm start still shows at once.
+  owner.seed(page("2025-10", "warm October"), params("2025-10"));
+  assert.equal(owner.getSnapshot().page.monthPage.entries[0].description, "warm October");
+});

@@ -25,6 +25,10 @@ export function createEntriesDataOwner({
   let state = { page: initialPage, isLoading: false, loadError: null };
   let activeKey = "";
   let pageKey = initialParams ? requestKeyOf(initialParams) : "";
+  // The request whose page from the server is on screen. A warm start (the
+  // shell's or the route view's coarser copy, with no trips or other
+  // page-only fields) never replaces it.
+  let servedKey = "";
   let generation = 0;
   const listeners = new Set();
 
@@ -40,6 +44,7 @@ export function createEntriesDataOwner({
 
   const applyPage = (page) => {
     pageKey = activeKey;
+    servedKey = activeKey;
     setState({ page, isLoading: false, loadError: null });
   };
 
@@ -73,6 +78,9 @@ export function createEntriesDataOwner({
     // built for `params`. It shows at once but does not supersede the load
     // already running, and it clears a load error for the same request.
     seed(page, params = null) {
+      if (params && servedKey && requestKeyOf(params) === servedKey && pageKey === servedKey) {
+        return;
+      }
       if (params) {
         pageKey = requestKeyOf(params);
       }
