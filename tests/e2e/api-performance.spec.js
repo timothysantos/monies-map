@@ -79,7 +79,10 @@ const PAYLOAD_APIS = [
   // once the top summary is usable, never on the first screen. The demo
   // household has few repeating charges in the last year; a busy household
   // is bounded in page-load-scale-guard (12 kB on the 10k household).
-  ["repeating-charges", "/api/repeating-charges?view=household"]
+  ["repeating-charges", "/api/repeating-charges?view=household"],
+  // Miles and cashback on Summary (DOMAIN.md "Card reward rule"): read once
+  // the top summary is usable, never on the first screen.
+  ["card-rewards", "/api/card-rewards?view=household"]
 ];
 
 // The Splits page once a settlement covered part of a group: the covered

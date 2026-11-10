@@ -43,7 +43,11 @@ test("the household is one picture; miles and cashback are totalled apart; each 
   assert.ok([lady, citi].every((id) => picture.milesTotal.ids.includes(id)));
   assert.ok(!picture.milesTotal.ids.includes(one), "cashback spending is not in the miles total");
   assert.deepEqual(picture.cashbackTotal.ids, [one]);
-  assert.ok(picture.cashbackTotal.amount > 0 && picture.cashbackTotal.amount < 300);
+  // UOB One pays nothing until a month has $600 of spending and 5 payments
+  // (the preset's minimum): $300 on one payment has not reached it.
+  const uobOne = picture.cards.find((card) => card.name === "UOB One");
+  assert.equal(uobOne.minimum.met, false);
+  assert.equal(picture.cashbackTotal.amount, 0);
   assert.equal(picture.cards[0].unit, "miles");
   assert.ok(picture.phoneCards.length <= 3);
 });

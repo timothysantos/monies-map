@@ -53,12 +53,16 @@ const PAGES = [
   // by description and month, read in one step (measured 4 round trips,
   // 40,200 rows, 612 kB of rows, ~40 ms node CPU for either view).
   { name: "repeating-charges household", path: "/api/repeating-charges?view=household", maxStatements: 8, maxRowsRead: 80_000, maxRowBytes: 1_300_000, maxResponseBytes: 12_000 },
+  { name: "repeating-charges person", path: "/api/repeating-charges?view=person-tim&scope=direct_plus_shared", maxStatements: 8, maxRowsRead: 80_000, maxRowBytes: 1_300_000, maxResponseBytes: 12_000 },
   // What changed this month (2026-11): the view's entries of 7 months in the
   // one date-window read Ask's "What changed?" uses; optional, read after the
   // first screen (measured 6 round trips, 11,155 rows, 1.7 MB of rows, ~45 ms node CPU).
   { name: "summary-changed household", path: "/api/summary-changed?view=household", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
   { name: "summary-changed person", path: "/api/summary-changed?view=person-tim&scope=direct_plus_shared", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
-  { name: "repeating-charges person", path: "/api/repeating-charges?view=person-tim&scope=direct_plus_shared", maxStatements: 8, maxRowsRead: 80_000, maxRowBytes: 1_300_000, maxResponseBytes: 12_000 }
+  // Miles and cashback (2026-11): the credit card entries of the last four
+  // months by date, in one step with the rules and the people.
+  { name: "card-rewards household", path: "/api/card-rewards?view=household", maxStatements: 8, maxRowsRead: 20_000, maxRowBytes: 450_000, maxResponseBytes: 12_000 },
+  { name: "card-rewards rules", path: "/api/card-rewards/rules", maxStatements: 8, maxRowsRead: 20_000, maxRowBytes: 450_000, maxResponseBytes: 12_000 }
 ];
 // A handler that does a per-row JS loop or per-import query shows up as node
 // CPU long before it shows up in production; this is a catastrophe bound.
@@ -132,6 +136,7 @@ const PAGE_CHAINS = [
   { name: "reminders", path: "/api/reminders?view=household", maxStatements: 15, maxWaves: 4, maxRowsRead: 40_000 },
   { name: "repeating-charges household", path: "/api/repeating-charges?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 80_000 },
   { name: "repeating-charges person", path: "/api/repeating-charges?view=person-tim", maxStatements: 8, maxWaves: 2, maxRowsRead: 80_000 },
+  { name: "card-rewards household", path: "/api/card-rewards?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 20_000 },
   { name: "imports-page", path: "/api/imports-page", maxStatements: 15, maxWaves: 4, maxRowsRead: 250_000 },
   { name: "settings-page", path: "/api/settings-page", maxStatements: 21, maxWaves: 2, maxRowsRead: 250_000 },
   { name: "ask turn", path: "/api/ask/turn", body: { text: "what did I spend on food", viewId: "household", scope: "direct_plus_shared", month: "2026-08", page: "ask" }, maxStatements: 16, maxWaves: 3, maxRowsRead: 5_000 }
