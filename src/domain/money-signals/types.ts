@@ -37,6 +37,9 @@ export interface CheckInAction {
   categoryName?: string;
   // The month the entries are in, when it isn't the page's own month.
   month?: string;
+  // The first month of a period of months the entries span (Bank fees this
+  // year: January to `month`).
+  fromMonth?: string;
 }
 
 // What a quote fits: matched to the headline (or the long view on a calm

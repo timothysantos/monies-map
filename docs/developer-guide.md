@@ -2832,6 +2832,21 @@ production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
 again is safe.
 
+## How are bank fees this year worked out?
+
+The Summary page reads one more thing beside its other reads (same step):
+`loadBankFeesYear` (`src/domain/pages/summary-bank-fees.ts`) takes the
+view's entries from 1 January to the range's last month whose description
+could be a fee (`%FEE%`, `%CHARGE%`, `%INTEREST%` and the bank account
+words) or that are filed under Fees, and the pure `buildBankFeesYear`
+(`src/domain/bank-fees-year.ts`) keeps what `classifyBankCharge` or
+`classifyAccountCharge` names, pairs refunds as `findUnreversedBankCharges`
+does, and adds up the rest by kind. The DTO carries `bankFeesYear` only when
+the year has a fee. The Money insights line is `feesThisYearSignal`
+(`summary-signals.ts`, catalogue `feesThisYear`); tests:
+`tests/bank-fees-year.test.mjs`, `tests/money-insights-fees.test.mjs` and the
+`bank_fees` case in `tests/openable-figures.test.mjs`.
+
 ## How are subscriptions and bills found?
 
 `GET /api/repeating-charges[?view=&scope=]` (DOMAIN.md "Repeating Charge")

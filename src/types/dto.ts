@@ -1294,6 +1294,9 @@ export interface SummaryPageDto {
   // the month chart's Planned so far counts the spending plan as the lead
   // does. The month rows themselves never carry it.
   plannedInvestByMonth?: Array<{ month: string; plannedInvestMinor: number }>;
+  // Bank fees from 1 January to the range's last month (bank-fees-year.ts),
+  // for the "fees this year" Money insights line; left out with no fee.
+  bankFeesYear?: import("../domain/bank-fees-year").BankFeesYear;
   notes: string[];
 }
 

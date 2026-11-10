@@ -4,11 +4,15 @@
 // kinds for the cushion). No extra month is fetched: the same-season line
 // shows only when last year's month is already in the range.
 import {
+  addDays,
   addMonths,
   amountLine,
   approxMoney,
+  capitalize,
   compactMoney,
   daysInMonth,
+  fill,
+  joinWithAnd,
   lowerLabel,
   monthName,
   monthYear,
@@ -25,6 +29,7 @@ import type { TriviaRotation } from "./rotation";
 import { bankChargesSignal, cardBillSignal, penaltyInterestSignal, statementGapSignal, triviaSignal, type WalletHealthPill } from "./shared-signals";
 import { buildAccountSignals } from "./account-signals";
 import type { Audience, MoneySignal } from "./types";
+import type { BankFeesYear } from "../bank-fees-year";
 
 export const SUMMARY_COPY = {
   spendingAboveIncome: {
@@ -53,6 +58,24 @@ export const SUMMARY_COPY = {
       "A rise like this is worth one question: is this still the amount you'd choose?"
     ]
   },
+  // Bank fees this year (bank-fees-year.ts; owner decision D4: foreign
+  // currency fees count and are named apart). {parts} and {refunded} are
+  // built from the fixed words in FEE_WORDS.
+  feesThisYear: {
+    phrasings: [
+      "You paid {total} in bank fees so far in {year}: {parts}.{refunded}",
+      "Bank fees came to {total} in {year} so far: {parts}.{refunded}",
+      "So far in {year}, banks charged {whose} accounts {total} in fees: {parts}.{refunded}",
+      "{total} went on bank fees in {year}, across {count} charges: {parts}.{refunded}"
+    ],
+    think: [
+      "Late fees and interest stop when each card bill is paid in full by its due date.",
+      "Banks often refund a late fee or an annual fee when asked. The refund shows on the next statement.",
+      "Foreign currency fees come with paying in another currency, so they are counted here but are rarely refunded."
+    ],
+    action: "Show those fees"
+  },
+
   subscriptions: {
     phrasings: [
       "Subscriptions came to {amount} in {month}. That's about {yearly} a year.",
@@ -284,6 +307,9 @@ export interface SummarySignalInput {
   accountKinds: Record<string, string>;
   availableMonths: string[];
   formatMoney: FormatMoney;
+  // Bank fees from 1 January to the range's last month (the Summary DTO's
+  // bankFeesYear); absent with no fee.
+  bankFeesYear?: BankFeesYear;
 }
 
 const MIN_STREAK = 3;
@@ -499,6 +525,81 @@ export function subscriptionsSignal(input: SummarySignalInput): MoneySignal | nu
         ...(subscriptionCategory(input, month) ? { categoryName: subscriptionCategory(input, month) } : {})
       },
       month
+    },
+    topic: "small-costs"
+  };
+}
+
+// The fixed words a fee kind is named with: one charge ("a $100.00 late
+// fee"), several ("$18.40 in interest"), and in the refunded sentence
+// without its amount ("an annual fee").
+const FEE_WORDS: Record<string, { one: string; many: string; refunded: string }> = {
+  late_fee: { one: "a {amount} late fee", many: "{amount} in late fees", refunded: "a late fee" },
+  interest: { one: "{amount} in interest", many: "{amount} in interest", refunded: "interest" },
+  annual_fee: { one: "a {amount} annual fee", many: "{amount} in annual fees", refunded: "an annual fee" },
+  fx_fee: { one: "a {amount} foreign currency fee", many: "{amount} in foreign currency fees", refunded: "a foreign currency fee" },
+  other_fee: { one: "a {amount} card fee", many: "{amount} in other card fees", refunded: "a card fee" },
+  failed_payment: { one: "{amount} for a payment that didn't go through", many: "{amount} in charges for payments that didn't go through", refunded: "a charge for a payment that didn't go through" },
+  account_fee: { one: "a {amount} account fee", many: "{amount} in account fees", refunded: "an account fee" }
+};
+export const FEES_THIS_YEAR_MIN_MINOR = 2_000;
+// feesThisYear's {refunded} sentence (a leading space joins it on). Linted
+// with the catalogue in tests/money-insights-fees.test.mjs.
+export const FEES_REFUNDED_SENTENCE = " Another {refundedTotal}, {refundedParts}, was charged and then refunded, so it isn't counted.";
+const FEE_CHARGE_LOOKBACK_DAYS = 60;
+
+// Worth knowing: what the banks charged so far this year, by kind, with the
+// refunded ones named apart. It needs $20 in fees, and never shows for
+// foreign currency fees alone (they come with buying abroad). It may lead in
+// a month a late fee, interest or an annual fee was charged, and in
+// December; otherwise it takes its turn once a quarter. While the card's own
+// "no refund yet" line can show (a charge in the last 60 days), it stays
+// under Also, so the same fee is never the headline twice.
+export function feesThisYearSignal(input: SummarySignalInput): MoneySignal | null {
+  const fees = input.bankFeesYear;
+  const focus = rangeEnd(input);
+  if (!fees || !focus || fees.netMinor < FEES_THIS_YEAR_MIN_MINOR || !fees.parts.some((part) => part.kind !== "fx_fee")) {
+    return null;
+  }
+  const word = (kind: string, minor: number, count: number) => {
+    const words = FEE_WORDS[kind] ?? FEE_WORDS.other_fee;
+    return fill(count === 1 ? words.one : words.many, { amount: input.formatMoney(minor) });
+  };
+  const refundedTotal = fees.refundedParts.reduce((sum, part) => sum + part.minor, 0);
+  const refundedWords = fees.refundedParts.map((part) => (part.count === 1
+    ? (FEE_WORDS[part.kind] ?? FEE_WORDS.other_fee).refunded
+    : `${numberWord(part.count)} ${(FEE_WORDS[part.kind] ?? FEE_WORDS.other_fee).refunded.replace(/^(?:an?|) ?/, "")}s`));
+  const values = {
+    total: input.formatMoney(fees.netMinor),
+    year: fees.year,
+    parts: joinWithAnd(fees.parts.map((part) => word(part.kind, part.minor, part.count))),
+    whose: input.audience === "person" ? `${input.viewLabel}'s` : "your",
+    count: fees.parts.reduce((sum, part) => sum + part.count, 0),
+    refunded: refundedTotal > 0
+      ? fill(FEES_REFUNDED_SENTENCE, { refundedTotal: input.formatMoney(refundedTotal), refundedParts: joinWithAnd(refundedWords) })
+      : ""
+  };
+  const cutoff = addDays(input.today, -FEE_CHARGE_LOOKBACK_DAYS);
+  const cardLineShowing = (input.accountPills ?? []).some((pill) => (pill.unreversedCharges ?? []).some((charge) => charge.date >= cutoff && charge.date <= input.today));
+  const notable = !cardLineShowing && (fees.penaltyMonths.includes(focus) || focus.slice(5, 7) === "12");
+  return {
+    key: `fees-this-year:${fees.year}`,
+    kind: "worth_a_look",
+    weight: fees.netMinor,
+    numbers: { primaryMinor: fees.netMinor, refundedMinor: refundedTotal },
+    primaryText: values.total,
+    steady: !notable,
+    ...(cardLineShowing ? {} : { turn: 1 as const }),
+    phrasings: phrase(SUMMARY_COPY.feesThisYear, values),
+    action: { id: "show-entries", label: SUMMARY_COPY.feesThisYear.action, entryIds: fees.ids, month: focus, fromMonth: `${fees.year}-01` },
+    basis: {
+      lines: [
+        ...fees.parts.map((part) => amountLine(capitalize(word(part.kind, part.minor, part.count).replace(/^(?:an?|\S+) /, "").replace(/^in /, "")), part.minor)),
+        amountLine(`Bank fees in ${fees.year} so far`, fees.netMinor),
+        ...(refundedTotal > 0 ? [amountLine("Charged and then refunded", refundedTotal)] : [])
+      ],
+      entries: { entryIds: fees.ids, month: focus },
+      month: focus
     },
     topic: "small-costs"
   };
@@ -985,6 +1086,7 @@ export function buildSummarySignals(input: SummarySignalInput): MoneySignal[] {
     bankChargesSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney }),
     ...buildAccountSignals({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney }),
     penaltyInterestSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney }),
+    feesThisYearSignal(input),
     spendingAboveIncomeSignal(input),
     categoryCreepSignal(input),
     subscriptionsSignal(input),

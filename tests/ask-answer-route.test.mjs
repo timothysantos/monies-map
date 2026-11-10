@@ -129,7 +129,7 @@ test("how am I doing against the plan: Month's cards and the plan rows that went
     { label: "Plan", amountMinor: 413644, currency: "SGD" },
     { label: "Income", amountMinor: may.summaryPage.months[0].actualIncomeMinor, currency: "SGD" }
   ]);
-  assert.equal(payload.wording.text, "May came to $3,889.60, $246.84 under the $4,136.44 you planned. Beauty went furthest over, at $89.85 against $65.00 planned. Income was $10,900.40 against $10,060.00 planned.");
+  assert.equal(payload.wording.text, "May came to $3,989.60, $146.84 under the $4,136.44 you planned. Beauty went furthest over, at $89.85 against $65.00 planned. Income was $10,900.40 against $10,060.00 planned.");
 });
 
 test("how did April go: intent against outcome with the Month lead's figures and the savings bar's", async (t) => {

@@ -70,6 +70,7 @@ export const CATALOGUES = [
     entries: {
       spendingAboveIncome: ["bigger_question", "Spending was above income for 3 or more complete months in a row (once the range records income)."],
       categoryCreep: ["worth_a_look", "A category rose 3 or more complete months in a row and is $50 or more above its average."],
+      feesThisYear: ["worth_a_look", "Bank fees from 1 January to the range's last month (late fees, interest, annual, foreign currency and other card fees, and bank account charges), with refunded fees paired with their refund and named apart in the {refunded} sentence. At least $20, and never for foreign currency fees alone. Notable in a month a late fee, interest or an annual fee was charged, and in December; otherwise turn 1; only under Also while the card's own \"no refund yet\" line can show."],
       subscriptions: ["worth_a_look", "Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability)."],
       monthsUnderPlan: ["going_well", "At least two thirds (and 3 or more) of the last 12 complete months came in under plan. Steady unless the latest month came back under plan (see Notability)."],
       keepRate: ["long_view", "Income kept over the last (up to 12) complete months, when positive."],

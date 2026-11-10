@@ -111,6 +111,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountPills: safeSummaryPage.accountPills,
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
+      bankFeesYear: safeSummaryPage.bankFeesYear,
       formatMoney: unmaskedMoney
     })),
     page: "summary",

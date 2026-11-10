@@ -449,6 +449,16 @@ Important distinctions:
   on the same account, dated on or after it, has cancelled. Each reversal
   cancels one charge. Currency fees are the price of foreign purchases, so
   they are never listed as unreversed.
+- `fees this year` (`src/domain/bank-fees-year.ts`, the Summary DTO's
+  `bankFeesYear`, the Money insights line `feesThisYear`): the bank charges
+  and bank account charges (`account charge`) of the view from 1 January
+  to the range's last month, by kind, where each refund (money in under a
+  spending category, usually Fees) cancels one charge of the same kind and
+  amount on the same account dated on or before it; a paired charge leaves
+  the total and is named in the "charged and then refunded" sentence.
+  Foreign currency fees are counted and named apart (owner decision D4),
+  never called refundable, and never the only reason the line shows. Its
+  figure (`bank_fees`) is every fee and refund row of the year.
 
 ### Card Bill
 

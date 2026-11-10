@@ -328,6 +328,13 @@ over plan.
   the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
+- **Bank fees this year**: one of the Money insights lines. When the banks
+  have charged you $20 or more since 1 January, it adds them up by kind:
+  late fees, interest, annual fees, foreign currency fees and bank account
+  charges (a payment that didn't go through, a fall-below fee). A fee the
+  bank refunded is left out and named in its own sentence. **Show those
+  fees** lists exactly those entries; the total at the top of that list is
+  the line's total.
 - **Subscriptions and bills**: under Money insights, one list of every
   charge that comes back each month or each year: streaming, phone,
   broadband, the town council, insurance, utilities. The app finds them in

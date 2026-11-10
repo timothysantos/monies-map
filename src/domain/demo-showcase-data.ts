@@ -847,6 +847,21 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     if (offset === -7) {
       expense(A.sereneCard, d(9), "SINGAPORE AIRLINES", 118_000, "Travel", { planKey: "japan-flights", note: "Tokyo and Kyoto flights for both of us, from the sale." });
     }
+    // Bank fees (Money insights "fees this year"): Citi's annual fee, waived
+    // a week later on request; currency fees on the Japan trip; a late fee
+    // on Serene's card early this month.
+    if (offset === -6) {
+      expense(A.ethanCard, d(2), "ANNUAL MEMBERSHIP FEE", 19_620, "Fees");
+      add({ accountId: A.ethanCard, date: d(9), description: "ANNUALMEMBERFEEREV", amountMinor: 19_620, entryType: "income", category: "Fees", note: "Waived after a call to the bank." });
+    }
+    if (offset === -5) {
+      for (const [day, amountMinor] of [[7, 452], [10, 318], [12, 206]]) {
+        expense(A.ethanCard, d(day), "CCY CONVERSION FEE", amountMinor, "Fees");
+      }
+    }
+    if (offset === 0) {
+      expense(A.sereneCard, d(3), "LATE PAYMENT CHARGE", 10_000, "Fees", { note: "Paid the bill two days late." });
+    }
     if (offset === -6) {
       expense(A.sereneGroceryCard, d(20), "MOUNT PLEASANT VET CENTRE", 38_600, "Pet Care", { note: "Mochi's yearly vaccination, check-up and a dental clean." });
     }

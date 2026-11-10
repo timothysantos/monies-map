@@ -477,6 +477,25 @@ Way to think about it, in turn:
 - Some rises simply follow a change in life, like a new job or a new baby. It's worth asking whether this one does.
 - A rise like this is worth one question: is this still the amount you'd choose?
 
+### feesThisYear (Worth knowing)
+
+Bank fees from 1 January to the range's last month (late fees, interest, annual, foreign currency and other card fees, and bank account charges), with refunded fees paired with their refund and named apart in the {refunded} sentence. At least $20, and never for foreign currency fees alone. Notable in a month a late fee, interest or an annual fee was charged, and in December; otherwise turn 1; only under Also while the card's own "no refund yet" line can show.
+
+Phrasings:
+
+- You paid {total} in bank fees so far in {year}: {parts}.{refunded}
+- Bank fees came to {total} in {year} so far: {parts}.{refunded}
+- So far in {year}, banks charged {whose} accounts {total} in fees: {parts}.{refunded}
+- {total} went on bank fees in {year}, across {count} charges: {parts}.{refunded}
+
+Way to think about it, in turn:
+
+- Late fees and interest stop when each card bill is paid in full by its due date.
+- Banks often refund a late fee or an annual fee when asked. The refund shows on the next statement.
+- Foreign currency fees come with paying in another currency, so they are counted here but are rarely refunded.
+
+Action: Show those fees
+
 ### subscriptions (Worth knowing)
 
 Subscriptions in the focus month (or the latest complete month), at their yearly and daily cost. Steady unless they changed from the month before (see Notability).

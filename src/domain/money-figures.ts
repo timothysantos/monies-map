@@ -193,3 +193,12 @@ export function repeatingFigureMinor(ids: readonly string[], entries: FigureEntr
   const named = new Set(ids);
   return entries.filter((entry) => named.has(entry.id)).reduce((sum, entry) => sum + spendingMinor(entry), 0);
 }
+
+/**
+ * Bank fees this year (the `bank_fees` figure, DOMAIN.md "Bank Charge"):
+ * every row either classifier names a fee in the year, charges adding and
+ * refunds (money in under Fees) taking away, at the view's amounts. It opens
+ * as `spent` narrowed to those ids over January to the focus month, so a
+ * refunded charge and its refund net to zero and the total is the figure.
+ */
+export const bankFeesFigureMinor = repeatingFigureMinor;

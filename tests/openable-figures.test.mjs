@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
@@ -558,4 +558,41 @@ test("Subscriptions and bills: every figure opens exactly its charges and Entrie
     }
   }
   assert.ok(checked >= 20, `checked ${checked} figures`);
+});
+
+// Bank fees this year (the `bank_fees` figure): the Money insights line's
+// total opens exactly the year's fee rows (a refunded fee and its refund
+// net to zero) and Entries' Spent total is the figure, in every view.
+test("Bank fees this year: the year's fee rows add up to the line's total in every view", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  const year = "2026";
+  await createEntry(api, { date: `${year}-03-02`, description: "ANNUAL MEMBERSHIP FEE", accountName: "Citi Rewards", categoryName: "Fees", amountMinor: 19_620, ownerName: "Joyce" });
+  await createEntry(api, { date: `${year}-03-09`, description: "ANNUALMEMBERFEEREV", accountName: "Citi Rewards", categoryName: "Fees", entryType: "income", amountMinor: 19_620, ownerName: "Joyce" });
+  await createEntry(api, { date: `${year}-04-18`, description: "LATE PAYMENT CHARGE", accountName: "UOB One", categoryName: "Fees", amountMinor: 10_000, ownerName: "Tim" });
+  await createEntry(api, { date: `${year}-05-02`, description: "INTEREST CHARGES", accountName: "UOB One", categoryName: "Fees", amountMinor: 1_840, ownerName: "Tim" });
+  for (const [day, amountMinor] of [["03", 150], ["04", 120], ["05", 180]]) {
+    await createEntry(api, { date: `${year}-05-${day}`, description: "CCY CONVERSION FEE", accountName: "Citi Rewards", categoryName: "Fees", amountMinor, ownerName: "Joyce" });
+  }
+  // A shop whose name has "fees" in it is not a fee.
+  await createEntry(api, { date: `${year}-05-06`, description: "AMAZE*FEES SINGAPORE", accountName: "UOB One", categoryName: "Shopping", amountMinor: 4_500 });
+  const expected = {
+    household: 10_000 + 1_840 + 450,
+    [`${TIM}:direct_plus_shared`]: 11_840,
+    [`${TIM}:direct`]: 11_840,
+    [`${TIM}:shared`]: null
+  };
+  for (const view of VIEWS) {
+    const { summaryPage } = await summaryLead(api, view, START, MAY);
+    const fees = summaryPage.bankFeesYear;
+    const want = expected[view.viewId === "household" ? "household" : `${view.viewId}:${view.scope}`];
+    if (want === null) {
+      assert.equal(fees, undefined, `${view.viewId}:${view.scope} has no fees`);
+      continue;
+    }
+    assert.equal(fees.netMinor, want, `${view.viewId}:${view.scope} total`);
+    const { model, derived } = await viewEntries(api, accounts, "spent", { search: viewSearch(view, MAY), period: { startMonth: `${year}-01`, endMonth: MAY }, ids: fees.ids });
+    assert.equal(shownTotal(model), fees.netMinor, `${view.viewId}:${view.scope} Entries total`);
+    assert.equal(bankFeesFigureMinor(fees.ids, derived.filteredEntries), fees.netMinor, `${view.viewId}:${view.scope} rule`);
+  }
 });
