@@ -91,6 +91,14 @@ test("a shop usually shared is listed, ticks choose the entries, Add puts them o
   // The list was left open, and the two entries are on it again.
   await expect(section.locator(`[data-usually-shop="${SHOP}"]`)).toBeVisible();
   await expect(section.getByRole("button", { name: "Hide" })).toBeVisible();
+
+  // The group's amount opens exactly its entries on Entries.
+  await section.locator(`[data-usually-shop="${SHOP}"] [data-fig='spent']`).click();
+  const menu = page.locator("[data-figure-menu]");
+  await expect(menu.getByRole("button", { name: "View entries" })).toBeVisible();
+  await menu.getByRole("button", { name: "View entries" }).click();
+  await expect(page).toHaveURL(/\/entries\?.*entry_figure=spent/);
+  await expect(page.locator(".entry-row").filter({ hasText: SHOP })).toHaveCount(2, { timeout: 30_000 });
 });
 
 test("more than ten entries in one Add ask for Yes, add all N first", async ({ page }) => {
