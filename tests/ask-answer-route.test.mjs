@@ -242,18 +242,23 @@ test("what do I owe Serene: Ethan's Splits balances plus the settle-up still to 
   const homeNet = groups.filter((group) => group.currency === "SGD").reduce((sum, group) => sum + group.balanceMinor, 0)
     + open.reduce((sum, checkpoint) => sum + (checkpoint.toPersonId === ETHAN ? 1 : -1) * (checkpoint.amountMinor - (checkpoint.matchedAmountMinor ?? 0)), 0);
   assert.deepEqual(payload.answer.lead, { label: "Balance", amountMinor: Math.abs(homeNet), currency: "SGD", tone: "in" });
-  assert.equal(homeNet, 85536);
+  // 83812 = the showcase's open settle-up plus Home & Bills and Dinners out.
+  // Home & Bills includes Serene's NTUC FairPrice top-ups that the showcase
+  // puts on Splits for the older months (demo-showcase-data.ts, a466fbda);
+  // the two newest months' top-ups stay off Splits, so the figure moves only
+  // if that seed rule does.
+  assert.equal(homeNet, 83812);
   assert.deepEqual(payload.answer.links, [{ kind: "splits", label: "Open Splits", month: "2026-05", viewId: "household", groupId: "split-group-japan-trip" }]);
-  assert.equal(payload.wording.text, "Serene owes you $855.36 on Splits. That's $798.51 from the 6 Apr settle-up and $166.35 for Home & Bills, less $109.50 for Dinners out. Japan trip has JP¥26,730 still open.");
+  assert.equal(payload.wording.text, "Serene owes you $838.12 on Splits. That's $781.27 from the 6 Apr settle-up and $166.35 for Home & Bills, less $109.50 for Dinners out. Japan trip has JP¥26,730 still open.");
 
   // On the household view with nobody named, both names are used.
   const household = await ask(api, "who owes who?");
   assert.equal(household.answer.lead.tone, "neutral");
-  assert.match(household.wording.text, /^Serene owes Ethan \$855\.36 on Splits\./);
+  assert.match(household.wording.text, /^Serene owes Ethan \$838\.12 on Splits\./);
   // Serene's own view says it from her side.
   const sereneView = await ask(api, "what do I owe Ethan?", { viewId: SERENE });
   assert.equal(sereneView.answer.lead.tone, "short");
-  assert.match(sereneView.wording.text, /^You owe Ethan \$855\.36 on Splits\./);
+  assert.match(sereneView.wording.text, /^You owe Ethan \$838\.12 on Splits\./);
 });
 
 test("income for a person view is that person's income, against their plan", async (t) => {
