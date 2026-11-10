@@ -1,0 +1,310 @@
+/* Investments over time and Tax reliefs (investments-card.jsx,
+   tax-reliefs-card.jsx; design.md "Investments over time" and "Tax
+   reliefs"). Summary cards under Money insights. Colours are the tokens
+   only: money tones for grew by (mint up, rose down), the plain ink for
+   worth, dusty teal (sky) for the money put in, each person's own colour
+   for their rows and bars (person-colour.js), and harvest gold (butter)
+   for the deadline pill. */
+
+.invest-card,
+.tax-card {
+  margin-bottom: 16px;
+}
+
+.invest-head,
+.tax-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.invest-eyebrow,
+.tax-eyebrow {
+  margin: 0;
+  color: var(--eyebrow);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.invest-sub,
+.tax-sub {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.invest-worth {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.invest-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.invest-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--chip);
+}
+
+.invest-tile-label {
+  font-size: 0.82rem;
+}
+
+.invest-tile-figure {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.invest-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.invest-spark {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin: 8px 0 4px;
+}
+
+.invest-grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.invest-axis text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.invest-worth-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.invest-dot {
+  fill: var(--text);
+}
+
+.invest-putin-line {
+  fill: none;
+  stroke: var(--pastel-sky-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.invest-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.invest-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.invest-key {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  background: var(--text);
+}
+
+.invest-key.is-putin {
+  height: 2px;
+  background: var(--pastel-sky-ink);
+}
+
+.invest-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.invest-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: baseline;
+  padding: 10px 0 10px 10px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--person-colour, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.invest-row:last-child {
+  border-bottom: 0;
+}
+
+.invest-row > span:not(:first-child) {
+  text-align: right;
+}
+
+.invest-row.is-head {
+  border-left-color: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.invest-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+
+.invest-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.invest-phone-line {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+}
+
+.invest-toggle {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--pastel-sky-ink);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.invest-card .invest-rows .invest-row {
+  grid-template-columns: minmax(0, 2fr) repeat(var(--invest-columns, 3), minmax(0, 1fr));
+}
+
+/* ---- Tax reliefs ---- */
+
+.tax-deadline {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.tax-person {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.tax-person + .tax-person {
+  border-top: 1px solid var(--line);
+}
+
+.tax-person-name {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.tax-person-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--person-colour);
+}
+
+.tax-relief {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tax-relief-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tax-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.tax-bar-fill {
+  height: 100%;
+  background: var(--person-colour);
+}
+
+.tax-room {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.tax-full {
+  color: var(--pastel-mint-ink);
+  font-size: 0.84rem;
+}
+
+.tax-charity {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-top: 4px;
+  font-size: 0.9rem;
+}
+
+.tax-footnote {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 760px) {
+  .invest-worth {
+    font-size: 1.4rem;
+  }
+
+  .invest-tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .tax-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tax-relief-line {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

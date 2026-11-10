@@ -201,3 +201,6 @@ export function SpendingMixSection({
 // (check:bundle). Both load beside the first screen; its data waits for
 // the top summary to be usable.
 export { SubscriptionsSection } from "./subscriptions-section";
+// Investments over time and Tax reliefs ride here too, for the same reason.
+export { InvestmentsCard } from "./investments-card";
+export { TaxReliefsCard } from "./tax-reliefs-card";

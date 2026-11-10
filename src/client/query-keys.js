@@ -149,5 +149,13 @@ export const queryKeys = {
   // Summary's Subscriptions and bills (repeating-charges-api.js), per view and scope.
   repeatingCharges(viewId, scope) {
     return ["repeating-charges", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
+  },
+  // Summary's Investments over time and Tax reliefs (summary-cards-api.js),
+  // one per view: both count whole amounts, so the scope does not change them.
+  investmentsOverTime(viewId) {
+    return ["investments-over-time", viewId || "household"];
+  },
+  taxReliefs(viewId) {
+    return ["tax-reliefs", viewId || "household"];
   }
 };

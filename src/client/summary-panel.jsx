@@ -43,6 +43,11 @@ const SummaryIntentVsOutcomeSection = lazy(() => import("./summary-intent-outcom
 // a new first-screen file, check:bundle); it renders, and reads its data,
 // only once the top summary is usable.
 const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SubscriptionsSection })));
+// Investments over time and Tax reliefs ride in the same chunk and read
+// their data only once the top summary is usable; each shows nothing until
+// it has something to show.
+const InvestmentsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.InvestmentsCard })));
+const TaxReliefsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.TaxReliefsCard })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -219,6 +224,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
         </Suspense>
       ) : <SubscriptionsReserve height={subsReserveHeight} />}
+
+      {cardsUsable && fetchRequiredQuery ? (
+        <Suspense fallback={null}>
+          <InvestmentsCard view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+          <TaxReliefsCard view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+        </Suspense>
+      ) : null}
 
       <div className="summary-top-grid has-intent-grid">
         {/* All months: the whole range's spending by category. */}

@@ -64,6 +64,6 @@ export const figureCopy = {
     owed: "Who owes whom?",
     trip: (name) => `How much did we spend on ${name}?`,
     investments: "How are my investments doing?",
-    taxRelief: "How much have I topped up this year?"
+    taxRelief: (period) => `How much did I put into tax reliefs ${period}?`
   }
 };
