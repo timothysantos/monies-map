@@ -200,7 +200,10 @@
   display: flex;
   flex-direction: column;
   width: min(320px, calc(100vw - 32px));
-  max-height: min(440px, var(--radix-popover-content-available-height, 440px));
+  /* Whole pixels: a fractional room (the anchor sits at a fractional y)
+     left the scrolled list a fraction short, so its last row stayed a hair
+     clipped at the end. */
+  max-height: min(440px, round(down, var(--radix-popover-content-available-height, 440px), 1px));
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 14px;

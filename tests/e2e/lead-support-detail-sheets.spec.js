@@ -195,7 +195,7 @@ test.describe("Lead · Support · Detail sheets on a phone", { tag: "@webkit" },
     // The Splits row and its quick add share one wrapper (the quick add
     // sits on its own line under the row on a phone).
     await expect(sheet.locator(".lsd-rows > .lsd-row, .lsd-rows > .lsd-row-group > .lsd-row, .lsd-rows > .entry-split-action-row > .lsd-row").locator(".lsd-row-label"))
-      .toHaveText(["Category", "Owner", "Splits", "Note", "More details"]);
+      .toHaveText(["Category", "Trip or event", "Owner", "Splits", "Note", "More details"]);
     await expect(sheet.locator(".entry-split-action-row > *")).toHaveText(["SplitsAdd to splits", /^Add to .+ · Half each$/]);
     await expect(sheet.locator(".lsd-row-more")).toContainText("Date, wallet, time, posted date, type");
     await expect(sheet.locator("[data-row='splits']")).toContainText("Add to splits");
@@ -556,7 +556,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   const columnXs = await editor.locator(".lsd-rows .lsd-row").evaluateAll((rows) => [...new Set(rows.map((row) => Math.round(row.getBoundingClientRect().x)))]);
   expect(columnXs).toHaveLength(2);
   // Date, Wallet and Owner are the lead's chips: no row repeats them.
-  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
+  await expect(editor.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Trip or event", "Splits", "Note", "Time", "Posted date", "Type"]);
 
   // Tab walks description, amount, then the rows in order (a date field's
   // day, month and year parts are one stop here).
@@ -574,7 +574,7 @@ test("desktop: the inline editor keeps its fields in Tab order and saves as befo
   }
   expect(order.slice(0, 10)).toEqual([
     "Amount", "Hide money totals", "Change date, Sun 24 May", "Change wallet, UOB One", "Change owner, Tim",
-    "CategoryGroceries", "SplitsAdd to splits", expect.stringMatching(/^Add to .+ · Half each$/), "Note", "Time"
+    "CategoryGroceries", "Trip or eventNone", "SplitsAdd to splits", expect.stringMatching(/^Add to .+ · Half each$/), "Note"
   ]);
 
   await editor.getByRole("textbox", { name: "Amount" }).fill("12.34");

@@ -405,7 +405,7 @@ test.describe("Entries inline editor: the lead chips edit date, wallet and owner
     for (const key of ["date", "wallet", "owner"]) {
       await expect(card.locator(`[data-row='${key}']`), key).toHaveCount(0);
     }
-    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
+    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Trip or event", "Splits", "Note", "Time", "Posted date", "Type"]);
     await expect(card.locator(".lsd-card .lsd-chip")).toHaveText(["Sun 24 May", "UOB One", "Tim", "Manual provisional"]);
   });
 
@@ -482,7 +482,7 @@ test.describe("Entries inline editor: the lead chips edit date, wallet and owner
     await expect(lead.getByRole("textbox", { name: "Amount" })).toHaveCount(0);
     // The owner is not a bank fact.
     await expect(lead.getByLabel("Change owner, Tim")).toBeVisible();
-    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Splits", "Note", "Time", "Posted date", "Type"]);
+    await expect(card.locator(".lsd-rows .lsd-row-label")).toHaveText(["Category", "Trip or event", "Splits", "Note", "Time", "Posted date", "Type"]);
   });
 
   test("the inline card stays compact at 1280 px (height cap)", async ({ page }) => {
@@ -490,9 +490,10 @@ test.describe("Entries inline editor: the lead chips edit date, wallet and owner
     const card = await openInlineEditor(page, await createManualEntry(page));
     const editor = page.locator(".entry-inline-editor");
     // About 400 px tall with Date, Wallet and Owner rows; the chips replaced
-    // those three rows, so the two columns are one row shorter.
-    expect((await box(editor)).height).toBeLessThan(380);
-    expect((await box(card)).height).toBeLessThan(310);
+    // those three rows, so the two columns are one row shorter. The "Trip or
+    // event" row (DOMAIN.md "Trip or Event") added one row back.
+    expect((await box(editor)).height).toBeLessThan(420);
+    expect((await box(card)).height).toBeLessThan(350);
     // The lead spans the top and the rows run in two columns.
     // (Polled: the description field resizes to its text as the card settles.)
     await expect.poll(async () => {

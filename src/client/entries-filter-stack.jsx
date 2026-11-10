@@ -112,11 +112,13 @@ export function EntriesFilterStack({
           />
         </div>
         {onOpenTrips ? (
-          <div className="entries-filter-target entries-filter" data-filter-target="trip">
-            <span className="entries-filter-label">{tripEventsCopy.rowLabel}</span>
-            <button type="button" className="entries-filter-trip-button" data-trip-filter="" onClick={onOpenTrips}>
-              <span>{tripName || tripEventsCopy.filterAll}</span>
-            </button>
+          <div className="entries-filter-target" data-filter-target="trip">
+            <div className="entries-filter">
+              <span className="entries-filter-label">{tripEventsCopy.rowLabel}</span>
+              <button type="button" className="table-edit-input entries-filter-trip-button" data-trip-filter="" onClick={onOpenTrips}>
+                <span>{tripName || tripEventsCopy.filterAll}</span>
+              </button>
+            </div>
           </div>
         ) : null}
         {!hideActions ? (

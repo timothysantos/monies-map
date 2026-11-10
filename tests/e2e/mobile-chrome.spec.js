@@ -208,10 +208,11 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
 
     // Detail: the filters as quiet rows, one group of 44 px rows.
     const rows = sheet.locator(".mobile-context-filters .entries-filter");
-    await expect(rows).toHaveCount(4);
+    await expect(rows).toHaveCount(5);
     await expect(rows.nth(1)).toContainText("All wallets");
     await expect(rows.nth(2)).toContainText("All categories");
     await expect(rows.nth(3)).toContainText("All types");
+    await expect(rows.nth(4)).toContainText("All trips & events");
     for (const row of await rows.all()) {
       expect((await row.boundingBox()).height).toBeGreaterThanOrEqual(44);
     }
