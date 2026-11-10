@@ -75,3 +75,24 @@ test("app install path and committed shortcut release stay aligned", async () =>
   assert.equal(settingsSection.includes(manifest.installPath), true);
   assert.equal(browserTest.includes(manifest.installPath), true);
 });
+
+test("the Shortcut asks for a missing amount and posts the same request again", async () => {
+  const source = await readFile(path.join(artifactRoot, "monies-map-apple-pay-api.plist"), "utf8");
+  const manifest = JSON.parse(await readFile(path.join(artifactRoot, "manifest.json"), "utf8"));
+
+  // It reads the server's needsAmount answer, asks with the approved words
+  // (Text input, so "IDR 150000" works), and posts twice: the normal tap and
+  // the retry with the typed amount.
+  assert.match(source, /<string>needsAmount<\/string>/);
+  assert.match(source, /<string>is\.workflow\.actions\.ask<\/string>/);
+  assert.match(source, /<key>WFInputType<\/key>\s*<string>Text<\/string>/);
+  assert.match(
+    source,
+    /How much was it\?\n[^<]* on [^<]*\. The amount didn't come through\. Type it in SGD, or add the currency, like IDR 150000\./
+  );
+  assert.equal((source.match(/<string>is\.workflow\.actions\.downloadurl<\/string>/g) ?? []).length, 2);
+  // Both posts send the one request id kept in a variable, not a fresh one.
+  assert.equal((source.match(/<string>TapRequestId<\/string>/g) ?? []).length, 3);
+  assert.equal((source.match(/<string>apple-pay-api-2026-11-10-v7<\/string>/g) ?? []).length, 3);
+  assert.match(manifest.signedReleaseFile, /2026-11-10-v7\.shortcut$/);
+});
