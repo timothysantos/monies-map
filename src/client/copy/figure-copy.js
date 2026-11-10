@@ -19,6 +19,7 @@ const names = {
   plan: "Plan",
   splits: "Splits",
   trip: "Trip or event",
+  statement: "Statements",
   // A Money insights line (its menu has no title; this names it for screen readers).
   insight: "Insight"
 };
@@ -39,6 +40,8 @@ export const figureCopy = {
   openPlan: "Open plan",
   openMonthPlan: (monthLabel) => `Open ${monthLabel} plan`,
   openSplits: "Open Splits",
+  openStatement: "Open the statement",
+  openStatements: "Open the statements",
   ask: "Ask about this",
   // The period as a question says it: "in Sep 2026", "from Oct 2025 to Sep 2026".
   inMonth: (monthLabel) => `in ${monthLabel}`,
@@ -59,6 +62,8 @@ export const figureCopy = {
     // Subscriptions and bills: the charge against its usual level (Ask's usual question).
     shop: (name, period) => `Is ${name} more than usual ${period}?`,
     owed: "Who owes whom?",
-    trip: (name) => `How much did we spend on ${name}?`
+    trip: (name) => `How much did we spend on ${name}?`,
+    investments: "How are my investments doing?",
+    taxRelief: "How much have I topped up this year?"
   }
 };

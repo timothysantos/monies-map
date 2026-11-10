@@ -36,7 +36,9 @@ import { INSIGHT_LINE_ASK_EVENT } from "./insight-ask-event";
 //   scrolled into view while the menu is open.
 // - data-fig-note: a line that explains the figure, shown first in the menu
 //   (Month's To allocate).
-// The view and scope are the page's own (the URL).
+// - data-fig-view: on the figure or any parent, the view it opens in
+//   (Investments over time and Tax reliefs: "household"); otherwise the
+//   view and scope are the page's own (the URL).
 
 // What a figure element says about itself (see the attributes above).
 export function readFigure(element) {
@@ -51,6 +53,7 @@ export function readFigure(element) {
     plan: element.hasAttribute("data-fig-plan") ? element.getAttribute("data-fig-plan") ?? "" : null,
     ask: element.getAttribute("data-fig-ask") ?? "",
     period: startMonth ? { startMonth, endMonth: endMonth || startMonth } : null,
+    view: element.closest("[data-fig-view]")?.getAttribute("data-fig-view") ?? "",
     // A trip or event's figure: whose share, which category, its split
     // group, and whether it is the list itself (trip-figure-search.js).
     trip: {

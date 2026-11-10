@@ -2,6 +2,7 @@
 import "./imports-route.css";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useHashTarget } from "./use-hash-target";
 
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
@@ -205,9 +206,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [accountDialogError, setAccountDialogError] = useState("");
   const [pendingStatementAccountName, setPendingStatementAccountName] = useState("");
   // Recent imports starts closed: it is audit context, not the next step.
-  const [recentImportsOpen, setRecentImportsOpen] = useState(false);
+  // An investment statement's figure on Summary ("Open the statement",
+  // figure-menu-model.js) opens it at that account's imports
+  // (?import_account=<account name>#import-history).
+  const [linkedImportAccount] = useState(readLinkedImportAccount);
+  const [recentImportsOpen, setRecentImportsOpen] = useState(linkedImportAccount !== null);
   const [recentImportPage, setRecentImportPage] = useState(1);
-  const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
+  const [recentImportAccountFilter, setRecentImportAccountFilter] = useState(linkedImportAccount ?? "");
+  useHashTarget(recentImportsOpen);
   const [recentImportStatus, setRecentImportStatus] = useState(null);
   const [isRecentImportsRefreshing, setIsRecentImportsRefreshing] = useState(false);
   const [optimisticRecentImport, setOptimisticRecentImport] = useState(null);
@@ -2995,4 +3001,14 @@ function applyStatementAccountMatches(statementCheckpoints, matches) {
     return { ...checkpoint, detectedAccountName, accountId: match.accountId, accountName: match.accountName };
   });
   return changed ? next : statementCheckpoints;
+}
+
+// The account a figure opened Imports for, or null when none was named.
+function readLinkedImportAccount() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("import_account") ? params.get("import_account") ?? "" : null;
+  } catch {
+    return null;
+  }
 }

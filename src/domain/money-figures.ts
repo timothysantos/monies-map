@@ -21,7 +21,10 @@
 //   realized savings).
 // A third kind is named by the server: Subscriptions and bills' figures
 // (`repeating`, repeatingFigureMinor) are the exact charges behind them,
-// opened as `spent` narrowed to their entry ids.
+// opened as `spent` narrowed to their entry ids. Investments over time's
+// "put in" (investmentPutInFigureMinor) opens as `invested` (or `took_out`
+// when more came out) narrowed to the moves it counted, and Tax reliefs'
+// figures (taxReliefFigureMinor) as `outflow` narrowed to their entries.
 //
 // A row belongs to a figure when it adds to it (or takes from it), so
 // leaving the other rows out never changes the figure. The total is worked
@@ -202,6 +205,45 @@ export function repeatingFigureMinor(ids: readonly string[], entries: FigureEntr
  * refunded charge and its refund net to zero and the total is the figure.
  */
 export const bankFeesFigureMinor = repeatingFigureMinor;
+
+/**
+ * Investments over time's "You put in" (DOMAIN.md "Investments Over Time"):
+ * the named moves into investment accounts less the moves out, an expense
+ * filed under Investments (the bank side of a contribution) counting as
+ * money put in. It is the Invested money job's net over exactly those rows
+ * (moneyUseInputFromEntries), so View entries opens it as `invested`
+ * narrowed to the ids when it is zero or more and as `took_out` when it is
+ * below zero, and the Entries lead is its size to the cent. Signed.
+ */
+export function investmentPutInFigureMinor(
+  ids: readonly string[],
+  entries: FigureEntry[],
+  allEntries: FigureEntry[],
+  investmentAccountIds: ReadonlySet<string>
+): number {
+  const named = new Set(ids);
+  const input = moneyUseInputFromEntries(entries.filter((entry) => named.has(entry.id)), allEntries, investmentAccountIds);
+  return (input.investedMinor ?? 0) + (input.movedIntoInvestmentsMinor ?? 0) - (input.takenFromInvestmentsMinor ?? 0);
+}
+
+/** The figure a "put in" amount opens as: `invested`, or `took_out` below zero. */
+export function investmentPutInFigure(amountMinor: number): "invested" | "took_out" {
+  return amountMinor < 0 ? "took_out" : "invested";
+}
+
+/**
+ * Tax reliefs this year (DOMAIN.md "Tax Relief"): each amount is the named
+ * entries' money out at their whole amounts, an expense and a transfer out
+ * alike (a top-up or gift sent as a transfer with a purpose). It opens as
+ * `outflow` narrowed to the ids in the household view, whose Entries total
+ * (spent plus transfers out) is this sum to the cent.
+ */
+export function taxReliefFigureMinor(ids: readonly string[], entries: FigureEntry[]): number {
+  const named = new Set(ids);
+  return entries
+    .filter((entry) => named.has(entry.id))
+    .reduce((sum, entry) => sum + (entry.entryType === "expense" || isTransferOut(entry) ? entry.amountMinor : 0), 0);
+}
 
 // ---- Spent on a trip or event (DOMAIN.md "Trip or Event") ------------------
 //

@@ -29,7 +29,8 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, changedFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, changedFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
@@ -750,4 +751,50 @@ test("What changed and More than usual so far: every figure opens entries that a
   assert.equal(above.lines[0].nowMinor, 89_000);
   const { model } = await viewEntries(api, accounts, "spent", { search, period: { startMonth: thisMonth, endMonth: thisMonth }, ids: above.lines[0].ids });
   assert.equal(shownTotal(model), 89_000);
+});
+
+// Investments over time (the `invested` figure narrowed to the moves the
+// card counted, money-figures.ts investmentPutInFigureMinor): "You put in"
+// and each account's put in open exactly their moves in the household view,
+// whatever view the page is in, and Entries' lead is the amount to the cent
+// (Took out of investments when more came out than went in).
+test("Investments over time: every put in opens exactly its moves and Entries' total is the figure", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  for (const name of ["Endowus", "IBKR"]) {
+    const created = await api("/api/accounts/create", { name, institution: name, kind: "investment", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: TIM });
+    assert.equal(created.status, 200, JSON.stringify(created.payload));
+  }
+  const { accounts } = await get(api, "/api/reference-data");
+  const linkedTransfer = async ({ date, amountMinor, from, to }) => {
+    const fromEntryId = await createEntry(api, { date, description: `${from} to ${to}`, accountName: from, categoryName: "Transfer", entryType: "transfer", transferDirection: "out", amountMinor });
+    const toEntryId = await createEntry(api, { date, description: `${from} to ${to}`, accountName: to, categoryName: "Transfer", entryType: "transfer", transferDirection: "in", amountMinor });
+    assert.equal((await api("/api/transfers/link", { fromEntryId, toEntryId })).status, 200);
+  };
+  await linkedTransfer({ date: "2026-02-10", amountMinor: 200_000, from: "UOB One", to: "Endowus" });
+  await linkedTransfer({ date: "2026-08-03", amountMinor: 45_000, from: "Endowus", to: "UOB One" });
+  await linkedTransfer({ date: "2026-09-12", amountMinor: 30_000, from: "Endowus", to: "IBKR" });
+  await linkedTransfer({ date: "2026-10-01", amountMinor: 70_000, from: "IBKR", to: "UOB One" });
+  for (const [name, worth] of [["Endowus", 180_000], ["IBKR", 900_000]]) {
+    await db.prepare("INSERT INTO imports (id, household_id, source_type, source_label, status) VALUES (?, 'household-1', 'pdf', ?, 'completed')").bind(`import-${name}`, `${name}.pdf`).run();
+    await db.prepare(`INSERT INTO investment_statement_values (id, household_id, account_id, value_month, as_of_date, total_assets_minor, market_value_minor, import_id)
+      VALUES (?, 'household-1', (SELECT id FROM accounts WHERE account_name = ?), '2026-09', '2026-09-30', ?, ?, ?)`).bind(`value-${name}`, name, worth, worth, `import-${name}`).run();
+  }
+  const card = await buildInvestmentsOverTimeDto(db, "household", "2026-11-10");
+  assert.deepEqual(card.accounts.map((row) => [row.name, row.putIn.amountMinor]), [["Endowus", 155_000], ["IBKR", -70_000]]);
+  const figures = [["You put in", card.putIn], ...card.accounts.map((row) => [row.name, row.putIn])];
+  // The page is in Tim's Shared scope, where none of these moves shows: the
+  // figure still opens the household view.
+  const search = viewSearch(VIEWS[3], "2026-11");
+  const period = { startMonth: "2026-01", endMonth: "2026-11" };
+  for (const [label, putIn] of figures) {
+    const menu = figureMenu({ fig: investmentPutInFigure(putIn.amountMinor), period, search, ids: putIn.ids, view: "household" });
+    const { model, derived, params } = await openEntries(api, menu.items[0].location, accounts);
+    assert.equal(params.get("view"), "household", label);
+    assert.equal(shownTotal(model), Math.abs(putIn.amountMinor), `${label} Entries total`);
+    assert.equal(investmentPutInFigureMinor(putIn.ids, derived.filteredEntries, derived.filteredEntries, getInvestmentAccountIds(accounts)), putIn.amountMinor, `${label} rule`);
+  }
+  // Without the view, the page's Shared scope lists none of them.
+  const pageView = figureMenu({ fig: "invested", period, search, ids: card.putIn.ids });
+  const { derived: shared } = await openEntries(api, pageView.items[0].location, accounts);
+  assert.equal(shared.filteredEntries.length, 0);
 });

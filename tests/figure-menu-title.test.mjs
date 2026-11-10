@@ -56,3 +56,31 @@ test("a long category name is passed through whole (the menu wraps it)", () => {
   const name = "Childcare, education and after-school enrichment classes for the children";
   assert.equal(figureMenu({ fig: "category", arg: name, period: MONTH }).title.name, name);
 });
+
+// Investments over time's worth (data-fig="statement"): it opens the
+// account's statements on Imports, or every import for the whole worth, and
+// Ask; never View entries (a statement value is not an entry).
+test("a statement figure opens that account's imports and Ask, never View entries", () => {
+  const one = figureMenu({ fig: "statement", arg: "iFAST Wrap", name: "iFAST Wrap", period: null, search: "?view=person-tim&scope=direct" });
+  assert.deepEqual(one.title, { name: "iFAST Wrap", period: "" });
+  assert.deepEqual(one.items.map((item) => item.action), ["imports", "ask"]);
+  assert.deepEqual(one.items[0].location, { pathname: "/imports", search: "?view=person-tim&import_account=iFAST+Wrap", hash: "#import-history" });
+  assert.equal(one.items[0].label, "Open the statement");
+  const all = figureMenu({ fig: "statement", period: null, search: "?view=household" });
+  assert.equal(all.items[0].label, "Open the statements");
+  assert.equal(all.items[0].location.search, "?view=household");
+  assert.equal(all.title.name, "Statements");
+});
+
+// data-fig-view: a card that counts whole amounts opens its figures in the
+// household view, with the household's scope, whatever the page's view.
+test("a figure with its own view opens in that view and drops the page's scope", () => {
+  const period = { startMonth: "2026-01", endMonth: "2026-11" };
+  const search = "?view=person-joyce&month=2026-11&scope=shared";
+  const params = new URLSearchParams(figureMenu({ fig: "outflow", ids: ["a", "b"], period, search, view: "household" }).items[0].location.search);
+  assert.equal(params.get("view"), "household");
+  assert.equal(params.get("entries_scope"), "direct_plus_shared");
+  assert.equal(params.get("entry_figure"), "outflow");
+  const own = figureMenu({ fig: "outflow", ids: ["a"], period, search });
+  assert.equal(new URLSearchParams(own.items[0].location.search).get("view"), "person-joyce");
+});

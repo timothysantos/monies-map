@@ -33,7 +33,7 @@ export function ImportRecentHistorySection({
   const showGenericRefreshStatus = isRefreshing && !recentImportStatus && !hasOptimisticRecentImport;
 
   return (
-    <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
+    <section id="import-history" className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
       <button
         type="button"
         className="settings-section-toggle import-history-toggle"

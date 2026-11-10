@@ -33,9 +33,13 @@ const HIDDEN_QUESTION = { spentOverPlan: "spentVsPlan", spentMore: "spentVsIncom
  * The menu a figure opens, as data: its label and its items, each with the
  * location it opens or the question it asks. Pure: the DOM is read by
  * readFigure.
- * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean, trip?: { personId?: string, categoryName?: string, group?: string, list?: boolean } }} figure
+ * `view` (data-fig-view) opens the figure in that view whatever the page's:
+ * Investments over time and Tax reliefs count whole amounts, so their
+ * figures open in the household view.
+ * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean, view?: string, trip?: { personId?: string, categoryName?: string, group?: string, list?: boolean } }} figure
  */
-export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search = "", pathname = "", hidden = false, trip = {} }) {
+export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search: pageSearch = "", pathname = "", hidden = false, view = "", trip = {} }) {
+  const search = view ? viewSearch(pageSearch, view) : pageSearch;
   // A trip or event's figure (data-fig="trip", data-fig-arg its id): the
   // trip view, narrowed to the figure's slice. Its Spent lead is the list
   // itself, so it offers Open Splits (a linked split group) and Ask.
@@ -57,6 +61,22 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
     const tripName = ownName || copy.names.trip;
     tripItems.push({ action: "ask", label: copy.ask, question: copy.questions.trip(tripName) });
     return { label: copy.menuLabel(tripName), title: { name: tripName, period: "" }, items: tripItems };
+  }
+  // An investment statement's figure (data-fig="statement"; Investments
+  // over time): it opens that account's statements on Imports (data-fig-arg
+  // the account's name; none: every import), and Ask.
+  if (fig === "statement") {
+    const params = new URLSearchParams({ view: new URLSearchParams(search).get("view") || "household" });
+    if (arg) params.set("import_account", arg);
+    const statementName = ownName || copy.names.statement;
+    return {
+      label: copy.menuLabel(statementName),
+      title: { name: statementName, period: "" },
+      items: [
+        { action: "imports", label: arg ? copy.openStatement : copy.openStatements, location: { pathname: "/imports", search: `?${params.toString()}`, hash: "#import-history" } },
+        { action: "ask", label: copy.ask, question: copy.questions.investments }
+      ]
+    };
   }
   // A Money insights line: Ask about this is its only item (the line
   // carries its own signal; figure-menu.js fires it back at the line).
@@ -157,4 +177,13 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
   const name = ownName || (isCategory ? arg : copy.names[fig]) || copy.ask;
   const periodLabel = isCategory || fig === "splits" || !startMonth ? "" : isRange ? copy.periodRange(formatMonthLabel(startMonth), endLabel) : endLabel;
   return { label: copy.menuLabel(name), title: { name, period: periodLabel }, items };
+}
+
+// The page's search in another view: that view, its default scope.
+function viewSearch(search, view) {
+  const next = new URLSearchParams(search);
+  next.set("view", view);
+  next.delete("scope");
+  next.delete("entries_scope");
+  return `?${next.toString()}`;
 }

@@ -19,6 +19,7 @@ import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildRemindersDto } from "./domain/pages/reminders";
 import { buildRepeatingChargesDto } from "./domain/pages/repeating-charges";
+import { buildInvestmentsOverTimeDto } from "./domain/pages/investments-over-time";
 import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
@@ -572,6 +573,19 @@ export default {
         env.DB,
         url.searchParams.get("view") ?? "household",
         (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
+      ), timing);
+    }
+
+    // Investments over time on Summary (DOMAIN.md "Investments Over Time"):
+    // what the statements say each investment account is worth and the money
+    // put in this year. Read-only, no AI; asked once the top summary is usable.
+    if (url.pathname === "/api/investments-over-time") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "Investments over time only answers GET." }, 405, { Allow: "GET" });
+      }
+      return apiPageResponse("Investments over time", request, url, () => buildInvestmentsOverTimeDto(
+        env.DB,
+        url.searchParams.get("view") ?? "household"
       ), timing);
     }
 
