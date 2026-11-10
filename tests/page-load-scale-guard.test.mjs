@@ -52,6 +52,11 @@ const PAGES = [
   // by description and month, read in one step (measured 4 round trips,
   // 40,200 rows, 612 kB of rows, ~40 ms node CPU for either view).
   { name: "repeating-charges household", path: "/api/repeating-charges?view=household", maxStatements: 8, maxRowsRead: 80_000, maxRowBytes: 1_300_000, maxResponseBytes: 12_000 },
+  // What changed this month (2026-11): the view's entries of 7 months in the
+  // one date-window read Ask's "What changed?" uses; optional, read after the
+  // first screen (measured 6 round trips, 11,155 rows, 1.7 MB of rows, ~45 ms node CPU).
+  { name: "summary-changed household", path: "/api/summary-changed?view=household", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
+  { name: "summary-changed person", path: "/api/summary-changed?view=person-tim&scope=direct_plus_shared", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
   { name: "repeating-charges person", path: "/api/repeating-charges?view=person-tim&scope=direct_plus_shared", maxStatements: 8, maxRowsRead: 80_000, maxRowBytes: 1_300_000, maxResponseBytes: 12_000 }
 ];
 // A handler that does a per-row JS loop or per-import query shows up as node

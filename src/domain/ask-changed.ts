@@ -23,7 +23,11 @@ export interface ChangedRow {
   ids: string[];
   baseMinor: number;
   diffMinor: number;
-  shops: Array<{ name: string; diffMinor: number }>;
+  // The same point of the month before, as entries (empty against usual,
+  // which is a middle, not entries).
+  baseIds: string[];
+  // This month's spending at each shop (its entries open with View entries).
+  shops: Array<{ name: string; diffMinor: number; amountMinor: number; ids: string[] }>;
 }
 
 export interface ChangedFacts {
@@ -51,10 +55,14 @@ export function buildChangedFacts(input: {
   scope: PersonScope;
   entries: UsualEntry[];
   trackedMonths: string[];
+  // How many rows of each direction to keep (Ask: 5; Summary's card keeps
+  // them all and picks its own).
+  maxRows?: number;
   // Today: the month in progress is compared up to this day of the month.
   today?: string;
 }): ChangedFacts {
   const { month } = input;
+  const maxRows = input.maxRows ?? CHANGED_MAX_ROWS;
   const previous = addMonths(month, -1);
   const soFar = input.today && input.today.slice(0, 7) === month ? Number(input.today.slice(8, 10)) : null;
   const history = usualHistoryMonths(month).filter((item) => input.trackedMonths.includes(item));
@@ -78,14 +86,16 @@ export function buildChangedFacts(input: {
     const shops = keys.map((key) => {
       const ofShop = (entry: UsualEntry) => inCategory(entry) && payeeKey(entry.description) === key;
       const sample = counted.find(ofShop);
-      return { name: payeeName(sample?.description ?? key) || key, diffMinor: sum(now.filter(ofShop)) - baseOf(ofShop) };
+      const here = now.filter(ofShop);
+      return { name: payeeName(sample?.description ?? key) || key, diffMinor: sum(here) - baseOf(ofShop), amountMinor: sum(here), ids: here.map((entry) => entry.id).sort() };
     });
     const diffMinor = amountMinor - baseMinor;
     const behind = shops
       .filter((shop) => Math.sign(shop.diffMinor) === Math.sign(diffMinor) && shop.diffMinor !== 0)
       .sort((left, right) => Math.abs(right.diffMinor) - Math.abs(left.diffMinor) || left.name.localeCompare(right.name))
       .slice(0, CHANGED_MAX_SHOPS);
-    return { category, amountMinor, ids: now.map((entry) => entry.id).sort(), baseMinor, diffMinor, shops: behind };
+    const baseIds = input.base === "previous" ? inMonth(previous).filter(inCategory).map((entry) => entry.id).sort() : [];
+    return { category, amountMinor, ids: now.map((entry) => entry.id).sort(), baseMinor, diffMinor, baseIds, shops: behind };
   });
   const byChange = (left: ChangedRow, right: ChangedRow) => Math.abs(right.diffMinor) - Math.abs(left.diffMinor) || left.category.localeCompare(right.category);
   return {
@@ -97,8 +107,8 @@ export function buildChangedFacts(input: {
     scope: input.scope,
     amountMinor: sum(current),
     baseMinor: input.base === "previous" ? sum(inMonth(previous)) : Math.round(medianOf(history.map((item) => sum(inMonth(item))))),
-    increases: rows.filter((row) => row.diffMinor > 0).sort(byChange).slice(0, CHANGED_MAX_ROWS),
-    decreases: rows.filter((row) => row.diffMinor < 0).sort(byChange).slice(0, CHANGED_MAX_ROWS),
+    increases: rows.filter((row) => row.diffMinor > 0).sort(byChange).slice(0, maxRows),
+    decreases: rows.filter((row) => row.diffMinor < 0).sort(byChange).slice(0, maxRows),
     entryCount: current.length
   };
 }

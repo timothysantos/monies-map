@@ -313,8 +313,10 @@ export function tripEventFigures(entries: TripFigureEntry[], trip: { startDate?:
 }
 
 /**
- * Ask's "what changed?" rows (the `changed` figure, ask-changed.ts): each
- * row's amount is that month's entries of its category, named by id, opened
- * as Spent narrowed to them, so Entries' total is the row's amount.
+ * "What changed?" figures (the `changed` figure): Ask's rows (ask-changed.ts)
+ * and Summary's "What changed this month" card (summary-changed.ts), where
+ * a row's so-far amount, last month's amount at the same point and each
+ * shop's so-far amount are each the entries of that month, named by id,
+ * opened as Spent narrowed to them, so Entries' total is the figure.
  */
 export const changedFigureMinor = repeatingFigureMinor;

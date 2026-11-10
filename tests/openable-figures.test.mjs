@@ -746,12 +746,30 @@ test("What changed and More than usual so far: every figure opens entries that a
     assert.equal(shownTotal(model), line.amountMinor, line.label);
     assert.equal(changedFigureMinor(line.figure.ids, derived.filteredEntries), line.amountMinor, `${line.label} (rule)`);
   }
-  const summary = await get(api, `/api/summary-page?view=household&month=${thisMonth}&scope=direct_plus_shared&summary_start=${addMonths(thisMonth, -6)}&summary_end=${thisMonth}`);
-  const above = summary.summaryPage.aboveUsual;
-  assert.equal(above.lines[0].category, "Food & Drinks");
-  assert.equal(above.lines[0].nowMinor, 89_000);
-  const { model } = await viewEntries(api, accounts, "spent", { search, period: { startMonth: thisMonth, endMonth: thisMonth }, ids: above.lines[0].ids });
-  assert.equal(shownTotal(model), 89_000);
+  // Summary's "What changed this month" card: the so-far figure of each row,
+  // last month's figure at the same point and each shop's open exactly their
+  // entries, and Entries' Spent total is the figure to the cent.
+  const card = (await get(api, "/api/summary-changed?view=household&scope=direct_plus_shared")).changed;
+  const foodRow = card.rows.find((row) => row.category === "Food & Drinks");
+  assert.equal(foodRow.direction, "up");
+  assert.equal(foodRow.amountMinor, 89_000);
+  assert.equal(foodRow.baseMinor, 2_000);
+  assert.equal(foodRow.moreThanUsual, true);
+  const homeRow = card.rows.find((row) => row.category === "Home");
+  assert.equal(homeRow.direction, "down");
+  for (const row of card.rows) {
+    const figures = [
+      [row.ids, row.amountMinor, thisMonth, row.category],
+      [row.baseIds, row.baseMinor, card.baseMonth, `${row.category} last month`],
+      ...row.shops.filter((shop) => shop.ids.length).map((shop) => [shop.ids, shop.amountMinor, thisMonth, `${row.category} / ${shop.name}`])
+    ];
+    // A figure with no entries (a shop that stopped) has nothing to open.
+    for (const [ids, amountMinor, month, name] of figures.filter((figure) => figure[0].length)) {
+      const { model, derived } = await viewEntries(api, accounts, "spent", { search, period: { startMonth: month, endMonth: month }, ids });
+      assert.equal(shownTotal(model), amountMinor, name);
+      assert.equal(changedFigureMinor(ids, derived.filteredEntries), amountMinor, `${name} (rule)`);
+    }
+  }
 });
 
 // Investments over time (the `invested` figure narrowed to the moves the

@@ -21,6 +21,7 @@ import { buildRemindersDto } from "./domain/pages/reminders";
 import { buildRepeatingChargesDto } from "./domain/pages/repeating-charges";
 import { buildInvestmentsOverTimeDto } from "./domain/pages/investments-over-time";
 import { buildTaxReliefsDto } from "./domain/pages/tax-reliefs";
+import { buildSummaryChangedDto } from "./domain/pages/summary-changed";
 import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
@@ -600,6 +601,20 @@ export default {
       return apiPageResponse("Tax reliefs", request, url, () => buildTaxReliefsDto(
         env.DB,
         url.searchParams.get("view") ?? "household"
+      ), timing);
+    }
+
+    // What changed this month on Summary (DOMAIN.md "What Changed Card"):
+    // the month so far against the same point last month. Read-only, no AI;
+    // the card asks for it once the top summary is usable.
+    if (url.pathname === "/api/summary-changed") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "What changed only answers GET." }, 405, { Allow: "GET" });
+      }
+      return apiPageResponse("Summary changed", request, url, () => buildSummaryChangedDto(
+        env.DB,
+        url.searchParams.get("view") ?? "household",
+        (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
       ), timing);
     }
 

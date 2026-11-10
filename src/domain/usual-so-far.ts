@@ -4,18 +4,17 @@
 // with earlier 10ths, never with whole months), averaged over the last 6
 // months that have data. It reports what has happened; it never predicts.
 //
-// One engine for Summary's Money insights line ("Food is $240 more than
-// usual so far this month") and Ask's "is that more than usual?" and "what
+// One engine for Summary's "What changed this month" card (its "more than
+// usual" mark; it replaced the Money insights lines) and Ask's "is that more than usual?" and "what
 // changed?" when they are about the month in progress.
 import { spendingMinor } from "./category-offset";
 import { addMonths, daysInMonth } from "./money-signals/format";
 
 export const SO_FAR_MONTHS = 6;
 export const SO_FAR_MIN_MONTHS = 2;
-// A Money insights line needs both: more than 20% and more than $50 above.
+// A category is "more than usual" only with both: more than 20% and more than $50 above.
 export const SO_FAR_MIN_RATIO = 0.2;
 export const SO_FAR_MIN_MINOR = 5_000;
-export const SO_FAR_MAX_LINES = 2;
 
 export interface SoFarEntry {
   id: string;
@@ -81,13 +80,16 @@ export function sameDayUsual(entries: SoFarEntry[], today: string, keyOf: (entry
   return { month, day, months: earlier, groups };
 }
 
-/** The categories well above their usual so far (Summary's line): at most 2. */
-export function categoriesAboveUsualSoFar(entries: SoFarEntry[], today: string): { day: number; months: number; lines: SoFarGroup[] } | null {
+/**
+ * The categories well above their usual so far (more than 20% and more than
+ * $50, with at least 2 months of history), largest difference first. The
+ * Summary card marks its rows with these; it is not capped.
+ */
+export function categoriesAboveUsual(entries: SoFarEntry[], today: string): { day: number; months: number; categories: SoFarGroup[] } {
   const result = sameDayUsual(entries, today, (entry) => entry.categoryName);
-  if (result.months.length < SO_FAR_MIN_MONTHS) return null;
-  const lines = result.groups
+  if (result.months.length < SO_FAR_MIN_MONTHS) return { day: result.day, months: result.months.length, categories: [] };
+  const categories = result.groups
     .filter((group) => group.diffMinor > SO_FAR_MIN_MINOR && group.nowMinor > group.usualMinor * (1 + SO_FAR_MIN_RATIO))
-    .sort((left, right) => right.diffMinor - left.diffMinor || left.key.localeCompare(right.key))
-    .slice(0, SO_FAR_MAX_LINES);
-  return lines.length ? { day: result.day, months: result.months.length, lines } : null;
+    .sort((left, right) => right.diffMinor - left.diffMinor || left.key.localeCompare(right.key));
+  return { day: result.day, months: result.months.length, categories };
 }
