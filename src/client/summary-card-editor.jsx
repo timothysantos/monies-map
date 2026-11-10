@@ -17,6 +17,7 @@ const NAMES = {
   insights: { name: "Money insights", about: "What needs a look, and what went well" },
   changed: { name: "What changed this month", about: "This month so far against the same days last month" },
   subs: { name: "Subscriptions and bills", about: "Charges that come back every month or year" },
+  miles: { name: "Miles and cashback", about: "What each card earned this month, and which card to use next" },
   investments: { name: "Investments over time", about: "What your investments were worth on their statements" },
   taxreliefs: { name: "Tax reliefs this year", about: "What you put into SRS, CPF and charity gifts, against the limits" },
   mix: { name: "Spending Mix", about: "Spending by category" },

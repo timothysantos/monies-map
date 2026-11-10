@@ -2979,7 +2979,7 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
 
 Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
 only on an owner decision. Registered today: `insights`, `changed`, `subs` (which holds
-Coming up and Bank fees), `investments`, `taxreliefs`, `mix`, `plan`, `accounts`. The server only checks
+Coming up and Bank fees), `investments`, `taxreliefs`, `mix`, `plan`, `accounts`, `miles`. The server only checks
 the stored string's shape, so no server change is needed for a new card.
 
 ## How are bank fees this year worked out?

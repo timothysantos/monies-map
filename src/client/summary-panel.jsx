@@ -50,6 +50,7 @@ const PaceSection = lazy(() => import("./spending-mix-section").then((module) =>
 // Investments over time and Tax reliefs ride in the same chunk and read
 // their data only once the top summary is usable; each shows nothing until
 // it has something to show.
+const CardRewardsSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.CardRewardsSection })));
 const InvestmentsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.InvestmentsCard })));
 const TaxReliefsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.TaxReliefsCard })));
 // What changed this month rides in the same chunk (a chunk of its own added
@@ -245,6 +246,12 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
       </Suspense>
     ) : <SubscriptionsReserve height={subsReserveHeight} />,
+    // Miles and cashback reads its data only once the top summary is usable.
+    miles: cardsUsable && fetchRequiredQuery ? (
+      <Suspense fallback={null}>
+        <CardRewardsSection view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+      </Suspense>
+    ) : null,
     // Each hides itself until it has something to show (an empty slot).
     investments: cardsUsable && fetchRequiredQuery ? (
       <Suspense fallback={null}>

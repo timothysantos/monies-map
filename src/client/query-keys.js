@@ -161,5 +161,9 @@ export const queryKeys = {
   // Summary's What changed this month (summary-changed-api.js), per view and scope.
   summaryChanged(viewId, scope) {
     return ["summary-changed", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
+  },
+  // Summary's Miles and cashback (card-rewards-api.js), per view.
+  cardRewards(viewId) {
+    return ["card-rewards", viewId || "household"];
   }
 };

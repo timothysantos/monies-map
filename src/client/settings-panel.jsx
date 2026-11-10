@@ -44,6 +44,7 @@ import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsColoursSection } from "./settings-colours-section";
 import { SettingsAskRemembersSection } from "./settings-ask-remembers-section";
+import { SettingsCardRewardsSection } from "./settings-card-rewards-section";
 import { SettingsLeadViewSection } from "./settings-lead-view-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
@@ -164,6 +165,7 @@ export function SettingsPanel({
     shortcutApi: false,
     askAi: false,
     askRemembers: false,
+    cardRewards: false,
     paymentWays: false,
     categories: false,
     categoryRules: false,
@@ -1418,6 +1420,14 @@ export function SettingsPanel({
           categories={categories}
           isOpen={settingsSectionsOpen.askRemembers}
           onToggle={() => toggleSettingsSection("askRemembers")}
+        />
+      </GuardedSettingsSection>
+
+      <GuardedSettingsSection>
+        <SettingsCardRewardsSection
+          categories={categories}
+          isOpen={settingsSectionsOpen.cardRewards}
+          onToggle={() => toggleSettingsSection("cardRewards")}
         />
       </GuardedSettingsSection>
 

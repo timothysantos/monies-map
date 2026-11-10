@@ -1,0 +1,250 @@
+/* Miles and cashback (card-rewards-section.jsx; design.md "Miles and
+   cashback"). A Summary card under Subscriptions and bills: a head, the
+   totals, one row per card with its bonus-cap bars, Best card now, cap
+   notices and a look back. Tokens only: a bar is the sky wash (a plan-like
+   limit), a used-up bar and a notice the butter (harvest gold) attention
+   wash; an owner is their person colour. Money is never toned here: these
+   are rewards, not over or under anything. */
+
+.cr-card-panel {
+  margin-bottom: 16px;
+}
+
+.cr-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cr-head h3 {
+  margin: 0;
+}
+
+.cr-estimate {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.cr-intro,
+.cr-quiet {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.cr-picture + .cr-picture {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--card-border);
+}
+
+.cr-person {
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+}
+
+.cr-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+  max-width: 420px;
+}
+
+.cr-total {
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.cr-total-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cr-total-figure {
+  display: inline-block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cr-cards,
+.cr-best,
+.cr-notices,
+.cr-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cr-card {
+  padding: 8px 0;
+  border-top: 1px solid var(--card-border);
+}
+
+.cr-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cr-card-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.cr-owner {
+  padding: 0 7px;
+  border: 1px solid var(--person-chip-border);
+  border-radius: 999px;
+  background: var(--person-chip-bg);
+  color: var(--person-ink);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.cr-card-earned {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cr-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+.cr-label,
+.cr-bonus-what,
+.cr-best-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.cr-bonus {
+  margin-top: 6px;
+}
+
+.cr-bar {
+  height: 6px;
+  max-width: 420px;
+  border-radius: 999px;
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.cr-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pastel-sky-ink);
+}
+
+.cr-bonus.is-used-up .cr-bar-fill {
+  background: var(--pastel-butter-ink);
+}
+
+.cr-bonus-line {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+}
+
+.cr-bonus-what {
+  margin: 0;
+}
+
+.cr-section-title {
+  margin: 14px 0 6px;
+  color: var(--eyebrow);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cr-best-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 9rem) minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 5px 0;
+  font-size: 0.86rem;
+}
+
+.cr-best-category {
+  font-weight: 600;
+}
+
+.cr-best-note {
+  grid-column: 2;
+}
+
+.cr-best-note:empty {
+  display: none;
+}
+
+.cr-notice {
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--pastel-butter-line);
+  border-radius: 10px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+  font-size: 0.84rem;
+}
+
+.cr-notice.is-minimum {
+  border-color: var(--card-border);
+  background: var(--paper);
+  color: var(--text);
+}
+
+.cr-back-line {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.cr-back-figure {
+  font-weight: 700;
+}
+
+.cr-change {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.84rem;
+}
+
+.cr-more {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .cr-best-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cr-best-note {
+    grid-column: 1;
+  }
+
+  .cr-change {
+    flex-direction: column;
+    gap: 0;
+  }
+}

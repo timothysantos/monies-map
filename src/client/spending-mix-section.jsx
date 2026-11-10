@@ -205,3 +205,5 @@ export { PaceSection, SubscriptionsSection } from "./subscriptions-section";
 export { InvestmentsCard } from "./investments-card";
 export { TaxReliefsCard } from "./tax-reliefs-card";
 export { SummaryChangedSection } from "./summary-changed-section";
+// Miles and cashback rides here too, for the same reason.
+export { CardRewardsSection } from "./card-rewards-section";
