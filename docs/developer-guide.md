@@ -2827,6 +2827,23 @@ delete). Tests: `tests/trip-events.test.mjs` (scenarios and negatives),
 `tests/trip-events-carry.test.mjs` (the trip follows the entry that survives
 a wrong-card or statement duplicate removal).
 
+Suggestions are reads (`src/domain/trip-event-suggestions.ts` holds the
+rules): `GET /api/trip-events/suggestions?tripEventId=` (or the New sheet's
+draft: `?start=&end=&currency=&splitGroupId=`) returns the review list's
+groups (`currency`, `splits`, `dollars`) with `ticked` per entry,
+`homeBillCount` and `truncated`; `GET /api/trip-events/search?tripEventId=&q=`
+is "Booked before you went?"; `POST /api/trip-events/new-defaults`
+(`{ entryIds }`) gives picked rows' first and last day and foreign currency;
+`GET /api/trip-events?with=split-groups` adds the split groups for the New
+sheet. The Entries page puts `suggestedTripEventId` on Apple Pay rows that
+fit the dashed-chip rule. `POST /api/splits/expenses/from-entry` answers
+`tripEventFollow` (`{ undoId, tripEvent, changes }`) when a linked trip
+followed. Tests: `tests/trip-events-suggestions.test.mjs` (a near-real Seoul
+week: `tests/fixtures/citibank-activity/ACCT_349_07_10_2026-seoul-sanitized.csv`
+and `tests/fixtures/trip-events/seoul-trip.json`),
+`tests/trip-events-chip-and-follow.test.mjs`, the scale guard, and
+`tests/e2e/trip-events-suggestions.spec.js`.
+
 The trip view is a page read: `GET /api/entries-page?view=…&month=…&trip=<id>`
 lists every entry on that trip (`trip=all`: every trip's entries and the whole
 list, for the Trips & events sheet's totals), bounded by the link table

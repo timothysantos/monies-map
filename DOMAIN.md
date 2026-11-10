@@ -1873,7 +1873,15 @@ Not the same as a Split Group: a split group is about who owes whom (its
 expenses can be cash that never reaches Entries, and many groups are
 ongoing), while a trip or event is about what something cost the household,
 including spending nobody splits. The two can be linked (`split_group_id`):
-adding an entry to the linked split group's splits also puts it on the trip.
+adding an entry to the linked split group's splits also puts it on the trip
+(owner decision 3 = A, "Follow it"), unless the entry is already on another
+trip (it is never moved) or the trip is put away. That is a second
+all-or-nothing command run after the split command saved
+(`followSplitGroupTripEvent`): if it cannot run, the split stays saved and the
+entry is on no trip; the Entries page says "Also put on Seoul trip" with Undo.
+The linked group's cash expenses (no entry) are not entries, so a trip's
+Spent leaves them out; its trip view names them in one line ("Also ₩96,000
+cash on Seoul trip splits, not in Entries").
 
 Canonical terms:
 - `trip or event`: a name, an icon and optional dates and currency. Dates and
@@ -1900,13 +1908,40 @@ Rules:
 - an entry replaced by a correction (a wrong-card Apple Pay copy, a
   statement's second copy) hands its trip to the entry that stays; an
   estimate paired with its bank row keeps its id and so its trip
-- nothing joins a trip by itself; a suggestion needs a tap
+- nothing joins a trip by itself; a suggestion needs a tap (the one
+  exception is the linked split group's follow rule above, which runs on the
+  person's own Add to splits)
 - Ask (`set_trip_event`, docs/flows/ask-flow.md "Trips and events"): the
   model names the trip as written and which entries as said; the app finds
   both and shows a change card, each entry before and after, saved with
   the person's Save as `added_by` `ask`, with Undo ("Yes, put all N" over
   ten, refused over 200). "How much was the Seoul trip?" is answered from
   the trip view's own Spent. Not part of Ask's safe set
+
+Suggestions (`src/domain/trip-event-suggestions.ts`; owner decision 4 = A):
+- `review list` ("Everything from these dates"): a trip's likely entries,
+  grouped and ticked by the server. `Paid in won` (the trip's currency):
+  entries in its dates whose kept Wallet amount is in that currency
+  (`original_currency`, a Foreign Currency Estimate) or whose bank line
+  prints it ("KRW 142,000"), ticked. `On <group> splits`: entries linked to
+  the trip's split group, whatever their date (a deposit paid before), ticked.
+  `Also in these dates, in dollars` (or "In these dates" for a trip with no
+  currency): the rest of its days, not ticked. Each entry is in one group,
+  in that order. Home bills (an entry in a Home, Rent, Bills, Utilities,
+  Loans, Insurance or Subscriptions category) are never ticked and named
+  in one line. Entries already on this trip or on another trip are left
+  out. Only expenses are listed. The person ticks and taps "Add N entries"
+  (saved as `suggestion`, one change, Undo); over 200 is refused.
+- `Booked before you went?`: a search by words (description or note) over
+  the 12 months before the first day, skipping the trip's own days.
+- The New sheet's preview reads the same list for the draft before it is
+  saved ("37 entries look like part of it. ...").
+- `dashed chip` ("Seoul trip?"): an Apple Pay or Shortcut entry on no trip
+  gets it when all hold: a trip with a currency (not the home SGD), not put
+  away, is on today, the entry's date is in its dates, and the entry was
+  paid in that currency or its wallet's last 3 other entries are on that
+  trip. One tap puts it on (`suggestion`), with Undo. It never applies by
+  itself; Ask's safe set does not change.
 
 Storage:
 - `trip_events` (additive; every reader tolerates it missing)
@@ -1917,7 +1952,10 @@ Code:
 - `src/domain/trip-events.ts` (rules), `src/domain/app-repository-trip-events.ts`
   (storage, all-or-nothing commands, Undo, the carry through corrections)
 - `src/server/trip-events-route.ts` (`/api/trip-events`, `/save`,
-  `/entries/set`, `/put-away`, `/delete`, `/undo`)
+  `/entries/set`, `/put-away`, `/delete`, `/undo`; the reads
+  `/suggestions`, `/search`, `/new-defaults`)
+- `src/domain/trip-event-suggestions.ts` (the review list's groups and
+  ticks, home bills, the dashed chip rule, a New sheet's defaults)
 
 ### Split Batch
 

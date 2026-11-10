@@ -532,6 +532,20 @@ statement's second copy hands its trip to the entry that stays
 (`buildTripEventCarryStatements`, one more statement in that correction's
 own batch). Summary and Month do not change (owner decision 5).
 
+Suggestions (slice 5) are reads, never writes: the review list
+(`GET /api/trip-events/suggestions`, `trip-event-suggestions.ts`) groups and
+ticks a trip's likely entries from its dates, its currency (a kept Wallet
+amount or the bank line's printed amount) and its linked split group, with
+home bills never ticked; "Booked before you went?" (`/search`) looks back
+12 months before the first day; the Entries page names a suggested trip on
+new Apple Pay entries (`suggestedTripEventId`, the dashed chip) in the same
+round trip as its rows' trips (`loadTripEventRowFacts`). Nothing joins a
+trip until the person taps. The one automatic link is owner decision 3:
+adding an entry to a linked split group's splits puts it on the trip too,
+as a second all-or-nothing command after the split command saved
+(`followSplitGroupTripEvent`, called from the from-entry route), so a failure
+there leaves the split saved and the entry on no trip.
+
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the

@@ -117,6 +117,14 @@ Rules that keep it so:
 - Create a settings table once per isolate (`ensureAppSettingsTable`), or
   read first and create only when missing (`loadDemoSettings`); never a
   `CREATE TABLE IF NOT EXISTS` round trip on every request.
+- A suggestion read is bounded by its own window and a LIMIT, never the
+  whole table: trip suggestions read the trip's days (at most 400 rows,
+  `truncated` past that) and its split group's linked entries (200) in one
+  step after the trip; "Booked before you went?" reads 12 months before the
+  first day by words (30 rows). The Entries page's dashed chip rides on the
+  rows' trip read (`loadTripEventRowFacts`, one statement): with no trip on
+  today its window is empty, so a normal page reads no extra rows. Pinned on
+  the 10k household in `page-load-scale-guard.test.mjs`.
 - Summary reads its year of entries with `figuresOnly`: no description,
   note, labels or names it never shows (~4 MB fewer bytes from D1 on the
   production copy).

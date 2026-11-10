@@ -3388,9 +3388,52 @@ only. Summary and Month do not change.
   categories) and the page refreshes through `runBackgroundRefresh`. T on a
   focused row (not picking) opens the picker for that row; T and Esc are
   ignored while typing or while a dialog or popover is open.
-- Bundle: the picker, note, lead, sheet and their styles are the
-  `entries-trip-events` chunk, and the pick bar is the `entries-pick-bar`
-  chunk. The first-screen bytes did not grow from this code; Vite moved its
+- The New sheet (`trip-event-edit-sheet.jsx`, design 2d): opened from the
+  picker's "New trip or event" (with the one entry or the picked rows), the
+  Trips & events sheet's quiet "New trip or event" beside Done, the
+  empty Trips & events list ("Make your first one", `Start from "Bali trip"
+  splits` for the household's split group with the latest expense) and the
+  trip lead's quiet "Change". Fields in a dialog sheet (lifted above the
+  keyboard): "Start from a split group" (new only; fills name, icon and
+  currency from the group, and links it), Name, Icon (seven 44 px radio
+  buttons, guessed from the name until one is picked), "Dates (if it has
+  some)" as two native date fields, "Paid in (optional)" (a native select:
+  "Not abroad" and the currencies in `TRIP_CURRENCIES`) and "Shared costs"
+  (`Link "Seoul trip" splits`, or "No link"). From picked rows the dates
+  default to their first and last day and the currency to the foreign one
+  they were paid in (`POST /api/trip-events/new-defaults`). A new trip with
+  dates or a group reads the draft's review list (debounced) and shows one
+  line ("37 entries look like part of it. 28 paid in won and 9 already on
+  Seoul trip splits. 12 more in these days were paid in dollars."); then the
+  bar is "Check them" (save, put the picked rows on it in the same command,
+  then open the review list) and "Make it empty" ("Save" when started from
+  rows). Otherwise it is Cancel and Save.
+- The review list (`trip-event-review-sheet.jsx`): title "Add to Seoul trip"
+  with the dates; one folded card per group with its count ("Paid in won · 28
+  of 28 ticked", "Also in these dates, in dollars · 0 of 12"), the first
+  open; rows are a tick box, the description, "3 Oct · ₩1,260,000 · Shared"
+  and the amount as rose money-out text (no tone and no won amount while
+  money is hidden). "Booked before you went? · Search" opens a search field;
+  its rows join as their own unticked group. Under them the line "Home bills
+  in these days (rent, standing orders) are left unticked." when any is
+  listed. The bar is Cancel and "Add N entries" (disabled at 0, refused over
+  200), saving as `suggestion`; the note says "N entries added to Seoul
+  trip" with Undo. The trip lead's quiet "Check entries from these dates"
+  (when the trip has dates or a linked group) opens it too.
+- The dashed chip: a row whose page entry carries `suggestedTripEventId`
+  shows `entry-chip-trip is-suggestion` with "Seoul trip?" while it is on no
+  trip (`rowChipOf` in use-trip-events-on-entries.js); one tap saves it as
+  `suggestion` and shows "Put on Seoul trip" with Undo; nothing happens
+  without the tap. It is the same 22 px chip as the others.
+- Add to splits on a group a trip is linked to: the from-entry answer's
+  `tripEventFollow` shows "Also put on Seoul trip" with Undo (the follow
+  change's own audit event; the split stays).
+- The trip lead names the linked group's cash per currency ("Also ₩96,000
+  cash on Seoul trip splits, not in Entries"); the amount is an openable
+  trip figure whose menu offers Open Splits and Ask.
+- Bundle: the picker, note, lead, sheet, the New sheet, the review list and
+  their styles are the `entries-trip-events` chunk, and the pick bar is the
+  `entries-pick-bar` chunk. The first-screen bytes did not grow from this code; Vite moved its
   ~1 kB preload helper into its own first-screen file once Entries gained a
   dynamic import, so the file-count budget is 8.
 

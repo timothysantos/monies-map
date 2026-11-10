@@ -781,6 +781,38 @@ undoes it). **Delete** takes the trip off its entries and keeps the entries;
 the note at the bottom has **Undo**. On a phone, the filter is in the **View
 and scope** sheet, and the bar at the bottom names the trip with **Clear**.
 
+**Make one with everything from its dates.** In the list of trips, choose
+**New trip or event** (or **Make your first one** when there are none yet).
+Only the name is needed. You can also give it its first and last day, what
+it was paid in (for example Korean won) and the split group whose shared
+costs belong to it. If you picked entries first, their first and last day
+and the money they were paid in are filled in for you; **Start from a split
+group** fills in the group's name and money and links it.
+
+With dates, it tells you how many entries look like part of it, for example
+"37 entries look like part of it. 28 paid in won and 9 already on Seoul trip
+splits." **Check them** shows them in groups: the ones paid in won and the
+ones on the trip's splits are ticked; other spending in those days is
+listed but not ticked, and home bills such as rent and standing orders are
+never ticked. **Booked before you went?** searches the year before the first
+day, for flights and hotels you paid months earlier. Untick or tick what you
+like, then **Add …**; the note has **Undo**. **Make it empty** keeps it
+without adding anything. On a trip's summary, **Check entries from these
+dates** opens the same list again and **Change** lets you rename it or
+change its dates.
+
+**While you are away.** An Apple Pay entry paid in the trip's money (or on
+a card whose last few entries are already on the trip) shows a dashed label
+such as **Seoul trip?**. Tap it once to put the entry on the trip; nothing
+is added until you tap.
+
+**Trips and Splits together.** When a trip is linked to a split group,
+adding an entry to that group's splits puts it on the trip too, and the note
+says **Also put on Seoul trip** with **Undo**. An entry already on another
+trip stays where it is. Cash on the splits never reaches Entries, so the
+trip's total leaves it out and its summary names it on one line, such as
+"Also ₩96,000 cash on Seoul trip splits, not in Entries".
+
 An entry the bank statement has confirmed can still go on a trip: nothing
 about its bank details changes. If the bank's row replaces an Apple Pay
 entry, or a second copy of the same purchase is removed, the trip stays with
