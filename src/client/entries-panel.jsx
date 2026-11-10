@@ -1897,6 +1897,7 @@ export function EntriesPanel({
             selectedScope={selectedScope}
             currentTripEventId={tripViewId}
             onChoose={chooseTripView}
+            footer={<button type="button" className="lsd-quiet" data-trip-new="" onClick={() => openNewTrip([])}>{tripEventsCopy.newRow}</button>}
             emptyActions={(
               <TripEventsEmptyActions
                 onMakeFirst={() => openNewTrip([])}
