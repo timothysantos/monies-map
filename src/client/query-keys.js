@@ -157,5 +157,9 @@ export const queryKeys = {
   },
   taxReliefs(viewId) {
     return ["tax-reliefs", viewId || "household"];
+  },
+  // Summary's What changed this month (summary-changed-api.js), per view and scope.
+  summaryChanged(viewId, scope) {
+    return ["summary-changed", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
   }
 };

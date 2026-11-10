@@ -51,6 +51,11 @@ const SubscriptionsSection = lazy(() => import("./spending-mix-section").then((m
 // it has something to show.
 const InvestmentsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.InvestmentsCard })));
 const TaxReliefsCard = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.TaxReliefsCard })));
+// What changed this month rides in the same chunk (a chunk of its own added
+// two first-screen files, check:bundle), reads its data only once the top
+// summary is usable and shows only for a range that ends in the month in
+// progress.
+const SummaryChangedSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryChangedSection })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -122,7 +127,6 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       accountKinds: Object.fromEntries(accounts.map((account) => [account.id, account.kind])),
       availableMonths: safeSummaryPage.availableMonths ?? [],
       bankFeesYear: safeSummaryPage.bankFeesYear,
-      aboveUsual: safeSummaryPage.aboveUsual,
       formatMoney: unmaskedMoney
     })),
     page: "summary",
@@ -208,6 +212,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         className="financial-insight-summary"
       />
     ),
+    // Only for a range that ends in the month in progress; it shows nothing
+    // when there is nothing to compare.
+    changed: cardsUsable && fetchRequiredQuery && safeSummaryPage.rangeEndMonth === checkInClock.today.slice(0, 7) ? (
+      <Suspense fallback={null}>
+        <SummaryChangedSection view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+      </Suspense>
+    ) : null,
     subs: cardsUsable && fetchRequiredQuery ? (
       <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
         <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />

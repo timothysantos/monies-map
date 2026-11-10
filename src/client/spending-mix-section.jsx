@@ -204,3 +204,4 @@ export { SubscriptionsSection } from "./subscriptions-section";
 // Investments over time and Tax reliefs ride here too, for the same reason.
 export { InvestmentsCard } from "./investments-card";
 export { TaxReliefsCard } from "./tax-reliefs-card";
+export { SummaryChangedSection } from "./summary-changed-section";

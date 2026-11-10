@@ -1312,10 +1312,6 @@ export interface SummaryPageDto {
   // Bank fees from 1 January to the range's last month (bank-fees-year.ts),
   // for the "fees this year" Money insights line; left out with no fee.
   bankFeesYear?: import("../domain/bank-fees-year").BankFeesYear;
-  // The categories well above their usual so far this month (usual-so-far.ts:
-  // more than 20% and $50 above the same day of the last 6 months with
-  // data), at most 2; left out when none is.
-  aboveUsual?: { month: string; day: number; months: number; lines: Array<{ category: string; nowMinor: number; usualMinor: number; ids: string[] }> };
   notes: string[];
 }
 

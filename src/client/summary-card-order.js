@@ -15,7 +15,7 @@ import { createPreferenceStore } from "./viewer-preference-store";
 // "-" hides a card). Reading is forgiving: an unknown id is dropped, a card
 // it does not name (one added later) goes back to its usual place, and the
 // usual order is null (Reset).
-export const SUMMARY_CARD_IDS = Object.freeze(["insights", "subs", "investments", "taxreliefs", "mix", "plan", "accounts"]);
+export const SUMMARY_CARD_IDS = Object.freeze(["insights", "changed", "subs", "investments", "taxreliefs", "mix", "plan", "accounts"]);
 export const SUMMARY_CARDS_STORAGE_KEY = "monies-map:summary-cards";
 export const SUMMARY_CARDS_PATH = "/api/viewer-preferences/summary-cards";
 const NEVER_HIDDEN = new Set(["insights"]);

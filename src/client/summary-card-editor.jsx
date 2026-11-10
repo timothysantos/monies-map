@@ -15,6 +15,7 @@ import { canHideSummaryCard, moveSummaryCard } from "./summary-card-order";
 
 const NAMES = {
   insights: { name: "Money insights", about: "What needs a look, and what went well" },
+  changed: { name: "What changed this month", about: "This month so far against the same days last month" },
   subs: { name: "Subscriptions and bills", about: "Charges that come back every month or year" },
   investments: { name: "Investments over time", about: "What your investments were worth on their statements" },
   taxreliefs: { name: "Tax reliefs this year", about: "What you put into SRS, CPF and charity gifts, against the limits" },

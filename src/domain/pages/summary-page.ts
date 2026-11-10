@@ -8,9 +8,6 @@ import { sumInvestmentMoves } from "../investment-moves";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import { loadBankFeesYear } from "./summary-bank-fees";
-import { categoriesAboveUsualSoFar } from "../usual-so-far";
-import { isInvestmentsCategoryName, isSavingsCategoryName } from "../money-jobs";
-import { todayInAppTimeZone } from "../../lib/app-calendar";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
@@ -68,23 +65,12 @@ export async function buildSummaryPageDto(
       return moves ? [{ month, ...moves }] : [];
     })
   );
-  // More than usual so far (usual-so-far.ts): only when the range ends in
-  // this month; the same day of earlier months in the range, like for like.
-  const today = todayInAppTimeZone();
-  const aboveUsual = summaryRangeMonths.at(-1) === today.slice(0, 7)
-    ? categoriesAboveUsualSoFar(visibleSummaryEntries
-      .filter((entry) => !isInvestmentsCategoryName(entry.categoryName) && !isSavingsCategoryName(entry.categoryName))
-      .map((entry) => ({ id: entry.id, date: entry.date, categoryName: entry.categoryName ?? "Other", entryType: entry.entryType, amountMinor: entry.amountMinor })), today)
-    : null;
-  const withAboveUsual = aboveUsual
-    ? { ...summaryPage, aboveUsual: { month: today.slice(0, 7), day: aboveUsual.day, months: aboveUsual.months, lines: aboveUsual.lines.map((line) => ({ category: line.key, nowMinor: line.nowMinor, usualMinor: line.usualMinor, ids: line.ids })) } }
-    : summaryPage;
   return {
     viewId,
     label,
     // Left out when the year has no fee at all, so most pages do not grow.
     summaryPage: bankFeesYear && (bankFeesYear.parts.length || bankFeesYear.refundedParts.length)
-      ? { ...withAboveUsual, bankFeesYear }
-      : withAboveUsual
+      ? { ...summaryPage, bankFeesYear }
+      : summaryPage
   };
 }

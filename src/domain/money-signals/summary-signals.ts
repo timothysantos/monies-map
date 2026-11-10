@@ -76,22 +76,6 @@ export const SUMMARY_COPY = {
     action: "Show those fees"
   },
 
-  // More than usual so far this month (usual-so-far.ts): what has happened
-  // by today, against the same day of earlier months. Never a prediction.
-  aboveUsualSoFar: {
-    phrasings: [
-      "{category} is {diff} more than usual so far this month: {now} against about {usual} by this day.",
-      "So far this month, {category} came to {now}, about {diff} more than the {usual} it usually is by the {day}.",
-      "{category} spending is {now} so far this month. By the {day} it's usually about {usual}.",
-      "By the {day}, {category} usually comes to about {usual}. This month it's {now} so far, {diff} more."
-    ],
-    think: [
-      "This compares the same days of each month, so it only counts what has happened so far.",
-      "One busier week can do this. See what changed shows which shops made the difference.",
-      "Usual here is the average of up to 6 recent months at this point in the month."
-    ],
-    action: "See what changed"
-  },
   subscriptions: {
     phrasings: [
       "Subscriptions came to {amount} in {month}. That's about {yearly} a year.",
@@ -326,9 +310,6 @@ export interface SummarySignalInput {
   // Bank fees from 1 January to the range's last month (the Summary DTO's
   // bankFeesYear); absent with no fee.
   bankFeesYear?: BankFeesYear;
-  // The categories above their usual so far this month (the Summary DTO's
-  // aboveUsual); absent when none is.
-  aboveUsual?: { month: string; day: number; months: number; lines: Array<{ category: string; nowMinor: number; usualMinor: number; ids: string[] }> };
 }
 
 const MIN_STREAK = 3;
@@ -622,47 +603,6 @@ export function feesThisYearSignal(input: SummarySignalInput): MoneySignal | nul
     },
     topic: "small-costs"
   };
-}
-
-const ordinal = (day: number) => `${day}${day % 100 >= 11 && day % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[day % 10] ?? "th"}`;
-
-// Worth knowing: a category well above its usual so far this month (more
-// than 20% and $50 above the same day of the last 6 months with data), at
-// most 2. See what changed asks Ask about it (the shops behind it).
-export function aboveUsualSoFarSignals(input: SummarySignalInput): MoneySignal[] {
-  const above = input.aboveUsual;
-  if (!above || above.month !== input.today.slice(0, 7)) {
-    return [];
-  }
-  return above.lines.slice(0, 2).map((line) => {
-    const diffMinor = line.nowMinor - line.usualMinor;
-    const values = {
-      category: line.category,
-      now: input.formatMoney(line.nowMinor),
-      usual: input.formatMoney(line.usualMinor),
-      diff: input.formatMoney(diffMinor),
-      day: ordinal(above.day)
-    };
-    return {
-      key: `above-usual:${line.category}:${above.month}`,
-      kind: "worth_a_look" as const,
-      weight: diffMinor,
-      numbers: { primaryMinor: line.nowMinor, usualMinor: line.usualMinor },
-      primaryText: values.now,
-      phrasings: phrase(SUMMARY_COPY.aboveUsualSoFar, values),
-      action: { id: "ask-question" as const, label: SUMMARY_COPY.aboveUsualSoFar.action, askText: `Is ${line.category} more than usual this month?` },
-      basis: {
-        lines: [
-          amountLine(`${line.category} so far this month`, line.nowMinor),
-          amountLine(`Usual by the ${values.day} (average of ${above.months} months)`, line.usualMinor),
-          amountLine("More than usual by", diffMinor)
-        ],
-        entries: { entryIds: line.ids, month: above.month },
-        month: above.month
-      },
-      topic: "small-costs" as const
-    };
-  });
 }
 
 // Going well: most of the last (up to) 12 complete months came in under
@@ -1147,7 +1087,6 @@ export function buildSummarySignals(input: SummarySignalInput): MoneySignal[] {
     ...buildAccountSignals({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, today: input.today, formatMoney: input.formatMoney }),
     penaltyInterestSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney }),
     feesThisYearSignal(input),
-    ...aboveUsualSoFarSignals(input),
     spendingAboveIncomeSignal(input),
     categoryCreepSignal(input),
     subscriptionsSignal(input),

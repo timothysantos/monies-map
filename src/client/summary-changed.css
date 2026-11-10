@@ -1,0 +1,170 @@
+/* What changed this month (summary-changed-section.jsx; design.md "What
+   changed card"). A Summary card under Money insights: a head and one row per
+   category that moved. Tokens only. The "more than usual" mark is the butter
+   (harvest gold) chip the Subscriptions card uses for a price that went up;
+   money is not toned here, it is a list of what moved, not over or under
+   anything. */
+
+.chg-card {
+  margin-bottom: 16px;
+}
+
+.chg-head h3 {
+  margin: 0;
+}
+
+.chg-intro {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.chg-quiet {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.chg-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.chg-list > li {
+  border-bottom: 1px solid var(--line);
+}
+
+.chg-list > li:last-child {
+  border-bottom: 0;
+}
+
+.chg-row {
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.chg-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.chg-open {
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.93rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chg-diff {
+  font-size: 0.93rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.chg-chevron {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.chg-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--pastel-butter-line);
+  border-radius: 999px;
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chg-shops {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.chg-shops-title {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chg-shops ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chg-shop {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 4px 0;
+  font-size: 0.88rem;
+}
+
+.chg-shop-name {
+  font-weight: 600;
+}
+
+.chg-shop-figures {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chg-shop-sofar {
+  color: var(--muted);
+}
+
+.chg-fold-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
