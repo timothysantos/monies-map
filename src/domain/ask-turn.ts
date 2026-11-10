@@ -55,6 +55,7 @@ import {
   type AskMatch,
   type AskResolveRequest
 } from "./ask-turn-actions";
+import { describeUsuallySharedAction, validateUsuallyShared } from "./ask-usually-shared";
 import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
@@ -83,6 +84,8 @@ export const ASK_TURN_ACTIONS = [
   "link_plan",
   // Trips and events (ask-trip-events.ts): entries on, moved or off one.
   "set_trip_event",
+  // The usual shared past entries onto Splits (ask-usually-shared.ts).
+  "add_usually_shared",
   // Hands-off (ask-lookup-tools.ts): a read-only lookup before the real
   // action. The route runs it and asks again; never an answer to the person.
   "look_up"
@@ -260,6 +263,8 @@ export const ASK_TURN_SCHEMA = {
       from: nullableString,
       to: nullableString
     }),
+    // Only a shop the person named, as written.
+    usually_shared: nullableObject({ shop: nullableString }),
     blocked: nullableEnum([...ASK_TURN_BLOCKED]),
     lookup: nullableObject({
       tool: { type: "string", enum: [...ASK_LOOKUP_TOOL_NAMES] },
@@ -499,6 +504,7 @@ interface RawAction {
   category_edit?: Record<string, unknown> | null;
   plan_link?: Record<string, unknown> | null;
   trip_event?: Record<string, unknown> | null;
+  usually_shared?: Record<string, unknown> | null;
   blocked?: AskTurnBlocked | null;
   lookup?: Record<string, unknown> | null;
   // The entry id a lookup in this turn returned and the action is about.
@@ -534,6 +540,7 @@ export function parseAskTurnAction(value: unknown): AskTurnAction | null {
     category_edit: part("category_edit"),
     plan_link: part("plan_link"),
     trip_event: part("trip_event"),
+    usually_shared: part("usually_shared"),
     blocked: (ASK_TURN_BLOCKED as readonly string[]).includes(String(value.blocked)) ? value.blocked as AskTurnBlocked : null,
     lookup: part("lookup"),
     target_entry: typeof value.target_entry === "string" && value.target_entry.length <= 200 ? value.target_entry : null
@@ -575,6 +582,7 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     "- ask_clarification: unclear; clarify.question and clarify.options.",
     ...describePhase2Actions(),
     describeTripEventAction(),
+    describeUsuallySharedAction(),
     "- look_up: you must find something first (an entry, a balance, how a shop was filed). lookup.tool is find_entries (text, category, person, from, to), get_entry (id), get_split_balances (group), list_recent_entries (n) or get_category_history (merchant). The app answers in the lookups section and you choose the real action. Use at most 3 lookups; never look up what the context already says. Once you found the entry, set target_entry to its id exactly as the results give it.",
     "- cannot_help: not something Ask does; note says so in one short sentence. For deleting entries, months or imports, importing or undoing a statement import, reconciling, or changing accounts or people, set blocked.",
     `"I", "me" and "my" mean ${viewer ?? "the person asking"}. A share, amount, month or day is exactly what was written, without units added.`,
@@ -688,6 +696,8 @@ export function validateAskTurnAction(action: AskTurnAction, context: AskTurnCon
       return validateLinkPlan(action, context, ground);
     case "set_trip_event":
       return validateSetTripEvent(action, context, ground);
+    case "add_usually_shared":
+      return validateUsuallyShared(action, context, ground);
     case "add_entry_to_splits":
       return validateAddToSplits(action, context, ground);
     case "draft_settlement":

@@ -61,6 +61,7 @@ import { lookupBudgetLeft, runLookupTool, type AskLookupCall } from "../domain/a
 import { applyNoteToNewEntry } from "./ask-auto-apply";
 import { readSharesByRules } from "../domain/ask-turn-shares";
 import { readTripEventRules } from "../domain/ask-trip-events";
+import { readUsuallySharedRules } from "../domain/ask-usually-shared";
 import { loadTripEvents } from "../domain/app-repository-trip-events";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { loadAskerPersonId } from "../domain/entry-draft-context";
@@ -106,7 +107,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
   // A saved entry in focus and a message with a figure, "all" or "split" in
   // it may be a share the rules can read; anything else answers at once.
-  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !(await mayBeTripMessage(env.DB, text))) {
+  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !readUsuallySharedRules(text) && !(await mayBeTripMessage(env.DB, text))) {
     return json({ ok: true, mode: "rules", reason: offReason });
   }
 
@@ -316,6 +317,13 @@ function forPage(reply: AskTurnReply): AskTurnReply {
 // which the rules' readers turn into the same action the model would send,
 // checked the same way.
 async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
+  // "Add the usual shared ones to Splits" reads the same with AI off.
+  const usualAction = readUsuallySharedRules(text);
+  if (usualAction) {
+    let reply = validateAskTurnAction(usualAction, context);
+    if (reply.kind === "resolve") reply = withAssumptions(await resolveAskTurnRequest(db, reply.request, context), reply.assumptions ?? []);
+    return json({ ok: true, mode: "rules", reason, action: usualAction.action, reply: forPage(reply), ...extra });
+  }
   const tripAction = context.tripEvents ? readTripEventRules(text, context.tripEvents, { categoryNames: context.entry.categoryNames }) : null;
   if (tripAction) {
     let reply = validateAskTurnAction(tripAction, context);

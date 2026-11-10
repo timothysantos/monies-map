@@ -21,6 +21,8 @@ import {
   type AskSplitExpenseFacts
 } from "./ask-turn-actions";
 import type { AskTurnContext, AskTurnFocusEntry, AskTurnReply } from "./ask-turn";
+import { buildUsuallySharedChange } from "./ask-usually-shared";
+import { buildUsuallySharedDto } from "./pages/usually-shared";
 import { buildTripEventChange, type AskTripCandidate, type AskTripEventRequest } from "./ask-trip-events";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadTakenTransferEntryIds, loadTransferMatchCandidates } from "./app-repository-entries";
@@ -59,6 +61,8 @@ export async function resolveAskTurnRequest(db: D1Database, request: AskResolveR
       return buildMatches(request, await loadMatches(db, request.month));
     case "plan_link":
       return buildPlanLink(request, await loadPlanRows(db, request.month), await loadWordCandidates(db, request.words, request.month));
+    case "usually_shared":
+      return buildUsuallySharedChange(request, await loadUsuallyShared(db, context));
     case "trip_event":
       return buildTripEventChange(request, await loadTripCandidates(db, request.source), context.tripEvents ?? [], context);
     default:
@@ -176,6 +180,16 @@ async function loadTripCandidates(db: D1Database, source: AskTripEventRequest["s
     accountName: row.account_name ?? undefined,
     tripEventId: row.trip_event_id ?? null
   }));
+}
+
+// The same list the Splits page shows, read for this turn; null when it
+// cannot be read, so the card says so instead of guessing.
+async function loadUsuallyShared(db: D1Database, context: AskTurnContext) {
+  try {
+    return (await buildUsuallySharedDto(db, { today: context.today })).groups;
+  } catch {
+    return null;
+  }
 }
 
 function dayAfter(day: string) {

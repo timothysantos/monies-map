@@ -166,14 +166,14 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
   const undone = item.status === "undone";
   const needsConfirm = Boolean(change.confirmCount);
   const firstEntry = change.entries[0];
-  const showEntries = change.type === "recategorise_bulk" || change.type === "plan_link" || change.type === "link_transfer" || change.type === "trip_event";
+  const showEntries = change.type === "recategorise_bulk" || change.type === "plan_link" || change.type === "link_transfer" || change.type === "trip_event" || change.type === "usually_shared";
   const amount = change.entries.length === 1 && !showEntries ? firstEntry : null;
   return (
     <section id={item.id} className={`ask-plan-draft ask-turn-card ask-change${settled ? " is-settled" : ""}`} data-change-draft={item.status} data-change-type={change.type} aria-label={changeCopy.label}>
       <LeadCard
         className="ask-plan-lead"
         tag={<span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? changeCopy.savedTag : undone ? changeCopy.undoneTag : copy.draftTag}</span>}
-        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "trip_event" || change.type === "trip_event_create" ? Plane : change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
+        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "trip_event" || change.type === "trip_event_create" ? Plane : change.type === "usually_shared" ? Users : change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
         title={<strong className="lsd-title ask-plan-title">{change.title}</strong>}
         subtitle={<span className="ask-plan-subtitle">{subtitleOf(change, choiceId)}</span>}
         amount={amount ? moneyWithCurrency(amount.amountMinor, amount.currency) : undefined}
@@ -208,7 +208,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
               label={(
                 <span className="ask-change-entry">
                   <span className="ask-change-entry-name">{entry.description}</span>
-                  <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.trip ? tripMove(entry.trip) : entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
+                  <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.trip ? tripMove(entry.trip) : entry.detail ?? entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
                 </span>
               )}
               value={<PrivateMoney className="money-neutral">{moneyWithCurrency(entry.amountMinor, entry.currency)}</PrivateMoney>}
@@ -277,7 +277,7 @@ function tripMove(trip) {
 
 // Where a saved change can be seen.
 export function openPageOf(change) {
-  if (["group_create", "group_move", "simplify"].includes(change.type)) return "splits";
+  if (["group_create", "group_move", "simplify", "usually_shared"].includes(change.type)) return "splits";
   if (["payment_way", "category_create", "category_rename", "category_colour"].includes(change.type)) return "settings";
   if (["month_note", "plan_link"].includes(change.type)) return "month";
   return "entries";

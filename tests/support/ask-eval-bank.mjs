@@ -121,6 +121,18 @@ export function checkExpectation(entry, payload, dates, extra = {}) {
 // Pay-style entry and a few Grab rides this month. Returns the focus for each
 // setup the bank uses, by the ids the route reads.
 export async function seedBankHousehold({ db, api, today }) {
+  // Usually shared: Tim shared this shop three times long ago (half each, no
+  // group) and bought there twice lately without adding them to Splits. Made first, so the saved Apple Pay entry stays the newest one lookups find.
+  // All five are made first: once the shop's splits are learned as a habit,
+  // Ask would put a new entry there on Splits by itself.
+  const coldStorage = [];
+  for (const [days, amountMinor] of [[150, 2_000], [130, 2_000], [110, 2_000], [20, 1_100], [4, 1_500]]) {
+    coldStorage.push(await createEntry(api, { date: shiftDay(today, -days), description: "COLD STORAGE BANK", accountName: "UOB One", categoryName: "Groceries", amountMinor }));
+  }
+  for (const id of coldStorage.slice(0, 3)) {
+    const added = await api("/api/splits/expenses/from-entry", { entryId: id, splitGroupId: null });
+    if (added.status !== 200) throw new Error(`usually shared seed: ${JSON.stringify(added.payload)}`);
+  }
   const entryId = await createEntry(api, { date: today, description: "STARBUCKS PAYNOW 91234567", accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250 });
   for (const [index, amountMinor] of [1_850, 2_240, 1_620].entries()) {
     await createEntry(api, { date: shiftDay(today, -index), description: "GRAB* RIDE", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor });

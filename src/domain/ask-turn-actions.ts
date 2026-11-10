@@ -52,6 +52,7 @@ import {
   type Ground
 } from "./ask-turn";
 import type { AskTripEventRequest } from "./ask-trip-events";
+import type { AskUsuallySharedRequest } from "./ask-usually-shared";
 import type { CategoryMatchRuleDto } from "../types/dto";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,9 @@ export type AskChangeType =
   // Trips and events (ask-trip-events.ts): entries on, moved or off one;
   // a new one made with no entries.
   | "trip_event"
-  | "trip_event_create";
+  | "trip_event_create"
+  // The usual shared past entries added to Splits (ask-usually-shared.ts).
+  | "usually_shared";
 
 export type AskChangeField =
   | "amount"
@@ -121,6 +124,8 @@ export interface AskChangeEntry {
   // A trip change: the trip this entry is on now and the one it goes to
   // ("" is none).
   trip?: { before: string; after: string };
+  // A line the card shows under the entry (the usual split it would get).
+  detail?: string;
 }
 
 // The only commands a change card may post to (the page checks the path
@@ -143,7 +148,9 @@ export const ASK_CHANGE_PATHS = [
   "/api/trip-events/entries/set",
   "/api/trip-events/save",
   "/api/trip-events/delete",
-  "/api/trip-events/undo"
+  "/api/trip-events/undo",
+  "/api/splits/expenses/add-usual",
+  "/api/splits/expenses/remove-added"
 ] as const;
 export type AskChangePath = typeof ASK_CHANGE_PATHS[number];
 
@@ -233,7 +240,8 @@ export type AskResolveRequest =
   | { type: "simplify"; currency: string | null }
   | { type: "matches"; month: string }
   | { type: "plan_link"; line: string; month: string; words: string }
-  | AskTripEventRequest;
+  | AskTripEventRequest
+  | AskUsuallySharedRequest;
 
 const PREVIEW_ROWS = 8;
 const MAX_MATCHES = 6;

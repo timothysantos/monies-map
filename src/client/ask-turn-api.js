@@ -265,12 +265,14 @@ export const ASK_CHANGE_PATHS = Object.freeze([
   "/api/trip-events/entries/set",
   "/api/trip-events/save",
   "/api/trip-events/delete",
-  "/api/trip-events/undo"
+  "/api/trip-events/undo",
+  "/api/splits/expenses/add-usual",
+  "/api/splits/expenses/remove-added"
 ]);
 const CHANGE_TYPES = new Set([
   "edit_entry", "recategorise", "recategorise_bulk", "entry_note", "month_note", "link_transfer", "group_create",
   "group_move", "simplify", "payment_way", "category_create", "category_rename", "category_colour", "plan_link",
-  "trip_event", "trip_event_create"
+  "trip_event", "trip_event_create", "usually_shared"
 ]);
 const MATCH_PATHS = Object.freeze({ expense: "/api/splits/matches/link-expense", settlement: "/api/splits/matches/link-settlement" });
 
@@ -364,6 +366,10 @@ export async function runChangeSteps(steps, { confirmedCount = undefined, result
     }
     const body = { ...step.body };
     if (Number.isInteger(confirmedCount) && (step.path === "/api/entries/update-category" || step.path === "/api/trip-events/entries/set") && Array.isArray(body.changes)) {
+      body.confirmedCount = confirmedCount;
+    }
+    // Usually shared: one Add for every shop on the card, checked as a whole.
+    if (Number.isInteger(confirmedCount) && step.path === "/api/splits/expenses/add-usual" && Array.isArray(body.groups)) {
       body.confirmedCount = confirmedCount;
     }
     if (step.fromResult && last && isText(step.fromResult.as) && isText(step.fromResult.key)) {

@@ -299,7 +299,8 @@ export const askCopy = {
         category_colour: "Change its colour",
         plan_link: (count) => `Link ${count === 1 ? "1 entry" : `${count} entries`} to this plan line`,
         trip_event: (count) => `${count === 1 ? "1 entry" : `${count} entries`} change trip or event`,
-        trip_event_create: "New trip or event"
+        trip_event_create: "New trip or event",
+        usually_shared: (count) => `${count === 1 ? "1 entry" : `${count} entries`} you usually share, not on Splits yet`
       },
       fields: {
         amount: "Amount",
@@ -327,7 +328,7 @@ export const askCopy = {
       mixed: "Several",
       entriesLabel: "Entries it changes",
       more: (count) => `and ${count} more`,
-      confirm: (count, type = "") => (type === "trip_event" ? `Yes, put all ${count}` : `Yes, change all ${count} entries`),
+      confirm: (count, type = "") => (type === "trip_event" ? `Yes, put all ${count}` : type === "usually_shared" ? `Yes, add all ${count}` : `Yes, change all ${count} entries`),
       confirmHint: "Tap to confirm",
       save: {
         recategorise_bulk: (count) => `Change ${count === 1 ? "1 entry" : `${count} entries`}`,
@@ -337,7 +338,8 @@ export const askCopy = {
         category_create: "Add category",
         plan_link: "Link entries",
         trip_event: (count) => (count === 1 ? "Save" : `Change ${count} entries`),
-        trip_event_create: "Make it"
+        trip_event_create: "Make it",
+        usually_shared: (count) => `Add ${count}`
       },
       saveTransferNone: "Save as a transfer",
       saveDefault: "Save",
@@ -354,8 +356,11 @@ export const askCopy = {
         trip_event: (count, trip) => (trip
           ? `Put ${count === 1 ? "1 entry" : `${count} entries`} on ${trip}.`
           : `Took ${count === 1 ? "1 entry" : `${count} entries`} off ${count === 1 ? "its trip or event" : "their trip or event"}.`),
-        trip_event_create: (_count, trip) => `Made ${trip}. Put entries on it from Entries, or ask me.`
+        trip_event_create: (_count, trip) => `Made ${trip}. Put entries on it from Entries, or ask me.`,
+        usually_shared: (count) => `Added ${count === 1 ? "1 entry" : `${count} entries`} to Splits.`
       },
+      // Some of an Add could not go on Splits: the reasons, each once.
+      someNotAdded: (count, reasons) => `${count === 1 ? "1 entry was" : `${count} entries were`} not added. ${reasons.join(" ")}`,
       savedTransferNone: "Marked as a transfer. The other side isn't linked yet.",
       // The other sides of a transfer to choose from (ask-transfer-choices.jsx).
       transfer: {

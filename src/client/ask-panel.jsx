@@ -917,6 +917,8 @@ function AskConversation({
     // A trip change: the trips list (the picker's and the sheet's counts) is
     // read again where it is next shown.
     if (change.type === "trip_event" || change.type === "trip_event_create") forgetTripEvents(queryClient);
+    // Usually shared: Splits reads its list again the next time it is shown.
+    if (change.type === "usually_shared") queryClient.removeQueries({ queryKey: ["splits-usually-shared"] });
     void runBackgroundRefresh(entriesPage.refresh);
   }
 
@@ -943,7 +945,13 @@ function AskConversation({
       afterChange(change, "save");
       const saved = unmatched ? askCopy.turn.change.savedTransferNone : askCopy.turn.change.saved[change.type];
       const category = change.rows.find((row) => row.field === "category" || row.field === "trip" || row.field === "name")?.after ?? "";
-      appendThread(threadItem("note", { text: typeof saved === "function" ? saved(change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
+      // Usually shared: an entry that could not go on Splits is told, with why.
+      const addedCount = Number.isInteger(result?.addedCount) ? result.addedCount : change.count;
+      appendThread(threadItem("note", { text: typeof saved === "function" ? saved(change.type === "usually_shared" ? addedCount : change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
+      if (change.type === "usually_shared" && Array.isArray(result?.refused) && result.refused.length) {
+        const reasons = [...new Set(result.refused.map((row) => String(row.reason ?? "")).filter(Boolean))];
+        appendThread(threadItem("note", { text: askCopy.turn.change.someNotAdded(result.refused.length, reasons) }));
+      }
     } finally {
       setWorking("");
     }
