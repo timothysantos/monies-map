@@ -23,6 +23,7 @@ import { buildInvestmentsOverTimeDto } from "./domain/pages/investments-over-tim
 import { buildTaxReliefsDto } from "./domain/pages/tax-reliefs";
 import { buildSummaryChangedDto } from "./domain/pages/summary-changed";
 import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
+import { CARD_REWARD_PATHS, handleCardRewardsRoute } from "./server/card-rewards-route";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
 import { buildClearPairsPreviewDto } from "./domain/pages/ledger-checkup-clear-pairs";
 import { handleLedgerCheckupWrite, isLedgerCheckupWritePath, LEDGER_CHECKUP_CLEAR_PAIRS_PATH } from "./server/ledger-checkup-route";
@@ -617,6 +618,13 @@ export default {
         url.searchParams.get("view") ?? "household",
         (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
       ), timing);
+    }
+
+    // Miles and cashback on Summary and Settings > Cards and rewards
+    // (DOMAIN.md "Card reward rule"). No AI; the card asks once the top
+    // summary is usable.
+    if (CARD_REWARD_PATHS.has(url.pathname)) {
+      return handleCardRewardsRoute(request, env, url, (label, build) => apiPageResponse(label, request, url, build, timing));
     }
 
     // The Ledger check-up (DOMAIN.md "Ledger Check-up"): one explicit,
