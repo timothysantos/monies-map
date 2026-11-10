@@ -17,6 +17,9 @@ export type PlanModePreference = "studio" | "tables";
 export interface ViewerPreferences {
   leadView: LeadViewPreference | null;
   planMode: PlanModePreference | null;
+  // Summary's card order and hidden cards (design.md "Arrange Summary"):
+  // "insights,mix,subs,plan,-accounts"; null is the usual order.
+  summaryCards: string | null;
 }
 
 export function isLeadViewPreference(value: unknown): value is LeadViewPreference {
@@ -25,6 +28,12 @@ export function isLeadViewPreference(value: unknown): value is LeadViewPreferenc
 
 export function isPlanModePreference(value: unknown): value is PlanModePreference {
   return value === "studio" || value === "tables";
+}
+
+// The card ids and "-" for hidden, comma separated; the page drops ids it
+// does not know (summary-card-order.js), so only the shape is checked here.
+export function isSummaryCardsPreference(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 120 && /^-?[a-z]{1,20}(?:,-?[a-z]{1,20}){0,11}$/.test(value);
 }
 
 export async function viewerPreferencesKey(email: string) {
@@ -36,7 +45,7 @@ export async function viewerPreferencesKey(email: string) {
 // The login's choices in one read, each null when it never chose (or there is
 // no login). An older database without the settings table reads as no choice.
 export async function loadViewerPreferences(db: D1Database, email?: string): Promise<ViewerPreferences> {
-  const none = { leadView: null, planMode: null };
+  const none = { leadView: null, planMode: null, summaryCards: null };
   if (!email) {
     return none;
   }
@@ -48,7 +57,8 @@ export async function loadViewerPreferences(db: D1Database, email?: string): Pro
     const stored = row ? JSON.parse(row.value_json) : null;
     return {
       leadView: isLeadViewPreference(stored?.leadView) ? stored.leadView : null,
-      planMode: isPlanModePreference(stored?.planMode) ? stored.planMode : null
+      planMode: isPlanModePreference(stored?.planMode) ? stored.planMode : null,
+      summaryCards: isSummaryCardsPreference(stored?.summaryCards) ? stored.summaryCards : null
     };
   } catch {
     return none;
@@ -62,7 +72,7 @@ export async function loadLeadViewPreference(db: D1Database, email?: string): Pr
 
 // Merges one preference into the login's stored preferences in one statement
 // (one batch), so saving one never loses another.
-async function saveViewerPreference(db: D1Database, email: string, patch: Partial<Record<keyof ViewerPreferences, string>>) {
+async function saveViewerPreference(db: D1Database, email: string, patch: Partial<Record<keyof ViewerPreferences, string | null>>) {
   await ensureAppSettingsTable(db);
   await db.batch([
     db
@@ -91,4 +101,13 @@ export async function savePlanModePreference(db: D1Database, email: string, plan
   }
   await saveViewerPreference(db, email, { planMode });
   return { planMode };
+}
+
+// Null is the usual order: json_patch removes the key.
+export async function saveSummaryCardsPreference(db: D1Database, email: string, summaryCards: string | null) {
+  if (summaryCards !== null && !isSummaryCardsPreference(summaryCards)) {
+    throw new Error("That card order is not one Summary knows.");
+  }
+  await saveViewerPreference(db, email, { summaryCards });
+  return { summaryCards };
 }

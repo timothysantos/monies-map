@@ -189,3 +189,36 @@ test("a plan mode save that fails leaves the stored choices as they were", async
   assertSameDatabase(await dumpDatabase(db), before);
   await assert.rejects(savePlanModePreference(db, TIM, "grid"), /Choose Sliders or List/);
 });
+
+// Arrange Summary (design.md "Arrange Summary"): each login's card order is
+// its own, comes back on the app shell only once it is changed, and Reset
+// (null) takes it off the shell again; a bad value and no login are refused.
+test("the Summary card order is saved for one login and not the other; Reset removes it", async (t) => {
+  const workspace = await openSeededDatabase(t, template);
+  const arrange = (email, summaryCards) => workspace.fetch("/api/viewer-preferences/summary-cards", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...as(email) },
+    body: JSON.stringify({ summaryCards })
+  });
+  assert.equal((await shellFor(workspace, TIM)).summaryCards, undefined, "the shell does not grow for anyone who never arranged");
+  const saved = await arrange(TIM, "insights,mix,subs,plan,-accounts");
+  assert.equal(saved.status, 200);
+  assert.deepEqual(await saved.json(), { ok: true, summaryCards: "insights,mix,subs,plan,-accounts" });
+  assert.equal((await shellFor(workspace, TIM)).summaryCards, "insights,mix,subs,plan,-accounts");
+  assert.equal((await shellFor(workspace, JOYCE)).summaryCards, undefined);
+  // Saving one preference keeps the others.
+  assert.equal((await choose(workspace, TIM, "plan")).status, 200);
+  assert.equal((await shellFor(workspace, TIM)).summaryCards, "insights,mix,subs,plan,-accounts");
+  const reset = await arrange(TIM, null);
+  assert.deepEqual(await reset.json(), { ok: true, summaryCards: null });
+  const shell = await shellFor(workspace, TIM);
+  assert.equal(shell.summaryCards, undefined);
+  assert.equal(shell.leadView, "plan");
+
+  const before = await dumpDatabase(workspace.db);
+  for (const bad of ["Mix", "insights;mix", "x".repeat(200), 7]) {
+    assert.equal((await arrange(TIM, bad)).status, 400, String(bad));
+  }
+  assert.equal((await arrange(null, "mix,insights")).status, 401);
+  assertSameDatabase(await dumpDatabase(workspace.db), before);
+});

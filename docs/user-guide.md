@@ -357,6 +357,12 @@ over plan.
   Mark an entry with the categories **SRS top-up**, **CPF top-up** or **Charity
   gift** (for a transfer, choose one as its purpose, and name the person it is
   for if it is for family). The card is hidden until something is marked.
+- **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
+  move the cards under the top summary up or down, and tap a card's name to
+  hide or show it. **Done** keeps your order; **Reset to the usual order**
+  puts it back. Money insights can be moved but not hidden. A card that is
+  hidden stays hidden even when it has something new to show. Your order is
+  your own: someone else signed in keeps theirs.
 - **Subscriptions and bills**: under Money insights, one list of every
   charge that comes back each month or each year: streaming, phone,
   broadband, the town council, insurance, utilities. The app finds them in

@@ -1,0 +1,72 @@
+import { expect, test } from "@playwright/test";
+
+import { reseedDemo } from "./helpers";
+
+// Arrange Summary (design.md "Arrange Summary"): the cards under the top
+// summary can be moved and hidden (Money insights can be moved, never
+// hidden); nothing changes until Done; the choice survives a reload; Reset
+// brings the usual order back. Without a login it is kept on the device.
+
+async function cardOrder(page) {
+  return page.evaluate(() => [...document.querySelectorAll(".panel [data-summary-card], .panel .summary-top-grid, .panel .summary-card-solo")]
+    .map((element) => element.getAttribute("data-summary-card") ?? (element.classList.contains("summary-top-grid") ? "mix+plan" : "solo")));
+}
+
+test.describe("Arrange Summary", () => {
+  test.beforeEach(async ({ page }) => {
+    await reseedDemo(page);
+  });
+
+  test("desktop: move a card with the keyboard, hide one, Done, reload, then Reset", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/?view=household");
+    await expect(page.locator(".summary-cards-arrange button")).toHaveText("Arrange cards", { timeout: 30_000 });
+    expect(await cardOrder(page)).toEqual(["insights", "subs", "mix+plan", "accounts"]);
+
+    await page.locator(".summary-cards-arrange button").click();
+    const dialog = page.getByRole("dialog", { name: "Arrange cards" });
+    await expect(dialog).toContainText("The top summary always stays first.");
+    // Money insights is never hidden.
+    await expect(dialog.locator('[data-card="insights"] .summary-cards-name')).toBeDisabled();
+    // The keyboard alone: Spending Mix up, above Subscriptions and bills.
+    await dialog.getByRole("button", { name: "Move Spending Mix up" }).focus();
+    await page.keyboard.press("Enter");
+    await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
+    await expect(dialog.locator('[data-card="accounts"]')).toContainText("Hidden");
+    // Cancel changes nothing.
+    await dialog.getByRole("button", { name: "Close dialog" }).click();
+    expect(await cardOrder(page)).toEqual(["insights", "subs", "mix+plan", "accounts"]);
+
+    await page.locator(".summary-cards-arrange button").click();
+    await dialog.getByRole("button", { name: "Move Spending Mix up" }).click();
+    await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+    expect(await cardOrder(page)).toEqual(["insights", "solo", "subs", "solo"]);
+    await expect(page.locator(".summary-accounts")).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.locator(".summary-cards-arrange button")).toBeVisible({ timeout: 30_000 });
+    expect(await cardOrder(page)).toEqual(["insights", "solo", "subs", "solo"]);
+
+    await page.locator(".summary-cards-arrange button").click();
+    await dialog.getByRole("button", { name: "Reset to the usual order" }).click();
+    expect(await cardOrder(page)).toEqual(["insights", "subs", "mix+plan", "accounts"]);
+  });
+
+  test("phone: Edit cards, Up and Down are 44 px and the ends are greyed out", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/?view=household");
+    const link = page.locator(".summary-cards-arrange button");
+    await expect(link).toHaveText("Edit cards", { timeout: 30_000 });
+    await link.click();
+    const sheet = page.getByRole("dialog", { name: "Edit cards" });
+    await expect(sheet).toContainText("Tap a card's name to show or hide it.");
+    const firstUp = sheet.getByRole("button", { name: "Move Money insights up" });
+    await expect(firstUp).toBeDisabled();
+    await expect(sheet.getByRole("button", { name: "Move The accounts shown down" })).toBeDisabled();
+    const box = await sheet.getByRole("button", { name: "Move Spending Mix up" }).boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.width).toBeGreaterThanOrEqual(44);
+  });
+});
