@@ -546,6 +546,26 @@ so Invested counts it once (`investment-moves.ts`). Placement: the Summary's
 slice Summary already loads, so no page payload grows for a household with no
 investment statement.
 
+### Usually shared (current, 2026-11)
+
+Splits lists past expenses that look like the ones their payer usually puts
+on Splits ("Usually shared, not on Splits yet"; DOMAIN.md "Usually Shared").
+It adds no table and no policy: `src/domain/usually-shared.ts` sweeps the
+single-entry split rule (`suggestSplitForEntry`) over the owner's unsplit
+expenses of the last 90 days, grouped by shop, payer, group, share and
+currency. `src/domain/pages/usually-shared.ts` loads two bounded reads (the
+newest 500 candidates; the newest 6,000 of the 455 days of history) and the
+route `GET /api/splits/usually-shared` is read only, never part of a page
+DTO, read by a lazy Splits section after the page is on screen. The write is
+`addEntriesToSplitsRecord` (`POST /api/splits/expenses/add-usual`): the same
+split rows as Add to Splits (one shared statement builder), one audit event
+and the month refresh markers in ONE batch, refused entries named with their
+reason, at most 200 and "Yes, add all N" over 10; Undo is
+`removeSplitExpensesRecord` (`/remove-added`, one batch, settlement lock
+checked). Ask offers the same list as a change card (`add_usually_shared`,
+`ask-usually-shared.ts`) saved only through those two routes. It never applies
+by itself and no AI chooses what is on the list.
+
 ### Trips and events (current, 2026-11)
 
 A trip or event (DOMAIN.md "Trip or Event") gathers entries such as "Seoul

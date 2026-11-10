@@ -914,6 +914,9 @@ always know you are working on shared money rather than your bank ledger.
   open.
 - **Possible split links**: a reminder when imported bank rows may match
   splits you entered by hand ([Link a bank row to a split](#link-a-bank-row-to-a-split-you-entered-earlier)).
+- **Usually shared, not on Splits yet**: shown only when Splits finds past
+  purchases at shops you usually share but have not added yet
+  ([Add the ones you usually share](#add-the-ones-you-usually-share)).
 - **Archived batches**: groups you have already settled, and earlier
   settle-ups. Choose a settle-up to open it at the end of the list.
 - **Activity**: the group's open expenses and settle-ups, by date. Each date
@@ -949,6 +952,7 @@ open.
 - [Settle up a group](#settle-up-a-group)
 - [Correct a mistake in a settle-up](#correct-a-mistake-in-a-settle-up)
 - [Restore a deleted split](#restore-a-deleted-split)
+- [Add the ones you usually share](#add-the-ones-you-usually-share)
 
 ### On a phone
 
@@ -1102,6 +1106,11 @@ changes until you tap its button, and most changes have **Undo** after.
   Rides", "make Groceries green".
 - Month: "note for September: Bali trip month", and "link my Netflix
   payments to the Netflix plan line".
+- Usually shared: "add the usual shared ones to Splits" (or name one shop:
+  "add the usual Cold Storage ones to Splits"). Ask lists the past purchases
+  you usually share but have not added, each with its usual split, and adds
+  them only when you tap **Add**. For more than ten, tap **Yes, add all**
+  first. **Undo** takes them back. See [Add the ones you usually share](#add-the-ones-you-usually-share).
 - Trips and events: "put these on Seoul trip" (right after Ask showed you
   some entries), "add the hotel to the Seoul trip", "move everything paid in
   won to Seoul trip", "take these off the trip", or "new trip Jeju weekend
@@ -2781,6 +2790,42 @@ shows when a correction was added or undone.
 While a split is deleted, its entry counts in full for the person who paid.
 If the split was already restored in another tab, the history says so and
 nothing is restored twice.
+
+## Add the ones you usually share
+
+If you often put a shop's purchases on Splits, the ones you forgot to add can
+wait there for you. When Splits finds some from the last 3 months, a row
+appears above the list: **Usually shared, not on Splits yet**, with how many
+entries at how many shops.
+
+1. Open **Splits** and select **Review** on that row. On a phone it opens a
+   sheet.
+2. Each shop has its own card: the shop, who paid, the total, and a line such
+   as "Usually half each with Joyce in Baby River. Shared 8 of 9 times." That
+   line is why it is here: Splits looks at what you did with that shop's
+   purchases in the last year, and only offers it when most of them were
+   shared the same way. A shop you share now and then is never offered.
+3. Every entry is ticked. Untick any you paid for alone. Select the total to
+   see exactly these entries on Entries.
+4. Select **Add 3** (the number you have ticked). They go on Splits with that
+   shop's usual share, and nothing else about the entry changes, even if a
+   bank statement has already confirmed it.
+5. Changed your mind? Select **Undo** straight away, and they come off Splits
+   again.
+
+Adding more than 10 at once asks you to select **Yes, add all 12** first, and
+200 is the most in one go. If one of them can't be added (it is already on
+Splits, or its group is in another currency) Splits says so and adds the rest.
+Nothing is ever added without your tap.
+
+![Usually shared, not on Splits yet, lists the shops you usually share](/faq/guide/desktop/thumbs/splits-usually-shared.webp)
+
+On a phone it is one row; select **Review** to open the shops in a sheet.
+
+![On a phone Usually shared is one row that opens a sheet](/faq/guide/phone/thumbs/phone-splits-usually-shared.webp)
+
+You can also ask: "add the usual shared ones to Splits" shows the same list as
+a draft in [Ask](#ask), saved only when you tap **Add**.
 
 ## Record Apple Pay purchases automatically
 

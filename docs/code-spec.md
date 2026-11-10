@@ -197,6 +197,7 @@ chunk.
 | `reminders` (`GET /api/reminders`) | `<= 150ms` | `400ms` | read-only, read when Ask opens (never on the first screen): at most 16 statements (13 without a month checklist), about 21,000 to 30,000 rows read and 80 to 110 ms of CPU on the 10k fixture, at most 20 reminders and about 2 KB (`tests/reminders-budget.test.mjs`, payload key `reminders`) |
 | `summaryPage` bank fees (2026-11) | same step | — | one more statement beside the Summary page's other reads (two for a person view, with the window's split shares): the year's fee candidates bounded by date and description words; the DTO's `bankFeesYear` is left out when the year has no fee |
 | `summaryChanged` (`GET /api/summary-changed`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable and only when its range ends in the current month: 6 round trips, about 11,000 rows and 1.7 MB of rows read and ~45 ms of CPU on the 10k fixture, the 7-month date window `loadUsualEntries` reads for Ask (`tests/page-load-scale-guard.test.mjs`); the card's code rides in Spending Mix's chunk |
+| `usuallyShared` (`GET /api/splits/usually-shared`) | `<= 250ms` | `400ms` | read-only, read by the lazy Splits section (never the first screen, never a page DTO): two entry reads, each bounded by a date window and a LIMIT (the newest 500 unsplit candidates of 90 days; the newest 6,000 history rows of 455 days), 4 round trips, about 77,000 rows read, 1.7 MB of rows and ~240 ms of CPU on the 10k fixture; the sweep indexes history by owner and shop (a remembered shop key) so each candidate sees only its own shop and category (`tests/page-load-scale-guard.test.mjs`; the prod export took 5.7 s before the index, 0.2 s after) |
 | `repeatingCharges` (`GET /api/repeating-charges`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step of 4 to 5 statements, about 40,200 rows and 612 kB of rows read and ~40 ms of CPU on the 10k fixture, 26 months of expenses grouped in SQL by description and month (`tests/page-load-scale-guard.test.mjs`, payload key `repeating-charges`) |
 | `investmentsOverTime` (`GET /api/investments-over-time`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable (never on the first screen): one step, the accounts, their statement values and the people, plus the year's entries (figures only) only when an account in view has a statement value |
 | `taxReliefs` (`GET /api/tax-reliefs`) | `<= 150ms` | `400ms` | read-only, read once Summary's top summary is usable: one step, the people and this year's entries whose category or transfer purpose is a relief category, matched in SQL so only those rows leave D1; the limits are one dated module (`sg-tax-relief-limits.ts`) |
@@ -886,6 +887,20 @@ A persistence command is all-or-nothing:
   (`tests/atomic-writes-trip-events.test.mjs`). The tables are additive and
   every read tolerates them missing; a correction's carry statement is read
   first and left out when they are
+- Usually shared (`src/domain/app-repository-splits.ts`, DOMAIN.md "Usually
+  Shared"): `addEntriesToSplitsRecord` reads every entry and every active link
+  first (ids in chunks of 90), refuses by name each entry that cannot go on
+  Splits (gone, not an expense, already linked, no clear payer, a group in
+  another currency, a settled period), then writes the accepted entries' split
+  and share rows (`buildSplitExpenseFromEntryStatements`, the one builder the
+  single Add to Splits also uses), one `split_expenses_added_usual` audit event
+  and the month refresh markers in ONE batch (at most 200; over 10 needs
+  `confirmedCount`). `removeSplitExpensesRecord` (its Undo) archives every
+  named split with its history event in one batch behind a guard per split, and
+  a settled period refuses it whole (`SplitSettlementLockedError`, 409)
+  (`tests/usually-shared-api.test.mjs`: a `failingStatement` at the shares, the
+  audit event, the month marker, the history events and the archive; a race of
+  two Adds)
 - the bulk link of clear transfer pairs
   (`src/domain/app-repository-transfer-bulk-link.ts`, DOMAIN.md "Ledger
   Check-up") takes the clear pairs the route recomputed on the ledger as it is,

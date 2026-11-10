@@ -207,6 +207,8 @@ Splits data comes from:
 - `GET /api/splits-page`
 - `GET /api/splits/settled-rows` and `GET /api/splits/settled-search`, on
   demand (see "Settled sections load on demand")
+- `GET /api/splits/usually-shared`, read by the lazy "Usually shared" section
+  (see "Usually shared, not on Splits yet")
 
 Split mutations may also refresh:
 
@@ -215,6 +217,34 @@ Split mutations may also refresh:
 - `summary`
 
 and may trigger shell refresh only when the explicit refresh plan says so.
+
+### Usually shared, not on Splits yet
+
+A lazy card between the settlement status and the activity list
+(`splits-usually-shared.jsx`, its own chunk, loaded only on the group's
+activity and never in a household view). It reads `GET /api/splits/usually-shared`
+through `fetchRequiredQuery` (never part of the page DTO or the first screen)
+and renders nothing until the list has an entry. The list is the sweep in
+`src/domain/usually-shared.ts` over the single-entry split rule (DOMAIN.md
+"Usually Shared").
+
+- Wide screens: the Review matches callout pattern, "You usually share these:
+  N entries at M shops." with Review (Hide when open); open, one white card per
+  shop: the shop, who paid (a person chip), the group's amount as an openable
+  figure (`data-fig="spent"` over the group's entry ids), "Usually half each
+  with Joyce in Baby River. Shared 8 of 9 times.", a tick per entry (all
+  ticked), and "Add N".
+- Phones: the same count row; Review opens a bottom sheet with the same cards
+  and Close at the bottom.
+- "Add N" posts the ticked entries to `POST /api/splits/expenses/add-usual`.
+  Over 10 it first asks "Yes, add all N" (with Cancel); the command checks the
+  count and refuses more than 200. The answer lists what was added and what was
+  refused with why (already on Splits, a group in another currency, ...); the
+  card shows "Added N entries to Splits." with Undo
+  (`POST /api/splits/expenses/remove-added`, one batch; refused whole when a
+  settle-up has closed the period, with the settle-up's own reason). Entries,
+  Month and Summary refresh through `onSplitMutation`.
+- Nothing is added by itself, and the section is hidden when nothing is found.
 
 ## Ownership Notes
 
@@ -229,6 +259,8 @@ Splits owns:
 - travel currency and payment-evidence review
 - archive behavior
 - linked-entry handling
+- adding many past entries with their usual split in one all-or-nothing Add,
+  and its Undo (Usually shared)
 
 ## Audit Status
 

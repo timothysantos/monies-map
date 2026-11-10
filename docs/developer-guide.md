@@ -2859,6 +2859,45 @@ production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
 again is safe.
 
+## How does "Usually shared" on Splits work?
+
+Splits lists past expenses at shops the payer usually shares and not yet on
+Splits (DOMAIN.md "Usually Shared"; user guide "Add the ones you usually
+share"). `src/domain/usually-shared.ts` is the sweep: every expense of the last
+90 days on no split whose owner is one of the two people Splits shares between
+is judged by `suggestSplitForEntry` (the single-entry rule; the policy lives
+only in `split-suggestion.ts`), so changing a threshold there changes this list
+too. `src/domain/pages/usually-shared.ts` loads it with two bounded reads (the
+newest 500 candidates and the newest 6,000 history rows of the 455 days before,
+each by a date window and a LIMIT) and `GET /api/splits/usually-shared`
+answers `{ groups, entryCount, shopCount }` (a group: `shopName`, `groupId`,
+`basisPoints` (the payer's share), `evidenceCount` of `matchedCount`,
+`matchedBy`, `totalMinor`, `entries`).
+
+Routes (`src/server/usually-shared-route.ts`, bodies through `readJsonObject`):
+`POST /api/splits/expenses/add-usual` takes `{ groups: [{ splitGroupId,
+payerShareBasisPoints, entryIds }], confirmedCount }` and answers `added`,
+`refused` (entry id and reason), `addedCount` and `undoSplitExpenseIds`;
+`POST /api/splits/expenses/remove-added` takes `{ splitExpenseIds }` (Undo). The
+commands are in `app-repository-splits.ts` and share their row builder with
+Add to Splits; both are one `db.batch()` (see the Persistence Atomicity
+Contract in `docs/code-spec.md`). The browser side is
+`src/client/splits-usually-shared.jsx` (lazy; its own chunk and CSS) with the
+pure `usually-shared-model.js`; the Ask side is `ask-usually-shared.ts`.
+
+Tests: `tests/usually-shared.test.mjs` (the sweep, with the one-policy check),
+`tests/usually-shared-api.test.mjs` (the routes, refusals, `failingStatement`
+for each write, a race), `tests/usually-shared-model.test.mjs`,
+`tests/ask-usually-shared.test.mjs` and the `usual-shared-*` eval bank
+messages, the figure equality in `tests/openable-figures.test.mjs`, the scale
+guard, `tests/e2e/splits-usually-shared.spec.js` and
+`tests/e2e/ask-usually-shared.spec.js`. The showcase demo leaves Serene's last
+FairPrice top-ups off Splits on purpose so the section shows
+(`demo-showcase-data.ts`; `tests/demo-showcase.test.mjs`). To see what the rule
+finds in production, export the D1 (`npx wrangler d1 export monies-map --remote`)
+into a local SQLite copy and run `buildUsuallySharedDto` against it; nothing is
+written.
+
 ## How does Ask answer "is that more than usual?"
 
 The `usual` answer intent (`readAnswerIntent`, rules) and turn topic

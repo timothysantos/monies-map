@@ -3438,6 +3438,26 @@ searched.
   is drawn outside it. Guard: `tests/e2e/category-list-reach.spec.js`
   (390x664, 320x568, 1280x800).
 
+## Usually shared on Splits
+
+"Usually shared, not on Splits yet" (DOMAIN.md "Usually Shared") is a lazy
+section of the Splits page, shown only when the server finds something, between
+the settlement status and the activity list, never in a household view. It
+re-uses the Review matches callout (the cream row with its one primary button:
+"Review", "Hide" when open) and the match card (white, 18 px radius, soft
+shadow): per shop the name and entry count, a person chip for who paid (the
+Entries person colour), the group's amount as an openable figure
+(`data-fig="spent"` with the group's entry ids and months, the figure's menu
+offers View entries whose Spent total is the amount to the cent), one plain
+line ("Usually half each with Joyce in Baby River. Shared 8 of 9 times."), a
+tick per entry (all ticked, so the person unticks the ones paid for alone) and
+one primary "Add N". Over ten the button asks "Yes, add all N" with Cancel,
+inline, never a browser confirm. After an Add a mint notice ("Added 2 entries
+to Splits.") carries Undo. On a phone the callout is the whole section; Review
+opens the standard list sheet (`split-list-sheet`, swipe down, Close at the
+bottom bar). No new control style: money is plain ink, the pastel mint notice
+and the Splits terracotta button are the existing tokens.
+
 ## Trips and events on Entries
 
 A trip or event (DOMAIN.md "Trip or Event") shows and is chosen on Entries

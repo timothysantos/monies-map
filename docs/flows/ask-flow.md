@@ -1163,6 +1163,28 @@ Add to Splits). "Not this time" hides it for that card. Only an even share is
 offered; a failed, aborted or late answer is no question. It never replaces a
 field question already on the card. No AI, no new write route.
 
+### Usually shared
+
+"Add the usual shared ones to Splits" (also "put the usually shared on
+splits", "usually shared", typos such as "usualy shered") is the action
+`add_usually_shared`. The model reports only the intent, and a shop only when
+the person named one, as written (`usually_shared.shop`; words the person never
+wrote ask "Which shop do you mean?" without a repair turn). The server derives
+everything else (`src/domain/ask-usually-shared.ts`): it reads the same list
+Splits shows (`pages/usually-shared.ts`, the single-entry split rule swept over
+the last 90 days), narrows it to the named shop, and answers with a change card
+`usually_shared`: one "Split group" row (the usual split, or "Several"), the
+first 8 entries each with its usual split ("half each with Joyce in Baby
+River"), the count, and "Add N". Save posts ONE step to
+`POST /api/splits/expenses/add-usual` (every shop on the card, all or nothing;
+the count the person confirmed rides along over 10, "Yes, add all N"; more than
+200 is never offered: Ask says to name a shop or open Splits), and Undo posts
+`remove-added` with the split ids the save returned (`fromResult`). An entry
+the command refuses is told after Save with its reason. Nothing is added by
+itself, no figure comes from the model, and with nothing waiting Ask says so
+instead of showing a card. With AI off or failing, `readUsuallySharedRules`
+reads the same messages into the same action. Eval bank: `usual-shared-*`.
+
 ### Card suggestion
 
 Beside the split suggestion, on the same two cards (a new expense with a shop

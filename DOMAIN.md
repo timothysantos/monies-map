@@ -3085,6 +3085,50 @@ Important distinctions:
 - Ask offers only an even share, since the Splits switch saves an even split (shown as "half each", never "50/50").
 - "Not this time" is kept on the card only; nothing is learned from it.
 
+### Usually Shared
+
+Past expenses that look like the ones their payer usually puts on Splits but
+are not on Splits yet, listed on the Splits page as "Usually shared, not on
+Splits yet" and, when asked, as an Ask change card. It is a sweep over the
+same rule as the split suggestion: every expense of the last 90 days that is
+on no split and whose owner is one of the two people Splits shares between is
+judged by `suggestSplitForEntry` against the owner's own 12 months of history,
+and one the rule would not suggest is left out. Entries are grouped by shop
+(normalised description), payer, usual group, usual share and currency. A
+group says its shop, the usual split ("half each with Joyce in Baby River")
+and its evidence ("Shared 8 of 9 times"; "similar purchases" when only the
+category decided). Deterministic and read-only: no AI, and it never adds
+anything by itself. The person ticks entries and taps "Add N" (over 10 asks
+"Yes, add all N"; at most 200); the Add is one all-or-nothing command that
+writes the same split rows as Add to Splits and an audit event, with Undo.
+Nothing is learned from an Add (it only repeats a habit the rule already
+found), and a statement-certified entry keeps its bank facts.
+
+Canonical term:
+- `usually shared`
+
+Code:
+- `src/domain/usually-shared.ts` (the sweep, `USUALLY_SHARED_POLICY`)
+- `src/domain/pages/usually-shared.ts` (loads the bounded candidates and history)
+- `UsuallySharedGroupDto` in `src/types/dto.ts`
+- `GET /api/splits/usually-shared`, `POST /api/splits/expenses/add-usual` and
+  `POST /api/splits/expenses/remove-added` (`src/server/usually-shared-route.ts`;
+  commands `addEntriesToSplitsRecord` and `removeSplitExpensesRecord` in
+  `src/domain/app-repository-splits.ts`)
+- `src/client/splits-usually-shared.jsx` (the lazy section),
+  `src/domain/ask-usually-shared.ts` (the Ask card)
+
+Important distinctions:
+- It never forks the split suggestion's policy: change a threshold there and
+  this list follows (`tests/usually-shared.test.mjs` pins it entry by entry).
+- Unsplit visits count against a shop's habit (the rule's 60%), so a shop
+  split only now and then is never listed.
+- The reads are bounded: candidates are the newest 500 within 90 days, history
+  the newest 6,000 of the 455 days before.
+- A group is one payer: Tim's and Joyce's purchases at one shop are two groups.
+- Its figure ("View entries") opens `spent` narrowed to the group's entry ids,
+  so Entries' Spent total equals the group's amount to the cent.
+
 ### Card Suggestion
 
 The card Ask asks about for a new expense at a shop the household has mostly

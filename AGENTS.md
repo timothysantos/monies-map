@@ -304,6 +304,14 @@ Details and the reasons are in `docs/code-spec.md` and
   settle-ups, bulk edits, deletes, transfer links, plan changes, anything on
   a certified or imported or old entry, amounts, dates, wallets, owners.
   Those still need the person's Save.
+- Usually shared (owner decision, 2026-11-10; DOMAIN.md "Usually Shared"):
+  Splits' "Usually shared, not on Splits yet" list and Ask's "add the usual
+  shared ones to Splits" are a sweep over the SAME single-entry rule
+  (`suggestSplitForEntry`); never give the sweep a policy of its own. Never
+  automatic: the person ticks and taps Add (more than 10 asks "Yes, add all
+  N", at most 200), through `POST /api/splits/expenses/add-usual`, one
+  all-or-nothing batch with an audit event, with Undo; no AI chooses what is
+  on the list.
 - Habits are structured facts, never chat text (`ask_habits`, DOMAIN.md "Ask
   Habit"): a shop's category, a shop's usual split, a confirmed nickname,
   each with a count of confirmations and overrides, learned only from

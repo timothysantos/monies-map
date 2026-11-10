@@ -183,6 +183,11 @@ Open **Splits** (it opens on a person view, for example Ethan).
   records and the **Undo settle-up** option.
 - **Review matches** shows one suggestion: a dinner Serene recorded in
   Splits before her card row arrived.
+- **Usually shared, not on Splits yet** (above the list, tap **Review**):
+  Serene always puts her NTUC FairPrice top-ups on Splits, half each, but the
+  last two months' are not there yet. Untick any, then **Add 2**; **Undo**
+  takes them back. Asking Ask "add the usual shared ones to splits" shows the
+  same list as a card.
 - **Activity history** shows a dinner that was entered twice and deleted.
 
 Story: "Shared costs stay fair across trips, currencies and months, and the
