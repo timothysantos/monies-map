@@ -32,6 +32,15 @@ export const AVOID_WORDS = [
 const AVOID_PATTERN = new RegExp(`\\b(?:${AVOID_WORDS.map((word) => word.replace(/[-']/g, "[-']?")).join("|")})\\b`, "i");
 const EMOJI_PATTERN = /\p{Extended_Pictographic}/u;
 
+// The words a look ahead never uses (DOMAIN.md "Pace"): it is a range from
+// recorded entries, never a reassurance or a promise.
+const PACE_AVOID = /\b(?:safe|safely|can afford|you(?:'|\u2019)ll be fine|will have|guaranteed|forecast|projection)\b/i;
+
+export function findPaceProblems(text: string): string[] {
+  const match = text.match(PACE_AVOID);
+  return match ? [`uses "${match[0]}"`] : [];
+}
+
 // Returns what breaks the tone rules in one line of copy; empty when fine.
 export function findToneProblems(text: string): string[] {
   const problems: string[] = [];
