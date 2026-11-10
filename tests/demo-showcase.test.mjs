@@ -225,7 +225,7 @@ test("stored month totals equal their entries for every month and scope", async 
   }
 });
 
-test("transfers: card bills, contributions and settle-ups are matched pairs; one SRS top-up is unresolved", async (t) => {
+test("transfers: card bills, contributions and settle-ups are matched pairs; the SRS and CPF top-ups are unresolved", async (t) => {
   const { api, db } = await openSeededDatabase(t, showcase);
   const groups = await rows(db, `
     SELECT transfer_group_id, COUNT(*) AS size, SUM(CASE WHEN transfer_direction = 'in' THEN amount_minor ELSE -amount_minor END) AS net,
@@ -238,7 +238,14 @@ test("transfers: card bills, contributions and settle-ups are matched pairs; one
   const settings = await get(api, "/api/settings-page?view=household");
   assert.deepEqual(
     settings.settingsPage.unresolvedTransfers.map((entry) => [entry.description, entry.amountMinor, entry.accountName]),
-    [["FAST TRANSFER TO SRS A/C XXXX-0000", 100_000, "UOB One Account"]]
+    // The SRS and CPF accounts are not tracked here, so each top-up (the
+    // Tax reliefs card's demo data) has no other half.
+    [
+      ["FAST TRANSFER TO SRS A/C XXXX-0000", 100_000, "UOB One Account"],
+      ["CPF BOARD CASH TOP-UP", 400_000, "UOB One Account"],
+      ["SRS CONTRIBUTION OCBC", 600_000, "OCBC 360 Account"],
+      ["CPF BOARD CASH TOP-UP", 800_000, "OCBC 360 Account"]
+    ]
   );
   const entries = await get(api, "/api/entries-page?view=household&month=2026-04");
   const bill = entries.monthPage.entries.find((entry) => entry.description === "PAYMENT RECEIVED - THANK YOU");
@@ -256,12 +263,12 @@ test("statements: every account reconciled except the OCBC card, off by $42.80 w
       "DBS Live Fresh Card": ["matched", "2026-04", 0, 0],
       "Endowus Core Portfolio": ["matched", "2026-04", 0, 0],
       "IBKR Brokerage": ["matched", "2026-04", 0, 0],
-      "OCBC 360 Account": ["matched", "2026-04", 0, 0],
+      "OCBC 360 Account": ["matched", "2026-04", 0, 2],
       "OCBC 365 Card": ["mismatch", "2026-03", 4_280, 0],
       "POSB Joint Account": ["matched", "2026-04", 0, 0],
       "StashAway General Investing": ["matched", "2026-04", 0, 0],
       "UOB Lady's Card": ["matched", "2026-04", 0, 0],
-      "UOB One Account": ["matched", "2026-04", 0, 1],
+      "UOB One Account": ["matched", "2026-04", 0, 2],
       "iFAST Wrap Account": ["matched", "2026-04", 0, 0]
     }
   );
