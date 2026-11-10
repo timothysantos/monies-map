@@ -183,7 +183,10 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
   }
 
   // One batch for only the categories that are missing, instead of one
-  // round trip per category.
+  // round trip per category. A default added later (the tax relief
+  // categories, 2026-11) reaches an existing household here; a household
+  // that already made a category with the same slug keeps its own (any
+  // conflict is skipped, so the batch never fails on it).
   const existingCategoryIds = new Set(existingCategoryRows.results.map((row) => row.id));
   const missingCategoryStatements = defaultCategories
     .filter((category) => !existingCategoryIds.has(category.id))
@@ -193,7 +196,7 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
           id, household_id, name, slug, reporting_group,
           icon_key, color_hex, sort_order, is_system
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO NOTHING
+        ON CONFLICT DO NOTHING
       `)
       .bind(
         category.id,

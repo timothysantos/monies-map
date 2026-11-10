@@ -891,6 +891,29 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
     if (offset === 0) {
       expense(A.sereneCard, d(3), "LATE PAYMENT CHARGE", 10_000, "Fees", { note: "Paid the bill two days late." });
     }
+    // Tax reliefs (Summary's "Tax reliefs" card): this calendar year Ethan
+    // tops up his SRS twice and his CPF to the limit and gives to a charity;
+    // Serene tops up her CPF halfway. Only months of the seed's own year.
+    // The top-ups are money moved, not spent: transfers out filed under the
+    // relief's category. The gift is spending.
+    if (month.slice(0, 4) === seedMonth.slice(0, 4)) {
+      const topUp = (accountId: string, date: string, description: string, amountMinor: number, category: string, note?: string) => add({
+        accountId, date, description, amountMinor, entryType: "transfer", transferDirection: "out", category, note
+      });
+      if (calendarMonth === 2) {
+        topUp(A.ethanBank, d(5), "CPF BOARD CASH TOP-UP", 800_000, "CPF top-up", "Retirement top-up, the full amount for the year.");
+      }
+      if (calendarMonth === 3) {
+        topUp(A.ethanBank, d(18), "SRS CONTRIBUTION OCBC", 600_000, "SRS top-up");
+        topUp(A.sereneBank, d(20), "CPF BOARD CASH TOP-UP", 400_000, "CPF top-up");
+      }
+      if (calendarMonth === 6) {
+        expense(A.ethanCard, d(14), "GIVING.SG DONATION", 50_000, "Charity gift", { note: "Food bank appeal." });
+      }
+      if (calendarMonth === 9) {
+        topUp(A.ethanBank, d(22), "SRS CONTRIBUTION OCBC", 400_000, "SRS top-up");
+      }
+    }
     if (offset === -6) {
       expense(A.sereneGroceryCard, d(20), "MOUNT PLEASANT VET CENTRE", 38_600, "Pet Care", { note: "Mochi's yearly vaccination, check-up and a dental clean." });
     }

@@ -136,6 +136,13 @@ export const categories: CategoryDto[] = [
   { id: "cat-home", name: "Home", slug: "home", iconKey: "house", colorHex: "#F85A53", sortOrder: 45, isSystem: true },
   { id: "cat-church", name: "Church", slug: "church", iconKey: "church", colorHex: "#F062A6", sortOrder: 50, isSystem: true },
   { id: "cat-tax", name: "Tax", slug: "tax", iconKey: "banknote", colorHex: "#CC63D8", sortOrder: 60, isSystem: true },
+  // Tax reliefs (DOMAIN.md "Tax Relief", 2026-11-10): an entry in one of
+  // these, or a transfer with one as its purpose, counts towards the year's
+  // relief on Summary. Added to an existing household by the cold-start seed
+  // (seedEmptyStateReferenceData), only when missing.
+  { id: "cat-srs-top-up", name: "SRS top-up", slug: "srs-top-up", iconKey: "banknote", colorHex: "#918E54", sortOrder: 61, isSystem: true },
+  { id: "cat-cpf-top-up", name: "CPF top-up", slug: "cpf-top-up", iconKey: "shield", colorHex: "#376966", sortOrder: 62, isSystem: true },
+  { id: "cat-charity-gift", name: "Charity gift", slug: "charity-gift", iconKey: "gift", colorHex: "#A77899", sortOrder: 63, isSystem: true },
   { id: "cat-groceries", name: "Groceries", slug: "groceries", iconKey: "shopping-cart", colorHex: "#F08B43", sortOrder: 70, isSystem: true },
   { id: "cat-travel", name: "Travel", slug: "travel", iconKey: "plane", colorHex: "#567CC9", sortOrder: 80, isSystem: true },
   { id: "cat-loans", name: "Loans", slug: "loans", iconKey: "wallet-cards", colorHex: "#A06C5B", sortOrder: 90, isSystem: true },
