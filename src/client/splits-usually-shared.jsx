@@ -217,17 +217,17 @@ function UsuallySharedGroup({ group, unticked, confirming, busy, onToggle, onAdd
           <span>{copy.entriesCount(group.entries.length)}</span>
         </div>
         <MetaChip person={group.ownerName}>{group.ownerName}</MetaChip>
-        <PrivateMoney>
-          <span
-            className="split-usually-total"
-            data-fig="spent"
-            data-fig-ids={group.entries.map((entry) => entry.id).join(" ")}
-            data-fig-period={figurePeriod(group)}
-            data-fig-name={group.shopName}
-          >
-            {formatService.moneyWithCurrency(group.totalMinor, group.currency)}
-          </span>
-        </PrivateMoney>
+        <span
+          className="split-usually-total"
+          data-fig="spent"
+          data-fig-ids={group.entries.map((entry) => entry.id).join(" ")}
+          data-fig-period={figurePeriod(group)}
+          data-fig-name={group.shopName}
+          tabIndex={0}
+          role="button"
+        >
+          <PrivateMoney>{formatService.moneyWithCurrency(group.totalMinor, group.currency)}</PrivateMoney>
+        </span>
       </div>
       <p className="split-usually-detail">
         {copy.usually({
@@ -247,9 +247,9 @@ function UsuallySharedGroup({ group, unticked, confirming, busy, onToggle, onAdd
                 type="checkbox"
                 checked={!(unticked?.has(entry.id))}
                 onChange={() => onToggle(entry.id)}
-                aria-label={copy.includeEntry(entry.description, formatService.formatDate(entry.date))}
+                aria-label={copy.includeEntry(entry.description, formatService.formatDateOnly(entry.date))}
               />
-              <span className="split-usually-entry-date">{formatService.formatDate(entry.date)}</span>
+              <span className="split-usually-entry-date">{formatService.formatDateOnly(entry.date)}</span>
               <span className="split-usually-entry-amount"><PrivateMoney>{formatService.moneyWithCurrency(entry.amountMinor, entry.currency)}</PrivateMoney></span>
             </label>
           </li>
