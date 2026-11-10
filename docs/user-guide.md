@@ -1135,6 +1135,15 @@ what made the difference (the largest charges, or the categories that rose
 most). A shop you only visit now and then is compared by the size of a
 visit instead. It works with AI off too.
 
+### What does that word mean?
+
+Ask "what's an annual fee?", "what does DCC mean?" or "what is S&CC?" and
+Ask explains the word in plain language, then says what you paid for it so
+far this year (after any refunds). It knows interest, annual fees, foreign
+currency fees, late fees, fall-below fees and S&CC. The answer to "is that
+more than usual?" ends with what "usual" means. These explanations are
+fixed words, so they read the same with AI on or off.
+
 ### Change your plan by asking
 
 You can also change a month's plan by typing what you want:

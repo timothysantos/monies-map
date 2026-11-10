@@ -1577,6 +1577,25 @@ Important distinctions:
 - One range read of 7 months (two parallel statements), never a page build
   per month. With AI off the rules reader reads the same questions.
 
+### Words Used
+
+Fixed plain explanations of the bank and app words Ask's answers use
+(`src/domain/ask-terms.ts`, approved 2026-11-10): usual, interest (finance
+charge), annual fee (membership fee), foreign currency fee (FX fee,
+conversion fee, DCC), late fee (late charge), fall-below fee and S&CC.
+
+Canonical terms:
+- `term`: one of them, found by its name or the words that mean it, never
+  by a word inside a shop's name.
+- `explain_term` (turn topic) and the `term` answer intent: "what's an
+  annual fee?" answers with the explanation as written and, for a bank fee
+  or S&CC, what the view paid for it this year (bank fees this year, after
+  refunds, with the refunded amount named). No AI phrasing: the words are
+  fixed.
+- `Words used`: the explanation added under an answer that uses the term
+  (the usual answer ends with what "usual" means). "Usual" is not answered
+  on its own.
+
 ### Insight Question
 
 "Ask about this" on a Money insights line: Ask is asked "Explain: <the

@@ -9,6 +9,9 @@ import { payeeKey, payeeName } from "./account-routines";
 import { spendingMinor } from "./category-offset";
 import { addMonths } from "./money-signals/format";
 import type { AskAnswerCardDto, AskAnswerLineDto, PersonScope } from "../types/dto";
+import { askTermByKey } from "./ask-terms";
+
+const USUAL_TERM_TEXT = askTermByKey("usual")?.text ?? "";
 
 export const USUAL_MONTHS = 6;
 // Within 15% or $20 of usual is "about usual".
@@ -255,6 +258,8 @@ export function buildUsualWording(facts: UsualFacts, money: (minor: number) => s
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
     sentences.push(`Most of the rise came from ${list}.`);
   }
+  // Words used (ask-terms.ts): what "usual" means, in plain words.
+  sentences.push(`Words used: ${USUAL_TERM_TEXT}`);
   return sentences.join(" ");
 }
 
@@ -268,6 +273,7 @@ export function buildUsualPromptFacts(facts: UsualFacts, money: (minor: number) 
     ...(facts.subject.kind === "shop" && facts.drivers.length
       ? [`The largest ${facts.drivers.length} charges together: ${money(facts.drivers.reduce((sum, driver) => sum + driver.amountMinor, 0))}`]
       : []),
-    `Months compared: ${facts.history.length}; charges this month: ${facts.entryCount}`
+    `Months compared: ${facts.history.length}; charges this month: ${facts.entryCount}`,
+    `Words used: ${USUAL_TERM_TEXT}`
   ];
 }

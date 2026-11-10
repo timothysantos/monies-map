@@ -2856,6 +2856,16 @@ phrasing may use (`validateAiWording` checks every sum). Tests:
 `tests/ask-answer-intent.test.mjs` and the `usual-*` entries of the eval
 bank.
 
+## Where do Ask's word explanations come from?
+
+`src/domain/ask-terms.ts` holds the fixed explanations and the words that
+find them (`readTermQuestion`, `findAskTerm`); the rules reader returns the
+`term` intent, the turn topic is `explain_term` with `question.subject`.
+`pages/ask-answer.ts` (`readTermFacts`) adds this year's figure (the bank
+fees this year read for a fee kind, a description match for S&CC) and
+`ask-term-answer.ts` builds the card and words; nothing is sent to AI.
+Tests: `tests/ask-terms.test.mjs` and the `term-fx-fee` eval entry.
+
 ## How are bank fees this year worked out?
 
 The Summary page reads one more thing beside its other reads (same step):

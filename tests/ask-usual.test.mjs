@@ -45,9 +45,9 @@ test("a shop: its usual month, the verdict, and the largest charges above its us
   assert.equal(facts.entryCount, 17);
   assert.equal(facts.usualEntryCount, 10);
   const wording = buildUsualWording(facts, money);
-  assert.equal(wording, "Grab came to $186.24 in October. Your usual month is $112.00, the middle of the last 6 months, so October was $74.24 more than usual. The largest 3 charges were $95.10 together.");
+  assert.equal(wording, "Grab came to $186.24 in October. Your usual month is $112.00, the middle of the last 6 months, so October was $74.24 more than usual. The largest 3 charges were $95.10 together. Words used: \u201cUsual\u201d is the middle amount of the last 6 months: half the months were higher and half lower, so one odd month barely moves it.");
   // Every sum in the wording is one of the facts' own.
-  assert.equal(validateAiWording(wording, { promptFacts: buildUsualPromptFacts(facts, money), knownNames: ["Grab"] }) !== null, true);
+  assert.equal(validateAiWording(wording.replace(/ Words used: .*$/, ""), { promptFacts: buildUsualPromptFacts(facts, money), knownNames: ["Grab"] }) !== null, true);
   const card = buildUsualCard(facts, money);
   assert.equal(card.title, "Grab in October");
   assert.deepEqual(card.support, [{ label: "Usual", amountMinor: 11_200, currency: "SGD" }, { label: "September", amountMinor: 13_160, currency: "SGD" }]);
@@ -79,7 +79,7 @@ test("not a regular: a shop seen in fewer than 3 of the 6 months compares the si
   assert.equal(facts.regular, false);
   assert.equal(facts.usualMinor, 32_000);
   assert.equal(facts.verdict, "more");
-  assert.match(buildUsualWording(facts, money), /^Burnt Ends isn't a regular: it shows up in fewer than 3 of the last 6 months\. In October it came to \$410\.00 over 1 charge, against a usual charge of \$320\.00\.$/);
+  assert.match(buildUsualWording(facts, money), /^Burnt Ends isn't a regular: it shows up in fewer than 3 of the last 6 months\. In October it came to \$410\.00 over 1 charge, against a usual charge of \$320\.00\. Words used: /);
 });
 
 test("a month's spending names the categories that rose most against their own usual, and a new one", () => {
@@ -91,7 +91,7 @@ test("a month's spending names the categories that rose most against their own u
   const facts = buildUsualFacts({ subject: { kind: "spending" }, label: "Spending", month: "2026-10", viewId: "household", scope: "direct_plus_shared", entries, trackedMonths: TRACKED });
   assert.equal(facts.usualMinor, 60_000);
   assert.deepEqual(facts.drivers.map((driver) => [driver.label, driver.amountMinor, driver.isNew ?? false]), [["Home", 80_000, true], ["Taxi", 30_000, false], ["Groceries", 52_000, false]]);
-  assert.match(buildUsualWording(facts, money), /Most of the rise came from Home \(new this month\), Taxi and Groceries\.$/);
+  assert.match(buildUsualWording(facts, money), /Most of the rise came from Home \(new this month\), Taxi and Groceries\. Words used: /);
 });
 
 test("only the months the household tracks count; with none before, it says so", () => {

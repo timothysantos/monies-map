@@ -99,7 +99,9 @@ export const ASK_TURN_TOPICS = [
   "spent_vs_earned",
   // Against its usual level: question.subject is what was asked about, as
   // written ("Grab", "groceries", "Joyce", or null for the month).
-  "usual"
+  "usual",
+  // A bank or app word explained: question.subject is the word as written.
+  "explain_term"
 ] as const;
 export type AskTurnTopic = typeof ASK_TURN_TOPICS[number];
 
@@ -1309,7 +1311,8 @@ const QUESTION_KIND: Record<AskTurnTopic, AskAnswerIntentKind> = {
   invested: "invested",
   saved: "saved",
   spent_vs_earned: "spentVsEarned",
-  usual: "usual"
+  usual: "usual",
+  explain_term: "term"
 };
 
 // A money question as one canonical sentence the answer route's own reader
@@ -1347,9 +1350,16 @@ function validateQuestion(action: AskTurnAction, context: AskTurnContext, ground
       return askBack({ code: "question_unclear", field: "question.subject" }, COPY.usualWhat, [COPY.usualThisMonth, ...context.entry.categoryNames.slice(0, 2)]);
     }
   }
+  if (topic === "explain_term") {
+    const said = typeof raw.subject === "string" ? raw.subject.replace(/\s+/g, " ").trim() : "";
+    subject = said && said.length <= 40 ? said : null;
+    if (!subject) return askBack({ code: "question_unclear", field: "question.subject" }, COPY.questionUnclear);
+  }
   const text = topic === "usual"
     ? `Is ${subject ?? `${person?.name}'s spending`} more than usual ${when}?`
-    : canonicalQuestion(topic, when, target, other.month, person);
+    : topic === "explain_term"
+      ? `What is ${subject}?`
+      : canonicalQuestion(topic, when, target, other.month, person);
   if (!text) return askBack({ code: "month_invalid", field: "question.other_month" }, COPY.compareWhich);
   const intent = readAnswerIntent(text, { today: context.today, month: context.month, people: context.people });
   if (!intent || intent.kind !== QUESTION_KIND[topic]) {

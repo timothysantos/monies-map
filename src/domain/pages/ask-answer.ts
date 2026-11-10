@@ -15,6 +15,10 @@ import { buildSplitsPageDto } from "./splits-page";
 import { loadRoutePageContext } from "../route-context";
 import { readUsual } from "./ask-usual";
 import type { UsualFacts } from "../ask-usual";
+import { askTermByKey } from "../ask-terms";
+import { buildTermFacts, type TermFacts } from "../ask-term-answer";
+import { loadBankFeesYear } from "./summary-bank-fees";
+import { DEFAULT_HOUSEHOLD_ID } from "../app-repository-constants";
 import type { AskAnswerIntentKind, PersonScope, SkewCandidateDto } from "../../types/dto";
 
 // The read side of an Ask answer (POST /api/ai-assist/answer; DOMAIN.md
@@ -48,7 +52,7 @@ interface AnsweredBase {
 export type AskAnswerBuild =
   | { supported: false }
   | (AnsweredBase & { needsConfirmation: true; candidates: SkewCandidateDto[] })
-  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts; knownNames: string[] });
+  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts | TermFacts; knownNames: string[] });
 
 export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, today: string): Promise<AskAnswerBuild> {
   const { household, categories, trackedMonths, viewId } = await loadRoutePageContext(db, request.viewId);
@@ -68,6 +72,13 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
   const months = intentMonths(intent, request.month, today);
   const base: AnsweredBase = { supported: true, intent: intent.kind, viewId, scope, months };
   const knownNames = () => [...categories.map((category) => category.name), ...accounts.map((account) => account.name), ...people.map((person) => person.name)];
+
+  // A word explained: the fixed text and, for a bank fee or S&CC, what the
+  // view paid for it this year.
+  if (intent.kind === "term") {
+    const facts = await readTermFacts(db, intent.term, { viewId, scope, today });
+    return facts ? { ...base, needsConfirmation: false, facts, knownNames: knownNames() } : { supported: false };
+  }
 
   // Against the usual level: its own read (one range read of 7 months).
   if (intent.kind === "usual") {
@@ -174,7 +185,7 @@ function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: stri
 // spending against income, with either.
 function changesFacts(candidate: SkewCandidateDto, kind: AskAnswerIntentKind) {
   if (kind === "owed") return candidate.kind === "settlement";
-  if (kind === "usual") return false;
+  if (kind === "usual" || kind === "term") return false;
   if (kind === "income") return candidate.skew.incomeMinor !== 0;
   if (kind === "saved" || kind === "spentVsEarned") return candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0;
   return candidate.skew.spendingMinor !== 0;
@@ -241,4 +252,37 @@ function emptyMonthFacts(month: string, viewId: string, scope: PersonScope): Mon
     planRows: [],
     incomeSources: []
   };
+}
+
+// What the view paid this year for a bank fee kind (the fees this year read)
+// or for S&CC (its charges by their words), up to this month.
+async function readTermFacts(db: D1Database, key: string, input: { viewId: string; scope: PersonScope; today: string }): Promise<TermFacts | null> {
+  const term = askTermByKey(key);
+  if (!term) return null;
+  const month = input.today.slice(0, 7);
+  const year = month.slice(0, 4);
+  let yearMinor: number | null = null;
+  let refundedMinor = 0;
+  let entryCount = 0;
+  if (term.feeKind) {
+    const fees = await loadBankFeesYear(db, input.viewId, input.scope, month);
+    const part = fees?.parts.find((item) => item.kind === term.feeKind);
+    const refunded = fees?.refundedParts.find((item) => item.kind === term.feeKind);
+    yearMinor = part?.minor ?? 0;
+    refundedMinor = refunded?.minor ?? 0;
+    entryCount = (part?.count ?? 0) + (refunded?.count ?? 0);
+  } else if (term.descriptionWords?.length) {
+    const like = term.descriptionWords.map(() => "transactions.description LIKE ?").join(" OR ");
+    const row = await db.prepare(`
+      SELECT COALESCE(SUM(amount_minor), 0) AS minor, COUNT(*) AS count
+      FROM transactions
+      WHERE household_id = ? AND entry_type = 'expense' AND transaction_date >= ? AND transaction_date <= ?
+        AND (${like})
+        AND (? = 'household' OR owner_person_id = ?)
+    `).bind(DEFAULT_HOUSEHOLD_ID, `${year}-01-01`, input.today, ...term.descriptionWords.map((word) => `%${word}%`), input.viewId, input.viewId)
+      .first<{ minor: number; count: number }>();
+    yearMinor = row?.minor ?? 0;
+    entryCount = row?.count ?? 0;
+  }
+  return buildTermFacts({ termKey: term.key, year, month, viewId: input.viewId, scope: input.scope, yearMinor, refundedMinor, entryCount });
 }

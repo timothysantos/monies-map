@@ -26,6 +26,7 @@ import {
 } from "../domain/ask-answer-wording";
 import type { AskAnswerFacts } from "../domain/ask-answer-facts";
 import type { UsualFacts } from "../domain/ask-usual";
+import type { TermFacts } from "../domain/ask-term-answer";
 import { buildAskAnswer } from "../domain/pages/ask-answer";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { AskAnswerResponseDto } from "../types/dto";
@@ -125,7 +126,9 @@ export async function handleAskAnswer(request: Request, env: AiProviderEnv & { D
 
 // A month with no entries (or Splits with nothing open) has nothing for AI
 // to phrase: the computed wording says so.
-function hasData(facts: AskAnswerFacts | UsualFacts) {
+function hasData(facts: AskAnswerFacts | UsualFacts | TermFacts) {
+  // A word explained is fixed text: there is nothing for AI to phrase.
+  if (facts.kind === "term") return false;
   if (facts.kind === "owed") return facts.balances.length > 0 || facts.openSettlements.length > 0;
   if (facts.kind === "usual") return facts.entryCount > 0 || facts.history.some((item) => item.amountMinor !== 0);
   return facts.current.entryCount > 0;

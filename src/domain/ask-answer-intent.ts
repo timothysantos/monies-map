@@ -20,6 +20,8 @@
 // spending against what came in. A period ("from Oct 2025 to Sep 2026",
 // "Q3") reads as its months for every answer that can add months up.
 
+import { readTermQuestion } from "./ask-terms";
+
 // `months`: a period ("did we stick to the plan in Q3?", "how much did I
 // invest from Oct 2025 to Sep 2026?"), oldest first, up to this month;
 // `month` is then its last month.
@@ -37,7 +39,9 @@ export type AskAnswerIntent =
   | { kind: "spentVsEarned"; month: string; months?: string[] }
   // Against its usual level (DOMAIN.md "Usual Level"): a shop, a category, a
   // person or the month's spending, as written (null: the month's spending).
-  | { kind: "usual"; subject: string | null; month: string };
+  | { kind: "usual"; subject: string | null; month: string }
+  // A bank or app word explained (ask-terms.ts): "what's an FX fee?".
+  | { kind: "term"; term: string; month: string };
 
 export type AskAnswerIntentKind = AskAnswerIntent["kind"];
 
@@ -111,6 +115,11 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
   // Serene $20"), never a whole-month answer.
   if (tokens.some((token) => /^\$?\d[\d,]*(?:\.\d+)?k?$/.test(token.text) && !/^20\d{2}$/.test(token.text))) {
     return null;
+  }
+  // A word explained, before anything reads "fee" or "interest" as money.
+  const term = readTermQuestion(text);
+  if (term) {
+    return { kind: "term", term: term.key, month: context.month };
   }
   const words = new Set(tokens.map((token) => token.text));
   const has = (pattern: RegExp) => pattern.test(normalized);
