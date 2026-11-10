@@ -2,7 +2,8 @@ import { todayInAppTimeZone } from "../../lib/app-calendar";
 import { DEFAULT_HOUSEHOLD_ID } from "../app-repository-constants";
 import { buildLinkedSplitShareMap, LINKED_SPLIT_SHARES_SQL, type LinkedSplitShareRow } from "../app-repository-entries";
 import { loadRepeatingChoices } from "../app-repository-repeating-charges";
-import { addDays } from "../money-signals/format";
+import { addDays, addMonths } from "../money-signals/format";
+import { buildPaceDto, type PaceDto } from "./pace-facts";
 import { personEntryAmountMinor } from "../person-entry-amount";
 import { effectiveScopeForView } from "../person-view-scope";
 import {
@@ -56,6 +57,8 @@ export interface RepeatingChargesDto {
   series: RepeatingSeriesDto[];
   mightRepeat: RepeatingSeriesDto[];
   takenOff: RepeatingSeriesDto[];
+  // If this keeps up (DOMAIN.md "Pace"), for today's month.
+  pace?: PaceDto;
 }
 
 // The reads, exported so a test can check them against the indexes. Each
@@ -83,6 +86,21 @@ export const REPEATING_CHARGES_SQL = `
     AND (transactions.import_id IS NULL OR imports.status = 'completed')
     AND (categories.name IS NULL OR lower(categories.name) NOT IN ('investments', 'savings'))
   GROUP BY transactions.description, month
+`;
+
+// Money in of the last 4 months (pace-facts.ts reads what came in and the
+// regular income still due), for the view: the household's, or a person's
+// own.
+export const PACE_INCOME_SQL = `
+  SELECT transactions.description, transactions.transaction_date AS date, transactions.amount_minor, categories.name AS category_name
+  FROM transactions
+  LEFT JOIN categories ON categories.id = transactions.category_id
+  WHERE transactions.household_id = ?
+    AND transactions.transaction_date >= ?
+    AND transactions.transaction_date <= ?
+    AND transactions.entry_type = 'income'
+    AND transactions.transfer_group_id IS NULL
+    AND (? = 'household' OR transactions.owner_person_id = ?)
 `;
 
 export const REPEATING_ACCOUNTS_SQL = `
@@ -157,12 +175,14 @@ export async function buildRepeatingChargesDto(
 ): Promise<RepeatingChargesDto> {
   const start = repeatingWindowStart(today);
   const endExclusive = addDays(today, 1);
-  const [people, grouped, accounts, choices, splitShares] = await Promise.all([
+  const [people, grouped, accounts, choices, splitShares, income] = await Promise.all([
     loadPeople(db),
     db.prepare(REPEATING_CHARGES_SQL).bind(DEFAULT_HOUSEHOLD_ID, start, today).all<GroupedChargeRow>(),
     db.prepare(REPEATING_ACCOUNTS_SQL).bind(DEFAULT_HOUSEHOLD_ID).all<AccountRow>(),
     loadChoices(db),
-    selectedViewId !== "household" ? loadSplitShares(db, start, endExclusive) : Promise.resolve(null)
+    selectedViewId !== "household" ? loadSplitShares(db, start, endExclusive) : Promise.resolve(null),
+    db.prepare(PACE_INCOME_SQL).bind(DEFAULT_HOUSEHOLD_ID, `${addMonths(today.slice(0, 7), -3)}-01`, today, selectedViewId, selectedViewId)
+      .all<{ description: string; date: string; amount_minor: number; category_name: string | null }>()
   ]);
   const viewId = resolvePageViewId(selectedViewId, people);
   const scope = effectiveScopeForView(viewId, selectedScope);
@@ -234,6 +254,13 @@ export async function buildRepeatingChargesDto(
     yearStartMonth: result.yearStartMonth,
     series: result.series.map(toDto),
     mightRepeat: result.mightRepeat.map(toDto),
-    takenOff: result.takenOff.map(toDto)
+    takenOff: result.takenOff.map(toDto),
+    pace: buildPaceDto({
+      today,
+      rows,
+      result,
+      accountLatestDate,
+      income: income.results.map((row) => ({ description: row.description, date: row.date, amountMinor: row.amount_minor, categoryName: row.category_name }))
+    })
   };
 }

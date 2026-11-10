@@ -39,7 +39,8 @@ export function readRepeatingCharges(body) {
     yearStartMonth: typeof body.yearStartMonth === "string" ? body.yearStartMonth : body.focusMonth,
     series: readList(body.series),
     mightRepeat: readList(body.mightRepeat),
-    takenOff: readList(body.takenOff)
+    takenOff: readList(body.takenOff),
+    pace: body.pace && typeof body.pace === "object" && typeof body.pace.month === "string" ? body.pace : null
   };
 }
 
