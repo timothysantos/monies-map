@@ -1123,6 +1123,18 @@ To have a Money insights line explained, tap the line itself and choose
 **Ask about this** ([Use Money insights](#use-money-insights)). On a phone Ask
 opens; on a computer it opens beside the page you are on.
 
+### Is that more than usual?
+
+Ask whether something is more than usual: "is Grab more than usual this
+month?", "are we spending more than normal on groceries?", "is Joyce's
+spending higher than usual in October?", or just "is that more than usual?"
+while an entry is open. Usual is the middle amount of the last 6 months:
+half the months were higher and half lower, so one odd month barely moves
+it. The answer gives the month, the usual month, how far apart they are and
+what made the difference (the largest charges, or the categories that rose
+most). A shop you only visit now and then is compared by the size of a
+visit instead. It works with AI off too.
+
 ### Change your plan by asking
 
 You can also change a month's plan by typing what you want:

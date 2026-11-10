@@ -21,6 +21,7 @@ import {
   type EntryFact,
   type MonthFacts
 } from "./ask-answer-facts";
+import { buildUsualCard, buildUsualPromptFacts, buildUsualWording, type UsualFacts } from "./ask-usual";
 import { isInvestmentsCategoryName, isSavingsCategoryName } from "./money-jobs";
 import { joinWithAnd, lowerLabel, monthName, plural, tidyName } from "./money-signals/format";
 import { flowTone, signTone, spendTone } from "./money-tone";
@@ -425,6 +426,19 @@ function inSpendJob(facts: AskAnswerFacts): AskAnswerFacts {
 }
 
 /** The answer card: Lead, Support, Detail and the links to the screens. */
+// "More than usual" (ask-usual.ts) and every month answer, one way in.
+export function buildAnyAnswerCard(facts: AskAnswerFacts | UsualFacts, context: WordingContext): AskAnswerCardDto {
+  return facts.kind === "usual" ? buildUsualCard(facts, money) : buildAnswerCard(facts, context);
+}
+
+export function buildAnyTemplateWording(facts: AskAnswerFacts | UsualFacts, context: WordingContext): string {
+  return facts.kind === "usual" ? buildUsualWording(facts, money) : buildTemplateWording(facts, context);
+}
+
+export function buildAnyPromptFacts(facts: AskAnswerFacts | UsualFacts, context: WordingContext): string[] {
+  return facts.kind === "usual" ? buildUsualPromptFacts(facts, money) : buildPromptFacts(facts, context);
+}
+
 export function buildAnswerCard(rawFacts: AskAnswerFacts, context: WordingContext): AskAnswerCardDto {
   const { today } = context;
   const facts = inSpendJob(rawFacts);

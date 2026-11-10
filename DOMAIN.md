@@ -1497,7 +1497,8 @@ Canonical terms:
   Q3?"), `compare` (two months),
   `biggest` (the largest expenses), `income`, `owed` (who owes whom on
   Splits), and the three `money job` answers: `invested`, `saved` (what
-  was kept) and `spentVsEarned` (spending against what came in). Anything
+  was kept) and `spentVsEarned` (spending against what came in). Anything  was kept) and `spentVsEarned` (spending against what came in), and
+  `usual` (see "Usual Level"). Anything
   else is unsupported and gets the "not answered" note; a question with an
   amount, or a biggest or income question naming a category or wallet,
   stays a filter request
@@ -1546,6 +1547,35 @@ Rules:
   Savings, the Investments plan rows and the transfers into and out of
   investment accounts (when there were any), the figures the Month and
   Summary savings bar splits and draws
+
+### Usual Level
+
+What a shop, a category, a person's spending or a whole month usually comes
+to: the middle (median) of the 6 complete months before, within the months
+the household tracks (`src/domain/ask-usual.ts`). Asked in Ask ("is Grab
+more than usual?", the `usual` answer intent and turn topic).
+
+Canonical terms:
+- `usual level` ("usual"): an empty month counts as $0 for a category, a
+  person or a month, and is left out for a shop. A shop seen in fewer than 3
+  of the 6 months is `not a regular`: the size of a charge is compared.
+- `verdict`: within 15% or $20 of usual is "about usual"; otherwise "more"
+  or "less than usual by $X".
+- `drivers`: what made the difference: a shop's largest charges above its
+  usual charge; for a category or a month, the 3 shops or categories that
+  rose most against their own usual (one not seen in the 6 months is "new
+  this month").
+
+Important distinctions:
+- The model says only what was asked about, as written (`question.subject`,
+  kept only when the person wrote it); the server resolves it (a category or
+  person name first, then a shop by `payeeKey` among the view's entries of
+  the last 7 months, then the month's spending) and works out every number.
+  With an entry in focus, "is that more than usual?" is about its shop;
+  with nothing named and nothing in focus Ask asks "More than usual for
+  what?". A shop nobody paid is not answered.
+- One range read of 7 months (two parallel statements), never a page build
+  per month. With AI off the rules reader reads the same questions.
 
 ### Insight Question
 

@@ -2842,6 +2842,20 @@ production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
 again is safe.
 
+## How does Ask answer "is that more than usual?"
+
+The `usual` answer intent (`readAnswerIntent`, rules) and turn topic
+(`question.topic: "usual"` with `question.subject` as written, checked
+against the person's words) become the canonical question "Is Grab more
+than usual in October 2026?". `pages/ask-usual.ts` resolves the subject and
+reads the view's entries of that month and the 6 before in one range read;
+`ask-usual.ts` (pure) works out the usual level, the verdict and the
+drivers, the answer card and the computed wording, and the facts an AI
+phrasing may use (`validateAiWording` checks every sum). Tests:
+`tests/ask-usual.test.mjs` (rules and the real route),
+`tests/ask-answer-intent.test.mjs` and the `usual-*` entries of the eval
+bank.
+
 ## How are bank fees this year worked out?
 
 The Summary page reads one more thing beside its other reads (same step):

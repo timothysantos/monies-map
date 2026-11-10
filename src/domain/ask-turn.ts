@@ -18,6 +18,7 @@
 // computed from it) or one the person wrote in the conversation; an amount
 // the model names that the person never wrote is refused.
 
+import { payeeName } from "./account-routines";
 import { promptEntryName } from "./ask-answer-wording";
 import { ASK_LOOKUP_TOOL_NAMES } from "./ask-lookup-spec";
 import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent";
@@ -95,7 +96,10 @@ export const ASK_TURN_TOPICS = [
   "income",
   "invested",
   "saved",
-  "spent_vs_earned"
+  "spent_vs_earned",
+  // Against its usual level: question.subject is what was asked about, as
+  // written ("Grab", "groceries", "Joyce", or null for the month).
+  "usual"
 ] as const;
 export type AskTurnTopic = typeof ASK_TURN_TOPICS[number];
 
@@ -207,7 +211,8 @@ export const ASK_TURN_SCHEMA = {
       other_month: nullableString,
       from_month: nullableString,
       to_month: nullableString,
-      person: nullableString
+      person: nullableString,
+      subject: nullableString
     }),
     search: nullableObject({
       words: nullableString,
@@ -653,7 +658,7 @@ export function validateAskTurnAction(action: AskTurnAction, context: AskTurnCon
     case "plan_change":
       return validatePlan(action, context, ground);
     case "answer_question":
-      return validateQuestion(action, context);
+      return validateQuestion(action, context, ground);
     case "search_entries":
       return validateSearch(action, context, ground);
     case "open_page":
@@ -1303,13 +1308,14 @@ const QUESTION_KIND: Record<AskTurnTopic, AskAnswerIntentKind> = {
   income: "income",
   invested: "invested",
   saved: "saved",
-  spent_vs_earned: "spentVsEarned"
+  spent_vs_earned: "spentVsEarned",
+  usual: "usual"
 };
 
 // A money question as one canonical sentence the answer route's own reader
 // reads (so the figures come from the same facts as a typed question). It
 // is kept only when that reader reads it as the topic the model chose.
-function validateQuestion(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
+function validateQuestion(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.question ?? {};
   const topic = (ASK_TURN_TOPICS as readonly string[]).includes(String(raw.topic)) ? raw.topic as AskTurnTopic : null;
   if (!topic) return askBack({ code: "question_unclear", field: "question.topic", valid: [...ASK_TURN_TOPICS] }, COPY.questionUnclear);
@@ -1327,7 +1333,23 @@ function validateQuestion(action: AskTurnAction, context: AskTurnContext): AskTu
   const when = from.month && to.month && from.month < to.month
     ? `from ${monthLabel(from.month)} to ${monthLabel(to.month)}`
     : `in ${monthLabel(target)}`;
-  const text = canonicalQuestion(topic, when, target, other.month, person);
+  // "More than usual": the subject as written, kept only when the person
+  // wrote it; without one (and nothing in focus) Ask asks what is meant.
+  let subject: string | null = null;
+  if (topic === "usual") {
+    const said = typeof raw.subject === "string" ? raw.subject.replace(/\s+/g, " ").trim() : "";
+    subject = said && said.length <= 40 && wordsOf(said).every((word) => ground.words.has(word)) ? said : null;
+    // "Is that more than usual?" about the entry in focus: its shop.
+    if (!subject && !person && context.focus?.kind === "saved_entry") {
+      subject = payeeName(context.focus.entry.description) || null;
+    }
+    if (!subject && !person) {
+      return askBack({ code: "question_unclear", field: "question.subject" }, COPY.usualWhat, [COPY.usualThisMonth, ...context.entry.categoryNames.slice(0, 2)]);
+    }
+  }
+  const text = topic === "usual"
+    ? `Is ${subject ?? `${person?.name}'s spending`} more than usual ${when}?`
+    : canonicalQuestion(topic, when, target, other.month, person);
   if (!text) return askBack({ code: "month_invalid", field: "question.other_month" }, COPY.compareWhich);
   const intent = readAnswerIntent(text, { today: context.today, month: context.month, people: context.people });
   if (!intent || intent.kind !== QUESTION_KIND[topic]) {
@@ -1546,6 +1568,8 @@ export const COPY = {
   planQuestion: "Which plan line, how much, and for which month?",
   questionUnclear: "What would you like to know? For example: where did my money go in September?",
   whichMonth: "Which month do you mean?",
+  usualWhat: "More than usual for what?",
+  usualThisMonth: "This month's spending",
   futureMonth: "That month hasn't happened yet, so there's nothing recorded to answer from.",
   compareWhich: "Which two months should I compare?",
   searchWhat: "What should I look for? A shop, a category, a wallet or a month.",

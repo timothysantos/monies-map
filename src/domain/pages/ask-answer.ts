@@ -13,6 +13,8 @@ import { buildMonthPageDto } from "./month-page";
 import { buildSkewCandidatesDto } from "./skew-candidates";
 import { buildSplitsPageDto } from "./splits-page";
 import { loadRoutePageContext } from "../route-context";
+import { readUsual } from "./ask-usual";
+import type { UsualFacts } from "../ask-usual";
 import type { AskAnswerIntentKind, PersonScope, SkewCandidateDto } from "../../types/dto";
 
 // The read side of an Ask answer (POST /api/ai-assist/answer; DOMAIN.md
@@ -46,7 +48,7 @@ interface AnsweredBase {
 export type AskAnswerBuild =
   | { supported: false }
   | (AnsweredBase & { needsConfirmation: true; candidates: SkewCandidateDto[] })
-  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts; knownNames: string[] });
+  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts; knownNames: string[] });
 
 export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, today: string): Promise<AskAnswerBuild> {
   const { household, categories, trackedMonths, viewId } = await loadRoutePageContext(db, request.viewId);
@@ -65,6 +67,25 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
   }
   const months = intentMonths(intent, request.month, today);
   const base: AnsweredBase = { supported: true, intent: intent.kind, viewId, scope, months };
+  const knownNames = () => [...categories.map((category) => category.name), ...accounts.map((account) => account.name), ...people.map((person) => person.name)];
+
+  // Against the usual level: its own read (one range read of 7 months).
+  if (intent.kind === "usual") {
+    const read = await readUsual(db, {
+      subject: intent.subject,
+      month: intent.month,
+      viewId,
+      scope,
+      categories: categories.map((category) => category.name),
+      people,
+      trackedMonths
+    });
+    if (!read.ok) {
+      return { supported: false };
+    }
+    const subjectName = read.facts.subject.kind === "shop" ? [read.facts.subject.name, read.facts.label] : [];
+    return { ...base, viewId: read.facts.viewId, needsConfirmation: false, facts: read.facts, knownNames: [...knownNames(), ...subjectName] };
+  }
 
   const monthFacts = async (month: string): Promise<MonthFacts> => {
     if (!trackedMonths.includes(month)) {
@@ -153,6 +174,7 @@ function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: stri
 // spending against income, with either.
 function changesFacts(candidate: SkewCandidateDto, kind: AskAnswerIntentKind) {
   if (kind === "owed") return candidate.kind === "settlement";
+  if (kind === "usual") return false;
   if (kind === "income") return candidate.skew.incomeMinor !== 0;
   if (kind === "saved" || kind === "spentVsEarned") return candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0;
   return candidate.skew.spendingMinor !== 0;

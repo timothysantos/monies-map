@@ -242,3 +242,21 @@ test("a category's Ask about this (Spending Mix, Top spending, a budget line) re
   assert.equal(reading.kind, "filter");
   assert.deepEqual([reading.filter.categories, reading.filter.month], [["Groceries"], "2026-09"]);
 });
+
+// "Is that more than usual?" (DOMAIN.md "Usual Level"): the subject as
+// written, a category, wallet or person by its name, the month as said.
+test("more than usual: the subject as written and the month; a plain question is not one", () => {
+  const usual = (text, extra = {}) => readAnswerIntent(text, { ...context, ...extra });
+  assert.deepEqual(usual("is Grab more than usual this month?"), { kind: "usual", subject: "grab", month: "2026-10" });
+  assert.deepEqual(usual("are we spending more than normal on groceries?"), { kind: "usual", subject: "Groceries", month: "2026-10" });
+  assert.deepEqual(usual("is Serene's spending higher than usual in September?"), { kind: "usual", subject: "Serene", month: "2026-09" });
+  assert.deepEqual(usual("grab mor than usual?"), { kind: "usual", subject: "grab", month: "2026-10" });
+  assert.deepEqual(usual("groceries normal?"), { kind: "usual", subject: "Groceries", month: "2026-10" });
+  assert.deepEqual(usual("is that more than usual"), { kind: "usual", subject: null, month: "2026-10" });
+  assert.deepEqual(usual("do we usually spend this much at Koufu?"), { kind: "usual", subject: "koufu", month: "2026-10" });
+  // Not a "usual" question.
+  assert.equal(usual("how much did I spend on groceries?"), null);
+  assert.deepEqual(usual("did we stick to the plan in September?"), { kind: "plan", month: "2026-09" });
+  // An amount makes it a filter, never an answer.
+  assert.equal(usual("is $50 more than usual for grab?"), null);
+});

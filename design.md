@@ -1882,8 +1882,8 @@ and the open group's strip tile (another tile still opens its group), and
 every amount on Subscriptions and bills (its two totals, each row's last
 charge and 12 months, both prices of "Went up": `data-fig="spent"` with the
 exact `data-fig-ids` the server named, the `repeating` figure in
-`money-figures.ts`; Ask about this asks "How much did I spend at Netflix
-in …?").
+`money-figures.ts`; Ask about this asks "Is Netflix more than usual
+in …?", Ask's usual question).
 Hidden money: the same menu, no amount in any label. A text figure is the
 text itself, like a link in a sentence: it is not held to the 44 px rule,
 its row or card is.

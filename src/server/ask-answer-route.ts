@@ -18,13 +18,14 @@
 import { redactAiText } from "../domain/ai-assistance";
 import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv } from "../domain/ai-provider";
 import {
-  buildAnswerCard,
+  buildAnyAnswerCard,
+  buildAnyPromptFacts,
+  buildAnyTemplateWording,
   buildAnswerPrompt,
-  buildPromptFacts,
-  buildTemplateWording,
   validateAiWording
 } from "../domain/ask-answer-wording";
 import type { AskAnswerFacts } from "../domain/ask-answer-facts";
+import type { UsualFacts } from "../domain/ask-usual";
 import { buildAskAnswer } from "../domain/pages/ask-answer";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { AskAnswerResponseDto } from "../types/dto";
@@ -85,8 +86,8 @@ export async function handleAskAnswer(request: Request, env: AiProviderEnv & { D
     return json({ ...base, needsConfirmation: true, candidates: build.candidates } satisfies AskAnswerResponseDto);
   }
 
-  const answer = buildAnswerCard(build.facts, { today });
-  const template = buildTemplateWording(build.facts, { today });
+  const answer = buildAnyAnswerCard(build.facts, { today });
+  const template = buildAnyTemplateWording(build.facts, { today });
   const offReason = getAiProviderUnavailableReason(env);
   if (offReason || !hasData(build.facts)) {
     return json({
@@ -98,7 +99,7 @@ export async function handleAskAnswer(request: Request, env: AiProviderEnv & { D
     } satisfies AskAnswerResponseDto);
   }
 
-  const promptFacts = buildPromptFacts(build.facts, { today });
+  const promptFacts = buildAnyPromptFacts(build.facts, { today });
   const result = await runTextJson(env.DB, env, {
     capability: "ask_answer",
     units: ASK_ANSWER_AI_UNITS,
@@ -124,7 +125,8 @@ export async function handleAskAnswer(request: Request, env: AiProviderEnv & { D
 
 // A month with no entries (or Splits with nothing open) has nothing for AI
 // to phrase: the computed wording says so.
-function hasData(facts: AskAnswerFacts) {
+function hasData(facts: AskAnswerFacts | UsualFacts) {
   if (facts.kind === "owed") return facts.balances.length > 0 || facts.openSettlements.length > 0;
+  if (facts.kind === "usual") return facts.entryCount > 0 || facts.history.some((item) => item.amountMinor !== 0);
   return facts.current.entryCount > 0;
 }

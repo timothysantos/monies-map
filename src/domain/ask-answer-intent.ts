@@ -34,7 +34,10 @@ export type AskAnswerIntent =
   // what was kept (saved), and spending against what came in.
   | { kind: "invested"; month: string; months?: string[] }
   | { kind: "saved"; month: string; months?: string[] }
-  | { kind: "spentVsEarned"; month: string; months?: string[] };
+  | { kind: "spentVsEarned"; month: string; months?: string[] }
+  // Against its usual level (DOMAIN.md "Usual Level"): a shop, a category, a
+  // person or the month's spending, as written (null: the month's spending).
+  | { kind: "usual"; subject: string | null; month: string };
 
 export type AskAnswerIntentKind = AskAnswerIntent["kind"];
 
@@ -133,6 +136,12 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
     return { kind: "owed", personId: findPerson(tokens, context.people)?.id ?? null };
   }
 
+  // Against the usual level: "is Grab more than usual?", "groceries
+  // normal?", "do we usually spend this much on Taxi?".
+  if (USUAL_WORDS.test(normalized) && !period) {
+    return { kind: "usual", subject: readUsualSubject(tokens, context), month };
+  }
+
   // The money jobs' questions, before a comparison could read "compare my
   // spending with my income" as two months. One naming a category or
   // wallet ("how much did I invest in Endowus?") stays a filter request,
@@ -191,6 +200,38 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
   }
 
   return null;
+}
+
+// The words of a "more than usual" question ("mor" is a common slip).
+const USUAL_WORDS = /\b(?:than (?:usual|normal|average)|(?:more|mor|higher|lower|less|bigger) than (?:usual|normal)|usually|normal(?: for)?|is (?:that|this|it) a lot|a lot for)\b|\bnormal$/;
+// Words that never name what is asked about.
+const USUAL_FILLER = new Set([
+  "is", "are", "was", "were", "am", "do", "does", "did", "we", "i", "you", "our", "my", "me", "us", "the", "a", "an", "that", "this", "it",
+  "more", "mor", "less", "higher", "lower", "bigger", "than", "usual", "usually", "normal", "average", "lot", "for", "on", "at", "in",
+  "spending", "spend", "spent", "much", "so", "how", "what", "month", "last", "this", "of", "s", "still", "be", "been", "being", "go", "going"
+]);
+
+// What a "more than usual" question is about, as written: a category,
+// wallet or person name it holds, else the words after "on" or "at", else
+// its other words. Null when only filler is left: the month's spending.
+function readUsualSubject(tokens: Token[], context: AskAnswerIntentContext): string | null {
+  const text = tokens.map((token) => token.text).join(" ");
+  const names = [...(context.vocabulary ?? []), ...context.people.map((person) => person.name)]
+    .filter((name) => name.trim().length > 1)
+    .sort((left, right) => right.length - left.length);
+  for (const name of names) {
+    const lowered = name.toLowerCase().replace(/[^a-z0-9& ]+/g, " ").replace(/\s+/g, " ").trim();
+    if (lowered && new RegExp(`(?:^| )${lowered.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s)?(?: |$)`).test(text)) {
+      return name;
+    }
+  }
+  const monthWords = new Set([...MONTH_WORDS.keys()]);
+  const isFiller = (word: string) => USUAL_FILLER.has(word) || monthWords.has(word) || /^\d{4}(?:-\d{2})?$/.test(word);
+  const after = tokens.findIndex((token) => token.text === "on" || token.text === "at");
+  const pick = (list: Token[]) => list.map((token) => token.text).filter((word) => !isFiller(word));
+  const fromAfter = after >= 0 ? pick(tokens.slice(after + 1)) : [];
+  const words = fromAfter.length ? fromAfter : pick(tokens);
+  return words.length ? words.slice(0, 4).join(" ") : null;
 }
 
 // Which money job a question asks about (DOMAIN.md "Money job"): how much
