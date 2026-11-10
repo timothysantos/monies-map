@@ -6,7 +6,7 @@ independent of the project owner's personal Shortcuts library and iCloud.
 ## Files
 
 - `monies-map-apple-pay-api.plist` is the reviewable, secret-free source.
-- `releases/monies-map-apple-pay-api-2026-08-22-v3.shortcut` is the exact
+- `releases/monies-map-apple-pay-api-2026-11-10-v7.shortcut` is the exact
   Apple-signed release for anyone to import.
 - `../../public/shortcuts/monies-map-apple-pay-api.shortcut` is a byte-identical
   public copy served by the app.
@@ -50,14 +50,44 @@ the contract has no new field. (`requestId` carries the phone's own
 timestamp, but in the phone's time zone, so the server's receive time is used
 instead.)
 
+## A blank amount (`needsAmount`)
+
+An overseas terminal that asks which currency to pay in can reach the Wallet
+automation with a blank amount, and the second tap does not run the Shortcut
+again. When `amount` is blank or has no figure in it and every other field is
+valid, `POST /api/shortcuts/entries/create` answers HTTP 400 and saves nothing:
+
+```json
+{ "ok": false, "needsAmount": true, "merchant": "Periplus", "accountName": "Amaze", "error": "Missing or invalid shortcut fields: amount." }
+```
+
+Any other problem (including a refused figure such as a refund or `12,34`)
+keeps the plain `{ ok: false, error }` answer, without `needsAmount`.
+
+From v7 the Shortcut reads `needsAmount` in the not-saved branch and shows
+Ask for Input (Text):
+
+> How much was it?
+> MERCHANT on card. The amount didn't come through. Type it in SGD, or add the
+> currency, like IDR 150000.
+
+The answer becomes `TransactionAmount` and the same request is posted again
+with the same `requestId` (kept per tap in the `TapRequestId` variable), then
+the usual Saved or Not saved notification shows. Cancel stops the Shortcut and
+saves nothing. A tap that has an amount never sees the prompt. The amount
+reader accepts a dot as the thousands mark (`Rp150.000`, `IDR 150.000`,
+`1.234.567`) only for groups of exactly three figures with no comma; a lone
+group needs a Rupiah sign, and `19.82`, `150.00` and `SGD 12.345` read as
+before. Installed copies do not update themselves: reinstall and choose Replace.
+
 ## Release Procedure
 
 1. Change the secret-free plist source and keep its setup Text action blank.
 2. Confirm the Shortcut still accepts a Dictionary through the explicit
    `Shortcut Input` binding, containing `value`,
    `merchant`, and `name`; posts `amount`, `description`, `date`, `name`,
-   `requestId`, and `clientVersion`; and handles `openUrl`, `accountName`, and
-   `error` from the response.
+   `requestId`, and `clientVersion`; and handles `openUrl`, `accountName`,
+   `needsAmount`, and `error` from the response.
 3. Stage the plist under a temporary filename ending in `.shortcut`. Apple's
    CLI rejects the same unsigned contents when the input filename ends in
    `.plist`.

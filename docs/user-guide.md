@@ -2651,6 +2651,17 @@ Before you import, the matched row says what will change, for example
 11.66". After the import, the Done card counts any entries the bank no
 longer lists that were removed.
 
+Some shops abroad ask which currency to pay in. When you pick one, the amount
+sometimes doesn't reach the Shortcut, and tapping your phone again doesn't run
+it again. The Shortcut then asks **How much was it?**, naming the shop and the
+card. Type the amount in the card's currency (for example 22.94), or add the
+currency (IDR 150000 or Rp150.000), then select **Done**. It is saved like any
+other Apple Pay purchase, and the bank's figure replaces it when you import
+the statement. **Cancel** saves nothing. To get this question, install the
+Shortcut again once on each iPhone (**Settings → Apple Pay shortcut →
+Install Apple Shortcut**, then **Replace**); until then a purchase whose
+amount doesn't come through is simply not saved.
+
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
 to your first card in **Default account**. On the **Other currencies go to**
 row, choose the card such purchases really land on, for example the

@@ -1058,6 +1058,25 @@ opens the URL, and shows a notification containing the Wallet merchant, amount,
 and resolved account. If no `openUrl` is returned, it reads `error` and shows a
 not-saved notification instead of calling Open URLs with a blank value.
 
+Since release v7 (`apple-pay-api-2026-11-10-v7`) the shortcut also handles a
+blank amount. An overseas terminal that asks which currency to pay in can
+reach the Wallet automation with no amount, and the second tap does not run
+the shortcut again. When `amount` is blank or has no figure in it, and the
+date, merchant and card are all valid, the endpoint answers 400 with
+`{ ok: false, needsAmount: true, merchant, accountName, error }` and saves
+nothing (`isShortcutAmountMissing`, `src/domain/shortcut-entry-contract.ts`).
+A refused figure (a refund, an ambiguous number) or any other bad field keeps
+the plain error without `needsAmount`. On `needsAmount` the shortcut shows
+Ask for Input (Text) with the merchant and card, saves the answer as the
+amount and posts the same body and the same `requestId` again; Cancel stops
+and saves nothing. The amount reader also takes a dot as the thousands mark
+(`Rp150.000`, `IDR 150.000`, `1.234.567`): groups of exactly three figures and
+no comma; a lone group such as `150.000` needs a Rupiah sign, and `19.82`,
+`150.00` and `SGD 12.345` read as before. The request id is built once per tap
+into the `TapRequestId` variable so both posts share it. Older installed
+copies keep working unchanged but cannot ask; there is no outdated-copy
+warning, so the owner reinstalls (Replace) once on each phone.
+
 Account, category, ownership, and owner are resolved from the Settings defaults.
 Advanced custom shortcuts can add any optional API fields documented above.
 
