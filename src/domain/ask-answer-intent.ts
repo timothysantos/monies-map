@@ -45,7 +45,10 @@ export type AskAnswerIntent =
   // What changed in a month, against the month before or its usual
   // (ask-changed.ts): "what changed this month?", "why did we spend more in
   // October?".
-  | { kind: "changed"; month: string; base: "previous" | "usual" };
+  | { kind: "changed"; month: string; base: "previous" | "usual" }
+  // If this keeps up (ask-pace.ts; DOMAIN.md "Pace"): "how will November
+  // end if this keeps up?", "where will this month end up?".
+  | { kind: "pace"; month: string };
 
 export type AskAnswerIntentKind = AskAnswerIntent["kind"];
 
@@ -149,6 +152,11 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
     return { kind: "owed", personId: findPerson(tokens, context.people)?.id ?? null };
   }
 
+  // If this keeps up: where the month ends, before "usual" reads it.
+  if (PACE_WORDS.test(normalized) && !period && distinctMonths < 2) {
+    return { kind: "pace", month };
+  }
+
   // What changed in a month, before "usual" or "why" read it otherwise.
   if (CHANGED_WORDS.test(normalized) && !period && distinctMonths < 2) {
     return { kind: "changed", month, base: /\b(?:usual|usually|normal)\b/.test(normalized) ? "usual" : "previous" };
@@ -219,6 +227,11 @@ export function readAnswerIntent(text: string, context: AskAnswerIntentContext):
 
   return null;
 }
+
+// The words of an "if this keeps up" question ("keep" and "kept up" are
+// common slips; "how did ... end" is about a month that has ended, and is
+// left to the other readers).
+const PACE_WORDS = /\bif (?:this|it|that|things|spending) (?:keeps?|kept|carries|carry|goes|go) (?:up|on|going)\b|\b(?:how|where) (?:will|would|is|does) (?:\w+ ){0,3}(?:end|ending|land|finish)(?: up)?\b/;
 
 // The words of a "what changed?" question ("wat" is a common slip).
 const CHANGED_WORDS = /\b(?:what|wat|wht)\s+(?:has\s+)?changed\b|\bwhy\s+did\s+(?:we|i|you)\s+spend\s+(?:more|less)\b(?!\s+than)|\bwhat\s+(?:is|was|s)\s+different\b/;

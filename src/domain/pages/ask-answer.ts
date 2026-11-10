@@ -15,6 +15,8 @@ import { buildSplitsPageDto } from "./splits-page";
 import { loadRoutePageContext } from "../route-context";
 import { loadUsualEntries, readUsual } from "./ask-usual";
 import { buildChangedFacts, type ChangedFacts } from "../ask-changed";
+import { buildPaceAnswerFacts, type PaceAnswerFacts } from "../ask-pace";
+import { buildRepeatingChargesDto } from "./repeating-charges";
 import type { UsualFacts } from "../ask-usual";
 import { askTermByKey } from "../ask-terms";
 import { buildTermFacts, type TermFacts } from "../ask-term-answer";
@@ -53,7 +55,7 @@ interface AnsweredBase {
 export type AskAnswerBuild =
   | { supported: false }
   | (AnsweredBase & { needsConfirmation: true; candidates: SkewCandidateDto[] })
-  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts; knownNames: string[] });
+  | (AnsweredBase & { needsConfirmation: false; facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts | PaceAnswerFacts; knownNames: string[] });
 
 export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, today: string): Promise<AskAnswerBuild> {
   const { household, categories, trackedMonths, viewId } = await loadRoutePageContext(db, request.viewId);
@@ -123,6 +125,18 @@ export async function buildAskAnswer(db: D1Database, request: AskAnswerRequest, 
     const each = await Promise.all(periodMonths.map((month) => monthFacts(month)));
     return { current: combineMonthFacts(each), months: each };
   };
+  // If this keeps up: the pace from the Subscriptions and bills read, on
+  // Month's own Actual and Planned spend, read side by side.
+  if (intent.kind === "pace") {
+    const current = intent.month === today.slice(0, 7);
+    const [month, charges] = await Promise.all([
+      monthFacts(intent.month),
+      current ? buildRepeatingChargesDto(db, viewId, scope, today) : Promise.resolve(null)
+    ]);
+    const facts = buildPaceAnswerFacts({ month: intent.month, today, viewId, scope, spentMinor: month.spentMinor, planMinor: month.plannedMinor, pace: charges?.pace });
+    return { ...base, needsConfirmation: false, facts, knownNames: knownNames() };
+  }
+
   const readFacts = async (): Promise<AskAnswerFacts> => {
     if (intent.kind === "spending" || intent.kind === "income") {
       if (intent.months?.length) {
@@ -195,7 +209,7 @@ function intentMonths(intent: AskAnswerIntent, requestMonth: string, today: stri
 // spending against income, with either.
 function changesFacts(candidate: SkewCandidateDto, kind: AskAnswerIntentKind) {
   if (kind === "owed") return candidate.kind === "settlement";
-  if (kind === "usual" || kind === "term" || kind === "changed") return false;
+  if (kind === "usual" || kind === "term" || kind === "changed" || kind === "pace") return false;
   if (kind === "income") return candidate.skew.incomeMinor !== 0;
   if (kind === "saved" || kind === "spentVsEarned") return candidate.skew.spendingMinor !== 0 || candidate.skew.incomeMinor !== 0;
   return candidate.skew.spendingMinor !== 0;

@@ -20,7 +20,8 @@ const INTENT_ICONS = {
   invested: TrendingUp,
   saved: PiggyBank,
   spentVsEarned: Wallet,
-  trip: Plane
+  trip: Plane,
+  pace: TrendingUp
 };
 
 // An Ask answer to a money question (design.md "Ask page", "Money answer";

@@ -1716,7 +1716,7 @@ export interface SkewCandidatesDto {
 // POST /api/ai-assist/answer). Every figure comes from the same projections
 // the screens show; only `wording.text` may be AI-phrased, and only after
 // validation against the facts it was given.
-export type AskAnswerIntentKind = "spending" | "plan" | "compare" | "biggest" | "owed" | "income" | "invested" | "saved" | "spentVsEarned" | "usual" | "term" | "changed";
+export type AskAnswerIntentKind = "spending" | "plan" | "compare" | "biggest" | "owed" | "income" | "invested" | "saved" | "spentVsEarned" | "usual" | "term" | "changed" | "pace";
 
 export interface AskAnswerLeadDto {
   label: string;

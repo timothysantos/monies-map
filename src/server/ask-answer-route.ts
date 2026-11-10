@@ -28,6 +28,7 @@ import type { AskAnswerFacts } from "../domain/ask-answer-facts";
 import type { UsualFacts } from "../domain/ask-usual";
 import type { TermFacts } from "../domain/ask-term-answer";
 import type { ChangedFacts } from "../domain/ask-changed";
+import type { PaceAnswerFacts } from "../domain/ask-pace";
 import { buildAskAnswer } from "../domain/pages/ask-answer";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import type { AskAnswerResponseDto } from "../types/dto";
@@ -127,7 +128,9 @@ export async function handleAskAnswer(request: Request, env: AiProviderEnv & { D
 
 // A month with no entries (or Splits with nothing open) has nothing for AI
 // to phrase: the computed wording says so.
-function hasData(facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts) {
+function hasData(facts: AskAnswerFacts | UsualFacts | TermFacts | ChangedFacts | PaceAnswerFacts) {
+  // A pace is the app's own range: AI never phrases a look ahead.
+  if (facts.kind === "pace") return false;
   if (facts.kind === "changed") return facts.entryCount > 0;
   // A word explained is fixed text: there is nothing for AI to phrase.
   if (facts.kind === "term") return false;

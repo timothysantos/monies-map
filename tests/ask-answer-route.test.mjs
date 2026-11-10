@@ -12,6 +12,7 @@ import { assertSameDatabase, createSeededTemplate, dumpDatabase, openSeededDatab
 import { summarizeFilterAnswer } from "../src/client/ask-filter-answer.js";
 import { buildMonthLeadModel } from "../src/client/month-lead-model.js";
 import { buildMonthMetricCards } from "../src/client/month-helpers.js";
+import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 
 const SHOWCASE_VARS = { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: "2026-05" };
 const ETHAN = "person-ethan";
@@ -288,6 +289,32 @@ test("a month with no entries says so instead of borrowing another month", async
   const compare = await ask(api, "compare March 2026 with March 2024");
   assert.deepEqual(compare.months, ["2026-03", "2024-03"]);
   assert.equal(compare.wording.text, "March came to $8,134.67. There are no entries for March 2024 to compare it with.");
+});
+
+// If this keeps up (ask-pace.ts; DOMAIN.md "Pace"): a month that has ended
+// has no pace (Month's Actual spend and plan, no parts, no AI wording);
+// today's month gets the pace answer, a range or a plain quiet reason, from
+// the Subscriptions and bills read. Never a safe-to-spend line.
+test("if this keeps up: May has ended, and today's month is the pace answer; nothing is written", async (t) => {
+  const { api, db } = await openSeededDatabase(t, showcase);
+  const before = await dumpDatabase(db);
+  const may = await ask(api, "How will May 2026 end if this keeps up?");
+  const mayPage = await get(api, "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared");
+  const mayCards = buildMonthMetricCards({ planSections: mayPage.monthPage.planSections, incomeRows: mayPage.monthPage.incomeRows, currentMonthSummary: mayPage.summaryPage.months[0] });
+  assert.equal(may.intent, "pace");
+  assert.equal(may.answer.title, "If this keeps up");
+  assert.equal(may.answer.lead.label, "Spent so far in May");
+  assert.equal(may.answer.lead.amountMinor, card(mayCards, "Actual spend"));
+  assert.deepEqual(may.answer.lines, []);
+  assert.equal(may.wording.text, "May has already ended, so there is nothing still to come.");
+  assert.equal(may.ai.requested, false);
+
+  const now = await ask(api, "where will this month end up?", { month: todayInAppTimeZone().slice(0, 7) });
+  assert.equal(now.intent, "pace");
+  assert.equal(now.answer.title, "If this keeps up");
+  assert.match(now.wording.text, /^(?:If this keeps up, \w+'s spending ends at about \$[\d,]+ to \$[\d,]+ by \d+ \w{3}|It's too early in \w+ to say where it ends|There isn't enough history yet|The latest statements aren't in yet)/);
+  assert.doesNotMatch(now.wording.text, /\bsafe|can afford|you'll be fine|will have\b/i);
+  assertSameDatabase(await dumpDatabase(db), before);
 });
 
 test("an unsupported question, a bad body or a GET is refused plainly, and nothing is written", async (t) => {
