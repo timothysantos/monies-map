@@ -25,5 +25,7 @@ export const paceCopy = {
   comingUpTotal: (low, high, endDate) => (low === high
     ? `About ${low} by ${dayMonth(endDate)}, if they come as usual`
     : `About ${low} to ${high} by ${dayMonth(endDate)}, if they come as usual`),
+  // The year-end line (Summary only, from April; owner decision D7).
+  year: (low, high, year) => `If this keeps up, about ${low} to ${high} kept in ${year} by 31 Dec.`,
   ask: (month) => `How will ${monthName(month)} end if this keeps up?`
 };

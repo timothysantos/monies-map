@@ -1,5 +1,5 @@
 import { paceCopy as copy } from "./copy/pace-copy";
-import { paceTotals } from "../domain/pace";
+import { paceTotals, yearEndKept } from "../domain/pace";
 
 // The words of "If this keeps up" (pace-line.jsx) and its figure menu's
 // note, from the same sums as the bar: pure, so they are tested without a
@@ -40,5 +40,20 @@ export function paceLineWords({ pace, spentSoFarMinor = null, planMinor = null, 
   ];
   const left = pace.range.incomeMinor > 0 ? copy.left(whole(money, totals.leftShown.lowMinor), whole(money, totals.leftShown.highMinor)) : "";
   return { spent, totals, plan, side, sentence, note, left };
+}
+
+/**
+ * The year-end line (Summary only, from April; owner decision D7): what is
+ * kept so far this year, this month's "left" range, and each month still to
+ * come at the second-lowest to second-highest of the last 6 months (Summary's
+ * months: money in less spending). Empty when quiet or nothing comes in.
+ * @param {{ pace: any, spentSoFarMinor?: number | null, months: Array<{ month: string, realDiffMinor: number }>, money: (minor: number) => string }} input
+ */
+export function paceYearWords({ pace, spentSoFarMinor = null, months, money }) {
+  if (!pace?.range || !(pace.range.incomeMinor > 0) || !Array.isArray(months)) return "";
+  const spent = Number.isFinite(spentSoFarMinor) ? spentSoFarMinor : pace.spentSoFarMinor ?? 0;
+  const totals = paceTotals(spent, pace.range);
+  const year = yearEndKept(months.map((month) => ({ month: month.month, keptMinor: month.realDiffMinor })), pace.month, totals.leftLowMinor, totals.leftHighMinor);
+  return year ? copy.year(whole(money, year.shown.lowMinor), whole(money, year.shown.highMinor), year.year) : "";
 }
 

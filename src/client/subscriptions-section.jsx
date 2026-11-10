@@ -367,14 +367,15 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
  * request for both). Summary shows it under its month-by-month chart
  * (owner decision D6); Month reads the same answer itself (month-panel.jsx),
  * for its insight lines too.
- * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, spentSoFarMinor?: number | null, planMinor?: number | null, showLeft?: boolean }} props
+ * `yearMonths` (Summary's months) adds the year-end line from April.
+ * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, spentSoFarMinor?: number | null, planMinor?: number | null, showLeft?: boolean, yearMonths?: any[] | null }} props
  */
-export function PaceSection({ view, enabled, fetchRequiredQuery, spentSoFarMinor = null, planMinor = null, showLeft = false }) {
+export function PaceSection({ view, enabled, fetchRequiredQuery, spentSoFarMinor = null, planMinor = null, showLeft = false, yearMonths = null }) {
   const queryClient = useQueryClient();
   const { areTotalsVisible } = useMoneyPrivacy();
   const { answer } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
   if (!answer?.pace?.range || !areTotalsVisible) {
     return null;
   }
-  return <PaceLine pace={answer.pace} spentSoFarMinor={spentSoFarMinor} planMinor={planMinor} money={money} hidden={!areTotalsVisible} showLeft={showLeft} />;
+  return <PaceLine pace={answer.pace} spentSoFarMinor={spentSoFarMinor} planMinor={planMinor} money={money} hidden={!areTotalsVisible} showLeft={showLeft} yearMonths={yearMonths} />;
 }

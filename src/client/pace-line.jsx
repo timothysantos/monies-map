@@ -1,6 +1,6 @@
 import "./pace-line.css";
 
-import { paceLineWords } from "./pace-line-model";
+import { paceLineWords, paceYearWords } from "./pace-line-model";
 
 // If this keeps up (DOMAIN.md "Pace"; design.md "If this keeps up"): where
 // this month's spending ends if the month keeps going as it has, always a
@@ -12,13 +12,14 @@ import { paceLineWords } from "./pace-line-model";
 // even the shape.
 
 /**
- * @param {{ pace: any, spentSoFarMinor?: number | null, planMinor?: number | null, money: (minor: number) => string, hidden: boolean, showLeft?: boolean, className?: string }} props
+ * @param {{ pace: any, spentSoFarMinor?: number | null, planMinor?: number | null, money: (minor: number) => string, hidden: boolean, showLeft?: boolean, yearMonths?: any[] | null, className?: string }} props
  */
-export function PaceLine({ pace, spentSoFarMinor = null, planMinor = null, money, hidden, showLeft = false, className = "" }) {
+export function PaceLine({ pace, spentSoFarMinor = null, planMinor = null, money, hidden, showLeft = false, yearMonths = null, className = "" }) {
   if (hidden || !pace?.range) {
     return null;
   }
   const { spent, totals, plan, sentence, note, left } = paceLineWords({ pace, spentSoFarMinor, planMinor, money });
+  const yearLine = yearMonths ? paceYearWords({ pace, spentSoFarMinor, months: yearMonths, money }) : "";
   const scale = Math.max(totals.highMinor, plan ?? 0, 1);
   const pct = (value) => `${Math.max(0, Math.min(100, (value / scale) * 100)).toFixed(2)}%`;
   return (
@@ -33,6 +34,7 @@ export function PaceLine({ pace, spentSoFarMinor = null, planMinor = null, money
         <span data-fig="pace" data-fig-note={note.join("\n")} tabIndex={0} role="button">{sentence}</span>
         {showLeft && left ? ` ${left}` : ""}
       </p>
+      {yearLine ? <p className="pace-text pace-year" data-pace-year={pace.month.slice(0, 4)}>{yearLine}</p> : null}
     </div>
   );
 }

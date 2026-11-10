@@ -111,6 +111,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         spentSoFarMinor={currentMonthRow.realExpensesMinor ?? null}
         planMinor={leadView === "plan" ? currentMonthRow.estimatedExpensesMinor ?? null : null}
         showLeft
+        yearMonths={safeSummaryPage.months}
       />
     </Suspense>
   ) : null;

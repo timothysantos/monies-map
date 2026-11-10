@@ -47,7 +47,8 @@ async function addMonths(page) {
       await expense(`${monthsAgo(back)}-${String(day).padStart(2, "0")}`, `${shops[index]} ${String.fromCharCode(65 + back)}`, 25_000);
     }
   }
-  for (let back = 4; back >= 1; back -= 1) {
+  // Netflix from June, so every month this year has entries (the year line).
+  for (let back = 5; back >= 1; back -= 1) {
     await postJson(page, "/api/entries/create", {
       date: `${monthsAgo(back)}-28`, description: "NETFLIX.COM 866-579-7172", accountName: "UOB One", categoryName: "Subscriptions MO",
       entryType: "expense", ownershipType: "direct", ownerName: "Tim", amountMinor: 1_998
@@ -91,6 +92,8 @@ test.describe("If this keeps up", () => {
       await expect(line).toContainText(/About \$[\d,]+ to \$[\d,]+ left of what comes in\./);
     }
     await expect(line.locator(".pace-bar-high")).toHaveCount(1);
+    // A range that starts after January: no year-end line.
+    await expect(line.locator("[data-pace-year]")).toHaveCount(0);
     await shoot(line.locator("xpath=.."), "summary-desktop.png");
 
     await figure.click();
@@ -104,6 +107,32 @@ test.describe("If this keeps up", () => {
     await expect(menu.getByRole("button", { name: "Open plan" })).toHaveCount(0);
     await expect(menu.getByRole("button", { name: "Ask about this" })).toBeVisible();
     await shoot(menu, "summary-menu.png");
+  });
+
+  // The year (owner decision D7): Summary only, from April, when the range
+  // holds every month from January and money is still to come this month.
+  test("Summary from January: the year-end line from April", async ({ page }) => {
+    test.skip(QUIET || DAY >= 25, "quiet days, or the salary has already come");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await revealMoney(page);
+    // One small entry in every month from January the demo leaves empty: a
+    // month with nothing recorded keeps the year line quiet.
+    for (let back = Number(THIS_MONTH.slice(5, 7)) - 1; back >= 1; back -= 1) {
+      await postJson(page, "/api/entries/create", {
+        date: `${monthsAgo(back)}-08`, description: `CORNER SHOP ${String.fromCharCode(64 + back)}`, accountName: "UOB One", categoryName: "Groceries",
+        entryType: "expense", ownershipType: "direct", ownerName: "Tim", amountMinor: 1_000
+      });
+    }
+    await page.goto(`/?view=household&summary_start=${THIS_MONTH.slice(0, 4)}-01&summary_end=${THIS_MONTH}`);
+    const line = page.locator(".pace-line");
+    await expect(line).toBeVisible({ timeout: 30_000 });
+    const year = line.locator("[data-pace-year]");
+    if (Number(THIS_MONTH.slice(5, 7)) < 4) {
+      await expect(year).toHaveCount(0);
+      return;
+    }
+    await expect(year).toHaveText(/^If this keeps up, about -?\$[\d,]+ to -?\$[\d,]+ kept in \d{4} by 31 Dec\.$/);
+    await shoot(line, "summary-year.png");
   });
 
   test("Month on a phone: the line under the lead; hidden money draws nothing", async ({ page }) => {
