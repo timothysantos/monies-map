@@ -186,38 +186,72 @@ test("a payment into the card since the statement clears its bill, and an import
   assert.deepEqual(after.map((reminder) => reminder.kind), ["month_close"]);
 });
 
-test("last month is ready to close once every statement is in, and counts what is left in Other and the note", async (t) => {
+// The month-close rule depends on today: the last complete month, plus the one
+// before it for 45 days after it ended. So the clock is pinned (the Worker runs
+// in this process, so a mocked Date reaches it) and every month is worked out
+// from the pinned day, never the real one.
+function pinClock(t, isoDay) {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.parse(`${isoDay}T04:00:00Z`) });
+  const pinnedMonth = isoDay.slice(0, 7);
+  return { pinnedLast: addMonths(pinnedMonth, -1), pinnedBefore: addMonths(pinnedMonth, -2) };
+}
+
+async function seedStatements(t, isoDay) {
+  const { pinnedLast, pinnedBefore } = pinClock(t, isoDay);
   const { db, api, fetch } = await openSeededDatabase(t, onTemplate);
   const ids = await setUpHousehold({ db, api });
   for (const name of ["Serene Visa", "Serene DBS Account"]) {
-    await addStatement(db, ids[name], addMonths(thisMonth, -2), { endDate: `${addMonths(thisMonth, -2)}-20` });
-    await addStatement(db, ids[name], lastMonth, { endDate: `${lastMonth}-20` });
+    await addStatement(db, ids[name], pinnedBefore, { endDate: `${pinnedBefore}-20` });
+    await addStatement(db, ids[name], pinnedLast, { endDate: `${pinnedLast}-20` });
   }
-  // Two September-style entries left in Other, one categorised.
-  for (const [description, categoryName] of [["MYSTERY SHOP", "Other"], ["MYSTERY GIFT", "Other - Income"], ["FAIRPRICE", "Groceries"]]) {
-    await createEntry(api, {
-      date: `${lastMonth}-10`, description, accountName: "Serene DBS Account", categoryName, amountMinor: 1250,
-      entryType: categoryName === "Other - Income" ? "income" : "expense", ownerName: "Serene"
-    });
-  }
+  return { db, api, fetch, pinnedLast, pinnedBefore };
+}
 
-  const [card] = (await getReminders(fetch, JOYCE)).payload.reminders;
-  assert.equal(card.kind, "month_close");
-  assert.equal(card.month, lastMonth);
-  assert.equal(card.allDone, false);
-  assert.deepEqual(card.checks.map((check) => [check.id, check.done, check.count]), [
-    ["statements", true, 2], ["other", false, 2], ["splits", true, 0], ["note", false, 0]
-  ]);
+// Late in the month: the month before last ended more than 45 days ago, so the
+// last complete month is the only card. Includes a year boundary.
+for (const isoDay of ["2026-10-20", "2027-01-20"]) {
+  test(`last month is ready to close once every statement is in, and counts what is left in Other and the note (on ${isoDay})`, async (t) => {
+    const { db, api, fetch, pinnedLast } = await seedStatements(t, isoDay);
+    // Two entries left in Other, one categorised.
+    for (const [description, categoryName] of [["MYSTERY SHOP", "Other"], ["MYSTERY GIFT", "Other - Income"], ["FAIRPRICE", "Groceries"]]) {
+      await createEntry(api, {
+        date: `${pinnedLast}-10`, description, accountName: "Serene DBS Account", categoryName, amountMinor: 1250,
+        entryType: categoryName === "Other - Income" ? "income" : "expense", ownerName: "Serene"
+      });
+    }
 
-  // Ethan's view counts only his own entries and accounts: none of Serene's.
-  const ethanCard = (await getReminders(fetch, TIM)).payload.reminders;
-  assert.deepEqual(ethanCard, []);
+    const cards = (await getReminders(fetch, JOYCE)).payload.reminders;
+    assert.deepEqual(cards.map((card) => [card.kind, card.month]), [["month_close", pinnedLast]]);
+    const [card] = cards;
+    assert.equal(card.allDone, false);
+    assert.deepEqual(card.checks.map((check) => [check.id, check.done, check.count]), [
+      ["statements", true, 2], ["other", false, 2], ["splits", true, 0], ["note", false, 0]
+    ]);
 
-  // Categorise the two entries and write the month's note.
-  await db.prepare("UPDATE transactions SET category_id = (SELECT id FROM categories WHERE name = 'Groceries') WHERE description IN ('MYSTERY SHOP', 'MYSTERY GIFT')").run();
-  const noted = await api("/api/month-note/update", { month: lastMonth, personScope: JOYCE, note: "Quiet month." });
-  assert.equal(noted.status, 200, JSON.stringify(noted.payload));
-  const [done] = (await getReminders(fetch, JOYCE)).payload.reminders;
-  assert.equal(done.allDone, true);
-  assert.deepEqual(done.checks.map((check) => check.done), [true, true, true, true]);
-});
+    // Ethan's view counts only his own entries and accounts: none of Serene's.
+    const ethanCard = (await getReminders(fetch, TIM)).payload.reminders;
+    assert.deepEqual(ethanCard, []);
+
+    // Categorise the two entries and write the month's note.
+    await db.prepare("UPDATE transactions SET category_id = (SELECT id FROM categories WHERE name = 'Groceries') WHERE description IN ('MYSTERY SHOP', 'MYSTERY GIFT')").run();
+    const noted = await api("/api/month-note/update", { month: pinnedLast, personScope: JOYCE, note: "Quiet month." });
+    assert.equal(noted.status, 200, JSON.stringify(noted.payload));
+    const [done] = (await getReminders(fetch, JOYCE)).payload.reminders;
+    assert.equal(done.allDone, true);
+    assert.deepEqual(done.checks.map((check) => check.done), [true, true, true, true]);
+  });
+}
+
+// Early in the month: the month before last ended 45 days ago or less, so its
+// card still shows, oldest month first. Includes a year boundary.
+for (const [isoDay, expectedMonths] of [
+  ["2026-11-10", ["2026-09", "2026-10"]],
+  ["2027-01-05", ["2026-11", "2026-12"]]
+]) {
+  test(`the month before last still shows for 45 days, oldest first (on ${isoDay})`, async (t) => {
+    const { fetch, pinnedBefore, pinnedLast } = await seedStatements(t, isoDay);
+    assert.deepEqual([pinnedBefore, pinnedLast], expectedMonths);
+    const cards = (await getReminders(fetch, JOYCE)).payload.reminders;
+    assert.deepEqual(cards.map((card) => [card.kind, card.month]), expectedMonths.map((month) => ["month_close", month]));
+  });
+}
