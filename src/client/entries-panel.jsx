@@ -2142,7 +2142,8 @@ function buildInitialEntriesPage(view) {
       selectedScope: view.monthPage.selectedScope,
       scopes: view.monthPage.scopes,
       entries: view.monthPage.entries
-    }
+    },
+    ...(view.tripEvents ? { tripEvents: view.tripEvents } : {})
   };
 }
 

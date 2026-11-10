@@ -199,7 +199,9 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
       splitsPage: {
         groups: pageData.splitGroups ?? []
       },
-      monthPage: pageData.monthPage
+      monthPage: pageData.monthPage,
+      // The trips the rows are on (their chips), kept for the warm start.
+      ...(pageData.tripEvents ? { tripEvents: pageData.tripEvents } : {})
     };
   }
 
