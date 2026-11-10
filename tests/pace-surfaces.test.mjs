@@ -108,7 +108,7 @@ test("the read's facts: the bill still to come, not the one already paid, and th
 
 test("the read's facts are quiet: the first 5 days, imports 11 days behind, too little history", () => {
   assert.deepEqual(paceFromRead({ today: "2026-11-05" }), { month: "2026-11", quiet: "early" });
-  assert.deepEqual(paceFromRead({ latest: "2026-10-30" }), { month: "2026-11", quiet: "imports" });
+  assert.deepEqual(paceFromRead({ latest: "2026-10-30" }), { month: "2026-11", quiet: "imports", behind: [{ accountId: "citi", name: "One account", lastDate: "2026-10-30" }] });
   const short = readRows().filter((row) => row.date >= "2026-09-01");
   assert.deepEqual(paceFromRead({ rows: short }), { month: "2026-11", quiet: "history" });
   // Months of history, but nothing recorded in August: no usual rate of $0.
@@ -247,6 +247,10 @@ test("Ask's pace answer: the same sums as the line, Month's spent and plan, and 
   const quiet = (extra) => buildPaceWording(buildPaceAnswerFacts({ month: "2026-11", today: TODAY, viewId: "household", scope: "direct_plus_shared", spentMinor: 214_000, planMinor: 0, ...extra }), money);
   assert.equal(quiet({ pace: { month: "2026-11", quiet: "early" } }), "It's too early in November to say where it ends. Ask again after the 5th.");
   assert.equal(quiet({ pace: { month: "2026-11", quiet: "imports" } }), "The latest statements aren't in yet, so there's no pace until they're imported.");
+  // Naming the account (pace-quiet.ts, the same words as Summary's note).
+  const behind = [{ accountId: "citi", name: "Citi Rewards", lastDate: "2026-10-15" }];
+  assert.equal(quiet({ pace: { month: "2026-11", quiet: "imports", behind } }), "Citi Rewards has nothing after 15 Oct, so there's no pace until its statement is imported.");
+  assert.equal(quiet({ pace: { month: "2026-11", quiet: "imports", behind: [...behind, { accountId: "uob", name: "UOB One", lastDate: "2026-10-14" }, { accountId: "x", name: "X", lastDate: "2026-10-01" }] } }), "Citi Rewards has nothing after 15 Oct and UOB One has nothing after 14 Oct, and 1 more account is behind too, so there's no pace until their statements are imported.");
   assert.equal(quiet({ pace: { month: "2026-11", quiet: "history" } }), "There isn't enough history yet. This needs 3 complete months of entries.");
   assert.equal(quiet({ month: "2026-10", pace }), "October has already ended, so there is nothing still to come.");
   assert.deepEqual(buildPaceCard(buildPaceAnswerFacts({ month: "2026-10", today: TODAY, viewId: "household", scope: "direct_plus_shared", spentMinor: 1, planMinor: 0, pace })).lines, []);

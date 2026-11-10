@@ -1,7 +1,7 @@
 import { payeeKey, payeeName } from "../account-routines";
 import { isSpendingCategoryName } from "../category-offset";
-import { addDays, addMonths, daysInMonth } from "../money-signals/format";
-import { buildPaceRange, everydayMinor, PACE_IMPORTS_BEHIND_DAYS, type PaceBill, type PaceEntry, type PaceFacts, type PaceQuiet, type PaceRange } from "../pace";
+import { addMonths, daysInMonth } from "../money-signals/format";
+import { buildPaceRange, everydayMinor, paceAccountsBehind, type PaceAccountActivity, type PaceBehindAccount, type PaceBill, type PaceEntry, type PaceFacts, type PaceQuiet, type PaceRange } from "../pace";
 import type { RepeatingChargeRow, RepeatingChargesResult } from "../repeating-charges";
 
 // The facts "If this keeps up" needs (pace.ts), from what the Subscriptions
@@ -19,6 +19,8 @@ export interface IncomeRow {
 export interface PaceDto {
   month: string;
   quiet?: PaceQuiet;
+  // The accounts whose statements are behind, when that is why it is quiet.
+  behind?: PaceBehindAccount[];
   range?: PaceRange;
   bills?: PaceBill[];
   incomeSoFarMinor?: number;
@@ -62,6 +64,8 @@ export function buildPaceDto(input: {
   rows: RepeatingChargeRow[];
   result: RepeatingChargesResult;
   accountLatestDate: Record<string, string>;
+  // Each account's name for the note (the same name twice carries its owner).
+  accountNames?: Record<string, string>;
   income: IncomeRow[];
 }): PaceDto {
   const { today } = input;
@@ -82,13 +86,27 @@ export function buildPaceDto(input: {
       days: daysInMonth(item)
     }));
   const monthsWithEntries = new Set(input.rows.map((row) => row.date.slice(0, 7)).filter((item) => item < month)).size;
-  // Imports behind: the account with the most charges in the last 3 months
-  // has nothing recorded for more than 10 days.
-  const recent = input.rows.filter((row) => row.date >= `${addMonths(month, -3)}-01`);
-  const byAccount = new Map<string, number>();
-  for (const row of recent) byAccount.set(row.accountId, (byAccount.get(row.accountId) ?? 0) + row.ids.length);
-  const main = [...byAccount.entries()].sort((left, right) => right[1] - left[1])[0]?.[0];
-  const importsBehind = Boolean(main) && (input.accountLatestDate[main!] ?? "") < addDays(today, -PACE_IMPORTS_BEHIND_DAYS);
+  // Imports behind (pace.ts, paceAccountsBehind): an account behind by its
+  // own cadence that matters this month, not just the busiest one.
+  const windowStart = `${addMonths(month, -3)}-01`;
+  const activity = new Map<string, PaceAccountActivity>();
+  for (const row of input.rows) {
+    if (row.date < windowStart) continue;
+    const account = activity.get(row.accountId) ?? {
+      accountId: row.accountId,
+      name: input.accountNames?.[row.accountId] ?? "One account",
+      lastEntryDate: input.accountLatestDate[row.accountId] ?? "",
+      spendMinor: 0,
+      chargeDays: [],
+      chargesThisMonth: 0
+    };
+    account.spendMinor += row.amountMinor;
+    account.chargeDays.push(row.date);
+    if (row.date.slice(0, 7) === month) account.chargesThisMonth += row.ids.length;
+    activity.set(row.accountId, account);
+  }
+  const behind = paceAccountsBehind([...activity.values()], today);
+  const importsBehind = behind.length > 0;
 
   const day = Number(today.slice(8, 10));
   const bills: PaceBill[] = [];
@@ -114,7 +132,7 @@ export function buildPaceDto(input: {
   const facts: PaceFacts = { month, today, entries, usualMonths, bills, incomeSoFarMinor: soFar, incomeToCome: toCome, monthsWithEntries, importsBehind };
   const range = buildPaceRange(facts);
   if ("quiet" in range) {
-    return { month, quiet: range.quiet };
+    return { month, quiet: range.quiet, ...(range.quiet === "imports" ? { behind } : {}) };
   }
   return {
     month,

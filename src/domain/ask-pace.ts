@@ -4,7 +4,8 @@
 // facts (pages/pace-facts.ts), against Month's own Actual and Planned spend.
 // Always a range, never a reassurance or a safe-to-spend figure (the pace
 // lint, findPaceProblems), and quiet for the same reasons the line is.
-import { paceTotals, type PaceBill, type PaceQuiet, type PaceRange } from "./pace";
+import { paceTotals, type PaceBehindAccount, type PaceBill, type PaceQuiet, type PaceRange } from "./pace";
+import { paceQuietAnswer } from "./pace-quiet";
 import type { PaceDto } from "./pages/pace-facts";
 import { compactMoney, monthName } from "./money-signals/format";
 import type { AskAnswerCardDto, AskAnswerLineDto, PersonScope } from "../types/dto";
@@ -18,6 +19,8 @@ export interface PaceAnswerFacts {
   spentMinor: number;
   planMinor: number;
   quiet: PaceQuiet | null;
+  // The accounts behind, when that is why it is quiet.
+  behind: PaceBehindAccount[];
   range: PaceRange | null;
   bills: PaceBill[];
 }
@@ -36,12 +39,12 @@ export function buildPaceAnswerFacts(input: {
   const base = { kind: "pace" as const, month: input.month, viewId: input.viewId, scope: input.scope, spentMinor: input.spentMinor, planMinor: input.planMinor };
   // The pace is only ever today's month.
   if (input.month !== input.today.slice(0, 7)) {
-    return { ...base, quiet: "past", range: null, bills: [] };
+    return { ...base, quiet: "past", behind: [], range: null, bills: [] };
   }
   if (!input.pace?.range) {
-    return { ...base, quiet: input.pace?.quiet ?? "history", range: null, bills: [] };
+    return { ...base, quiet: input.pace?.quiet ?? "history", behind: input.pace?.behind ?? [], range: null, bills: [] };
   }
-  return { ...base, quiet: null, range: input.pace.range, bills: input.pace.bills ?? [] };
+  return { ...base, quiet: null, behind: [], range: input.pace.range, bills: input.pace.bills ?? [] };
 }
 
 const MONTH_END = (month: string) => {
@@ -100,19 +103,14 @@ export function buildPaceCard(facts: PaceAnswerFacts): AskAnswerCardDto {
   };
 }
 
-// The quiet reasons, in plain words: why there is no range yet.
-const QUIET_WORDS: Record<PaceQuiet, (month: string) => string> = {
-  early: (month) => `It's too early in ${month} to say where it ends. Ask again after the 5th.`,
-  history: () => "There isn't enough history yet. This needs 3 complete months of entries.",
-  past: (month) => `${month} has already ended, so there is nothing still to come.`,
-  imports: () => "The latest statements aren't in yet, so there's no pace until they're imported."
-};
+// The quiet reasons, in plain words (pace-quiet.ts, shared with Summary's note).
+const quietWords = (facts: PaceAnswerFacts) => paceQuietAnswer(facts.quiet ?? "history", { month: facts.month, behind: facts.behind });
 
 export function buildPaceWording(facts: PaceAnswerFacts, money: Money): string {
   const month = monthName(facts.month);
   const totals = paceAnswerTotals(facts);
   if (!totals || !facts.range) {
-    return QUIET_WORDS[facts.quiet ?? "history"](month);
+    return quietWords(facts);
   }
   const low = compactMoney(money, totals.shown.lowMinor);
   const high = compactMoney(money, totals.shown.highMinor);
@@ -131,7 +129,7 @@ export function buildPaceWording(facts: PaceAnswerFacts, money: Money): string {
 export function buildPacePromptFacts(facts: PaceAnswerFacts, money: Money): string[] {
   const totals = paceAnswerTotals(facts);
   if (!totals || !facts.range) {
-    return [QUIET_WORDS[facts.quiet ?? "history"](monthName(facts.month))];
+    return [quietWords(facts)];
   }
   return [
     `If this keeps up, spending by month end: about ${compactMoney(money, totals.shown.lowMinor)} to ${compactMoney(money, totals.shown.highMinor)}`,

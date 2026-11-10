@@ -20,7 +20,9 @@
 // - Money in: what came in so far, plus regular income still due this month
 //   on its usual day. Nothing else is assumed.
 // - Quiet: days 1 to 5, fewer than 3 complete months with entries, a past
-//   month, or statement imports behind.
+//   month, or statement imports behind that matter this month
+//   (paceAccountsBehind below). The reason is always shown in words
+//   (pace-quiet.ts), never left as silence.
 import { addMonths, daysInMonth } from "./money-signals/format";
 
 export const PACE_QUIET_DAYS = 5;
@@ -29,6 +31,18 @@ export const PACE_ONE_OFF_MINOR = 30_000;
 export const PACE_ONE_OFF_TIMES_MEDIAN = 3;
 export const PACE_NARROW_RATIO = 0.1;
 export const PACE_IMPORTS_BEHIND_DAYS = 10;
+// An account behind only matters if it matters this month: it carries at
+// least a quarter of the last 3 months' spending, is the one spending the
+// most, or has charges this month already.
+export const PACE_BEHIND_MAIN_SHARE = 0.25;
+// Behind accounts count together when they carry that share between them;
+// each one under this share is then still left out.
+export const PACE_BEHIND_MINOR_SHARE = 0.05;
+// Each account's own cadence: nothing for more than twice its usual gap
+// between charge days is behind, but never sooner than 10 days and never
+// later than 21 (a main account is never excused for weeks).
+export const PACE_BEHIND_CADENCE_TIMES = 2;
+export const PACE_BEHIND_MAX_DAYS = 21;
 
 export interface PaceEntry {
   id: string;
@@ -84,6 +98,59 @@ export interface PaceRange {
   oneOffs: PaceEntry[];
   seriesSoFarMinor: number;
   incomeMinor: number;
+}
+
+// What one account did in the last 3 months and this month (the view's
+// charges), and its latest entry of any kind.
+export interface PaceAccountActivity {
+  accountId: string;
+  name: string;
+  // Latest entry of any kind on the account; "" when it has none.
+  lastEntryDate: string;
+  // The view's spending on it since the start of the month 3 months back.
+  spendMinor: number;
+  // Distinct days with a charge in that window.
+  chargeDays: string[];
+  chargesThisMonth: number;
+}
+
+export interface PaceBehindAccount {
+  accountId: string;
+  name: string;
+  lastDate: string;
+}
+
+const dayNumber = (date: string) => Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) / 86_400_000;
+
+/**
+ * The accounts whose missing statements would make the pace wrong.
+ * 1. Behind by their own cadence (see the constants above).
+ * 2. And mattering this month: a quarter of the last 3 months' spending,
+ *    the account spending the most, or charges this month. A minor account
+ *    that stopped months ago, with nothing this month, is ignored.
+ * 3. Several smaller accounts count together: when the accounts behind carry
+ *    a quarter of the spending between them, each one of at least 5% is
+ *    named (a household of many cards, none of them a quarter).
+ * A pace built on missing statements is worse than none, so this leans
+ * towards staying quiet. Biggest spender first.
+ */
+export function paceAccountsBehind(accounts: PaceAccountActivity[], today: string): PaceBehindAccount[] {
+  const active = accounts.filter((account) => account.spendMinor > 0 || account.chargesThisMonth > 0);
+  const total = active.reduce((sum, account) => sum + account.spendMinor, 0);
+  const share = (account: PaceAccountActivity) => (total > 0 ? account.spendMinor / total : 0);
+  const top = [...active].sort((left, right) => right.spendMinor - left.spendMinor)[0];
+  const candidates = active.filter((account) => {
+    const days = [...new Set(account.chargeDays)].sort().map(dayNumber);
+    const usualGap = median(days.slice(1).map((day, index) => day - days[index]));
+    const allowed = Math.min(PACE_BEHIND_MAX_DAYS, Math.max(PACE_IMPORTS_BEHIND_DAYS, Math.ceil(usualGap * PACE_BEHIND_CADENCE_TIMES)));
+    return dayNumber(today) - (account.lastEntryDate ? dayNumber(account.lastEntryDate) : -Infinity) > allowed;
+  });
+  const matters = (account: PaceAccountActivity) => share(account) >= PACE_BEHIND_MAIN_SHARE || account === top || account.chargesThisMonth > 0;
+  const together = candidates.reduce((sum, account) => sum + share(account), 0) >= PACE_BEHIND_MAIN_SHARE;
+  return candidates
+    .filter((account) => matters(account) || (together && share(account) >= PACE_BEHIND_MINOR_SHARE))
+    .sort((left, right) => right.spendMinor - left.spendMinor)
+    .map((account) => ({ accountId: account.accountId, name: account.name, lastDate: account.lastEntryDate }));
 }
 
 const median = (values: number[]) => {

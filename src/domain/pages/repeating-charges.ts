@@ -218,6 +218,15 @@ export async function buildRepeatingChargesDto(
 
   const accountLatestDate: Record<string, string> = {};
   const accountLabel = new Map<string, string>();
+  // The note names an account by its name; the same name on two accounts
+  // carries its owner ("UOB One (Joyce)").
+  const nameCount = new Map<string, number>();
+  for (const account of accounts.results) nameCount.set(account.account_name, (nameCount.get(account.account_name) ?? 0) + 1);
+  const accountNames: Record<string, string> = {};
+  for (const account of accounts.results) {
+    const owner = account.is_joint ? "shared" : account.owner_name ?? "";
+    accountNames[account.id] = (nameCount.get(account.account_name) ?? 0) > 1 && owner ? `${account.account_name} (${owner})` : account.account_name;
+  }
   for (const account of accounts.results) {
     accountLatestDate[account.id] = account.latest_date ?? "";
     const owner = account.is_joint ? "Shared" : account.owner_name ?? "";
@@ -260,6 +269,7 @@ export async function buildRepeatingChargesDto(
       rows,
       result,
       accountLatestDate,
+      accountNames,
       income: income.results.map((row) => ({ description: row.description, date: row.date, amountMinor: row.amount_minor, categoryName: row.category_name }))
     })
   };

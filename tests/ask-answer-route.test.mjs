@@ -312,7 +312,7 @@ test("if this keeps up: May has ended, and today's month is the pace answer; not
   const now = await ask(api, "where will this month end up?", { month: todayInAppTimeZone().slice(0, 7) });
   assert.equal(now.intent, "pace");
   assert.equal(now.answer.title, "If this keeps up");
-  assert.match(now.wording.text, /^(?:If this keeps up, \w+'s spending ends at about \$[\d,]+ to \$[\d,]+ by \d+ \w{3}|It's too early in \w+ to say where it ends|There isn't enough history yet|The latest statements aren't in yet)/);
+  assert.match(now.wording.text, /^(?:If this keeps up, \w+'s spending ends at about \$[\d,]+ to \$[\d,]+ by \d+ \w{3}|It's too early in \w+ to say where it ends|There isn't enough history yet|The latest statements aren't in yet|[^.]+ has nothing after \d+ \w{3})/);
   assert.doesNotMatch(now.wording.text, /\bsafe|can afford|you'll be fine|will have\b/i);
   assertSameDatabase(await dumpDatabase(db), before);
 });
