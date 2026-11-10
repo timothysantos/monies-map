@@ -162,6 +162,7 @@ import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntr
 import { aiVisitorKey } from "./domain/ai-assistance";
 import { handleViewerPreferencesRoute, isViewerPreferencesPath } from "./server/viewer-preferences-route";
 import { handleTripEventsRoute, isTripEventsPath } from "./server/trip-events-route";
+import { handleUsuallySharedRoute, isUsuallySharedPath } from "./server/usually-shared-route";
 import { followSplitGroupTripEvent } from "./domain/app-repository-trip-events";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
@@ -669,6 +670,12 @@ export default {
         return json({ ok: false, error: "The Ask turn route only answers POST." }, 405, { Allow: "POST" });
       }
       return handleAskTurn(request, env);
+    }
+
+    // Usually shared (src/server/usually-shared-route.ts).
+    if (isUsuallySharedPath(url.pathname)) {
+      return (await handleUsuallySharedRoute(request, url, env))
+        ?? json({ ok: false, error: "Not found." }, 404);
     }
 
     // Trips and events (src/server/trip-events-route.ts).

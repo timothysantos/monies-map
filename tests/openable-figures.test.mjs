@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
 import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
 import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
@@ -850,4 +850,38 @@ test("Tax reliefs: every amount used opens exactly its entries and Entries' tota
   const pageView = figureMenu({ fig: "outflow", period, search, ids: figures[0][1].ids });
   const { derived: shared } = await openEntries(api, pageView.items[0].location, accounts);
   assert.equal(shared.filteredEntries.length, 0);
+
+// Usually shared on Splits (the `spent` figure narrowed to a group's entry
+// ids): each group's amount is the entries it names, so Entries' Spent total
+// after "View entries" is that amount to the cent, in every view that lists
+// the entries (a Joyce-only view would not list Tim's, as with Subscriptions).
+test("Usually shared: a group's amount equals the Entries total behind its figure", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  await api("/api/ask/habits/setting", { enabled: false });
+  const today = new Date(`${todayInAppTimeZone()}T00:00:00Z`);
+  const ago = (days) => new Date(today.getTime() - days * 86_400_000).toISOString().slice(0, 10);
+  for (const [index, days] of [150, 130, 110].entries()) {
+    const entryId = await createEntry(api, { date: ago(days), description: "Cold Storage Figure", amountMinor: 2_000 + index });
+    const added = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: "split-group-baby-river" });
+    assert.equal(added.status, 200, JSON.stringify(added.payload));
+  }
+  // Two unsplit entries in different months, so the period spans months.
+  await createEntry(api, { date: ago(40), description: "Cold Storage Figure", amountMinor: 1_234 });
+  await createEntry(api, { date: ago(3), description: "Cold Storage Figure", amountMinor: 5_678 });
+  const { groups } = await get(api, "/api/splits/usually-shared");
+  const group = groups.find((candidate) => candidate.shopName === "Cold Storage Figure");
+  assert.equal(group.totalMinor, 1_234 + 5_678);
+  const dates = group.entries.map((entry) => entry.date).sort();
+  const period = { startMonth: dates[0].slice(0, 7), endMonth: dates.at(-1).slice(0, 7) };
+  let checked = 0;
+  for (const view of VIEWS.filter((candidate) => candidate.scope !== "shared")) {
+    const { model, derived } = await viewEntries(api, accounts, "spent", {
+      search: viewSearch(view, period.endMonth), period, ids: group.entries.map((entry) => entry.id)
+    });
+    assert.equal(shownTotal(model), group.totalMinor, `${view.viewId}:${view.scope}`);
+    assert.equal(usuallySharedFigureMinor(group.entries.map((entry) => entry.id), derived.filteredEntries), group.totalMinor, `${view.viewId}:${view.scope} (rule)`);
+    checked += 1;
+  }
+  assert.equal(checked, 3);
 });

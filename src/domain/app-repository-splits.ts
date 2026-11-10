@@ -8,7 +8,8 @@ import {
 } from "./app-repository-helpers";
 import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
-import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
+import { assertSplitSettlementUnchanged, SplitSettlementLockedError, type SplitSettlementFacts } from "./split-settlement-lock";
+import { USUALLY_SHARED_CONFIRM_ABOVE, USUALLY_SHARED_POLICY } from "./usually-shared";
 import { SPLIT_CORRECTION_DELETE_REFUSAL, SPLIT_CORRECTION_EDIT_REFUSAL, SPLIT_CORRECTION_RESTORE_REFUSAL, assertNotSplitCorrection } from "./app-repository-split-corrections";
 import {
   findBestCrossCurrencySplitSettlementLedgerCandidate,
@@ -1861,6 +1862,76 @@ export async function linkSplitSettlementMatch(
   return { ok: true };
 }
 
+interface LinkableEntryRow {
+  id: string;
+  transaction_date: string;
+  description: string;
+  amount_minor: number;
+  currency: string;
+  note: string | null;
+  category_id: string | null;
+  account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
+}
+
+// The two inserts that put a ledger entry on Splits: the split expense and
+// its two shares. One place for them, so adding one entry and adding many
+// (addEntriesToSplitsRecord) write the same rows.
+function buildSplitExpenseFromEntryStatements(
+  db: D1Database,
+  input: {
+    id: string;
+    entry: LinkableEntryRow;
+    payerPersonId: string;
+    splitGroupId: string | null;
+    batchId: string;
+    currency: string;
+    sharePeople: Array<{ id: string }>;
+    splitBasisPoints: number;
+    splitAmountMinor?: number;
+  }
+) {
+  const { entry } = input;
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, input.splitBasisPoints, input.splitAmountMinor);
+  const shares = [
+    { personId: input.sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: input.sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
+  return [
+    db
+      .prepare(`
+        INSERT INTO split_expenses (
+          id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+          description, category_id, total_amount_minor, currency, home_amount_minor,
+          payment_method, payment_status, note, linked_transaction_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        input.id,
+        DEFAULT_HOUSEHOLD_ID,
+        input.splitGroupId,
+        input.batchId,
+        input.payerPersonId,
+        entry.transaction_date,
+        entry.description,
+        entry.category_id,
+        entry.amount_minor,
+        input.currency,
+        Math.abs(entry.amount_minor),
+        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        "certified",
+        entry.note,
+        entry.id
+      ),
+    ...shares.map((split) => db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(`${input.id}-${split.personId}`, input.id, split.personId, split.ratioBasisPoints, split.amountMinor))
+  ];
+}
+
 export async function createSplitExpenseFromEntryRecord(
   db: D1Database,
   // splitBasisPoints / splitAmountMinor: the household's first person's
@@ -1938,48 +2009,22 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
   }
   const sharePeople = await loadSplitSharePeople(db);
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, input.splitBasisPoints ?? 5000, input.splitAmountMinor);
-  const shares = [
-    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
-    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
-  ];
   // The entry now counts by its split shares, so its month totals change.
   const months = [entry.transaction_date.slice(0, 7)];
 
   await runLinkingBatch(db, ENTRY_ALREADY_LINKED, () => findActiveLinkedSplitExpenseId(db, input.entryId), [
     ...batch.statements,
-    db
-      .prepare(`
-        INSERT INTO split_expenses (
-          id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
-          description, category_id, total_amount_minor, currency, home_amount_minor,
-          payment_method, payment_status, note, linked_transaction_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      .bind(
-        id,
-        DEFAULT_HOUSEHOLD_ID,
-        input.splitGroupId || null,
-        batch.id,
-        payerPersonId,
-        entry.transaction_date,
-        entry.description,
-        entry.category_id,
-        entry.amount_minor,
-        currency,
-        Math.abs(entry.amount_minor),
-        paymentMethodForLinkedAccount(entry.account_kind, "other"),
-        "certified",
-        entry.note,
-        entry.id
-      ),
-    ...shares.map((split) => db
-      .prepare(`
-        INSERT INTO split_expense_shares (
-          id, split_expense_id, person_id, ratio_basis_points, amount_minor
-        ) VALUES (?, ?, ?, ?, ?)
-      `)
-      .bind(`${id}-${split.personId}`, id, split.personId, split.ratioBasisPoints, split.amountMinor)),
+    ...buildSplitExpenseFromEntryStatements(db, {
+      id,
+      entry,
+      payerPersonId,
+      splitGroupId: input.splitGroupId || null,
+      batchId: batch.id,
+      currency,
+      sharePeople,
+      splitBasisPoints: input.splitBasisPoints ?? 5000,
+      splitAmountMinor: input.splitAmountMinor
+    }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
   ]);
   await refreshMonthlySnapshotsAfterWrite(db, months);
@@ -1990,6 +2035,224 @@ export async function createSplitExpenseFromEntryRecord(
     splitExpenseMonth: entry.transaction_date.slice(0, 7),
     splitGroupId: input.splitGroupId || "split-group-none"
   };
+}
+
+// ---- Usually shared: many entries on Splits at once ------------------------
+
+export interface AddEntriesToSplitsItem {
+  entryId: string;
+  splitGroupId: string | null;
+  // The payer's own share (the usual split's basis points); the other
+  // person has the rest. The command works out the first person's share.
+  payerShareBasisPoints: number;
+}
+
+export interface AddEntriesToSplitsResult {
+  added: Array<{ entryId: string; splitExpenseId: string; splitGroupId: string }>;
+  refused: Array<{ entryId: string; reason: string }>;
+  addedCount: number;
+  months: string[];
+}
+
+const BULK_SPLIT_ID_CHUNK = 90;
+
+function chunkIds<T>(items: T[], size = BULK_SPLIT_ID_CHUNK) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+type BulkEntryRow = LinkableEntryRow & { entry_type: string; owner_person_id: string | null; account_owner_person_id: string | null };
+
+// Puts many past entries on Splits, each with its own group and share
+// (Usually shared, DOMAIN.md; Ask's change card). Every row is the same one
+// "Add to splits" writes for a single entry (buildSplitExpenseFromEntryStatements).
+// All checks run first: an entry that cannot be added (gone, not an expense,
+// already on Splits, no clear payer, a group in another currency, a settled
+// period) is refused with its reason and left alone. The rest, one audit
+// event and the month refresh markers commit in ONE batch, so an Add is all
+// or nothing. A statement-certified entry keeps its bank facts: only the
+// split is added. More than USUALLY_SHARED_POLICY.maxEntriesPerAdd are
+// refused; more than USUALLY_SHARED_CONFIRM_ABOVE need confirmedCount equal
+// to the number of entries (the person tapped "Yes, add all N").
+export async function addEntriesToSplitsRecord(
+  db: D1Database,
+  input: { items: AddEntriesToSplitsItem[]; confirmedCount?: number }
+): Promise<AddEntriesToSplitsResult> {
+  const items = Array.isArray(input.items) ? input.items : [];
+  if (!items.length) throw new Error("Choose at least one entry to add to Splits.");
+  if (items.length > USUALLY_SHARED_POLICY.maxEntriesPerAdd) {
+    throw new Error(`At most ${USUALLY_SHARED_POLICY.maxEntriesPerAdd} entries can be added to Splits at once.`);
+  }
+  if (items.length > USUALLY_SHARED_CONFIRM_ABOVE && input.confirmedCount !== items.length) {
+    throw new Error(`Confirm adding all ${items.length} entries first.`);
+  }
+  const ids = items.map((item) => String(item?.entryId ?? ""));
+  if (ids.some((id) => !id) || new Set(ids).size !== ids.length) throw new Error("Each entry can be added only once.");
+  for (const item of items) {
+    if (!(Number.isInteger(item.payerShareBasisPoints) && item.payerShareBasisPoints >= 0 && item.payerShareBasisPoints <= 10_000)) {
+      throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
+    }
+  }
+
+  const sharePeople = await loadSplitSharePeople(db);
+  const entries = new Map<string, BulkEntryRow>();
+  const linked = new Set<string>();
+  for (const chunk of chunkIds(ids)) {
+    const marks = chunk.map(() => "?").join(", ");
+    const found = await db
+      .prepare(`
+        SELECT transactions.id, transactions.transaction_date, transactions.description, transactions.amount_minor,
+          transactions.currency, transactions.owner_person_id, transactions.note, transactions.category_id,
+          transactions.entry_type, accounts.owner_person_id AS account_owner_person_id, accounts.account_kind
+        FROM transactions
+        INNER JOIN accounts ON accounts.id = transactions.account_id
+        WHERE transactions.household_id = ? AND transactions.id IN (${marks})
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<BulkEntryRow>();
+    for (const row of found.results) entries.set(row.id, row);
+    const holders = await db
+      .prepare(`SELECT linked_transaction_id FROM split_expenses WHERE household_id = ? AND deleted_at IS NULL AND linked_transaction_id IN (${marks})`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<{ linked_transaction_id: string }>();
+    for (const row of holders.results) linked.add(row.linked_transaction_id);
+  }
+
+  const refused: AddEntriesToSplitsResult["refused"] = [];
+  const groupCurrency = new Map<string, string | Error>();
+  const batches = new Map<string, { id: string; statements: D1PreparedStatement[] }>();
+  const accepted: Array<{ item: AddEntriesToSplitsItem; entry: BulkEntryRow; payerPersonId: string; currency: string; id: string }> = [];
+  for (const item of items) {
+    const entry = entries.get(item.entryId);
+    const refuse = (reason: string) => { refused.push({ entryId: item.entryId, reason }); };
+    if (!entry) { refuse("Entry not found."); continue; }
+    if (entry.entry_type !== "expense") { refuse("Only expense entries can be added to splits."); continue; }
+    if (linked.has(entry.id)) { refuse(ENTRY_ALREADY_LINKED); continue; }
+    const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
+    if (!payerPersonId) { refuse("This entry does not have a clear payer. Assign an owner first."); continue; }
+    if (!sharePeople.some((person) => person.id === payerPersonId)) { refuse("Splits are shared between two people, and this entry was paid by someone else."); continue; }
+    try {
+      const currencyKey = `${item.splitGroupId ?? ""}|${entry.currency}`;
+      if (!groupCurrency.has(currencyKey)) {
+        groupCurrency.set(currencyKey, await assertSplitGroupCurrency(db, item.splitGroupId, entry.currency).catch((error: Error) => error));
+      }
+      const currency = groupCurrency.get(currencyKey)!;
+      if (currency instanceof Error) { refuse(currency.message); continue; }
+      const batchKey = item.splitGroupId ?? "";
+      if (!batches.has(batchKey)) {
+        const earliest = items
+          .filter((other) => (other.splitGroupId ?? "") === batchKey)
+          .map((other) => entries.get(other.entryId)?.transaction_date ?? entry.transaction_date)
+          .sort()[0];
+        batches.set(batchKey, await resolveActiveSplitBatch(db, { groupId: item.splitGroupId, date: earliest }));
+      }
+      accepted.push({ item, entry, payerPersonId, currency, id: newSplitRecordId("split-expense") });
+    } catch (error) {
+      // A settled period refuses its entry and says why; the rest still go.
+      if (error instanceof SplitSettlementLockedError) { refuse(error.message); continue; }
+      throw error;
+    }
+  }
+  if (!accepted.length) return { added: [], refused, addedCount: 0, months: [] };
+
+  const usedBatches = new Set(accepted.map(({ item }) => item.splitGroupId ?? ""));
+  const months = [...new Set(accepted.map(({ entry }) => entry.transaction_date.slice(0, 7)))].sort();
+  const statements = [
+    ...[...usedBatches].flatMap((key) => batches.get(key)?.statements ?? []),
+    ...accepted.flatMap(({ item, entry, payerPersonId, currency, id }) => buildSplitExpenseFromEntryStatements(db, {
+      id,
+      entry,
+      payerPersonId,
+      splitGroupId: item.splitGroupId || null,
+      batchId: batches.get(item.splitGroupId ?? "")!.id,
+      currency,
+      sharePeople,
+      // splitBasisPoints is the first person's share.
+      splitBasisPoints: payerPersonId === sharePeople[0].id ? item.payerShareBasisPoints : 10_000 - item.payerShareBasisPoints
+    })),
+    buildAuditEventStatement(db, {
+      entityType: "split_expense",
+      entityId: accepted[0].id,
+      action: "split_expenses_added_usual",
+      detail: `Added ${accepted.length} ${accepted.length === 1 ? "entry" : "entries"} to Splits with their usual split.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ];
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    if (isActiveSplitLinkConflict(error)) {
+      throw new Error("Some of these entries were added to Splits meanwhile. Open the list again to see what is left.");
+    }
+    throw error;
+  }
+  await refreshMonthlySnapshotsAfterWrite(db, months);
+  return {
+    added: accepted.map(({ item, entry, id }) => ({ entryId: entry.id, splitExpenseId: id, splitGroupId: item.splitGroupId || "split-group-none" })),
+    refused,
+    addedCount: accepted.length,
+    months
+  };
+}
+
+// Undo for addEntriesToSplitsRecord: archives every named split in one batch
+// (each as Delete split does, with its history event), behind guards that
+// fail the whole batch when one was already removed. A split in a settled
+// period is refused as a whole, with the reason.
+export async function removeSplitExpensesRecord(db: D1Database, input: { splitExpenseIds: string[] }) {
+  const ids = Array.isArray(input.splitExpenseIds) ? input.splitExpenseIds.map((id) => String(id ?? "")) : [];
+  if (!ids.length || ids.some((id) => !id) || new Set(ids).size !== ids.length) throw new Error("Choose the splits to remove.");
+  if (ids.length > USUALLY_SHARED_POLICY.maxEntriesPerAdd) {
+    throw new Error(`At most ${USUALLY_SHARED_POLICY.maxEntriesPerAdd} splits can be removed at once.`);
+  }
+  type Row = { id: string; split_group_id: string | null; group_name: string | null; description: string; total_amount_minor: number; currency: string | null; deleted_at: string | null; linked_date: string | null };
+  const rows: Row[] = [];
+  for (const chunk of chunkIds(ids)) {
+    const found = await db
+      .prepare(`SELECT split_expenses.id, split_expenses.split_group_id, split_groups.group_name, split_expenses.description,
+          split_expenses.total_amount_minor, split_expenses.currency, split_expenses.deleted_at,
+          transactions.transaction_date AS linked_date
+        FROM split_expenses
+        LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
+        LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+        WHERE split_expenses.household_id = ? AND split_expenses.id IN (${chunk.map(() => "?").join(", ")})`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<Row>();
+    rows.push(...found.results);
+  }
+  if (rows.length !== ids.length) throw new Error("Split expense not found.");
+  if (rows.some((row) => row.deleted_at)) throw new Error("Some of these splits are already in activity history.");
+  for (const row of rows) {
+    await assertSplitSettlementUnchanged(db, { recordKind: "expense", recordId: row.id, next: () => "deleted" });
+  }
+  const months = [...new Set(rows.flatMap((row) => row.linked_date ? [row.linked_date.slice(0, 7)] : []))].sort();
+  const statements = [
+    ...rows.map((row) => archiveStatePrecondition(db, "split_expenses", row.id, false, "Some of these splits are already in activity history.").guard),
+    ...rows.map((row) => db
+      .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(row.id, DEFAULT_HOUSEHOLD_ID)),
+    ...rows.map((row) => buildSplitHistoryStatement(db, { recordKind: "expense", recordId: row.id, action: "deleted", groupId: row.split_group_id, groupName: row.group_name, description: row.description, amountMinor: row.total_amount_minor, currency: row.currency })),
+    buildAuditEventStatement(db, {
+      entityType: "split_expense",
+      entityId: rows[0].id,
+      action: "split_expenses_removed_usual",
+      detail: `Took ${rows.length} ${rows.length === 1 ? "entry" : "entries"} back off Splits (undo of Usually shared).`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ];
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    const stillActive = await db
+      .prepare(`SELECT COUNT(*) AS n FROM split_expenses WHERE household_id = ? AND deleted_at IS NULL AND id IN (${ids.map(() => "?").join(", ")})`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...ids)
+      .first<{ n: number }>();
+    if ((stillActive?.n ?? 0) !== ids.length) throw new Error("Some of these splits are already in activity history.");
+    throw error;
+  }
+  await refreshMonthlySnapshotsAfterWrite(db, months);
+  return { removedCount: rows.length, months };
 }
 
 // Statements that move the split expense linked to a ledger entry onto the
