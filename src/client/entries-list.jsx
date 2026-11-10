@@ -134,7 +134,7 @@ export function EntriesDateGroups({
   pickedIds = NO_PICKED_IDS,
   onPickRow = undefined,
   onPickDay = undefined,
-  pickDayLabel = tripEventsCopy.pickWholeDay
+  pickDayLabel = /** @type {string} */ (tripEventsCopy.pickWholeDay)
 }) {
   const splitGroupOptions = useMemo(
     () => splitGroups.map((group) => ({
