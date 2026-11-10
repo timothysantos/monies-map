@@ -22,7 +22,8 @@ test("the app draws when the browser's storage is full", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
 });
 
-// An old page whose script a deploy removed: the entry script's file is gone.
+// An old page whose script a deploy removed: the entry script's file is gone
+// (the built file in production, main.jsx in the dev server the suite uses).
 async function serveGoneEntryScript(page, { times }) {
   let served = 0;
   await page.route("**/", async (route) => {
@@ -30,7 +31,7 @@ async function serveGoneEntryScript(page, { times }) {
     const response = await route.fetch();
     const html = await response.text();
     served += 1;
-    const body = served <= times ? html.replace(/\/assets\/index-[^"]+\.js/, "/assets/index-gone.js") : html;
+    const body = served <= times ? html.replace(/src="(?:\/assets\/index-[^"]+\.js|\/src\/client\/main\.jsx[^"]*)"/, 'src="/assets/index-gone.js"') : html;
     return route.fulfill({ response, body });
   });
   return () => served;
