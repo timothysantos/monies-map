@@ -2005,6 +2005,40 @@ export interface SplitSuggestionDto {
   matchedBy: "description" | "category";
 }
 
+// One past entry in a "Usually shared" group (DOMAIN.md "Usually Shared").
+export interface UsuallySharedEntryDto {
+  id: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  currency: string;
+  ownerPersonId: string;
+  ownerName: string;
+}
+
+// The past entries at one shop that the usual split would put on Splits:
+// the same payer, group, share and currency for every entry in it.
+export interface UsuallySharedGroupDto {
+  key: string;
+  shopName: string;
+  // "split-group-none" for Non-group expenses.
+  groupId: string;
+  groupName: string;
+  // The payer's share; the other person has the rest.
+  basisPoints: number;
+  ownerPersonId: string;
+  ownerName: string;
+  otherPersonId: string;
+  otherPersonName: string;
+  // "shared 8 of 9 times": the newest entry's evidence.
+  evidenceCount: number;
+  matchedCount: number;
+  matchedBy: "description" | "category";
+  currency: string;
+  totalMinor: number;
+  entries: UsuallySharedEntryDto[];
+}
+
 // An entry that may be the other side of a transfer (GET
 // /api/transfers/draft-candidates): the same candidates the Entries transfer
 // dialog offers (src/domain/transfer-candidates.ts), best first, without the

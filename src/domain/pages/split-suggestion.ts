@@ -187,11 +187,11 @@ export async function loadSharePeople(db: D1Database) {
   return people.results.map((person) => ({ id: person.id, name: person.display_name }));
 }
 
-// The owner's expense entries of the lookback window, each with its active
-// split's group, payer and shares ("person:basis" pairs).
-async function loadOwnerHistory(db: D1Database, ownerPersonId: string, date: string): Promise<SplitSuggestionHistoryEntry[]> {
-  const rows = await db
-    .prepare(`
+// The columns and joins of an owner's expense history row: the entry with
+// its active split's group, payer and shares ("person:basis" pairs). Shared
+// with the Usually shared sweep (usually-shared.ts), so both read history
+// the same way.
+export const HISTORY_ROWS_SQL = `
       SELECT
         transactions.id,
         transactions.transaction_date,
@@ -213,26 +213,23 @@ async function loadOwnerHistory(db: D1Database, ownerPersonId: string, date: str
       LEFT JOIN split_expenses
         ON split_expenses.household_id = transactions.household_id
         AND split_expenses.linked_transaction_id = transactions.id
-        AND split_expenses.deleted_at IS NULL
-      WHERE transactions.household_id = ?
-        AND transactions.entry_type = 'expense'
-        AND transactions.transaction_date BETWEEN date(?, ?) AND ?
-        AND COALESCE(transactions.owner_person_id, accounts.owner_person_id) = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, date, `-${SPLIT_SUGGESTION_POLICY.lookbackDays} days`, date, ownerPersonId)
-    .all<{
-      id: string;
-      transaction_date: string;
-      entry_type: string;
-      description: string;
-      category_name: string | null;
-      owner_person_id: string | null;
-      split_id: string | null;
-      split_group_id: string | null;
-      payer_person_id: string | null;
-      shares: string | null;
-    }>();
-  return rows.results.map((row) => ({
+        AND split_expenses.deleted_at IS NULL`;
+
+export interface HistoryRow {
+  id: string;
+  transaction_date: string;
+  entry_type: string;
+  description: string;
+  category_name: string | null;
+  owner_person_id: string | null;
+  split_id: string | null;
+  split_group_id: string | null;
+  payer_person_id: string | null;
+  shares: string | null;
+}
+
+export function toHistoryEntry(row: HistoryRow): SplitSuggestionHistoryEntry {
+  return {
     entryId: row.id,
     date: row.transaction_date,
     entryType: row.entry_type,
@@ -249,5 +246,19 @@ async function loadOwnerHistory(db: D1Database, ownerPersonId: string, date: str
           })
         }
       : null
-  }));
+  };
+}
+
+// The owner's expense entries of the lookback window.
+async function loadOwnerHistory(db: D1Database, ownerPersonId: string, date: string): Promise<SplitSuggestionHistoryEntry[]> {
+  const rows = await db
+    .prepare(`${HISTORY_ROWS_SQL}
+      WHERE transactions.household_id = ?
+        AND transactions.entry_type = 'expense'
+        AND transactions.transaction_date BETWEEN date(?, ?) AND ?
+        AND COALESCE(transactions.owner_person_id, accounts.owner_person_id) = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, date, `-${SPLIT_SUGGESTION_POLICY.lookbackDays} days`, date, ownerPersonId)
+    .all<HistoryRow>();
+  return rows.results.map(toHistoryEntry);
 }
