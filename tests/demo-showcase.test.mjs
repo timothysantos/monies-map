@@ -528,21 +528,23 @@ test("a failed showcase reseed leaves the previous data untouched", async (t) =>
 });
 
 // Miles and cashback on the demo (DOMAIN.md "Card reward rule"): the
-// showcase cards match their usual rules, Citi Rewards' bonus is used up this
-// month (a notice), a cashback card has a minimum still to reach, and the
-// look-back over the last 3 months finds miles to gain.
+// showcase cards match their usual rules, a bonus cap is part used (UOB
+// Lady's food), a cashback card has a minimum still to reach (a notice), and
+// the look-back over the last 3 months finds miles to gain. No showcase
+// purchase is made just to use a cap up: that would change the plan stories.
 test("Miles and cashback shows caps used, a notice and a look-back line on the showcase", async (t) => {
   const { db } = await openSeededDatabase(t, showcase);
   const [last] = await rows(db, "SELECT MAX(transaction_date) AS date FROM transactions");
   const answer = await buildCardRewardsDto(db, "household", last.date);
   assert.equal(answer.suggestFrom, "household");
+  assert.equal(answer.notSetUp, 0);
   const [picture] = answer.people;
   assert.equal(picture.personId, "household");
-  const citi = picture.cards.find((item) => item.name === "Citi Rewards Card");
-  assert.equal(citi.bonuses[0].roomMinor, 0, "Citi Rewards' bonus is used up");
-  assert.ok(citi.earned > 4_000);
-  const kinds = picture.notices.map((notice) => notice.kind);
-  assert.ok(kinds.includes("used_up"), kinds.join());
+  assert.deepEqual(picture.cards.map((item) => item.name).sort(), ["Citi Rewards Card", "DBS Live Fresh Card", "OCBC 365 Card", "UOB Lady's Card"]);
+  const ladys = picture.cards.find((item) => item.name === "UOB Lady's Card");
+  assert.ok(ladys.bonuses[0].usedMinor > 0 && ladys.bonuses[0].roomMinor > 0, "a cap part used");
+  assert.ok(ladys.earned > 0);
+  assert.ok(picture.notices.length >= 1, picture.notices.map((notice) => notice.kind).join());
   const miles = picture.lookingBack.find((item) => item.unit === "miles");
   assert.ok(miles.gain > 0 && miles.changes.length >= 1 && miles.changes.length <= 3);
   assert.ok(picture.cards.some((item) => item.unit === "cashback"));

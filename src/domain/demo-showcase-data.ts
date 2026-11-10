@@ -981,9 +981,6 @@ export function buildShowcaseDataset(options: { seedMonth: string; cutoffDay?: n
         expense(A.sereneCard, addDays(cutoffDate, -1), "COLD STORAGE TAMPINES 1", 2_365, "Groceries", { externalReference: "shortcut:showcase-apple-pay-1" });
       }
       expense(A.ethanCard, cutoffDate, "TIONG BAHRU HAWKER CENTRE", 850, "Food & Drinks", { note: "Added from the phone shortcut.", externalReference: "shortcut:showcase-apple-pay-2" });
-      // A big online buy that uses up Citi Rewards' $1,000 bonus this month
-      // (Miles and cashback: "used up until …"), not in any bank file yet.
-      expense(A.ethanCard, cutoffDate, "LAZADA SINGAPORE", 108_900, "Shopping", { note: "A new monitor for the study.", postLagDays: 0 });
     }
   }
 
