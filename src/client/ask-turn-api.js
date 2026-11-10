@@ -153,11 +153,13 @@ const isObject = (value) => Boolean(value) && typeof value === "object" && !Arra
 const isMinor = (value) => Number.isInteger(value) && value >= 0;
 const isText = (value) => typeof value === "string";
 
-// A rules answer may carry only the split draft (or its plain question) the
-// server's share reader checked; any other kind is the page's own rules' job.
+// A rules answer may carry only what the server's rule readers checked: the
+// split draft from its share reader, a trip or event change or money
+// question from its trips reader, or their plain question or note; any
+// other kind is the page's own rules' job.
 function readRulesReply(reply) {
   const read = readReply(reply);
-  return read && (read.kind === "split_proposal" || read.kind === "clarify" || read.kind === "note") ? read : null;
+  return read && ["split_proposal", "change", "trip_answer", "clarify", "note"].includes(read.kind) ? read : null;
 }
 
 const ASSUMPTION_TEXT_LIMIT = 140;
@@ -223,6 +225,10 @@ function readReplyBody(reply) {
         : null;
     case "change":
       return readChange(reply.change);
+    case "trip_answer":
+      return isText(reply.tripEventId) && reply.tripEventId && isText(reply.name) && isText(reply.viewId) && isText(reply.month)
+        ? { kind: "trip_answer", tripEventId: reply.tripEventId, name: reply.name, viewId: reply.viewId, scope: isText(reply.scope) ? reply.scope : "direct_plus_shared", month: reply.month }
+        : null;
     case "matches":
       return isText(reply.month) && Array.isArray(reply.matches) && reply.matches.length && reply.matches.every(isMatch)
         ? { kind: "matches", month: reply.month, matches: reply.matches }
@@ -255,11 +261,16 @@ export const ASK_CHANGE_PATHS = Object.freeze([
   "/api/categories/update",
   "/api/category-match-rules/save",
   "/api/month-plan/links",
-  "/api/month-note/update"
+  "/api/month-note/update",
+  "/api/trip-events/entries/set",
+  "/api/trip-events/save",
+  "/api/trip-events/delete",
+  "/api/trip-events/undo"
 ]);
 const CHANGE_TYPES = new Set([
   "edit_entry", "recategorise", "recategorise_bulk", "entry_note", "month_note", "link_transfer", "group_create",
-  "group_move", "simplify", "payment_way", "category_create", "category_rename", "category_colour", "plan_link"
+  "group_move", "simplify", "payment_way", "category_create", "category_rename", "category_colour", "plan_link",
+  "trip_event", "trip_event_create"
 ]);
 const MATCH_PATHS = Object.freeze({ expense: "/api/splits/matches/link-expense", settlement: "/api/splits/matches/link-settlement" });
 
@@ -352,11 +363,12 @@ export async function runChangeSteps(steps, { confirmedCount = undefined, result
       return { ok: false, error: "This change can't be saved from here. Open the page it lives on.", result: last };
     }
     const body = { ...step.body };
-    if (Number.isInteger(confirmedCount) && step.path === "/api/entries/update-category" && Array.isArray(body.changes)) {
+    if (Number.isInteger(confirmedCount) && (step.path === "/api/entries/update-category" || step.path === "/api/trip-events/entries/set") && Array.isArray(body.changes)) {
       body.confirmedCount = confirmedCount;
     }
-    if (step.fromResult && last && isText(step.fromResult.as)) {
-      body[step.fromResult.as] = last[step.fromResult.key];
+    if (step.fromResult && last && isText(step.fromResult.as) && isText(step.fromResult.key)) {
+      // A key may be a dotted path into the save's answer ("tripEvent.id").
+      body[step.fromResult.as] = step.fromResult.key.split(".").reduce((value, key) => (isObject(value) ? value[key] : undefined), last);
     }
     const response = await postJson(step.path, body, "That couldn't be saved. Check your connection and try again.", fetchImpl);
     if (!response.ok) {

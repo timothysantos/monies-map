@@ -21,6 +21,7 @@ import {
   type AskSplitExpenseFacts
 } from "./ask-turn-actions";
 import type { AskTurnContext, AskTurnFocusEntry, AskTurnReply } from "./ask-turn";
+import { buildTripEventChange, type AskTripCandidate, type AskTripEventRequest } from "./ask-trip-events";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadTakenTransferEntryIds, loadTransferMatchCandidates } from "./app-repository-entries";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
@@ -58,6 +59,8 @@ export async function resolveAskTurnRequest(db: D1Database, request: AskResolveR
       return buildMatches(request, await loadMatches(db, request.month));
     case "plan_link":
       return buildPlanLink(request, await loadPlanRows(db, request.month), await loadWordCandidates(db, request.words, request.month));
+    case "trip_event":
+      return buildTripEventChange(request, await loadTripCandidates(db, request.source), context.tripEvents ?? [], context);
     default:
       return { kind: "note", text: "Ask can't do that one yet. Try the page it lives on." };
   }
@@ -110,6 +113,73 @@ async function loadWordCandidates(db: D1Database, words: string, month: string |
     entryType: row.entry_type,
     accountName: row.account_name ?? undefined
   }));
+}
+
+// The entries a trip change is about, with the trip each is on now: the
+// one in focus, the month of the list Ask showed, or the days searched (a
+// LIKE on the longest shop word narrows the read; the builder then applies
+// the category rule matcher and the currency). Household rows only.
+async function loadTripCandidates(db: D1Database, source: AskTripEventRequest["source"]): Promise<AskTripCandidate[]> {
+  const where: string[] = ["transactions.household_id = ?"];
+  const binds: unknown[] = [DEFAULT_HOUSEHOLD_ID];
+  if (source.kind === "entry") {
+    where.push("transactions.id = ?");
+    binds.push(source.entryId);
+  } else {
+    const [start, next] = source.kind === "list" ? getMonthBounds(source.month) : [source.from, dayAfter(source.to)];
+    where.push("transactions.transaction_date >= ? AND transactions.transaction_date < ?");
+    binds.push(start, next);
+    const words = source.kind === "list" ? source.search : source.words;
+    const token = words.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).sort((left, right) => right.length - left.length)[0] ?? "";
+    if (token) {
+      where.push("(UPPER(transactions.description) LIKE ? OR UPPER(COALESCE(transactions.original_description, '')) LIKE ?)");
+      binds.push(`%${token}%`, `%${token}%`);
+    }
+  }
+  const result = await db
+    .prepare(`
+      SELECT transactions.id, transactions.transaction_date, transactions.description, transactions.original_description,
+        transactions.amount_minor, transactions.currency, transactions.original_currency, transactions.entry_type,
+        categories.name AS category_name, accounts.account_name, trip_event_entries.trip_event_id
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      LEFT JOIN accounts ON accounts.id = transactions.account_id
+      LEFT JOIN trip_event_entries ON trip_event_entries.transaction_id = transactions.id AND trip_event_entries.household_id = transactions.household_id
+      WHERE ${where.join(" AND ")}
+      ORDER BY transactions.transaction_date, transactions.id
+      LIMIT ${WORD_CANDIDATE_LIMIT}
+    `)
+    .bind(...binds)
+    .all<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      original_description: string | null;
+      amount_minor: number;
+      currency: string;
+      original_currency: string | null;
+      entry_type: "expense" | "income" | "transfer";
+      category_name: string | null;
+      account_name: string | null;
+      trip_event_id: string | null;
+    }>();
+  return result.results.map((row) => ({
+    entryId: row.id,
+    date: row.transaction_date,
+    description: row.description,
+    originalDescription: row.original_description,
+    amountMinor: row.amount_minor,
+    currency: row.currency,
+    originalCurrency: row.original_currency,
+    categoryName: row.category_name ?? "Other",
+    entryType: row.entry_type,
+    accountName: row.account_name ?? undefined,
+    tripEventId: row.trip_event_id ?? null
+  }));
+}
+
+function dayAfter(day: string) {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 }
 
 async function loadMonthNote(db: D1Database, month: string, personScope: string) {

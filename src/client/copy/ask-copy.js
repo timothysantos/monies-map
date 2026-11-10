@@ -297,7 +297,9 @@ export const askCopy = {
         category_create: "New category",
         category_rename: "Rename category",
         category_colour: "Change its colour",
-        plan_link: (count) => `Link ${count === 1 ? "1 entry" : `${count} entries`} to this plan line`
+        plan_link: (count) => `Link ${count === 1 ? "1 entry" : `${count} entries`} to this plan line`,
+        trip_event: (count) => `${count === 1 ? "1 entry" : `${count} entries`} change trip or event`,
+        trip_event_create: "New trip or event"
       },
       fields: {
         amount: "Amount",
@@ -315,14 +317,17 @@ export const askCopy = {
         paynow: "PayNow",
         cash: "Cash",
         colour: "Colour",
-        line: "Plan line"
+        line: "Plan line",
+        trip: "Trip or event",
+        dates: "Days"
       },
       none: "None",
       noGroup: "No group",
+      noTrip: "No trip or event",
       mixed: "Several",
       entriesLabel: "Entries it changes",
       more: (count) => `and ${count} more`,
-      confirm: (count) => `Yes, change all ${count} entries`,
+      confirm: (count, type = "") => (type === "trip_event" ? `Yes, put all ${count}` : `Yes, change all ${count} entries`),
       confirmHint: "Tap to confirm",
       save: {
         recategorise_bulk: (count) => `Change ${count === 1 ? "1 entry" : `${count} entries`}`,
@@ -330,7 +335,9 @@ export const askCopy = {
         group_create: "Create group",
         simplify: "Simplify",
         category_create: "Add category",
-        plan_link: "Link entries"
+        plan_link: "Link entries",
+        trip_event: (count) => (count === 1 ? "Save" : `Change ${count} entries`),
+        trip_event_create: "Make it"
       },
       saveTransferNone: "Save as a transfer",
       saveDefault: "Save",
@@ -343,7 +350,11 @@ export const askCopy = {
         group_create: "Group created on Splits.",
         simplify: "Simplified on Splits.",
         category_create: "Category added.",
-        plan_link: "Linked to the plan line."
+        plan_link: "Linked to the plan line.",
+        trip_event: (count, trip) => (trip
+          ? `Put ${count === 1 ? "1 entry" : `${count} entries`} on ${trip}.`
+          : `Took ${count === 1 ? "1 entry" : `${count} entries`} off ${count === 1 ? "its trip or event" : "their trip or event"}.`),
+        trip_event_create: (_count, trip) => `Made ${trip}. Put entries on it from Entries, or ask me.`
       },
       savedTransferNone: "Marked as a transfer. The other side isn't linked yet.",
       // The other sides of a transfer to choose from (ask-transfer-choices.jsx).
@@ -428,6 +439,18 @@ export const askCopy = {
     // never come from it).
     wordedByAi: "Worded by AI",
     failed: "That couldn't be answered just now. Try again in a moment.",
+    // How much a trip or event cost (ask-trip-answer.js): the Entries trip
+    // view's own figures.
+    trip: {
+      spent: "Spent",
+      before: "Before you went",
+      whileAway: "While away",
+      openEntries: "Open in Entries",
+      entries: (count) => (count === 1 ? "1 entry" : `${count} entries`),
+      wording: (name, money, count) => `${name} cost ${money} across ${count === 1 ? "1 entry" : `${count} entries`}.`,
+      wordingBefore: (before, away) => `${before} of it before you went and ${away} while away.`,
+      wordingNone: (name) => `Nothing is on ${name} yet. Put entries on it from Entries, or ask me.`
+    },
     check: {
       title: "Check this first",
       settlement: (from, to, date) => `This payment from ${from} to ${to} on ${date} looks like a settle-up between you.`,

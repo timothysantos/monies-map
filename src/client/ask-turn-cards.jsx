@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Link2, PencilLine, Users } from "lucide-react";
+import { ArrowLeftRight, Link2, PencilLine, Plane, Users } from "lucide-react";
 
 import { NEUTRAL_BUBBLE_COLOUR } from "./ask-plan-draft-card";
 import { effectiveChange, selectedChoiceId } from "./ask-turn-api";
@@ -131,7 +131,7 @@ function changeValue(row, side) {
     return <span className="ask-change-swatch" style={{ background: paletteColour(text) }} aria-label={text} />;
   }
   if (!text) {
-    return row.field === "group" ? changeCopy.noGroup : changeCopy.none;
+    return row.field === "group" ? changeCopy.noGroup : row.field === "trip" ? changeCopy.noTrip : changeCopy.none;
   }
   return DATE_FIELDS.has(row.field) ? formatDay(text) : text;
 }
@@ -166,14 +166,14 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
   const undone = item.status === "undone";
   const needsConfirm = Boolean(change.confirmCount);
   const firstEntry = change.entries[0];
-  const showEntries = change.type === "recategorise_bulk" || change.type === "plan_link" || change.type === "link_transfer";
+  const showEntries = change.type === "recategorise_bulk" || change.type === "plan_link" || change.type === "link_transfer" || change.type === "trip_event";
   const amount = change.entries.length === 1 && !showEntries ? firstEntry : null;
   return (
     <section id={item.id} className={`ask-plan-draft ask-turn-card ask-change${settled ? " is-settled" : ""}`} data-change-draft={item.status} data-change-type={change.type} aria-label={changeCopy.label}>
       <LeadCard
         className="ask-plan-lead"
         tag={<span className={`ask-card-tag ${saved ? "is-saved" : "is-filled"}`}>{saved ? changeCopy.savedTag : undone ? changeCopy.undoneTag : copy.draftTag}</span>}
-        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
+        category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "trip_event" || change.type === "trip_event_create" ? Plane : change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
         title={<strong className="lsd-title ask-plan-title">{change.title}</strong>}
         subtitle={<span className="ask-plan-subtitle">{subtitleOf(change, choiceId)}</span>}
         amount={amount ? moneyWithCurrency(amount.amountMinor, amount.currency) : undefined}
@@ -182,9 +182,9 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
         chips={change.type === "month_note" ? <MetaChip>{formatMonthYear(change.month)}</MetaChip> : undefined}
       />
       <DetailRows label={changeCopy.label}>
-        {change.rows.map((row) => (
+        {change.rows.map((row, index) => (
           <DetailRow
-            key={row.field}
+            key={`${row.field}-${index}`}
             readOnly
             data-change-field={row.field}
             label={changeCopy.fields[row.field] ?? row.field}
@@ -208,7 +208,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
               label={(
                 <span className="ask-change-entry">
                   <span className="ask-change-entry-name">{entry.description}</span>
-                  <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
+                  <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.trip ? tripMove(entry.trip) : entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
                 </span>
               )}
               value={<PrivateMoney className="money-neutral">{moneyWithCurrency(entry.amountMinor, entry.currency)}</PrivateMoney>}
@@ -228,9 +228,9 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
         />
       ) : null}
       {item.status === "draft" && needsConfirm ? (
-        <DetailRows label={changeCopy.confirm(change.confirmCount)}>
+        <DetailRows label={changeCopy.confirm(change.confirmCount, change.type)}>
           <DetailRow
-            label={changeCopy.confirm(change.confirmCount)}
+            label={changeCopy.confirm(change.confirmCount, change.type)}
             value={item.confirmed ? "✓" : changeCopy.confirmHint}
             state="action"
             aria-pressed={item.confirmed ? "true" : "false"}
@@ -262,6 +262,11 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
       ) : null}
     </section>
   );
+}
+
+// One entry's trip before and after: "No trip or event → Seoul trip".
+function tripMove(trip) {
+  return `${trip.before || changeCopy.noTrip} → ${trip.after || changeCopy.noTrip}`;
 }
 
 // Where a saved change can be seen.

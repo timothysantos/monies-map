@@ -51,6 +51,7 @@ import {
   type AskTurnReply,
   type Ground
 } from "./ask-turn";
+import type { AskTripEventRequest } from "./ask-trip-events";
 import type { CategoryMatchRuleDto } from "../types/dto";
 
 // ---------------------------------------------------------------------------
@@ -70,7 +71,11 @@ export type AskChangeType =
   | "category_create"
   | "category_rename"
   | "category_colour"
-  | "plan_link";
+  | "plan_link"
+  // Trips and events (ask-trip-events.ts): entries on, moved or off one;
+  // a new one made with no entries.
+  | "trip_event"
+  | "trip_event_create";
 
 export type AskChangeField =
   | "amount"
@@ -88,7 +93,9 @@ export type AskChangeField =
   | "paynow"
   | "cash"
   | "colour"
-  | "line";
+  | "line"
+  | "trip"
+  | "dates";
 
 // One line of what changes. Money rows carry minor units (the page shows
 // them as money, hidden when money is hidden); every other row carries
@@ -111,6 +118,9 @@ export interface AskChangeEntry {
   currency: string;
   categoryName: string;
   accountName?: string;
+  // A trip change: the trip this entry is on now and the one it goes to
+  // ("" is none).
+  trip?: { before: string; after: string };
 }
 
 // The only commands a change card may post to (the page checks the path
@@ -129,13 +139,17 @@ export const ASK_CHANGE_PATHS = [
   "/api/categories/update",
   "/api/category-match-rules/save",
   "/api/month-plan/links",
-  "/api/month-note/update"
+  "/api/month-note/update",
+  "/api/trip-events/entries/set",
+  "/api/trip-events/save",
+  "/api/trip-events/delete",
+  "/api/trip-events/undo"
 ] as const;
 export type AskChangePath = typeof ASK_CHANGE_PATHS[number];
 
 // One existing command call. `fromResult` copies a value from the save's
 // response into an Undo body (Simplify's Undo reopens the checkpoint the
-// save created).
+// save created; a key may be a dotted path, "tripEvent.id").
 export interface AskChangeStep {
   path: AskChangePath;
   body: Record<string, unknown>;
@@ -218,7 +232,8 @@ export type AskResolveRequest =
   | { type: "group_settle"; group: AskTurnGroup }
   | { type: "simplify"; currency: string | null }
   | { type: "matches"; month: string }
-  | { type: "plan_link"; line: string; month: string; words: string };
+  | { type: "plan_link"; line: string; month: string; words: string }
+  | AskTripEventRequest;
 
 const PREVIEW_ROWS = 8;
 const MAX_MATCHES = 6;

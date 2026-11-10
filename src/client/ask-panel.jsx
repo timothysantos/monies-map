@@ -90,6 +90,8 @@ import { useAskTransferMatch } from "./use-ask-transfer-match";
 import { CategoryPickerHost } from "./category-picker-host";
 import { AskTransferMatchRows } from "./ask-transfer-choices";
 import { NO_OTHER_SIDE, transferLinkBody } from "./ask-transfer-match";
+import { buildTripAnswer, tripAnswerPageParams } from "./ask-trip-answer";
+import { forgetTripEvents } from "./trip-events-api";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
@@ -605,7 +607,9 @@ function AskConversation({
   // saved entry, the card being filled, the split group). AI off, over its
   // allowance or failing: the rules read it as before, with a one-line note
   // once per conversation.
-  async function readSentence(text) {
+  // `options.focus`: a chip answering Ask's question keeps the list that
+  // question was about ("put these on…", then "Put them on Seoul trip").
+  async function readSentence(text, options = {}) {
     const before = store.read(conversationKey) ?? conversation;
     appendThread(threadItem("me", { text }));
     if (pending) {
@@ -614,7 +618,20 @@ function AskConversation({
     setWorking("turn");
     setStatus(askCopy.notes.readingSentence);
     let turn;
+    let focus = null;
     try {
+      // A message right after an Entries answer ("make these Transport")
+      // is about that list.
+      focus = options.focus ?? buildTurnFocus({
+        card: before.card,
+        intent,
+        insightTopic: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "insight-answer"
+          ? String(before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).answer?.kind ?? "")
+          : "",
+        list: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "answer"
+          ? before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).filter
+          : null
+      });
       turn = await requestAskTurn({
         text,
         history: buildTurnHistory(before.thread),
@@ -624,25 +641,14 @@ function AskConversation({
         page: inDock ? pageOf(location.pathname) : "ask",
         // A follow-up to "Ask about this" on a Money insights line names
         // that insight's kind (never its figures).
-        // A message right after an Entries answer ("make these Transport")
-        // is about that list.
-        focus: buildTurnFocus({
-          card: before.card,
-          intent,
-          insightTopic: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "insight-answer"
-            ? String(before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).answer?.kind ?? "")
-            : "",
-          list: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "answer"
-            ? before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).filter
-            : null
-        })
+        focus
       });
     } finally {
       setStatus("");
       setWorking("");
     }
     if (turn.ok && turn.mode === "ai") {
-      await applyTurnReply(text, turn.reply, turn.provider ?? "claude");
+      await applyTurnReply(text, turn.reply, turn.provider ?? "claude", focus);
       return;
     }
     if (!before.rulesNoted) {
@@ -652,7 +658,7 @@ function AskConversation({
     // A share on the saved entry ("Joyce's share 1.6") the server's rules
     // already read and checked: shown like the model's draft.
     if (turn.ok && turn.mode === "rules" && turn.reply) {
-      await applyTurnReply(text, turn.reply, "rules");
+      await applyTurnReply(text, turn.reply, "rules", focus);
       return;
     }
     await readSentenceByRules(text);
@@ -661,8 +667,8 @@ function AskConversation({
 
   // What the turn route sent back, shown with the cards the page already
   // has. Nothing here writes: every draft waits for its Save.
-  async function applyTurnReply(text, reply, source) {
-    await showTurnReply(text, reply);
+  async function applyTurnReply(text, reply, source, focus = null) {
+    await showTurnReply(text, reply, focus);
     if (reply.kind !== "open_page") appendThread(threadItem("source", { source }));
     showAssumptions(reply.assumptions, reply.kind);
   }
@@ -685,7 +691,7 @@ function AskConversation({
     }
   }
 
-  async function showTurnReply(text, reply) {
+  async function showTurnReply(text, reply, focus = null) {
     if (reply.kind === "entry_draft") {
       let next = applyEntryDraft(workingCard(), reply.draft, context);
       if (reply.share?.on) {
@@ -713,6 +719,8 @@ function AskConversation({
       showPlanReading(reply.text, reply.request, reply.reading);
     } else if (reply.kind === "question") {
       await askMoneyQuestion(reply.text, reply.request);
+    } else if (reply.kind === "trip_answer") {
+      await askTripQuestion(text, reply);
     } else if (reply.kind === "search") {
       answerFilterRequest({ kind: "filter", filter: reply.filter });
     } else if (reply.kind === "change") {
@@ -728,7 +736,8 @@ function AskConversation({
       goTo(reply.page === "help" ? "/faq" : `/${reply.page}`, {}, new URLSearchParams(reply.params));
     } else if (reply.kind === "clarify") {
       if (reply.options.length) {
-        setPending({ kind: "turn-question", question: reply.question, options: reply.options, nickname: reply.nickname ?? "" });
+        // Only a list is kept for the answer; a card in focus is read afresh.
+        setPending({ kind: "turn-question", question: reply.question, options: reply.options, nickname: reply.nickname ?? "", ...(focus?.kind === "entry_list" ? { focus } : {}) });
       } else {
         appendThread(threadItem("note", { text: reply.question }));
       }
@@ -749,7 +758,7 @@ function AskConversation({
     if (chosen?.id) {
       void rememberAlias(pending.nickname, chosen.id);
     }
-    void readSentence(option);
+    void readSentence(option, pending.focus ? { focus: pending.focus } : {});
   }
 
   function turnItem(itemId, kind) {
@@ -905,6 +914,9 @@ function AskConversation({
       if (note) return { ...current, fields: { ...current.fields, note: direction === "undo" ? note.before : note.after } };
       return current;
     });
+    // A trip change: the trips list (the picker's and the sheet's counts) is
+    // read again where it is next shown.
+    if (change.type === "trip_event" || change.type === "trip_event_create") forgetTripEvents(queryClient);
     void runBackgroundRefresh(entriesPage.refresh);
   }
 
@@ -930,7 +942,7 @@ function AskConversation({
       updateThreadItem(itemId, { status: "saved", result, choiceId: selectedChoiceId(item.change, item.choiceId) });
       afterChange(change, "save");
       const saved = unmatched ? askCopy.turn.change.savedTransferNone : askCopy.turn.change.saved[change.type];
-      const category = change.rows.find((row) => row.field === "category")?.after ?? "";
+      const category = change.rows.find((row) => row.field === "category" || row.field === "trip" || row.field === "name")?.after ?? "";
       appendThread(threadItem("note", { text: typeof saved === "function" ? saved(change.count, category) : saved ?? askCopy.turn.change.savedDefault }));
     } finally {
       setWorking("");
@@ -1098,6 +1110,26 @@ function AskConversation({
       } else {
         appendThread(threadItem("money-answer", { text, intent: result.answer.intent, answer: result.answer.answer, wording: result.answer.wording }));
       }
+    } finally {
+      setStatus("");
+      setWorking("");
+    }
+  }
+
+  // "How much was the Seoul trip?" (ask-trip-answer.js): the Entries trip
+  // view's own page read, through the same required read Entries makes, and
+  // its own figures, so the answer's Spent is that view's to the cent.
+  async function askTripQuestion(text, reply) {
+    setWorking("answer");
+    setStatus(askCopy.money.reading);
+    try {
+      const page = await fetchEntriesPage(tripAnswerPageParams(reply)).catch(() => null);
+      if (!page?.monthPage) {
+        appendThread(threadItem("note", { text: askCopy.money.failed, tone: "calm" }));
+        return;
+      }
+      const built = buildTripAnswer({ reply, page, accounts, people });
+      appendThread(threadItem("money-answer", { text, intent: "trip", answer: built.answer, wording: built.wording }));
     } finally {
       setStatus("");
       setWorking("");

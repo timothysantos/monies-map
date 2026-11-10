@@ -20,6 +20,7 @@ import {
   undoTripEventChange
 } from "../domain/app-repository-trip-events";
 import { MAX_TRIP_EVENT_CHANGE, isTripEventAddedBy, type TripEventEntryChange } from "../domain/trip-events";
+import { BULK_RECATEGORISE_CONFIRM_ABOVE } from "../domain/entry-category-bulk";
 import { json } from "./json";
 import { readJsonObject, RequestBodyTooLargeError } from "./limited-body";
 
@@ -87,15 +88,20 @@ export async function handleTripEventsRoute(request: Request, url: URL, env: { D
         return json({ ok: true, ...(await saveTripEvent(env.DB, body)) });
       case "/api/trip-events/entries/set": {
         const newTripEvent = body.newTripEvent && typeof body.newTripEvent === "object" ? body.newTripEvent as Record<string, unknown> : null;
+        const changes = readTripEventChanges(body);
+        // Who put them on, as a label only: the person's tap, a suggestion
+        // they accepted, or an Ask change card they saved ("ask"; the card
+        // posts it). Every one of these is the person's own Save; nothing
+        // here trusts it. "ask_auto" (Ask on its own) is never taken from a
+        // page. An Ask card over ten entries carries the count the person
+        // confirmed ("Yes, put all N"), as the bulk recategorise does.
+        const addedBy = isTripEventAddedBy(body.addedBy) && body.addedBy !== "ask_auto" ? body.addedBy : "person";
+        if (addedBy === "ask" && changes.length > BULK_RECATEGORISE_CONFIRM_ABOVE && body.confirmedCount !== changes.length) {
+          return json({ ok: false, error: `Confirm all ${changes.length} entries first.` }, 400);
+        }
         return json({
           ok: true,
-          ...(await setTripEventEntries(env.DB, {
-            changes: readTripEventChanges(body),
-            // Ask's own routes pass "ask"; a page's tap is the person's,
-            // or a suggestion they accepted.
-            addedBy: isTripEventAddedBy(body.addedBy) && body.addedBy !== "ask_auto" && body.addedBy !== "ask" ? body.addedBy : "person",
-            newTripEvent
-          }))
+          ...(await setTripEventEntries(env.DB, { changes, addedBy, newTripEvent }))
         });
       }
       case "/api/trip-events/put-away":

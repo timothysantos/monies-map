@@ -55,6 +55,7 @@ import {
   type AskMatch,
   type AskResolveRequest
 } from "./ask-turn-actions";
+import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
 export const ASK_TURN_ACTIONS = [
@@ -80,6 +81,8 @@ export const ASK_TURN_ACTIONS = [
   "set_payment_way",
   "edit_category",
   "link_plan",
+  // Trips and events (ask-trip-events.ts): entries on, moved or off one.
+  "set_trip_event",
   // Hands-off (ask-lookup-tools.ts): a read-only lookup before the real
   // action. The route runs it and asks again; never an answer to the person.
   "look_up"
@@ -101,7 +104,9 @@ export const ASK_TURN_TOPICS = [
   // written ("Grab", "groceries", "Joyce", or null for the month).
   "usual",
   // A bank or app word explained: question.subject is the word as written.
-  "explain_term"
+  "explain_term",
+  // How much one trip or event cost (question.trip names it).
+  "trip"
 ] as const;
 export type AskTurnTopic = typeof ASK_TURN_TOPICS[number];
 
@@ -214,7 +219,8 @@ export const ASK_TURN_SCHEMA = {
       from_month: nullableString,
       to_month: nullableString,
       person: nullableString,
-      subject: nullableString
+      subject: nullableString,
+      trip: nullableString
     }),
     search: nullableObject({
       words: nullableString,
@@ -237,6 +243,17 @@ export const ASK_TURN_SCHEMA = {
     payment_way: nullableObject({ person: nullableString, paynow_wallet: nullableString, cash_wallet: nullableString }),
     category_edit: nullableObject({ op: { type: "string", enum: ["create", "rename", "colour"] }, category: nullableString, new_name: nullableString, colour: nullableString }),
     plan_link: nullableObject({ line: nullableString, month: nullableString, words: nullableString }),
+    // Which trip as written, and which entries as said (never ids or dates worked out).
+    trip_event: nullableObject({
+      name: nullableString,
+      off: { type: ["boolean", "null"] },
+      make: { type: ["boolean", "null"] },
+      words: nullableString,
+      currency: nullableString,
+      when: nullableString,
+      from: nullableString,
+      to: nullableString
+    }),
     blocked: nullableEnum([...ASK_TURN_BLOCKED]),
     lookup: nullableObject({
       tool: { type: "string", enum: [...ASK_LOOKUP_TOOL_NAMES] },
@@ -358,6 +375,9 @@ export interface AskTurnContext {
   nicknames?: Array<{ alias: string; person: string }>;
   // Ids and colours for Phase 2's category edits; absent in older callers.
   categories?: AskTurnCategory[];
+  // The household's trips and events (names and dates); absent when the
+  // feature's tables are not there yet.
+  tripEvents?: AskTurnTrip[];
   focus: AskTurnFocus;
   history: AskTurnMessage[];
   text: string;
@@ -443,6 +463,9 @@ export type AskTurnReplyBody =
   | { kind: "note"; text: string }
   | { kind: "change"; change: AskChange }
   | { kind: "matches"; month: string; matches: AskMatch[] }
+  // How much a trip or event cost: the page answers it from the Entries
+  // trip view's own figures, in this view, scope and month.
+  | { kind: "trip_answer"; tripEventId: string; name: string; viewId: string; scope: string; month: string }
   // Internal: the route loads what the request needs and builds the reply
   // (ask-turn-resolve.ts). Never sent to the page.
   | { kind: "resolve"; request: AskResolveRequest };
@@ -469,6 +492,7 @@ interface RawAction {
   payment_way?: Record<string, unknown> | null;
   category_edit?: Record<string, unknown> | null;
   plan_link?: Record<string, unknown> | null;
+  trip_event?: Record<string, unknown> | null;
   blocked?: AskTurnBlocked | null;
   lookup?: Record<string, unknown> | null;
   // The entry id a lookup in this turn returned and the action is about.
@@ -503,6 +527,7 @@ export function parseAskTurnAction(value: unknown): AskTurnAction | null {
     payment_way: part("payment_way"),
     category_edit: part("category_edit"),
     plan_link: part("plan_link"),
+    trip_event: part("trip_event"),
     blocked: (ASK_TURN_BLOCKED as readonly string[]).includes(String(value.blocked)) ? value.blocked as AskTurnBlocked : null,
     lookup: part("lookup"),
     target_entry: typeof value.target_entry === "string" && value.target_entry.length <= 200 ? value.target_entry : null
@@ -538,11 +563,12 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     "- draft_split_expense: a new expense shared on Splits: entry plus split (shares as for add_entry_to_splits).",
     "- draft_settlement: one person paid another back a stated amount: settlement (from, to, amount as written). \"Settle up\" with no amount is split_group settle.",
     "- plan_change: change a month's plan: plan.ops (set, change, move or add a line; amounts as written) and plan.month.",
-    "- answer_question: a question about their money: question.topic and the month or months.",
+    "- answer_question: a question about their money: question.topic and the month or months; topic trip (question.trip as written) for what a trip cost.",
     "- search_entries: find, list or total entries: search.",
     "- open_page: go to a page of the app.",
     "- ask_clarification: unclear; clarify.question and clarify.options.",
     ...describePhase2Actions(),
+    describeTripEventAction(),
     "- look_up: you must find something first (an entry, a balance, how a shop was filed). lookup.tool is find_entries (text, category, person, from, to), get_entry (id), get_split_balances (group), list_recent_entries (n) or get_category_history (merchant). The app answers in the lookups section and you choose the real action. Use at most 3 lookups; never look up what the context already says. Once you found the entry, set target_entry to its id exactly as the results give it.",
     "- cannot_help: not something Ask does; note says so in one short sentence. For deleting entries, months or imports, importing or undoing a statement import, reconciling, or changing accounts or people, set blocked.",
     `"I", "me" and "my" mean ${viewer ?? "the person asking"}. A share, amount, month or day is exactly what was written, without units added.`,
@@ -555,6 +581,7 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     `Categories: ${context.entry.categoryNames.slice(0, MAX_LIST_NAMES).map(scrubName).join(", ") || "none"}.`,
     `Split groups: ${context.groups.map((group) => `${scrubName(group.name)} (${group.currency})`).join(", ") || "none"}.`,
     `Plan lines this month: ${context.planLines.slice(0, MAX_LIST_NAMES).map(scrubName).join(", ") || "none"}.`,
+    ...(describeTripEvents(context.tripEvents) ? [describeTripEvents(context.tripEvents)] : []),
     `In focus: ${describeFocus(context)}`,
     "</context>",
     "<conversation>",
@@ -653,6 +680,8 @@ export function validateAskTurnAction(action: AskTurnAction, context: AskTurnCon
       return validateEditCategory(action, context, ground);
     case "link_plan":
       return validateLinkPlan(action, context, ground);
+    case "set_trip_event":
+      return validateSetTripEvent(action, context, ground);
     case "add_entry_to_splits":
       return validateAddToSplits(action, context, ground);
     case "draft_settlement":
@@ -1300,7 +1329,7 @@ function validatePlan(action: AskTurnAction, context: AskTurnContext, ground: Gr
   return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion);
 }
 
-const QUESTION_KIND: Record<AskTurnTopic, AskAnswerIntentKind> = {
+const QUESTION_KIND: Record<Exclude<AskTurnTopic, "trip">, AskAnswerIntentKind> = {
   spending_why: "spending",
   spending_where: "spending",
   plan: "plan",
@@ -1322,6 +1351,12 @@ function validateQuestion(action: AskTurnAction, context: AskTurnContext, ground
   const raw = action.question ?? {};
   const topic = (ASK_TURN_TOPICS as readonly string[]).includes(String(raw.topic)) ? raw.topic as AskTurnTopic : null;
   if (!topic) return askBack({ code: "question_unclear", field: "question.topic", valid: [...ASK_TURN_TOPICS] }, COPY.questionUnclear);
+  if (topic === "trip") {
+    // A trip's cost is across its months: the view and scope, not a month.
+    const found = findPerson(raw.person, context);
+    const viewId = found && found !== "unknown" ? found.id : context.viewId;
+    return validateTripQuestion(raw.trip, context, viewId, viewId === "household" ? "direct_plus_shared" : context.scope);
+  }
   const month = readMonth(raw.month, context);
   const other = readMonth(raw.other_month, context, false);
   const from = readMonth(raw.from_month, context, false);

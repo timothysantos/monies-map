@@ -4,9 +4,13 @@
 //
 // 1. AI off or not configured: { mode: "rules" } at once, before any data
 //    work or allowance use; the page reads the message with its rules.
-//    One exception: a share on the saved entry in focus ("Joyce's share
-//    1.6") is read here by the rules' share reader (ask-turn-shares.ts) and
-//    checked like the model's, so the offline backup still drafts the split.
+//    Two exceptions: a share on the saved entry in focus ("Joyce's share
+//    1.6") is read here by the rules' share reader (ask-turn-shares.ts), and
+//    a trip or event message ("put these on Seoul trip", "how much was the
+//    Seoul trip?") by the trips reader (ask-trip-events.ts), each checked
+//    like the model's, so the offline backup still drafts them. A message
+//    that cannot be a trip one costs no read at all; one that might reads
+//    the trip list first.
 // 2. The context is loaded (ask-turn-context.ts): people, wallets,
 //    categories, groups, plan line names and the entry or card in focus,
 //    the entry from the household's own rows by its id.
@@ -56,6 +60,8 @@ import { ASK_LOOKUP_LIMITS } from "../domain/ask-lookup-spec";
 import { lookupBudgetLeft, runLookupTool, type AskLookupCall } from "../domain/ask-lookup-tools";
 import { applyNoteToNewEntry } from "./ask-auto-apply";
 import { readSharesByRules } from "../domain/ask-turn-shares";
+import { readTripEventRules } from "../domain/ask-trip-events";
+import { loadTripEvents } from "../domain/app-repository-trip-events";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { loadAskerPersonId } from "../domain/entry-draft-context";
 import { getAuthenticatedEmail } from "./access-identity";
@@ -100,7 +106,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
   // A saved entry in focus and a message with a figure, "all" or "split" in
   // it may be a share the rules can read; anything else answers at once.
-  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text))) {
+  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !(await mayBeTripMessage(env.DB, text))) {
     return json({ ok: true, mode: "rules", reason: offReason });
   }
 
@@ -151,7 +157,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   // reply ("Claude" or "Basic model"). Only the name is kept.
   let provider: AiProviderName | undefined;
   if (offReason && !testReply) {
-    return rulesAnswer(context, text, offReason);
+    return rulesAnswer(env.DB, context, text, offReason);
   }
   if (testReply) {
     modelCalls += 1;
@@ -164,7 +170,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     remaining = result.remaining;
     provider = result.provider;
     if (!action) {
-      return rulesAnswer(context, text, result.reason ?? "AI is temporarily unavailable.", {
+      return rulesAnswer(env.DB, context, text, result.reason ?? "AI is temporarily unavailable.", {
         // The demo's Claude allowance is used up: the page says so plainly.
         ...(result.demoAllowanceUsed ? { notice: "demo_allowance" } : {}),
         ...(remaining !== undefined ? { remaining } : {})
@@ -172,14 +178,14 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     }
   }
   if (!action) {
-    return rulesAnswer(context, text, AI_UNUSABLE_SUGGESTION_REASON);
+    return rulesAnswer(env.DB, context, text, AI_UNUSABLE_SUGGESTION_REASON);
   }
 
   // Multi-step: while the model asks to look something up, run the read and
   // ask again with what it found, within the turn's budget.
   while (action.action === "look_up") {
     if (lookupTools.length >= 3 || !lookupBudgetLeft({ modelCalls, tokens: tokensUsed })) {
-      return rulesAnswer(context, text, "Ask could not find that.", remaining !== undefined ? { remaining } : {});
+      return rulesAnswer(env.DB, context, text, "Ask could not find that.", remaining !== undefined ? { remaining } : {});
     }
     const call = lookupCallOf(action);
     const found = await runLookupTool(env.DB, call, today);
@@ -197,7 +203,7 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
       provider = result.provider ?? provider;
     }
     if (!next) {
-      return rulesAnswer(context, text, AI_UNUSABLE_SUGGESTION_REASON, remaining !== undefined ? { remaining } : {});
+      return rulesAnswer(env.DB, context, text, AI_UNUSABLE_SUGGESTION_REASON, remaining !== undefined ? { remaining } : {});
     }
     action = next;
   }
@@ -306,9 +312,16 @@ function forPage(reply: AskTurnReply): AskTurnReply {
 }
 
 // The offline backup's answer: the page reads the message with its rules,
-// except a share on the saved entry in focus, which the rules' share reader
-// turns into the same action the model would send, checked the same way.
-function rulesAnswer(context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
+// except a trip or event message and a share on the saved entry in focus,
+// which the rules' readers turn into the same action the model would send,
+// checked the same way.
+async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
+  const tripAction = context.tripEvents ? readTripEventRules(text, context.tripEvents, { categoryNames: context.entry.categoryNames }) : null;
+  if (tripAction) {
+    let reply = validateAskTurnAction(tripAction, context);
+    if (reply.kind === "resolve") reply = withAssumptions(await resolveAskTurnRequest(db, reply.request, context), reply.assumptions ?? []);
+    return json({ ok: true, mode: "rules", reason, action: tripAction.action, reply: forPage(reply), ...extra });
+  }
   const reading = context.focus?.kind === "saved_entry" ? readSharesByRules(text, context.people, askerId(context)) : null;
   // A bare "split 50/50" needs the word "split"; a named share stands alone.
   if (reading && (reading.shares.length || /\bsplits?\b/i.test(text))) {
@@ -318,6 +331,17 @@ function rulesAnswer(context: AskTurnContext, text: string, reason: string, extr
     }
   }
   return json({ ok: true, mode: "rules", reason, ...extra });
+}
+
+// Whether the rules could read the message as a trip or event one (with AI
+// off): a word such a message starts with, and a trip to name (or the word
+// trip, holiday or event). Reads only the trip list, and only then.
+const TRIP_MESSAGE_START = /^(?:please\s+)?(?:put|add|move|take|remove|tag|file|make|new|create|start|how much|what did|what was)\b/i;
+async function mayBeTripMessage(db: D1Database, text: string) {
+  if (!TRIP_MESSAGE_START.test(text)) return false;
+  if (/\b(trip|holiday|event)\b/i.test(text)) return true;
+  const { available, tripEvents } = await loadTripEvents(db);
+  return available && tripEvents.length > 0;
 }
 
 // The recent conversation as the page sent it: at most the last few

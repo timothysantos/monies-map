@@ -1,4 +1,4 @@
-import { ArrowRight, Banknote, ChartPie, PiggyBank, Receipt, Scale, Sparkles, Target, TrendingUp, Users, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, ChartPie, PiggyBank, Plane, Receipt, Scale, Sparkles, Target, TrendingUp, Users, Wallet } from "lucide-react";
 
 import { skewCountedKind } from "./ask-skew-check";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
@@ -19,7 +19,8 @@ const INTENT_ICONS = {
   income: Banknote,
   invested: TrendingUp,
   saved: PiggyBank,
-  spentVsEarned: Wallet
+  spentVsEarned: Wallet,
+  trip: Plane
 };
 
 // An Ask answer to a money question (design.md "Ask page", "Money answer";

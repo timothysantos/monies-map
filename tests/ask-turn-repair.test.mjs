@@ -206,6 +206,6 @@ test("the repair prompt: compact, scrubbed, and only for the codes a model can f
   assert.ok(prompt.length < 6_000, "a repair adds only a few hundred characters to the turn's prompt");
   assert.deepEqual([...ASK_REPAIRABLE_CODES].sort(), [
     "amount_not_stated", "date_invalid", "month_invalid", "other", "plan_unreadable", "question_unclear",
-    "shares_mismatch", "shares_unreadable", "unknown_category", "unknown_group", "unknown_person", "unknown_wallet"
+    "shares_mismatch", "shares_unreadable", "unknown_category", "unknown_group", "unknown_person", "unknown_trip_event", "unknown_wallet"
   ]);
 });

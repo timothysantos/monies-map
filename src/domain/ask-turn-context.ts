@@ -8,6 +8,7 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadAskHabits } from "./app-repository-ask-habits";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
+import { loadTripEvents } from "./app-repository-trip-events";
 import { loadEntryDraftContext } from "./entry-draft-context";
 import { findClosedStatementCheckpointForTransaction } from "./app-repository-entry-commands";
 import type { AskTurnCategory, AskTurnContext, AskTurnDraftFocus, AskTurnFocus, AskTurnFocusEntry, AskTurnGroup, AskTurnListFocus, AskTurnMessage, AskTurnPerson } from "./ask-turn";
@@ -32,14 +33,16 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
   // Every read starts at once: they all come before the model call. The
   // draft context gets the view and asker as sent; it only names a person
   // it finds among the household's own, as checking them first would.
-  const [people, groups, categories, entry, planRows, habits, focusEntry] = await Promise.all([
+  const [people, groups, categories, entry, planRows, habits, focusEntry, trips] = await Promise.all([
     loadPeople(db),
     loadGroups(db),
     loadCategoryRecords(db),
     loadEntryDraftContext(db, { today, viewId: input.viewId, askerPersonId: input.askerPersonId }),
     loadMonthPlanRowsForDraft(db, input.month),
     loadAskHabits(db),
-    loadSavedEntryFocus(db, input.focus)
+    loadSavedEntryFocus(db, input.focus),
+    // Names and dates only; absent when the tables are not there yet.
+    loadTripEvents(db)
   ]);
   const viewId = input.viewId === "household" || people.some((person) => person.id === input.viewId) ? input.viewId : "household";
   const askerPersonId = people.some((person) => person.id === input.askerPersonId) ? input.askerPersonId : undefined;
@@ -57,6 +60,9 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
     planLines,
     nicknames: nicknamesFrom(habits.habits, people),
     categories,
+    ...(trips.available
+      ? { tripEvents: trips.tripEvents.map((trip) => ({ id: trip.id, name: trip.name, ...(trip.startDate ? { startDate: trip.startDate } : {}), ...(trip.endDate ? { endDate: trip.endDate } : {}), ...(trip.putAway ? { putAway: true } : {}) })) }
+      : {}),
     focus: null,
     history: input.history,
     text: input.text
