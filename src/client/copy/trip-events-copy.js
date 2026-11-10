@@ -101,6 +101,7 @@ export const tripEventsCopy = Object.freeze({
   categoryMoved: (count, name) => (count === 1 ? `Moved to ${name}` : `${entriesWord(count)} moved to ${name}`),
   alreadyInCategory: (name) => `They are all in ${name} already.`,
   transfersKeep: "A transfer keeps its Transfer category.",
+  changedMeanwhile: "Some of these entries changed meanwhile. Pick them again to see them as they are now.",
   confirmAll: (count, name) => `Change all ${count} to ${name}?`,
   yesAll: (count) => `Yes, change all ${count}`
 });

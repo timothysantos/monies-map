@@ -91,7 +91,9 @@ export function EntriesPickBar({ rows, summary, categories, onPutOnTrip, onCateg
     setSaving(true);
     const result = await changeEntryCategories(changes, { confirmedCount }, copy.saveFailed);
     setSaving(false);
-    if (!result.ok) return result;
+    // The command's "changed meanwhile" words are Ask's ("Ask again"); here
+    // the rows are on screen, so it says to pick them again.
+    if (!result.ok) return /changed meanwhile/i.test(result.error) ? { ok: false, error: copy.changedMeanwhile } : result;
     onCategoryChanged({ changes, categoryName, confirmedCount });
     return result;
   }
