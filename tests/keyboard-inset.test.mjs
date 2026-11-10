@@ -151,9 +151,10 @@ test("every bottom sheet with a bottom bar lifts itself above the keyboard", () 
   // simplified settlement on the page are not sheets and have no keyboard.
   // The picker sheet, the Trips & events list and the shared states (cards and banners with one
   // primary action) have no field to type in, so no keyboard to lift above.
+  // Usually shared's sheet only has ticks and buttons, no field to type in.
   // Ask's panel (Discard under a draft), plan draft and turn draft cards sit in the conversation, not in a sheet.
-  const notSheets = new Set(["ask-panel.jsx", "ask-plan-draft-card.jsx", "ask-turn-cards.jsx", "entries-list.jsx", "splits-activity.jsx", "splits-checkpoint-panel.jsx", "picker-sheet.jsx", "trip-event-views.jsx", "ui-states.jsx"]);
-  assert.deepEqual(withBar.sort(), ["ask-panel.jsx", "ask-plan-draft-card.jsx", "ask-turn-cards.jsx", "entries-list.jsx", "entries-panel.jsx", "entries-trip-events.jsx", "import-batch-bar.jsx", "import-preview-row-list.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "picker-sheet.jsx", "sheet-dialog.jsx", "splits-activity.jsx", "splits-archive-dialog.jsx", "splits-checkpoint-panel.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx", "splits-history-dialog.jsx", "trip-event-edit-sheet.jsx", "trip-event-review-sheet.jsx", "trip-event-views.jsx", "ui-states.jsx"]);
+  const notSheets = new Set(["ask-panel.jsx", "ask-plan-draft-card.jsx", "ask-turn-cards.jsx", "entries-list.jsx", "splits-activity.jsx", "splits-checkpoint-panel.jsx", "splits-usually-shared.jsx", "picker-sheet.jsx", "trip-event-views.jsx", "ui-states.jsx"]);
+  assert.deepEqual(withBar.sort(), ["ask-panel.jsx", "ask-plan-draft-card.jsx", "ask-turn-cards.jsx", "entries-list.jsx", "entries-panel.jsx", "entries-pick-splits.jsx", "entries-trip-events.jsx", "import-batch-bar.jsx", "import-preview-row-list.jsx", "mobile-context-sheet.jsx", "month-plan-sheet.jsx", "picker-sheet.jsx", "sheet-dialog.jsx", "splits-activity.jsx", "splits-archive-dialog.jsx", "splits-checkpoint-panel.jsx", "splits-dialogs.jsx", "splits-groups-sheet.jsx", "splits-history-dialog.jsx", "splits-usually-shared.jsx", "trip-event-edit-sheet.jsx", "trip-event-review-sheet.jsx", "trip-event-views.jsx", "ui-states.jsx"]);
   for (const name of withBar.filter((file) => !notSheets.has(file))) {
     const source = read(`src/client/${name}`);
     const lifted = /useKeyboardInset\(/.test(source) || /<EntryMobileSheet\b/.test(source);
