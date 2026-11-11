@@ -15,7 +15,77 @@ import { createPreferenceStore } from "./viewer-preference-store";
 // "-" hides a card). Reading is forgiving: an unknown id is dropped, a card
 // it does not name (one added later) goes back to its usual place, and the
 // usual order is null (Reset).
-export const SUMMARY_CARD_IDS = Object.freeze(["insights", "changed", "subs", "investments", "taxreliefs", "mix", "plan", "accounts", "miles"]);
+//
+// The registry below is also the dashboard layout (design.md "Summary
+// dashboard layout"): each card carries its default `span` of the 12-column
+// grid (4 a third, 6 a half, 8 two thirds, 12 the row) and the narrowest
+// width worth giving it. A moved card keeps its span. `tile` is for a later
+// small tile that stands in for the card on the grid (4 columns: a title, a
+// headline, a short line and rows, a mini chart, bars or chips; see SummaryTile) and is
+// null until a card has one.
+/**
+ * One row of a tile's list: a label, its value and, optionally, a tone.
+ * @typedef {{ label: string, value: string, tone?: string }} SummaryTileRow
+ * The small tile a card may carry later: 4 columns wide, a title, a 34px
+ * headline, one short line, and what shows below them: 3 or 4 `rows`, a small
+ * `chart` (series of numbers), `bars` (label, value, a 0 to 1 share) or
+ * `chips` (short labels). Sized for a desktop about 264px tall, a phone about
+ * 150px tall and two across.
+ * @typedef {{ span: 4, title: string, headline: string, line: string, rows?: SummaryTileRow[], chart?: number[], bars?: Array<{ label: string, share: number }>, chips?: string[] }} SummaryTile
+ * @typedef {{ span: 4 | 6 | 8 | 12, minWidth: number, tile: SummaryTile | null }} SummaryCardLayout
+ */
+/** @type {Readonly<Record<string, SummaryCardLayout>>} */
+export const SUMMARY_CARD_LAYOUT = Object.freeze({
+  insights: { span: 4, minWidth: 280, tile: null },
+  plan: { span: 8, minWidth: 480, tile: null },
+  changed: { span: 4, minWidth: 280, tile: null },
+  mix: { span: 6, minWidth: 360, tile: null },
+  subs: { span: 6, minWidth: 360, tile: null },
+  miles: { span: 6, minWidth: 360, tile: null },
+  investments: { span: 6, minWidth: 360, tile: null },
+  taxreliefs: { span: 6, minWidth: 360, tile: null },
+  accounts: { span: 6, minWidth: 360, tile: null }
+});
+export const SUMMARY_CARD_IDS = Object.freeze(Object.keys(SUMMARY_CARD_LAYOUT));
+/** The lead (spent, earned, kept) sits beside the first card when that card is a third wide. */
+export const SUMMARY_LEAD_SPAN = 8;
+export const SUMMARY_GRID_COLUMNS = 12;
+
+// Columns a card takes on a grid of `columns` (12 wide, 2 for a tablet, 1 for
+// a phone): the same share of the row, and a card two thirds or wider takes
+// both tablet columns.
+export function summarySpanFor(span, columns) {
+  if (columns >= SUMMARY_GRID_COLUMNS) return Math.min(span, columns);
+  if (columns === 1) return 1;
+  return span >= 8 ? columns : 1;
+}
+
+/**
+ * The spans each shown card takes, first to last, in the person's order
+ * (`spans` are the default spans). Rows fill left to right in order, never out
+ * of it; the last card of a row that does not fill it grows to the end, so a
+ * hidden card leaves no hole. The lead is the first item.
+ * @param {number[]} spans
+ * @param {number} columns
+ */
+export function packSummarySpans(spans, columns) {
+  const taken = spans.map((span) => summarySpanFor(span, columns));
+  let rowStart = 0;
+  let used = 0;
+  const closeRow = (end) => {
+    if (end > rowStart) taken[end - 1] += columns - used;
+  };
+  taken.forEach((span, index) => {
+    if (used + span > columns) {
+      closeRow(index);
+      rowStart = index;
+      used = 0;
+    }
+    used += span;
+  });
+  closeRow(taken.length);
+  return taken;
+}
 export const SUMMARY_CARDS_STORAGE_KEY = "monies-map:summary-cards";
 export const SUMMARY_CARDS_PATH = "/api/viewer-preferences/summary-cards";
 const NEVER_HIDDEN = new Set(["insights"]);

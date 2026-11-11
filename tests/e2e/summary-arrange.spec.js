@@ -7,11 +7,12 @@ import { reseedDemo } from "./helpers";
 // hidden); nothing changes until Done; the choice survives a reload; Reset
 // brings the usual order back. Without a login it is kept on the device.
 
-const USUAL = ["insights", "changed", "subs", "investments", "taxreliefs", "mix+plan", "accounts", "miles"];
+// What changed this month has no card outside the month in progress, so the demo shows no slot for it.
+const USUAL = ["insights", "plan", "mix", "subs", "miles", "investments", "taxreliefs", "accounts"];
 
+// Every card is a slot of the dashboard grid, in the person's order.
 async function cardOrder(page) {
-  return page.evaluate(() => [...document.querySelectorAll(".panel [data-summary-card], .panel .summary-top-grid, .panel .summary-card-solo")]
-    .map((element) => element.getAttribute("data-summary-card") ?? (element.classList.contains("summary-top-grid") ? "mix+plan" : "solo")));
+  return page.evaluate(() => [...document.querySelectorAll(".panel [data-summary-card]")].map((element) => element.getAttribute("data-summary-card")));
 }
 
 test.describe("Arrange Summary", () => {
@@ -40,17 +41,17 @@ test.describe("Arrange Summary", () => {
     expect(await cardOrder(page)).toEqual(USUAL);
 
     await page.locator(".summary-cards-arrange button").click();
-    // Three moves up: above Subscriptions and bills (and under What changed).
-    for (let move = 0; move < 3; move += 1) await dialog.getByRole("button", { name: "Move Spending Mix up" }).click();
+    // Two moves up: above Intent vs Outcome (and under Money insights).
+    for (let move = 0; move < 2; move += 1) await dialog.getByRole("button", { name: "Move Spending Mix up" }).click();
     await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
-    expect(await cardOrder(page)).toEqual(["insights", "changed", "solo", "subs", "investments", "taxreliefs", "solo", "miles"]);
+    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "miles", "investments", "taxreliefs"]);
     await expect(page.locator(".summary-accounts")).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator(".summary-cards-arrange button")).toBeVisible({ timeout: 30_000 });
-    expect(await cardOrder(page)).toEqual(["insights", "changed", "solo", "subs", "investments", "taxreliefs", "solo", "miles"]);
+    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "miles", "investments", "taxreliefs"]);
 
     await page.locator(".summary-cards-arrange button").click();
     await dialog.getByRole("button", { name: "Reset to the usual order" }).click();
@@ -67,7 +68,7 @@ test.describe("Arrange Summary", () => {
     await expect(sheet).toContainText("Tap a card's name to show or hide it.");
     const firstUp = sheet.getByRole("button", { name: "Move Money insights up" });
     await expect(firstUp).toBeDisabled();
-    await expect(sheet.getByRole("button", { name: "Move Miles and cashback down" })).toBeDisabled();
+    await expect(sheet.getByRole("button", { name: "Move The accounts shown down" })).toBeDisabled();
     const box = await sheet.getByRole("button", { name: "Move Spending Mix up" }).boundingBox();
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeGreaterThanOrEqual(44);

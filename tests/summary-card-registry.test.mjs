@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { SUMMARY_CARD_IDS } from "../src/client/summary-card-order.js";
+import { SUMMARY_CARD_IDS, SUMMARY_CARD_LAYOUT } from "../src/client/summary-card-order.js";
 
 const panel = readFileSync(new URL("../src/client/summary-panel.jsx", import.meta.url), "utf8");
 const editor = readFileSync(new URL("../src/client/summary-card-editor.jsx", import.meta.url), "utf8");
@@ -40,6 +40,27 @@ test("every registered card is named in the Arrange editor, and the editor names
   assert.ok(names.length >= 5, "the editor's names were found");
   assert.deepEqual(sorted(names), sorted(SUMMARY_CARD_IDS));
   assert.match(editor, /planSimple/, "the Simple view's name for the month card stays");
+});
+
+test("every registered card has a default span, a minimum width and a tile slot, and its span fits its minimum width on the 12-column grid", () => {
+  // The grid is 12 columns from a 1,064px page, with 16px gaps and about 36px
+  // of panel padding (summary-body.css): the narrowest a card gets is its
+  // span of that.
+  const columnWidth = (1064 - 36 - 11 * 16) / 12;
+  for (const id of SUMMARY_CARD_IDS) {
+    const layout = SUMMARY_CARD_LAYOUT[id];
+    assert.ok([4, 6, 8, 12].includes(layout.span), `${id} needs a span of 4, 6, 8 or 12`);
+    assert.ok(layout.minWidth > 0, `${id} needs a minWidth`);
+    assert.ok(layout.span * columnWidth + (layout.span - 1) * 16 >= layout.minWidth, `${id} is wide enough at its span`);
+    assert.ok("tile" in layout, `${id} has a tile slot`);
+  }
+  assert.deepEqual(sorted(Object.keys(SUMMARY_CARD_LAYOUT)), sorted(SUMMARY_CARD_IDS));
+});
+
+test("a card registered without a span is caught", () => {
+  const { insights, ...rest } = SUMMARY_CARD_LAYOUT;
+  assert.notDeepEqual(sorted(Object.keys(rest)), sorted(SUMMARY_CARD_IDS));
+  assert.equal(({ minWidth: 280, tile: null }).span, undefined);
 });
 
 test("the panel draws no card outside the registered list", () => {

@@ -85,10 +85,17 @@ test.describe("desktop", () => {
       await expect(saved).toHaveAttribute("data-fig", "kept");
 
       // The lead takes the Summary's full width, under the title row.
+      // On the dashboard grid the lead takes 8 of 12 columns with Money
+      // insights beside it (design.md "Summary dashboard layout").
       const panel = await box(page.locator(".summary-head"));
+      const grid = await box(page.locator(".summary-grid"));
       const leadBox = await box(lead);
       const title = await box(page.locator(".summary-head h2"));
-      expect(Math.abs(leadBox.width - panel.width), "lead spans the Summary").toBeLessThanOrEqual(2);
+      expect(leadBox.width / grid.width, "lead is two thirds of the grid").toBeGreaterThan(0.64);
+      expect(leadBox.width / grid.width).toBeLessThan(0.69);
+      const insights = await box(page.locator('[data-summary-card="insights"]'));
+      expect(insights.x, "Money insights sits beside the lead").toBeGreaterThanOrEqual(leadBox.right);
+      expect(insights.y).toBe(leadBox.y);
       expect(leadBox.y).toBeGreaterThanOrEqual(title.bottom);
 
       // The viewer and the scope switch sit beside the title, whole.
@@ -169,7 +176,12 @@ test.describe("desktop", () => {
       window.__shift = 0;
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (!entry.hadRecentInput) window.__shift += entry.value;
+          // A banner that mounts above the Summary (the import reminder) moves
+          // the whole panel as one block; that is the shell's, not the
+          // dashboard's layout, so it is not counted here. Every other shift
+          // (a card or the lead moving inside the panel) is.
+          const panelOnly = entry.sources.length > 0 && entry.sources.every((source) => source.node instanceof Element && source.node.classList.contains("panel"));
+          if (!entry.hadRecentInput && !panelOnly) window.__shift += entry.value;
         }
       }).observe({ type: "layout-shift", buffered: true });
     });

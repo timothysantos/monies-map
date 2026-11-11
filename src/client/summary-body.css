@@ -22,17 +22,18 @@
   font-weight: 600;
 }
 
-/* Beside the donut when the card itself is wide (a container query: the card
-   is narrow beside Earned vs spent or the Ask panel, whatever the screen). */
+/* Beside the donut when the card itself is 600px or wider (a container query:
+   the card is narrow on a phone, a tablet's half row or beside the Ask panel). */
 .spending-mix-card {
   container-type: inline-size;
 }
 
 /* Scoped to the card, so it outranks the one-column base in
    spending-mix-list.css whichever stylesheet lands last. */
-@container (min-width: 700px) {
+@container (min-width: 600px) {
   .spending-mix-card .summary-mix {
-    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    grid-template-columns: 316px minmax(0, 1fr);
+    align-items: center;
     gap: 20px;
   }
 
@@ -89,18 +90,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 1024px) {
-  .summary-accounts-body {
-    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
-    align-items: start;
-    gap: 28px;
-  }
-}
-
 /* Holds Spending Mix's place while its lazy chunk loads, so the cards under it
    do not jump when it lands. Empty and invisible. */
 .spending-mix-reserve {
   min-height: 480px;
+}
+
+/* The month-by-month card (chart, six month tiles, Open the details): its
+   place while its chunk loads, so Spending Mix under it does not jump. */
+.summary-plan-reserve {
+  min-height: 520px;
 }
 
 /* And for Subscriptions and bills (subscriptions-section.jsx), under Money
@@ -119,12 +118,77 @@
   }
 }
 
-/* Arrange Summary (summary-card-order.js): a card on its own takes the whole
-   width; the quiet way into the editor sits at the end of Summary. */
-.summary-card-solo {
+/* Summary dashboard layout (design.md "Summary dashboard layout"): the lead
+   and the cards are items of one grid. A phone has one column; from a 724px
+   page (a 760px window) two; from a 1,064px page (a 1,100px window) twelve,
+   where each card takes its default span (summary-card-order.js, set as
+   --s12 and --s2 by the panel, with the last card of a short row grown so a
+   hidden card leaves no hole). The page's own width decides, not the
+   window's, so a docked Ask panel narrows the grid the same way (.shell is
+   the container, styles.css). Cards in a row are as tall as the tallest. */
+.summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   margin-bottom: 16px;
 }
 
+.summary-grid > * {
+  min-width: 0;
+}
+
+.summary-grid > :empty {
+  display: none;
+}
+
+/* The lead keeps its wide height while it loads (layout-shift guard). */
+@container shell (min-width: 1064px) {
+  .summary-lead-slot {
+    min-height: 244px;
+  }
+}
+
+@container shell (min-width: 724px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-grid > * {
+    grid-column: span var(--s2, 2);
+  }
+}
+
+@container shell (min-width: 1064px) {
+  .summary-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .summary-grid > * {
+    grid-column: span var(--s12, 12);
+  }
+}
+
+/* The Summary page is wider than the rest of the app: up to 1,400px. */
+.shell:has(.summary-grid) {
+  max-width: 1400px;
+}
+
+/* A chart card's head sits as it did in the paired row: the title, and its
+   line to the right while there is room. */
+.summary-grid .chart-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.summary-grid .summary-card-slot > .chart-card,
+.summary-grid .summary-card-slot > .summary-accounts {
+  height: 100%;
+}
+
+/* The quiet way into the editor sits at the end of Summary. */
 .summary-cards-arrange {
   display: flex;
   justify-content: flex-end;
@@ -133,20 +197,12 @@
 
 /* Summary card spacing (design.md "Summary card spacing"): the one set of
    rules the cards under Money insights share, so they sit like the older
-   cards. The slot owns the 16px between cards (an empty slot takes none and
+   cards. The grid owns the 16px between cards (an empty slot is not drawn and
    a card has no margin of its own); a card's head is a 1rem bold title, an
    optional 0.86rem line under it 4px below, and 16px to its content; the
    tiles, bars and chips below are the same size and colour on every card.
    Prefixed with the slot so it wins whichever card stylesheet lands last.
    Mobile keeps the cards' full-bleed 12px side padding (styles.css). */
-.summary-card-slot {
-  margin-bottom: 16px;
-}
-
-.summary-card-slot:empty {
-  margin-bottom: 0;
-}
-
 .summary-card-slot > .chart-card {
   margin-bottom: 0;
 }
@@ -245,3 +301,10 @@
   font-weight: 600;
 }
 
+
+/* The glance at the accounts: the first rows, then "Show all N ›". */
+.summary-accounts-more.lsd-row {
+  justify-content: center;
+  color: var(--accent-strong);
+  font-weight: 700;
+}

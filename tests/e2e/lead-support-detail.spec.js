@@ -296,6 +296,7 @@ test.describe("Summary lead", () => {
     const income = await box(page.locator('.summary-lead .lead-column[data-metric="income"]'));
     const saved = await box(page.locator('.summary-lead .lead-column[data-metric="saved"]'));
     expect(income.bottom).toBeLessThanOrEqual(lead.bottom);
+    // The lead is two thirds of the dashboard grid, two columns inside, so the strip is in its right half.
     expect(income.x).toBeGreaterThan(lead.x + lead.width / 2);
     expect(saved.y).toBe(income.y);
     expect(saved.x).toBeGreaterThan(income.right - 1);

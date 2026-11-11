@@ -892,13 +892,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   align-items: start;
 }
 
-.summary-top-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 .financial-insight {
   display: grid;
   grid-template-columns: minmax(128px, 0.24fr) minmax(0, 1fr);
@@ -2089,14 +2082,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
 
 .chart-head {
   margin-bottom: 18px;
-}
-
-.summary-top-grid .chart-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
 }
 
 .chart-head p {
@@ -6543,7 +6528,6 @@ th {
 }
 
 @media (max-width: 960px) {
-  .summary-top-grid,
   .panel-subgrid {
     grid-template-columns: 1fr;
   }
@@ -7621,7 +7605,6 @@ th {
   }
 
   .grid,
-  .summary-top-grid,
   .month-plan-stack,
   .split-list-section,
   .entries-breakdown-panel,

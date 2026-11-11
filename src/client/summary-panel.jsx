@@ -13,7 +13,7 @@ import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "
 import { SummaryLead } from "./summary-lead";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 import { useLeadView } from "./lead-view";
-import { useSummaryCards } from "./summary-card-order";
+import { packSummarySpans, SUMMARY_CARD_LAYOUT, SUMMARY_LEAD_SPAN, useSummaryCards } from "./summary-card-order";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
@@ -274,13 +274,14 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           donutData={safeSummaryPage.categoryShareChart}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
+          dashboard
           period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
         />
       </Suspense>
     ),
     plan: leadView === "simple" ? (
       // The Simple view's month list, loaded only in Simple.
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="summary-plan-reserve" aria-hidden="true" />}>
         <SimpleDetail
           part="months"
           months={safeSummaryPage.months}
@@ -291,7 +292,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         />
       </Suspense>
     ) : (
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="summary-plan-reserve" aria-hidden="true" />}>
         <SummaryIntentVsOutcomeSection
           months={safeSummaryPage.months}
           onOpenMonth={onOpenMonth}
@@ -308,6 +309,15 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     )
   };
 
+  // Where each card sits on the grid: 12 columns on a wide page, 2 on a
+  // tablet, 1 on a phone (the CSS picks by the page's width).
+  const shownCards = summaryCards.filter((card) => !card.hidden && cardBody[card.id] !== null);
+  const defaultSpans = [SUMMARY_LEAD_SPAN, ...shownCards.map((card) => SUMMARY_CARD_LAYOUT[card.id].span)];
+  const wideSpans = packSummarySpans(defaultSpans, 12);
+  const tabletSpans = packSummarySpans(defaultSpans, 2);
+  const spanStyle = (index) => ({ "--s12": wideSpans[index], "--s2": tabletSpans[index] });
+  const slotSpans = { lead: spanStyle(0), cards: shownCards.map((_, index) => spanStyle(index + 1)) };
+
   return (
     <article className="panel panel-accent">
       <div className="panel-head summary-head">
@@ -318,36 +328,29 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
             <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />
           </>}
         </div>
-        <SummaryLead
-          model={leadModel}
-          view={leadView}
-          onViewChange={setLeadView}
-          categoryShare={safeSummaryPage.categoryShareChart}
-          rangeStartMonth={safeSummaryPage.rangeStartMonth}
-          rangeEndMonth={safeSummaryPage.rangeEndMonth}
-        />
       </div>
 
-      {summaryCards.filter((card) => !card.hidden).reduce((blocks, card, index, shown) => {
-        // Spending Mix and the month-by-month card sit side by side when
-        // they are next to each other (in either order), as they always did.
-        const next = shown[index + 1];
-        if (blocks.paired.has(card.id)) return blocks;
-        if ((card.id === "mix" && next?.id === "plan") || (card.id === "plan" && next?.id === "mix")) {
-          blocks.paired.add(next.id);
-          blocks.list.push(
-            <div key="mix-plan" className="summary-top-grid has-intent-grid">
-              {cardBody[card.id]}
-              {cardBody[next.id]}
-            </div>
-          );
-        } else if (card.id === "mix" || card.id === "plan") {
-          blocks.list.push(<div key={card.id} className="summary-card-solo">{cardBody[card.id]}</div>);
-        } else {
-          blocks.list.push(<div key={card.id} className="summary-card-slot" data-summary-card={card.id}>{cardBody[card.id]}</div>);
-        }
-        return blocks;
-      }, { list: [], paired: new Set() }).list}
+      {/* The dashboard grid (design.md "Summary dashboard layout"): the lead
+          and the shown cards in the person's order, each on its default span
+          of the 12 columns (summary-card-order.js). Rows fill in order and the
+          last card of a short row grows, so a hidden card leaves no hole. A
+          card with no body (What changed this month outside the month in
+          progress) takes no place. */}
+      <div className="summary-grid" data-summary-grid>
+        <div className="summary-lead-slot" style={slotSpans.lead}>
+          <SummaryLead
+            model={leadModel}
+            view={leadView}
+            onViewChange={setLeadView}
+            categoryShare={safeSummaryPage.categoryShareChart}
+            rangeStartMonth={safeSummaryPage.rangeStartMonth}
+            rangeEndMonth={safeSummaryPage.rangeEndMonth}
+          />
+        </div>
+        {shownCards.map((card, index) => (
+          <div key={card.id} className="summary-card-slot" data-summary-card={card.id} data-span={SUMMARY_CARD_LAYOUT[card.id].span} style={slotSpans.cards[index]}>{cardBody[card.id]}</div>
+        ))}
+      </div>
 
       <p className="summary-cards-arrange">
         <button type="button" className="subtle-action" onClick={() => setArrangingCards(true)}>
@@ -446,11 +449,16 @@ function SummaryScopeSwitch({ view, onScopeChange }) {
 // Wallets in view (design.md, "Summary body"): one group of rows, each the
 // wallet, how fresh its statement is (not shown while money is hidden, as it
 // says which side of the statement the wallet is on) and its balance.
+// It starts as a glance: the first few rows and "Show all N ›".
+const ACCOUNTS_GLANCE = 3;
+
 function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   const { areTotalsVisible } = useMoneyPrivacy();
+  const [showAll, setShowAll] = useState(false);
   if (!accountPills.length) {
     return null;
   }
+  const listed = showAll ? accountPills : accountPills.slice(0, ACCOUNTS_GLANCE);
 
   return (
     <section className="summary-accounts">
@@ -460,7 +468,7 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
           <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
         </div>
         <DetailRows label="The accounts shown">
-          {accountPills.map((account) => (
+          {listed.map((account) => (
             <DetailRow
               key={account.accountId}
               className="summary-wallet-row"
@@ -478,6 +486,11 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
               onClick={() => onOpenEntriesForAccount(account.accountId)}
             />
           ))}
+          {accountPills.length > ACCOUNTS_GLANCE ? (
+            <button type="button" className="lsd-row summary-accounts-more" aria-expanded={showAll} onClick={() => setShowAll((current) => !current)}>
+              {showAll ? messages.summary.accountsShowFewer : messages.summary.accountsShowAll(accountPills.length)}
+            </button>
+          ) : null}
         </DetailRows>
       </div>
     </section>
