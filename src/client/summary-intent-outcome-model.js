@@ -67,8 +67,11 @@ export function buildMonthStrip(months, limit = MONTH_STRIP_LIMIT) {
     .sort((left, right) => right.month.localeCompare(left.month))
     .slice(0, limit)
     .map((month) => {
-      const { spent, headroom } = buildIntentMonthCard(month);
-      return { month: month.month, spent, headroom };
+      const { spent, headroom, percentOfPlan } = buildIntentMonthCard(month);
+      // The bar under the month: how much of its plan was spent, full at the
+      // plan and no further (over plan is the rose headroom words). No plan, no bar.
+      const progress = percentOfPlan === null ? null : { percent: Math.min(100, percentOfPlan), isOver: Boolean(headroom?.isOver) };
+      return { month: month.month, spent, headroom, progress };
     });
 }
 

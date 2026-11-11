@@ -19,14 +19,14 @@ const prefersReducedMotion = () => typeof window !== "undefined" && typeof windo
 const initialMotion = () => (typeof window === "undefined" || prefersReducedMotion() ? "off" : "armed");
 
 /**
- * @param {{ attribute?: string, playMs?: number, threshold?: number }} [options] `attribute` is the dataset key (camelCase) the state is kept in.
+ * @param {{ attribute?: string, playMs?: number, threshold?: number, ready?: boolean }} [options] `attribute` is the dataset key (camelCase) the state is kept in; `ready` is false while the element is not drawn yet (a card waiting for its data).
  */
-export function useFirstViewMotion({ attribute = "chartMotion", playMs = 1100, threshold = 0.5 } = {}) {
+export function useFirstViewMotion({ attribute = "chartMotion", playMs = 1100, threshold = 0.5, ready = true } = {}) {
   const ref = useRef(null);
   const [motion] = useState(initialMotion);
   useEffect(() => {
     const element = ref.current;
-    if (motion !== "armed" || !element) return undefined;
+    if (motion !== "armed" || !element || !ready) return undefined;
     let timer = 0;
     const play = () => {
       element.dataset[attribute] = "playing";
@@ -47,6 +47,6 @@ export function useFirstViewMotion({ attribute = "chartMotion", playMs = 1100, t
       observer.disconnect();
       window.clearTimeout(timer);
     };
-  }, [motion, attribute, playMs, threshold]);
+  }, [motion, attribute, playMs, threshold, ready]);
   return { ref, motion };
 }

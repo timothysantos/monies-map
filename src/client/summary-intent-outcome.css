@@ -166,6 +166,44 @@ html[data-money-privacy="hidden"] .summary-intent-plan.money-plan {
   line-height: 1.25;
 }
 
+/* The share of the plan spent, under the tile's words: sky while under, rose
+   once over (the tile's own words give the amount). It draws in once on the
+   card's first view (use-first-view-motion.js), by transform only. */
+.summary-intent-tile-bar {
+  display: block;
+  height: 5px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+.summary-intent-tile-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pastel-sky-ink);
+  transform-origin: left center;
+}
+
+.summary-intent-tile-bar.is-over > span {
+  background: var(--pastel-rose-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-intent-motion="armed"] .summary-intent-tile-bar > span {
+    transform: scaleX(0);
+  }
+
+  [data-intent-motion="playing"] .summary-intent-tile-bar > span {
+    animation: intent-bar-grow 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes intent-bar-grow {
+    from { transform: scaleX(0); }
+  }
+}
+
 @container shell (min-width: 1064px) {
   .summary-intent-strip {
     grid-template-columns: repeat(6, minmax(0, 1fr));

@@ -44,6 +44,21 @@ test("each month shows its spend and how far over or under its plan, in the mone
   assert.equal(noPlan.headroom.isOver, true);
 });
 
+test("each month carries a progress bar: the share of its plan spent, full at the plan; no plan, no bar", () => {
+  const [over, under, exact, noPlan, quiet] = buildMonthStrip([
+    month("2026-05", 120050, 100000),
+    month("2026-04", 62000, 100000),
+    month("2026-03", 100000, 100000),
+    month("2026-02", 5000, 0),
+    month("2026-01", 0, 0)
+  ]);
+  assert.deepEqual(over.progress, { percent: 100, isOver: true });
+  assert.deepEqual(under.progress, { percent: 62, isOver: false });
+  assert.deepEqual(exact.progress, { percent: 100, isOver: false });
+  assert.equal(noPlan.progress, null);
+  assert.equal(quiet.progress, null);
+});
+
 test("a month with nothing spent and nothing planned has no over or under", () => {
   assert.equal(buildMonthStrip([month("2026-01", 0, 0)])[0].headroom, null);
 });

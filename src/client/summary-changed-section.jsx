@@ -9,6 +9,7 @@ import { useCompactSummaryCard } from "./use-viewport";
 import { queryKeys } from "./query-keys";
 import { requestSummaryChanged } from "./summary-changed-api";
 import { useSummaryCardQuery } from "./use-summary-card-query";
+import { useFirstViewMotion } from "./use-first-view-motion";
 
 // What changed this month (design.md "What changed card"; DOMAIN.md "What
 // Changed Card"): the month so far against the same point of the month
@@ -48,7 +49,7 @@ function Figure({ amountMinor, ids, month, name, ask, arg = undefined }) {
   );
 }
 
-function Row({ row, changed, visible, open, onToggle }) {
+function Row({ row, changed, visible, open, onToggle, barShare }) {
   const direction = copy[row.direction];
   const panelId = `chg-shops-${row.category.replace(/[^A-Za-z0-9]+/g, "-")}`;
   return (
@@ -69,6 +70,11 @@ function Row({ row, changed, visible, open, onToggle }) {
         {visible ? <span className="chg-diff">{direction} {money(Math.abs(row.diffMinor))}</span> : null}
         <span className="chg-chevron" aria-hidden="true">{open ? "⌃" : "⌄"}</span>
       </div>
+      {visible ? (
+        <span className="chg-bar" aria-hidden="true">
+          <span className={`chg-bar-fill is-${row.direction}`} style={{ width: `${Math.round(barShare * 50)}%` }} />
+        </span>
+      ) : null}
       {visible ? (
         <div className="chg-meta">
           <span>
@@ -119,6 +125,8 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
   const fetcher = useCallback((options) => requestSummaryChanged(viewId, scope, options), [scope, viewId]);
   const answer = useSummaryCardQuery({ queryClient, queryKey, enabled, fetchRequiredQuery, fetcher, abortMessage: "What changed request aborted." });
   const changed = answer?.changed ?? null;
+  // The bars draw once, when the card first scrolls into view.
+  const { ref: motionRef, motion } = useFirstViewMotion({ attribute: "chartMotion", playMs: 1100, threshold: 0.3, ready: Boolean(changed) });
   // Hidden money lists names only, A to Z, so even the order says nothing
   // about which way a category moved.
   const rows = useMemo(() => {
@@ -129,8 +137,10 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
     return null;
   }
   const shown = phone && !showAll ? rows.slice(0, PHONE_ROWS) : rows;
+  // Each bar's length is its change against the biggest change on the card.
+  const biggest = Math.max(1, ...rows.map((row) => Math.abs(row.diffMinor)));
   return (
-    <section className="chart-card chg-card" aria-labelledby="chg-title" data-fig-period={`${changed.month}:${changed.month}`}>
+    <section ref={motionRef} className="chart-card chg-card" aria-labelledby="chg-title" data-fig-period={`${changed.month}:${changed.month}`} data-chart-motion={motion}>
       <div className="chg-head">
         <h3 id="chg-title">{copy.title}</h3>
         <p className="chg-intro">{copy.intro(changed.month, changed.baseMonth)}</p>
@@ -143,6 +153,7 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
               row={row}
               changed={changed}
               visible={visible}
+              barShare={Math.abs(row.diffMinor) / biggest}
               open={openCategory === row.category}
               onToggle={() => setOpenCategory((current) => (current === row.category ? "" : row.category))}
             />

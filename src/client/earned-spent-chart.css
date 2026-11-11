@@ -7,6 +7,7 @@
    own dash so they part without colour too. Labels are the page's ink
    tokens. */
 .earned-spent-chart {
+  position: relative;
   --ec-earned: color-mix(in srgb, var(--pastel-mint-ink) 78%, var(--paper));
   --ec-spent: color-mix(in srgb, var(--pastel-rose-ink) 78%, var(--paper));
   --ec-kept: var(--pastel-mint-ink);
@@ -366,4 +367,26 @@
 @keyframes ec-pop {
   from { opacity: 0; transform: scale(0.3); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* A tapped column's exact figure, over the top of the plot: it takes no room
+   of its own, so the chart never moves when it appears. */
+.ec-pill {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }

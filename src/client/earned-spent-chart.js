@@ -93,6 +93,9 @@ function EarnedSpentChartBody({ mode, rows, pace }) {
   const [width, setWidth] = R.useState(366);
   const [hiddenKeys, setHiddenKeys] = R.useState(() => new Set());
   const [activeKey, setActiveKey] = R.useState("");
+  // A tapped column's exact figure, as a pill over the chart (its menu has the
+  // rest): "Aug 2026 spent $8,213". It stays until another column is tapped.
+  const [tappedLabel, setTappedLabel] = R.useState("");
   const [motion, setMotion] = R.useState(initialMotion);
 
   R.useLayoutEffect(() => {
@@ -218,6 +221,7 @@ function EarnedSpentChartBody({ mode, rows, pace }) {
     onFocus: () => {
       setActiveKey(keyOf(point));
       markRow(point.row.month, true);
+      if (point.series.kind === "bar") setTappedLabel(pointFigure(mode, point.series, point.row, firstMonth).label);
     },
     onBlur: () => markRow(point.row.month, false),
     onHoverOpen: hoverOpen,
@@ -319,6 +323,7 @@ function EarnedSpentChartBody({ mode, rows, pace }) {
         );
       })
     ),
+    tappedLabel ? h("span", { className: "ec-pill", role: "status", "data-ec-pill": "" }, tappedLabel) : null,
     h(
       "div",
       { className: "ec-frame", style: { "--ec-height": `${height}px` } },

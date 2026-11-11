@@ -11,6 +11,7 @@ import { moneyToneClass } from "./money-tone-class";
 import { formatMonthLabel, money } from "./formatters";
 import { buildIntentMonthCard, buildMonthStrip, monthListStartsOpen } from "./summary-intent-outcome-model";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
+import { useFirstViewMotion } from "./use-first-view-motion";
 
 const copy = messages.summary.intent;
 const leadCopy = messages.summary.lead;
@@ -52,8 +53,10 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote,
   const { hash } = useLocation();
   const { areTotalsVisible } = useMoneyPrivacy();
   const [detailsOpen, setDetailsOpen] = useState(() => monthListStartsOpen(hash));
+  // The progress bars under the month tiles draw in once, on first view.
+  const { ref: motionRef, motion } = useFirstViewMotion({ attribute: "intentMotion", playMs: 1000, threshold: 0.3 });
   return (
-    <section className="chart-card summary-intent">
+    <section ref={motionRef} className="chart-card summary-intent" data-intent-motion={motion}>
       <div className="chart-head">
         <h3>{messages.summary.intentVsOutcome}</h3>
         <p>{messages.summary.intentVsOutcomeDetail}</p>
@@ -70,6 +73,11 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote,
                   <span className={`summary-intent-tile-spent ${moneyToneClass(item.spent.tone)}`}><PrivateMoney>{money(item.spent.amountMinor)}</PrivateMoney></span>
                   {item.headroom && areTotalsVisible ? (
                     <span className={`summary-intent-tile-line ${moneyToneClass(item.headroom.tone)}`}>{money(item.headroom.amountMinor)} {item.headroom.isOver ? leadCopy.overPlan : leadCopy.underPlan}</span>
+                  ) : null}
+                  {item.progress && areTotalsVisible ? (
+                    <span className={`summary-intent-tile-bar ${item.progress.isOver ? "is-over" : ""}`} aria-hidden="true" data-percent={item.progress.percent}>
+                      <span style={{ width: `${item.progress.percent}%` }} />
+                    </span>
                   ) : null}
                 </button>
               </li>

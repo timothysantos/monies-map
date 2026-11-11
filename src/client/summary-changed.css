@@ -158,3 +158,59 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* The change as a bar from a centre line: up grows right in rose, down grows
+   left in mint, its length the change against the biggest on the card. It
+   draws in once on the card's first view (use-first-view-motion.js: armed,
+   playing, done; none for reduced motion), by transform only. Marks, never a
+   figure: the amount stays in the row's words, and hidden money has no bars. */
+.chg-bar {
+  position: relative;
+  display: block;
+  height: 6px;
+  margin: 2px 0 4px;
+}
+
+.chg-bar::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 50%;
+  width: 1px;
+  background: var(--line);
+}
+
+.chg-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 3px;
+}
+
+.chg-bar-fill.is-up {
+  left: 50%;
+  background: var(--pastel-rose-ink);
+  transform-origin: left center;
+}
+
+.chg-bar-fill.is-down {
+  right: 50%;
+  background: var(--pastel-mint-ink);
+  transform-origin: right center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-chart-motion="armed"] .chg-bar-fill {
+    transform: scaleX(0);
+  }
+
+  [data-chart-motion="playing"] .chg-bar-fill {
+    animation: chg-grow 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes chg-grow {
+    from { transform: scaleX(0); }
+  }
+}
