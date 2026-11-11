@@ -188,7 +188,7 @@ Month data comes from:
 - `GET /api/summary-account-pills` for the view, fetched beside it: the
   Accounts section's balances and statement health and the money check-in's
   statement-gap Quick fix (a statement that does not match). The query and
-  its cache are shared with Summary's "The accounts shown".
+  its cache are shared with Summary's "Accounts".
 - `GET /api/summary-page` for the range, through the Summary owner
   (`loadSummaryRangeContext` in `App.jsx`): the header's range, the month
   arrows and the month sheet's figures. Coming from All months it is
@@ -202,7 +202,7 @@ The Month lead's savings bar and money jobs read the month's transfers
 into and out of investment accounts from `monthPage.investmentMoves`
 (optional, left out when both are zero; DOMAIN.md "Money job").
 
-Spending Mix for the picked month (below the money insights, above the
+Spending mix for the picked month (below the money insights, above the
 plan tables) reads `monthPage.categoryShareChart` from this DTO
 (`selectMonthSpendingMix` in `month-spending-mix.js`): no request of its
 own, also on a deep link before the range's Summary page lands. It is the
@@ -233,7 +233,7 @@ Month owns:
 
 A transfer with a purpose (DOMAIN.md "Transfer Purpose") reaches Month
 already read for the view (`adjustEntriesForView`): in the sender's view it
-is an expense in its category, so it counts in the lead, Spending Mix and
+is an expense in its category, so it counts in the lead, Spending mix and
 budget lines, and the plan-link picker offers it for a dated line such as
 "House loan" (the link command accepts a transfer out with a purpose). In the
 receiver's view it is a payback in that category. The household view is

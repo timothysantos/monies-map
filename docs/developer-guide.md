@@ -2963,7 +2963,7 @@ the view's entries of this month and the 6 before with
 `loadUsualEntries`, the same one date-window read Ask uses (not grouped in
 SQL: the engine needs each entry's description, person share and offset
 rule), so the card and Ask never disagree; the client
-(`summary-changed-section.jsx`, riding in Spending Mix's chunk like
+(`summary-changed-section.jsx`, riding in Spending mix's chunk like
 Subscriptions' so the first screen gains no file; `useSummaryCardQuery`;
 `queryKeys.summaryChanged`; registered as the `changed` Summary card) reads it once the top summary is usable and only
 when the Summary range ends in the current month. Ask's usual answer for the
@@ -3022,8 +3022,13 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
 2. Add its body to `cardBody` in `summary-panel.jsx` (lazy-load a heavy one
    as the others do, and keep any request inside it so a hidden card reads
    nothing). Do not draw a card anywhere else in the panel.
-3. Add its `{ name, about }` to `NAMES` in `summary-card-editor.jsx`, in
-   plain words a grandparent follows.
+3. Add its title and subtitle to the one list, `src/client/copy/summary-card-titles.js`
+   (`SUMMARY_CARD_TITLES`: a short sentence-case title with no "The" and no
+   time word, and one subtitle line for the period or basis, a function when it
+   carries months or a year), in plain words a grandparent follows. The card's
+   head is `<CardHead id=... />` (`summary-card-head.jsx`); the tile, the sheet
+   and the Arrange cards row read the same list, so a rename is one line
+   (`tests/summary-card-titles.test.mjs`; design.md "Summary card titles").
 
 Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
 only on an owner decision. Registered today, in the usual order: `insights`, `plan`, `changed`, `mix`, `subs`, `coming`
@@ -3142,7 +3147,7 @@ The three categories are seeded additively in `seedEmptyStateReferenceData`
 (a household's same-named category is kept); the demo household gets SRS and
 CPF top-ups and a charity gift. In December, the facts also feed the
 `tax_relief` Reminder (`src/domain/reminders/tax-relief-reminder.ts`). The
-cards are lazy code in the Spending Mix chunk (`investments-card.jsx`,
+cards are lazy code in the Spending mix chunk (`investments-card.jsx`,
 `tax-reliefs-card.jsx`). Tests: `tests/investments-over-time.test.mjs`,
 `tests/investments-card-model.test.mjs`, `tests/tax-reliefs.test.mjs`,
 `tests/reminders-rules.test.mjs`, `tests/openable-figures.test.mjs` (every
@@ -3316,9 +3321,9 @@ Splits passes its search and clear callback to its existing group strip.
 `tests/e2e/island-context.spec.js` proves 390px height, scroll continuity, scope
 visibility, complete reset, touch targets, reduced motion and desktop exclusion.
 
-### Spending Mix's icon-bubble donut
+### Spending mix's icon-bubble donut
 
-Summary's and Month's Spending Mix draw their donut as plain SVG, not Recharts
+Summary's and Month's Spending mix draw their donut as plain SVG, not Recharts
 (Entries and Splits keep the Recharts one). The geometry (arcs, the five
 biggest slices' bubbles, the "N more" bubble, bubbles pushed apart until no
 disc or label touches) is the pure `src/client/donut-bubbles-model.js`, tested

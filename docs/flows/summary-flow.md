@@ -24,7 +24,7 @@ the Summary page already loaded under the pinned key
 always opens `/summary`. Design: design.md, "Summary Tab Month Choice".
 
 The route may include view, scope and range parameters (`summary_focus`, the
-old Spending Mix month chip, is ignored). `App.jsx` reads
+old Spending mix month chip, is ignored). `App.jsx` reads
 the URL and keeps the selected Summary view in sync with browser location. In a
 person view the scope control sets `scope`: on desktop and tablet the compact
 `Direct` / `Shared` / `Both` switch in the title row after "Viewing • name",
@@ -67,7 +67,7 @@ API on a phone and a desktop. The savings bar's invested also reads the
 DTO's optional `investmentMoves` (transfers into and out of investment
 accounts over the range, DOMAIN.md "Money job";
 `tests/e2e/investment-transfers.spec.js`). It uses the account-pill DTO for account health and drilldown.
-Intent vs Outcome is one compact card per month, newest first
+Plan vs actual is one compact card per month, newest first
 (`summary-intent-outcome.jsx`): the lead is the month's spend against its
 plan with the bar, the percent of plan and how far under or over; planned and
 actual income are chips; a "Details" row folds the old table's income, spend
@@ -87,10 +87,10 @@ sets the same choice): it comes on `GET /api/app-shell`
 with `POST /api/viewer-preferences/lead-view`; without a login the device
 keeps it. Simple shows the model's `simple` figures and facts, Money
 insights without the plan ones (`withoutPlanSignals`), and in Intent vs
-Outcome's place "Earned vs spent by month" (`simple-detail.js`, lazy, from
+Outcome's place "Earned vs spent" (`simple-detail.js`, lazy, from
 the same DTO's `months` and `categoryShareByMonth`). The page request does
 not change with the mode (`tests/e2e/lead-simple-view.spec.js`).
-Both modes' month card (Simple's "Earned vs spent by month", Plan's Intent vs
+Both modes' month card (Simple's "Earned vs spent", Plan's Intent vs
 Outcome) opens with the column + line chart when the range has two or more
 months (`earned-spent-chart.js`, lazy, handed React by the panel so the first
 screen gains no shared chunk; model `earned-spent-chart-model.js`; nothing is
@@ -99,13 +99,13 @@ columns and a Kept line (below zero when overspent); Plan draws Earned and
 Spent columns and a Planned spending line (the month's `estimatedExpensesMinor`,
 no point where it is 0). Each column and point is an openable figure with the
 month as its period (`pointFigure`): View entries, Open plan on the plan
-figures, Ask about this, like a Spending Mix slice; the legend chips hide and
+figures, Ask about this, like a Spending mix slice; the legend chips hide and
 show a series. The panel mounts it only while money shows, behind an invisible
 placeholder of the chart's height (`.earned-spent-chart-reserve`); the chart
 draws nothing when money is hidden. Proof:
 `tests/earned-spent-chart-model.test.mjs`, `tests/earned-spent-chart-dom.test.mjs`,
 `tests/e2e/earned-spent-chart.spec.js`.
-Spending Mix follows the tab's month choice and has no month chips of its
+Spending mix follows the tab's month choice and has no month chips of its
 own: on All months it shows the whole range (`categoryShareChart`); with a
 month picked the Month page shows that month's (`month-flow.md`). The
 section is shared (`spending-mix-section.jsx`) and shows the Entries empty

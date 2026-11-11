@@ -253,7 +253,7 @@ month row under the header. A month choice pins the range into the URL, and
 a pinned Summary request is keyed by its range, so moving between months and
 All months reuses one Summary page instead of fetching it again. The phone
 bar holds Summary, Entries and Splits plus the ••• menu (one grid column per
-primary tab). Spending Mix follows the tab's month choice and has no month
+primary tab). Spending mix follows the tab's month choice and has no month
 chips: the whole range on All months, the picked month on Month (from the
 Month page DTO, no request). Decision: `docs/refactor-decisions.md` §8; design:
 design.md, "Summary Tab Month Choice".
@@ -391,10 +391,10 @@ limits in the one dated `src/domain/sg-tax-relief-limits.ts`) reads the year's
 entries whose category or transfer purpose is one of the three seeded relief
 categories (matched in SQL) and gives each person's use against the limits.
 In December the same facts feed one Reminders To do (`tax_relief`, read only
-in December). The cards are lazy code in Spending Mix's chunk, read once the
+in December). The cards are lazy code in Spending mix's chunk, read once the
 top summary is usable. No AI, no write, no new table.
 
-### What changed this month: a Summary card (current, 2026-11)
+### What changed: a Summary card (current, 2026-11)
 
 A Summary card under Money insights shows the month so far against the same
 point last month: the 3 categories that went up most and the 3 that went
@@ -424,7 +424,7 @@ card entries of the last four months (bounded by date, household-date index).
 all-or-nothing commands with audit events (`app-repository-card-rewards.ts`).
 The "Suggest cards from" setting defaults to the whole household (pooled caps
 and miles); per-person mode never names another person's card. Lazy code in
-Spending Mix's chunk, read once the top summary is usable. No AI.
+Spending mix's chunk, read once the top summary is usable. No AI.
 
 ### Ledger check-up: one explicit report of what is wrong (current, 2026-10)
 
@@ -559,7 +559,7 @@ balance reader can mistake it for one. Contribution rows are certified
 transfers in on the investment account (owner follows the account); the pair
 with the bank's GIRO row is one `transfer group` made inside the import batch,
 so Invested counts it once (`investment-moves.ts`). Placement: the Summary's
-"The accounts shown" row for the investment account carries a plain sentence
+"Accounts" row for the investment account carries a plain sentence
 ("$x on 30 Sep 2026, as the statement says"), read from the account-pills
 slice Summary already loads, so no page payload grows for a household with no
 investment statement.

@@ -31,14 +31,14 @@ appear in this order:
 1. **Summary**: the big picture for a range of months: planned versus actual
    income, spending and savings, where the money went, and your wallet
    balances. This is **All months**.
-   ![Summary in Plan shows planned and actual totals, money insights, spending mix and intent versus outcome](/faq/guide/desktop/thumbs/summary-household.webp)
+   ![Summary in Plan shows planned and actual totals, money insights, spending mix and plan vs actual](/faq/guide/desktop/thumbs/summary-household.webp)
    The pictures in this guide show **Plan**; Summary and Month open in
    **Simple** until you choose (see **Plan | Simple** under
    [Summary](#summary)).
    Pick one month of the range to see its plan (the **Month** page): income,
    monthly budgets and bills and dated payments next to what was actually spent, and
    where that month's money went ([Pick a month](#pick-a-month)).
-   ![Month shows the month's totals, money insights and Spending Mix, with the plan rows below](/faq/guide/desktop/thumbs/month-person.webp)
+   ![Month shows the month's totals, money insights and Spending mix, with the plan rows below](/faq/guide/desktop/thumbs/month-person.webp)
 2. **Entries**: every transaction for the month, grouped by day, with search
    and filters. This is where you add, fix and categorise spending.
    ![Entries lists transactions by day with totals and filters](/faq/guide/desktop/thumbs/entries-person.webp)
@@ -328,7 +328,7 @@ over plan.
   the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
-- **What changed this month**: a card under Money insights. It compares
+- **What changed**: a card under Money insights. It compares
   this month so far with the same days of last month (the 10th with the
   10th, never a whole month) and lists the three categories that went up
   most and the three that went down most, each with the difference, for
@@ -373,13 +373,14 @@ over plan.
   statement's points are the final word. Tap an amount to see the entries
   behind it. Set the rules in **Settings**, **Cards and rewards**.
 - **Summary is a dashboard** on a wide screen: the top summary sits beside
-  Money insights, the chart beside What changed this month, and the other cards
+  Money insights, the chart beside What changed, and the other cards
   in rows of two, so you see more without scrolling. On a tablet the
   cards are two across, and on a phone one under another, as before. Long
   lists start short: **Show all** (or **Open the details** under the months)
   opens the rest in place.
+- **Card names**: every card under the top summary has a short name and, under it, one quiet line that says the period or what it counts: Spending mix, "By category, Dec 2025 to Nov 2026"; Plan vs actual, "By month, Dec 2025 to Nov 2026"; Tax reliefs, "For 2026". The same name and line show on the card, on its tile, at the top of the window a tile opens and in **Arrange cards**.
 - **Tiles**: Coming up, Investments, Miles and cashback, Tax reliefs and
-  Bank fees this year show as small tiles, three across on a wide screen and
+  Bank fees show as small tiles, three across on a wide screen and
   two across on a phone (where Subscriptions and bills is a tile too). Each
   tile shows its main figure, one short note and a few lines. Tap a tile to
   open the whole card in a window (a sheet from the bottom on a phone); press
@@ -439,7 +440,7 @@ over plan.
   end of the year if this keeps up: what you kept so far, plus each month
   still to come at a typical amount from your last 6 months (the highest and
   lowest month are left out, so one bonus doesn't count).
-- **Spending Mix**: a donut of spending by category over the whole range,
+- **Spending mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
   amount, its share and a thin bar. The total is above the ring. The five
   biggest slices have a bubble beside them with the category's own icon and its
@@ -450,13 +451,13 @@ over plan.
   the same number of months before the ones you are looking at; it is left out
   when there is not enough history, and while money is hidden. The top five show; **Show all** lists
   the rest. Pick a month to see that month's ([Month](#month)).
-- **Intent vs Outcome**: the latest six months show as small tiles (what you
+- **Plan vs actual**: the latest six months show as small tiles (what you
   spent and how far under or over plan; select one to open that month). **Open
   the details** shows one card per month, newest first. Each leads with
   what you spent against what you planned, with a bar, the percent of plan
   and how far under or over you are. Your planned and actual income sit
   under it, and **Details** opens the income, spending and savings figures.
-- **The accounts shown**: one list with each account's current balance and
+- **Accounts**: one list with each account's current balance and
   whether a statement has confirmed it. The first three show; **Show all**
   lists the rest. Select an account to open its entries.
   An investment account you have imported an iFAST or StashAway statement for says what
@@ -466,7 +467,7 @@ over plan.
   ([Import an investment statement](#import-an-investment-statement-ifast-and-stashaway)).
   Hide money totals and both the figure and the sentence go.
 
-![Spending Mix: the donut beside the ranked categories, with Intent vs Outcome below](/faq/guide/desktop/thumbs/summary-charts.webp)
+![Spending mix: the donut beside the ranked categories, with Plan vs actual below](/faq/guide/desktop/thumbs/summary-charts.webp)
 
 ### What each control does
 
@@ -478,7 +479,7 @@ over plan.
   spent $300 more than you earned"), and a few facts: your **daily spend**
   and your **top spending** categories with their share of your spending
   (select one to see its entries). The figures are the same in both.
-  **Earned vs spent by month** takes the place of Intent vs Outcome: one row
+  **Earned vs spent** takes the place of Plan vs actual: one row
   per month, newest first, with what you kept (or overspent), what you
   earned and spent, and a thin bar; the month's name opens that month.
   When Summary covers two or more months, a chart sits above those rows (see
@@ -493,8 +494,8 @@ over plan.
   ![Summary in Simple: what you earned and spent, the bar, and a few facts](/faq/guide/desktop/thumbs/summary-simple.webp)
 
 - **The chart above the months**: when Summary covers two or more months,
-  the card with the month-by-month list (**Earned vs spent by month** in
-  Simple, **Intent vs Outcome** in Plan) starts with a chart. Each month
+  the card with the month-by-month list (**Earned vs spent** in
+  Simple, **Plan vs actual** in Plan) starts with a chart. Each month
   has two columns, **Earned** and **Spent**, and a line runs across the
   months. In Simple the line is what you **Kept**; it drops below the zero
   line in a month you spent more than you earned. In Plan the line is your
@@ -507,7 +508,7 @@ over plan.
   right of the chart (the columns use the amounts on the left). A month with
   no plan has no point on the solid blue line.
   The columns grow, the lines draw and the points pop in the first time you
-  scroll to the chart, and the Spending Mix ring sweeps round the first time
+  scroll to the chart, and the Spending mix ring sweeps round the first time
   you see it (none of this if your phone or computer is set to reduce
   motion). Select a column or
   a point, or on a computer rest the pointer on it, to see that month's
@@ -520,7 +521,7 @@ over plan.
   Hide money totals
   and the chart goes away, and with a single month there is no chart.
 
-  ![Earned vs spent by month starts with a chart of each month's earned and spent and a line for what was kept](/faq/guide/desktop/thumbs/summary-month-chart.webp)
+  ![Earned vs spent starts with a chart of each month's earned and spent and a line for what was kept](/faq/guide/desktop/thumbs/summary-month-chart.webp)
 
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.
@@ -553,11 +554,11 @@ over plan.
   category;
   **Show fewer** folds it back. With money hidden the amounts show as dots and
   the percentages stay.
-- **A month card** in Intent vs Outcome: select **Details** for the planned,
+- **A month card** in Plan vs actual: select **Details** for the planned,
   actual and variance figures (the latest month starts open). The **Note** row
   there edits that month's note. The month's name opens that month.
 
-![The accounts shown, with current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
+![Accounts, with current balances and statement status](/faq/guide/desktop/thumbs/summary-wallets.webp)
 
 ### Common tasks
 
@@ -565,7 +566,7 @@ over plan.
 2. To check last year: select **‹** next to the range until the months you
    want are shown.
 3. To find what drove spending: select the Spent figure, then **View
-   entries**, or select **›** next to the biggest category in Spending Mix,
+   entries**, or select **›** next to the biggest category in Spending mix,
    or pick a month to see its plan.
 
 ### Pick a month
@@ -596,8 +597,8 @@ only percentages, and nothing turns red or says "under" or "over".
 Every amount and money line on a card can be opened to see where it came
 from: Spent and its plan, each part of the earned, spent and kept bar and
 each line of its key, the sentence under it, Where your money goes, Income and
-Saved, Daily spend and Top spending, each month in Intent vs Outcome and in
-Earned vs spent by month, the Spending Mix categories, the Month plan's
+Saved, Daily spend and Top spending, each month in Plan vs actual and in
+Earned vs spent, the Spending mix categories, the Month plan's
 actual amounts, the Entries totals and the Splits balance. Nothing looks
 like a button: point at a figure (or move to it with Tab) and it is
 underlined with a small arrow after it; select it (on a phone, tap it) and
@@ -652,7 +653,7 @@ stays highlighted, and the range at the top stays as it was.
   (planned income minus planned spend; it says **Planned more than you earn** when negative).
   Select it to see what it means, with **Open plan** and **Ask about this**.
 - **Money insights** for the month.
-- **Spending Mix**: the month's spending by category, the same donut and
+- **Spending mix**: the month's spending by category, the same donut and
   ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** offers that category's entries for this month. A month with no
   spending says so instead of showing an empty donut.
@@ -673,7 +674,7 @@ stays highlighted, and the range at the top stays as it was.
   with the bar and the same few facts; in place of the plan rows it lists
   **Money in** (what came in, one row per source; select one to see its
   entries), and **Plan this month** switches back to Plan to set monthly budgets
-  and dated payments. Spending Mix shows where the money went in both.
+  and dated payments. Spending mix shows where the money went in both.
   Month opens in Simple until you choose Plan.
 - **Month**: the row of months under the top bar (on a phone, **‹**, the
   month's name and **›** beside the View and scope bar) moves to another
@@ -2248,7 +2249,7 @@ What it does and does not do:
   market value of everything in the account plus any cash in iFAST). It is
   kept for reference. It is not a bank balance, it is never checked against
   your entries, and it is not a prediction. It appears on **Summary** under
-  **The accounts shown**, with the statement's date.
+  **Accounts**, with the statement's date.
 - Importing the same statement again adds nothing. A corrected statement for
   the same month replaces the figure saved for that month, and says so before
   you save.
@@ -3432,8 +3433,8 @@ colours, and add your own.
 ### Charts that draw in
 
 Charts and bars on Summary draw themselves once, the first time you scroll
-them into view: the ring around Spending Mix, the small bars and lines on the
-tiles, the bars on What changed this month (a bar from the middle line: red to
+them into view: the ring around Spending mix, the small bars and lines on the
+tiles, the bars on What changed (a bar from the middle line: red to
 the right when a category went up, green to the left when it went down), and
 the thin bar under each month in Months against plan. Every number is already
 there; only the bars move. If you have turned on reduced motion on your device,

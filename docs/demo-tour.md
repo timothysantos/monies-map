@@ -40,7 +40,7 @@ Open **Summary** with **Household** selected.
 - **Money insights** under the cards lead with a **To do**: Serene's OCBC 365
   Card statement differs from what's recorded by $42.80. Its **Big picture** line says the household
   kept about 58% of what came in over the last 12 months.
-- Scroll to **Intent vs Outcome**: each month is a card with its spend
+- Scroll to **Plan vs actual**: each month is a card with its spend
   against plan. Most months finish under plan. One month,
   two months ago, sticks out above the plan. Hold that thought.
 

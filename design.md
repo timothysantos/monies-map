@@ -475,7 +475,7 @@ question (docs/flows/ask-flow.md "Money questions"):
   plan or the other month small under it). Hidden money replaces the words
   and rows with "Reveal money totals to read these insights."
 
-The plan answer is Intent vs Outcome (round-2 mockups `chat-intent-*`):
+The plan answer is Plan vs actual (round-2 mockups `chat-intent-*`):
 its lead reads the Month lead's "Spent" and "of $X plan" (the spend job:
 the shared `splitMoneyUse`, `src/domain/money-jobs.ts`), and under its lead
 bar it draws the Month and Summary lead's `SavingsBar` (ui/savings-bar.jsx)
@@ -1211,7 +1211,7 @@ Where it is used:
   the category line is dropped when it equals the item's name, an empty note
   shows nothing, the total is one line, and
   nothing scrolls sideways (`tests/e2e/summary-month-lsd.spec.js`).
-- Summary Intent vs Outcome (`summary-intent-outcome.jsx`,
+- Summary Plan vs actual (`summary-intent-outcome.jsx`,
   `summary-intent-outcome-model.js`, `summary-intent-outcome.css` in the
   Summary route chunk): newest month first, each a compact `LeadCard`. The
   month name (a 44 px link) opens the month; Lead: that month's spent
@@ -1225,10 +1225,10 @@ Where it is used:
   counts it) with Open plan, the plan aside and planned figures `plan`, the
   income chips `earned`, and the Details' actuals `earned`, `spent` and
   `difference` (realized savings, income less spending). The section is a
-  `React.lazy` chunk beside the first screen (it sits under Spending Mix),
+  `React.lazy` chunk beside the first screen (it sits under Spending mix),
   which made room in the first-screen budget for the lead's figures. The latest month starts open,
   the others fold. From 1,024 px the cards are a grid, 2 across (3 from 1,440
-  px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending Mix. Hidden money: dots in plain ink, the bar's track only, no
+  px), latest first; a card with its Details open spans the whole row so no gap sits beside it, and the section takes the full row under Spending mix. Hidden money: dots in plain ink, the bar's track only, no
   percent and no under/over words, the variance dots too.
   `tests/e2e/summary-month-lsd.spec.js` compares every figure with the page
   DTO on a phone (WebKit-tagged) and a desktop, and checks 390 px for
@@ -1303,8 +1303,8 @@ Where it is used:
   the plan (`withoutPlanSignals`, `money-signals/plan-signals.ts`: months
   under plan, plan short or left, over plan, planned bills, savings on
   plan, plan pace, fixed costs; the check-in's context key gains "|simple"
-  so its memory is per mode), Spending Mix, "Earned vs spent by month" in
-  Intent vs Outcome's place, and The accounts shown. "Earned vs spent by month"
+  so its memory is per mode), Spending mix, "Earned vs spent" in
+  Plan vs actual's place, and Accounts. "Earned vs spent"
   (`summary-earned-spent.js`, model `summary-earned-spent-model.js`): flat
   rows split by hairlines, newest first; the month name (44 px) opens the
   month, beside it "Kept $x" (mint) or "Overspent $x" (rose), under it
@@ -1314,7 +1314,7 @@ Where it is used:
   `splitMoneyUse` with its own category share and its own investment moves
   (the Summary page's `investmentMovesByMonth`, only the months where
   something moved), so its spent, invested and kept are the Month lead's.
-  **The month chart.** Above the rows (and above Intent vs Outcome's cards in
+  **The month chart.** Above the rows (and above Plan vs actual's cards in
   Plan), when the range has two or more months, a column + line chart
   (`earned-spent-chart.js`, hand-drawn SVG, its own lazy chunk behind an
   invisible `.earned-spent-chart-reserve`, so the cards under it do not move).
@@ -1385,9 +1385,9 @@ Where it is used:
 - Summary body, under the lead (`spending-mix-section.jsx`,
   `summary-panel.jsx`, `summary-body.css`; the ranked list and the slices'
   CSS are `SpendingMixList` (`category-visuals.jsx`) and `spending-mix-list.css`, shared with
-  the Entries breakdown; in the Spending Mix and Summary
-  chunks; no `styles.css` growth; Spending Mix is a `React.lazy` chunk beside
-  the first screen, list, slice menus and words included). The Spending Mix donut labels only the
+  the Entries breakdown; in the Spending mix and Summary
+  chunks; no `styles.css` growth; Spending mix is a `React.lazy` chunk beside
+  the first screen, list, slice menus and words included). The Spending mix donut labels only the
   slices with room for a label (`SpendingMixChart sliceLabels`, laid out by
   `donut-label-layout.js` in the lazy Recharts chunk; the old percent labels
   and category badges collided when many categories had thin slices;
@@ -1434,7 +1434,7 @@ Where it is used:
   against the previous period is left out: neither page loads it. The
   coloured sectors take no pointer events, so Recharts never swaps a sector
   for its "active" copy under the pointer.
-  The accounts shown is one group of `DetailRow`s (a `DetailRows` group, from
+  Accounts is one group of `DetailRow`s (a `DetailRows` group, from
   1,024 px the heading on the left and the group on the right): the wallet
   name with its statement freshness under it ("Reconciled to Sep 2026
   statement", in the money tone's ink: mint when matched, rose when off,
@@ -1509,13 +1509,13 @@ Where it is used:
   opens the breakdown (`aria-expanded`; folded by default, the list of
   entries being the page's job, and the choice kept on the device in
   `monies-map:entries-breakdown`, read and written in try/catch, like
-  Spending Mix's "Hide list"). The breakdown (`EntriesBreakdownPanel`,
-  owner 2026-10-20, `docs/audits/entries-donut-compact/`) is Spending Mix
+  Spending mix's "Hide list"). The breakdown (`EntriesBreakdownPanel`,
+  owner 2026-10-20, `docs/audits/entries-donut-compact/`) is Spending mix
   made compact: a card with the donut (300 px tall on a wide screen, 260 on
-  a phone) labelled like Spending Mix ("Name 32.1%" only where it fits, no
+  a phone) labelled like Spending mix ("Name 32.1%" only where it fits, no
   icon bubbles, tiny slices unlabelled, every slice an openable figure whose
   quick facts and menu name the category; on Entries its View entries
-  narrows this list to that category), and Spending Mix's lean ranked list
+  narrows this list to that category), and Spending mix's lean ranked list
   (`SpendingMixList`) beside it once the card is 700 px wide (under it on a
   phone): the top five (three on a phone), then "Show all N" / "Show
   fewer". A row is one 44 px line: a colour dot, the name, "N entries" (wide
@@ -1526,7 +1526,7 @@ Where it is used:
   shows the slice ("Show Travel in the chart", `aria-pressed`; a hidden row
   is dimmed with "Hidden", and "Show N hidden categories" brings them
   back). Both stay one tap away and the row keeps a single trailing icon,
-  which is less than Spending Mix's dot-edit plus arrow. Open, with the
+  which is less than Spending mix's dot-edit plus arrow. Open, with the
   list at its top five, the card is about the donut's height (1,440 px wide, twenty
   categories: 322 px, was 2,583 px). The figures are the list's own reading
   (`getExpenseBreakdown` over the filtered entries as the view reads them),
@@ -1769,8 +1769,8 @@ frames are in `docs/audits/hover-and-chart-motion/`.
 
 - **Rows and cards** (`row-motion.js`, `row-motion.css`, loaded by the lazy
   chunks that use it, never `public/styles.css`): Entries rows, the Entries
-  and Splits category lists, Spending Mix's list, "Earned vs spent by
-  month" rows, Intent vs Outcome's month cards, the Month plan table rows,
+  and Splits category lists, Spending mix's list, "Earned vs spent by
+  month" rows, Plan vs actual's month cards, the Month plan table rows,
   Splits activity rows and the Imports preview rows on a phone carry
   `motion-row`. Under a mouse or trackpad (`hover: hover` and
   `pointer: fine`) or keyboard focus the row takes a 6% wash of its
@@ -1787,7 +1787,7 @@ frames are in `docs/audits/hover-and-chart-motion/`.
   (`tilt`), Travel's plane nudges forward (`fly`), Transport and Taxi slide
   (`drive`), Shopping and Groceries bounce, Bills, Tax and Subscriptions
   shake, Salary, Extra income, Investments and Savings nudge up (`rise`, the
-  last two by name), and everything else pops (Spending Mix's colour dot
+  last two by name), and everything else pops (Spending mix's colour dot
   pops too). Never on touch, never on focus.
 - **The month chart** (`earned-spent-chart.css`): it waits at its start
   while off screen (`data-chart-motion="armed"`) and plays once when 30% of
@@ -1797,7 +1797,7 @@ frames are in `docs/audits/hover-and-chart-motion/`.
   ending exactly where a still chart is drawn. Once played, a pointer on a
   column widens it by 18% from its centre and dims the other columns; a
   point grows 30%. All of it stays inside the plot, which clips.
-- **The Spending Mix donut with icon bubbles** (`spending-mix-bubbles.jsx`,
+- **The Spending mix donut with icon bubbles** (`spending-mix-bubbles.jsx`,
   `donut-bubbles.css`, `donut-bubbles-model.js`; owner mockup 2026-11-11, on
   Summary and the Month page; Entries and Splits keep the Recharts donut
   below): a thick ring with one arc per category, a bubble just outside each
@@ -1896,7 +1896,7 @@ Enter or Space on a `[data-fig]`, loads `figure-menu.js` with a dynamic
 import on first use and toggles the menu. The menu is a few DOM nodes the
 module draws itself (no React, so its chunk adds no first-screen file),
 titled with what it is, first and in bold: a category's colour dot and name
-(a Spending Mix slice or row, a plan row's category, a Top spending chip),
+(a Spending mix slice or row, a plan row's category, a Top spending chip),
 otherwise the figure's name and period ("Invested · Jun 2025 – May 2026";
 `title` in `figureMenu`, `data-fig-name` for a split balance's group). A long
 name wraps to two lines. Hidden money keeps the title (no amount is in it).
@@ -1910,14 +1910,14 @@ choice sends `monies:money-action` (`{ entries: location }` or
 `{ askText }`) and the shell navigates. What the menu offers is pure data
 (`figure-menu-model.js`, `figureMenu`), tested without a page; the words
 are `copy/figure-copy.js`. The first screen carries only the attributes and
-the listener (`check:bundle`; Intent vs Outcome moved to a lazy chunk to
+the listener (`check:bundle`; Plan vs actual moved to a lazy chunk to
 make room).
 
 Where: the Summary and Month lead in Plan and Simple (Spent and its plan,
 the plan line, Earned and Spent in Simple, every savings bar part, legend
 line and the sentence, the money jobs, the Income and Saved pills or
 columns, Not planned yet), Simple's Daily spend and Top spending, Intent vs
-Outcome, Earned vs spent by month, Spending Mix (each slice and each row's `›`), the Month
+Outcome, Earned vs spent, Spending mix (each slice and each row's `›`), the Month
 plan rows' actuals, the Entries lead and pills, the Splits lead's balance
 and the open group's strip tile (another tile still opens its group), and
 every amount on Subscriptions and bills (its two totals, each row's last
@@ -1938,7 +1938,7 @@ View entries shows the spending it divides.
 
 Two Summary cards (owner-approved, 2026-11-10; DOMAIN.md "Investments Over
 Time" and "Tax Relief"), under Subscriptions and bills. Both are lazy code in
-Spending Mix's chunk (`investments-card.jsx`, `tax-reliefs-card.jsx`,
+Spending mix's chunk (`investments-card.jsx`, `tax-reliefs-card.jsx`,
 `summary-cards.css`, words in `copy/summary-cards-copy.js`), registered in
 `summary-panel.jsx` beside Subscriptions and bills and rendered only once the
 top summary is usable (`cardsUsable`). Each reads its own API
@@ -1970,7 +1970,7 @@ for Arrange Summary as `changed` and so movable and hideable (owner
 decision 2026-11-10; DOMAIN.md "What Changed Card"; `summary-changed-section.jsx`,
 words in `copy/summary-changed-copy.js`).
 
-- Loading: it rides in Spending Mix's lazy chunk (a chunk of its own added
+- Loading: it rides in Spending mix's lazy chunk (a chunk of its own added
   two first-screen files); `useSummaryCardQuery` reads
   `GET /api/summary-changed?view=&scope=` through `fetchRequiredQuery` once
   the top summary is usable, only when the Summary range ends in the
@@ -1991,7 +1991,7 @@ words in `copy/summary-changed-copy.js`).
 A Summary card (owner-approved, 2026-11-10; DOMAIN.md "Card Reward Rule"),
 registered as `miles`, last in the usual order so nothing under it moves when it
 loads (`SUMMARY_CARD_IDS`,
-`cardBody`, `NAMES`). Lazy code in Spending Mix's chunk
+`cardBody`, `NAMES`). Lazy code in Spending mix's chunk
 (`card-rewards-section.jsx`, `card-rewards-section.css`,
 `card-rewards-model.js`, words in `copy/card-rewards-copy.js`), read once the
 top summary is usable (`use-card-rewards.js`, `queryKeys.cardRewards`).
@@ -2068,7 +2068,7 @@ Savings (D2), found by the fixed rules in `src/domain/repeating-charges.ts`.
   when every bill is fixed, rounded to its step: `roundRange` in `pace.ts`). A phone shows the first five and "3 more by 10 Dec ›". Nothing due:
   "Nothing is due to come in the next 30 days." (`buildComingUp` in
   `subscriptions-model.js`, `upcomingCharges` in the engine.)
-- Code: the card rides in Spending Mix's lazy chunk (`spending-mix-section`
+- Code: the card rides in Spending mix's lazy chunk (`spending-mix-section`
   re-exports it); a chunk of its own made the bundler move React into a new
   first-screen file. While its answer loads, Summary reserves the height it
   had last time on this device (`monies-map:subs-card-height`), none the
@@ -2085,9 +2085,9 @@ not one of them; Money insights can be moved but never hidden, so a To do
 is never out of sight.
 
 - Cards (`summary-card-order.js`): `insights`, `subs` (Subscriptions and
-  bills), `investments` (Investments over time), `taxreliefs` (Tax reliefs this year), `mix` (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent
-  by month in Simple) and `accounts` (The accounts shown), in that usual
-  order. Spending Mix and the month-by-month card sit side by side when they
+  bills), `investments` (Investments), `taxreliefs` (Tax reliefs), `mix` (Spending mix), `plan` (Plan vs actual, or Earned vs spent
+  in Simple) and `accounts` (Accounts), in that usual
+  order. Spending mix and the month-by-month card sit side by side when they
   are next to each other (either order); otherwise each takes the width. A
   hidden card is not drawn and reads nothing (Subscriptions and bills makes
   no request).
@@ -2134,8 +2134,8 @@ change.
   12), a `minWidth` (a test checks the span is wide enough at 1,064px) and a
   `tile` slot. Usual order and spans: lead 8 + Money insights 4; Intent vs
   Outcome (with the Earned vs spent chart and its pace sentence) 8 + What
-  changed this month 4; Spending Mix 6 + Subscriptions and bills 6; Miles and
-  cashback 6 + Investments over time 6; Tax reliefs 6 + The accounts shown 6.
+  changed this month 4; Spending mix 6 + Subscriptions and bills 6; Miles and
+  cashback 6 + Investments 6; Tax reliefs 6 + Accounts 6.
   The lead takes 8 when the first shown card is 4 wide, else the row.
 - **Order stays predictable.** Rows fill left to right in the person's order,
   never out of it (no `grid-auto-flow: dense`). `packSummarySpans` grows the
@@ -2145,12 +2145,12 @@ change.
   `--s2`. A card with no body (What changed outside the month in progress)
   takes no place; a slot that renders nothing (Investments with no data) is
   `display: none`, which can leave a short row.
-- **A glance, opened in place.** Intent vs Outcome shows the latest 6 months
+- **A glance, opened in place.** Plan vs actual shows the latest 6 months
   as small tiles (month, spent, how far over or under plan, in the money
   tones; each opens its month) and **Open the details**, which opens the full
   month cards (the existing Details row pattern, kept in memory only). A link
   to `#month-YYYY-MM` opens them at once. The accounts card shows its first 3
-  rows and **Show all N ›**. Subscriptions and bills, What changed this month
+  rows and **Show all N ›**. Subscriptions and bills, What changed
   and Miles and cashback always use their short (phone) form with their own
   Show all (`useCompactSummaryCard`), because on the grid they are a third of
   the page.
@@ -2159,7 +2159,7 @@ change.
   its money tone's own fill and ink (`.summary-lead-slot`, so Month's lead is
   untouched); What changed's up and down figures are 1.1rem. No new colours
   and no new wording: every chip is an existing deterministic fact.
-- **Spending Mix** (`dashboard` prop): half the row; the total above the
+- **Spending mix** (`dashboard` prop): half the row; the total above the
   ring (dots when money is hidden), then the icon-bubble donut (see "Motion"),
   the whole svg up to 460px wide, about 354px on a phone with the legend under
   it. The legend (a colour dot, the name, amount and share, the existing rows)
@@ -2168,7 +2168,7 @@ change.
   "Change notes under a big number"): a one-line note under a big figure, the
   arrow and whole percent in the money tone (spending up rose, down mint,
   growth mint) and quiet words after it, only where the card already has the
-  two figures. Spending Mix's total carries one ("▼ 6% vs the 6 months
+  two figures. Spending mix's total carries one ("▼ 6% vs the 6 months
   before"): the range's complete months against the same number of months
   straight before them, from the stored month totals the Summary page loads
   anyway (`spendChange`, `summary-spend-change.ts`; the month in progress is
@@ -2193,11 +2193,11 @@ change.
 Owner decision, 2026-11-11 (the approved tile mockup; phase 2 of "Summary
 dashboard layout"). A tile is a compact glance at a card, built from the data
 the card already reads (the same queries, no new read, nothing on the first
-screen: the tiles ride in Spending Mix's lazy chunk) and opening the whole
+screen: the tiles ride in Spending mix's lazy chunk) and opening the whole
 card in a dialog or sheet.
 
 - **Which cards.** Coming up, Investments, Miles and cashback, Tax reliefs and
-  Bank fees this year are tiles at every width; Subscriptions and bills is its
+  Bank fees are tiles at every width; Subscriptions and bills is its
   big card on a desktop (1,100px and up) and a tile below it. Coming up and
   Bank fees are registered cards of their own (`tileOnly`: their card form is
   the sheet; Coming up opens Subscriptions and bills on its Coming up tab,
@@ -2210,9 +2210,9 @@ card in a dialog or sheet.
   tile as one entry; a hidden card's tile and its `#summary-<id>` link do
   nothing. `showsAsTile(id, isDesktop)` decides the form.
 - **Layout.** Consecutive tiles form one full-width block of the grid: 3
-  across from a 1,064px page, 2 across below it, each 264px tall (at least 236px
+  across from a 1,064px page, 2 across below it, each 284px tall (at least 256px
   below, growing with its content; two tiles in a row share the taller height).
-  A tile that has nothing to show is not drawn; a reserve of 236px holds its
+  A tile that has nothing to show is not drawn; a reserve of 256px holds its
   place while its chunk loads (layout-shift guard).
 - **A tile** is one button: title and "Open ›", a headline (44px on a desktop; see "Summary phone type
   scale"), one status
@@ -2234,10 +2234,63 @@ card in a dialog or sheet.
   used (it would shift the page). A figure inside the dialog opens its menu
   inside the dialog (`figure-menu.js`), which a modal dialog needs.
 
+## Summary card titles
+
+Owner decision, 2026-11-11 ("Can the cards be more uniformed in terms of
+titles?"). Every Summary card has a TITLE, a short name for what the card is
+(sentence case, no "The", no time word), and ONE quiet SUBTITLE line under it
+for the period or basis. All of them are in one list,
+`src/client/copy/summary-card-titles.js` (`cardTitle(id)`, `cardSubtitle(id,
+context)`), read by the desktop card, the tile, the sheet or dialog a tile
+opens (its title; the subtitle is its description), the Arrange cards row
+(name and description) and the aria labels. A rename is a one-line edit
+there. A subtitle may carry live words (months, a year) from data the card
+already has, so each is a small function; with no data (Arrange cards) it
+drops them ("By month").
+
+| Card | Title | Subtitle |
+|---|---|---|
+| `insights` | Money insights | Needs a look, and went well |
+| `plan` | Plan vs actual (Simple: Earned vs spent) | By month, Dec 2025 to Nov 2026 |
+| `changed` | What changed | November so far, against the same days of October |
+| `mix` | Spending mix | By category, Dec 2025 to Nov 2026 |
+| `subs` | Subscriptions and bills | A month |
+| `coming` | Coming up | Next 30 days |
+| `investments` | Investments | On the latest statements |
+| `miles` | Miles and cashback | This month, estimate |
+| `taxreliefs` | Tax reliefs | For 2026 |
+| `bankfees` | Bank fees | This year |
+| `accounts` | Accounts | Balances on the latest statements |
+
+- One head: `summary-card-head.jsx` (`CardHead`: the title, the subtitle and
+  an optional action at the top right such as Open, a chip, a figure or Show
+  list). Styled once in `summary-body.css` (title 1rem bold; subtitle 0.8125rem
+  muted, 4px under it). The Simple month list is drawn without React, so it
+  writes the same markup by hand. The Money insights card wears the same head
+  on Summary (the audience, "Joyce's", is no longer in its label: the page
+  head already says who is viewed); Month keeps its own eyebrow.
+- A tile's subtitle is the card's, on one line under its title; a narrow tile
+  cuts it with an ellipsis, never a second wording. An extra sentence that
+  says something the subtitle does not (the tax filing year, "less any they
+  refunded", what a subscription is) stays as a quiet note under the head.
+- The Coming up sheet wears Coming up's title and subtitle, not Subscriptions
+  and bills'.
+- Month's Spending mix has the same title and no subtitle (it is always one
+  month and says so above).
+- "Intent vs Outcome" is a retired name (`retired-names.ts`): jargon. The
+  other old names (What changed this month, Tax reliefs this year, Bank fees
+  this year, Earned vs spent by month, Investments over time) are plain
+  phrases used elsewhere (Money insights lines, DOMAIN terms), so they are not
+  retired. `Wallets in view` now points to "Accounts".
+- Proof: `tests/summary-card-titles.test.mjs` (every registered card has both;
+  no "The", no period word at the end; the owner's list word for word) and
+  `tests/e2e/summary-card-titles.spec.js` (phone and desktop: same computed
+  title and subtitle sizes on every card, tile and sheet share a title).
+
 ## Summary card spacing
 
 The cards under Money insights (What changed, Subscriptions and bills,
-Investments over time, Tax reliefs, Miles and cashback, The accounts shown)
+Investments, Tax reliefs, Miles and cashback, Accounts)
 share one block of rules at the end of `src/client/summary-body.css`, each
 prefixed with `.summary-card-slot` so it wins whichever card stylesheet loads
 last (visual polish pass, 2026-11-11; no copy or behaviour changed):
@@ -2378,7 +2431,7 @@ is for a phone (a page under 600px) and keeps the desktop's sizes from 1,064px.
 | Tile headline | 44px, fixed | `clamp(1rem, min(17cqw, 100cqw / (chars x 0.62)), 1.75rem)` of the tile (about 24px at 390px, 18px at 320px); 44px cap from a 600px page |
 | Range headline | "$2,150 to $2,250" | "$2,150 - $2,250" with an en dash (CSS swaps the word; the words stay for a screen reader) |
 | Lead spent figure | 41.6px | 36px (56px from 724px, unchanged) |
-| Spending Mix total | 30px at 390 | `clamp(1.6rem, 7vw, 2.75rem)`, about 27px at 390, one line |
+| Spending mix total | 30px at 390 | `clamp(1.6rem, 7vw, 2.75rem)`, about 27px at 390, one line |
 | Investments worth | 28.8px | `clamp(1.35rem, 6vw, 1.8rem)`, about 23px at 390 |
 | Bank fees total (sheet) | 44px | `clamp(1.75rem, 8vw, 2.75rem)`, about 31px at 390 |
 | What changed up or down amount | 17.6px | 16px |
@@ -2388,7 +2441,7 @@ is for a phone (a page under 600px) and keeps the desktop's sizes from 1,064px.
 Rules: nothing under 12px (the donut centre label moved from 11.5px to 12px);
 the headline sets its own size from its tile (the tile is a size container,
 `container: summary-tile / inline-size`) so it never clips, with `--len` the
-characters it holds; a tile is `min-height: 236px` and grows, every part keeps
+characters it holds; a tile is `min-height: 256px` and grows, every part keeps
 its size (`flex: none`) so a mark or bar sits in its own space under the rows
 and never covers one; two tiles in a row share a height (the cell is a flex
 row). A chip always stays on one line: the Tax reliefs tile says "50 days left"
@@ -2962,11 +3015,11 @@ picking the range on both routes; the months offered are the range's months
   chips with a raised white selected one (`.summary-focus-button`, "Desktop
   Chrome"), with `aria-pressed`. The row wraps rather than clip at the page
   edge. Hidden on a phone.
-- Spending Mix has no month chips of its own; the month choice drives it.
+- Spending mix has no month chips of its own; the month choice drives it.
   All months shows the whole range (`categoryShareChart`). A picked month
   shows that month in the Month content, full width after the money
   insights and before the plan tables (the read-out before the editing
-  work, as on All months it sits beside Intent vs Outcome), from the Month
+  work, as on All months it sits beside Plan vs actual), from the Month
   page DTO's `categoryShareChart` (no request). One component for both
   (`SpendingMixSection`, `spending-mix-section.jsx`): same card, donut and
   ranked category list ("Summary body" above); no spending shows the Entries
@@ -3236,7 +3289,7 @@ Three strengths, never two on one element:
 
 - **Text only** (lists and tables, the default): only the amount's text
   takes the ink; no fill, no border. Entries row amounts and daily net, Month
-  Actual and Variance columns and totals, Intent vs Outcome's detail
+  Actual and Variance columns and totals, Plan vs actual's detail
   figures, Splits activity (`you lent`, `you borrowed`, `you received`,
   `you paid`),
   Settings statement health, Imports preview amounts and statement rows, and

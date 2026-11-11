@@ -44,7 +44,7 @@ to the money, not the finance term: the gap was paid from savings, or put
 on a credit card that isn't paid off yet, never "went onto a card".
 App and finance words the lint rejects: the app, chart, charts, unlinked, ledger, trustworthy, whole story, same story, checkpoint, onto a card, went onto, spoken for, runway, cushion, drawdown, skew, basis.
 
-Retired names the lint rejects, with what to say instead (owner, 2026-10-15): Overplanned -> Planned more than you earn; To allocate -> Not planned yet; Money jobs -> Where your money goes; Wallets in view -> The accounts shown; Budget bucket -> Monthly budget; Planned items -> Bills and dated payments; from its statement -> as the statement says.
+Retired names the lint rejects, with what to say instead (owner, 2026-10-15): Overplanned -> Planned more than you earn; To allocate -> Not planned yet; Money jobs -> Where your money goes; Wallets in view -> Accounts; Intent vs Outcome -> Plan vs actual; Budget bucket -> Monthly budget; Planned items -> Bills and dated payments; from its statement -> as the statement says.
 
 Words the tone lint rejects: overspent, overspend, overspending, blew, blown, bad month, cut back, cutting back, should, shouldn't, non-essential, nonessential, guilty, guilt, sacrifice, deny yourself, warning, alert, problem, problems.
 

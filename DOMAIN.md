@@ -84,7 +84,7 @@ copy lint and `tests/guide-content.test.mjs`):
 | remaining budget, positive / negative | Not planned yet / Planned more than you earn |
 | `planned_items` section, `planned item` | Bills and dated payments; a bill or dated payment |
 | `budget_buckets` section, `budget bucket` | Monthly budget |
-| Summary "wallets" row group | The accounts shown |
+| Summary "wallets" row group | Accounts |
 | investment statement figure | "$X on <date>, as the statement says" |
 
 ## Core Entities
@@ -262,13 +262,13 @@ Important distinctions:
   plan, and its Saved figure is the save job's kept. So the lead never says
   "under plan" beside a spend job that is over.
 - The stored `realized savings` (`income - spend`, the snapshot and month
-  rollup field, and Intent vs Outcome's per-month detail) is unchanged and
+  rollup field, and Plan vs actual's per-month detail) is unchanged and
   still counts money filed under `Savings` and `Investments` as spend.
 - The Summary page's `Planned investments` metric card carries the range's
   investment goal; the Month page derives it from its plan rows. The only
   other fields are `investmentMoves` (above) and, on the Summary page,
   `investmentMovesByMonth` (the same totals per month, only for the months
-  where something moved), so "Earned vs spent by month" splits each month
+  where something moved), so "Earned vs spent" splits each month
   the way its Month lead does.
 
 ### Money Figure
@@ -279,7 +279,7 @@ behind it can be listed and add up to it exactly
 filter `entry_figure` names one, and Entries then leads with its total.
 
 The money jobs' figures (through `splitMoneyUse`, as the leads, the
-savings bar, Simple and "Earned vs spent by month" show them):
+savings bar, Simple and "Earned vs spent" show them):
 - `spending`: expenses less paybacks, without money filed under
   `Investments` or `Savings` (the lead's "Spent");
 - `invested`: the `Investments` category plus transfers into investment
@@ -289,7 +289,7 @@ savings bar, Simple and "Earned vs spent by month" show them):
 - `from_savings`: spending past what came in;
 - `took_out`: more taken out of investments than put in;
 - `spent`: every expense less paybacks at the view's amounts (the Month
-  "Actual spend", Intent vs Outcome, a category's spending, a plan row's
+  "Actual spend", Plan vs actual, a category's spending, a plan row's
   actual).
 
 The Entries page's own figures (as entry-totals counts them, whole amounts
@@ -1512,7 +1512,7 @@ Definitions:
   Month page for that month (`/month?month=YYYY-MM`). A month choice pins
   the summary range into the URL so it stays fixed while months change.
 - `All months` is the UI label for the whole summary range (it replaced
-  Spending Mix's "Range overall" chip). The old `summary focus`
+  Spending mix's "Range overall" chip). The old `summary focus`
   (`summary_focus`) is retired.
 
 ### Lead View
@@ -1529,13 +1529,13 @@ Canonical terms:
 Definitions:
 - `Plan` is the lead as it was: the `money job` spend against its plan, the
   savings bar with its plan bar, the money jobs line, and the Income and
-  Saved figures with their plan and target; on Summary, Intent vs Outcome.
+  Saved figures with their plan and target; on Summary, Plan vs actual.
 - `Simple` is for a household that keeps no plan: `earned` (the period's
   income) and spent (the spend job's spending, the same figure as Plan's
   "Spent"), the same savings bar without its plan bar, and nothing about a
-  plan; on Summary, "Earned vs spent by month" replaces Intent vs Outcome.
+  plan; on Summary, "Earned vs spent" replaces Plan vs actual.
 - The `month chart` is the column + line chart that opens Summary's
-  month-by-month card (Simple's "Earned vs spent by month" and Plan's Intent
+  month-by-month card (Simple's "Earned vs spent" and Plan's Intent
   vs Outcome) when a range has two or more months: per month an Earned and a
   Spent column, and a line that is Kept in Simple and Planned spending in
   Plan. It draws only recorded figures the card's list already shows and is
@@ -1546,9 +1546,9 @@ Definitions:
   view and the savings bar ("All you earned"). It is recorded money, never
   a forecast.
 - The view is the whole page's mode on Summary and Month, not only the lead.
-  In `Simple`, Summary keeps Spending Mix, The accounts shown and Money insights
+  In `Simple`, Summary keeps Spending mix, Accounts and Money insights
   (without the insights about the plan, `plan-signals.ts`); Month keeps its
-  Spending Mix, notes and accounts and shows `Money in` (what came in, one
+  Spending mix, notes and accounts and shows `Money in` (what came in, one
   row per source) where the plan tables are, with "Plan this month" to go
   back to Plan. Entries, Splits and Ask do not change.
 - The default is `Simple` for anyone who has never chosen, whether or not
@@ -1573,10 +1573,9 @@ Canonical terms:
 Definitions:
 - The registered summary cards are `insights` (Money insights), `subs`
   (Subscriptions and bills, which holds Coming up and Bank fees),
-  `investments` (Investments over time), `taxreliefs` (Tax reliefs this
-  year), `mix`
-  (Spending Mix), `plan` (Intent vs Outcome, or Earned vs spent by month in
-  Simple) and `accounts` (The accounts shown). The top summary is not a
+  `investments` (Investments), `taxreliefs` (Tax reliefs), `mix`
+  (Spending mix), `plan` (Plan vs actual, or Earned vs spent in
+  Simple) and `accounts` (Accounts). The top summary is not a
   summary card and always stays first.
 - A person's order is one string ("insights,mix,subs,plan,-accounts", a
   leading "-" hides), kept per login in the viewer preferences and on the
@@ -1708,7 +1707,7 @@ Canonical terms:
   lines, plus `links` to Entries (an Entries filter), Month or Splits
 - `facts`: the figures behind an answer, pure reads of the Month page DTO
   (Actual spend and Planned spend cards, the summary month's income, the
-  Spending Mix donut, the view's entries and plan rows) and the Splits page
+  Spending mix donut, the view's entries and plan rows) and the Splits page
   DTO seen by one person (open group balances and open settlement
   checkpoints)
 - `check before an answer`: a high-confidence `skew candidate` that would
@@ -1801,7 +1800,7 @@ the shops behind it. It reports what has happened and never predicts.
 
 ### What Changed Card
 
-Summary's "What changed this month" card (`src/domain/summary-changed.ts`;
+Summary's "What changed" card (`src/domain/summary-changed.ts`;
 owner decision 2026-11-10, built and released ahead of review, its wording
 logged for review): the month so far against the same point last month (the
 10th with the 10th, never a whole month), by category, from the same
@@ -2015,7 +2014,7 @@ Rules (`src/domain/transfer-purpose.ts`, `readEntryForPerson`):
 - The household view is unchanged: the entry stays a transfer and adds
   nothing to spending or income.
 - In the sender's view the entry reads as their expense in the purpose
-  category at its full amount: Spent, category totals, Spending Mix, the
+  category at its full amount: Spent, category totals, Spending mix, the
   spend money job, budget lines, and a dated plan line it is linked to (a
   `plan-entry link` may name a transfer out that has a purpose).
 - In the receiver's view the same entry reads as a payback in that category

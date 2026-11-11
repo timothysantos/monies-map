@@ -813,7 +813,7 @@ through `buildEntriesFilterSearch`, with the From Ask chip), `Open Month`
 (`/month` with the answer's view, month and scope), `Open Splits`
 (`/splits` with the group of the largest balance), then the usual chips.
 
-The plan answer is Intent vs Outcome (mockups `chat-intent-*`): its lead
+The plan answer is Plan vs actual (mockups `chat-intent-*`): its lead
 is the Month and Summary lead's own "Spent" and "of $X plan", the spend
 job's figures (`spendJobFacts`, through the shared `splitMoneyUse` in
 `src/domain/money-jobs.ts`: Actual spend less money filed under Investments
@@ -834,7 +834,7 @@ Summary lead (`moneyUseOf` in `ask-answer-facts.ts`, the shared
 `splitMoneyUse`), each with the lead's savings bar under it (`outcome`):
 
 - invested: title "<period> investing"; Lead "Invested", the Investments
-  share of the Spending Mix, against the invest job's plan (the plan's
+  share of the Spending mix, against the invest job's plan (the plan's
   Investments rows; more is fine); chips Plan and Income; lines the largest
   Investments entries in plain ink (moved, not spent); links Open in Entries
   filtered to the Investments category (when anything was invested; with
@@ -855,7 +855,7 @@ Summary lead (`moneyUseOf` in `ask-answer-facts.ts`, the shared
 - spentVsEarned: title "<period> spending and income"; Lead "Spent" (the
   spend job's spending), chips Income and Invested; lines "Came out of
   savings" (rose) or "Kept" (mint), then the three largest spending
-  categories (the Spending Mix without Investments and Savings) with their
+  categories (the Spending mix without Investments and Savings) with their
   share of that spending; links Open in Entries (expenses), Open Month.
   Wording: "In May you earned …, spent … and invested …, so … came out of
   savings. Most of the spending went to home (…), … and …. Spending was …
@@ -874,7 +874,7 @@ showed nothing invested).
 
 Every figure comes from the server's facts: the Month page DTO of the view
 and month (the Actual spend and Planned spend cards, the summary month's
-income, the Spending Mix donut and its shares, the view's entries and plan
+income, the Spending mix donut and its shares, the view's entries and plan
 rows) and, for who owes whom, the Splits page DTO seen by one person (the
 view's person; on the household view the other person when someone is
 named, else both names): open group balances and open settle-ups. A month
