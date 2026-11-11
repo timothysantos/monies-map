@@ -188,6 +188,22 @@ test("the modules the first screen loads import and read their choice with stora
   });
 });
 
+test("device storage reads the window's storage when there is a window, null when it is blocked", async () => {
+  const { deviceStorage } = await import("../src/client/device-storage.js");
+  const store = { getItem: () => "true" };
+  try {
+    globalThis.window = { localStorage: store };
+    assert.equal(deviceStorage(), store);
+    globalThis.window = { get localStorage() { throw new DOMException("The operation is insecure.", "SecurityError"); } };
+    assert.equal(deviceStorage(), null);
+    globalThis.window = {};
+    assert.equal(deviceStorage(), null);
+  } finally {
+    delete globalThis.window;
+  }
+  assert.equal(deviceStorage(), null);
+});
+
 test("no client module reads localStorage as a default parameter or in the app-wide privacy provider without a guard", () => {
   const clientDir = path.join(ROOT, "src/client");
   const offenders = [];

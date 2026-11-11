@@ -8,7 +8,10 @@
 /** @returns {Storage | null} */
 export function deviceStorage() {
   try {
-    return globalThis.localStorage ?? null;
+    // `window` is the global in a browser; a stand-in `window` (tests, a host
+    // that scopes storage to its window object) is read first so both agree.
+    const host = typeof window !== "undefined" && window ? window : globalThis;
+    return host.localStorage ?? null;
   } catch {
     return null;
   }
