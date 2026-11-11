@@ -106,6 +106,15 @@ export function useIsMobileLayout() {
   return useMediaQuery(MOBILE_LAYOUT_QUERY);
 }
 
+// Subscriptions and bills, What changed this month and Miles and cashback sit
+// in a dashboard grid cell (design.md "Summary dashboard layout"): on a wide
+// page a third of the row, on a tablet half, so they always use their short
+// form (a few rows, then "Show all"), as on a phone. One place to change if a
+// card is ever given the room for its long form.
+export function useCompactSummaryCard() {
+  return true;
+}
+
 export function useIsMonthSheetLayout() {
   return useMediaQuery(MONTH_SHEET_LAYOUT_QUERY);
 }

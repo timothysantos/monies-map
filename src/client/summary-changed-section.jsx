@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { summaryChangedCopy as copy } from "./copy/summary-changed-copy";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
-import { useIsMobileLayout } from "./use-viewport";
+import { useCompactSummaryCard } from "./use-viewport";
 import { queryKeys } from "./query-keys";
 import { requestSummaryChanged } from "./summary-changed-api";
 import { useSummaryCardQuery } from "./use-summary-card-query";
@@ -108,7 +108,8 @@ function Row({ row, changed, visible, open, onToggle }) {
  */
 export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
   const queryClient = useQueryClient();
-  const phone = useIsMobileLayout();
+  // Summary's cards sit a third of a wide page across, so they use the short form everywhere.
+  const phone = useCompactSummaryCard();
   const { areTotalsVisible: visible } = useMoneyPrivacy();
   const [openCategory, setOpenCategory] = useState("");
   const [showAll, setShowAll] = useState(false);

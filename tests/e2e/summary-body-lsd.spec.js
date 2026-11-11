@@ -16,13 +16,15 @@ import { gotoPageAfterApi, loadSummaryAccountPills, loadSummaryPage, postJson, r
 
 const VIEW = "person-tim";
 const RANGE = { summaryStart: "2025-06", summaryEnd: "2025-10" };
-const SUMMARY_URL = `/summary?view=${VIEW}&month=2025-10&summary_start=${RANGE.summaryStart}&summary_end=${RANGE.summaryEnd}`;
+// A link that targets one month opens Intent vs Outcome's full month cards.
+const SUMMARY_URL = `/summary?view=${VIEW}&month=2025-10&summary_start=${RANGE.summaryStart}&summary_end=${RANGE.summaryEnd}#month-2025-10`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 // The list's first rows: five on a desktop, three on a phone.
 const topCount = (page) => (page.viewportSize().width < 761 ? 3 : 5);
 // The ring's outer radius on each layout (spending-mix-section.jsx) and the
 // shortest slice edge that may carry a label (donut-label-layout.js).
-const OUTER_RADIUS = { phone: 96, desktop: 142 };
+// The dashboard card is half a row: a donut about 250px across (280px on a phone).
+const OUTER_RADIUS = { phone: 140, desktop: 125 };
 const MIN_LABEL_ARC = 18;
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
@@ -431,7 +433,8 @@ for (const device of [
       await expect(page.locator("[data-figure-menu] .figure-menu-title")).toHaveText(share[0].label);
     });
 
-    test("Spending Mix: the list sits under the donut on a phone and beside it on a desktop", async ({ page }) => {
+    test("Spending Mix: the list sits under the donut on a phone and beside it on a wide desktop (the card is half the page)", async ({ page }) => {
+      if (device.name === "desktop") await page.setViewportSize({ width: 1440, height: 900 });
       await setMoney(page, true);
       await openSummary(page);
       const chart = await box(mixCard(page).locator(".spending-mix-chart"));

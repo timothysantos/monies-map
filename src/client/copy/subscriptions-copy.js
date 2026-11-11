@@ -27,6 +27,11 @@ export const subscriptionsCopy = {
   lastYear: "Last 12 months",
   all: (count) => `All ${count}`,
   sorted: "Sorted by cost over 12 months",
+  // The wide card's chips and bar legend.
+  priceRises: (count) => (count === 1 ? "1 price rise" : `${count} price rises`),
+  nextCharge: (name, amount, date) => `Next: ${name}${amount ? ` ${amount}` : ""} on ${dayMonth(date)}`,
+  kindLabel: { monthly: "Monthly", varies: "Changes each month", yearly: "Yearly" },
+  kindBarLabel: "What you pay, by kind",
   aMonth: "a month",
   aYear: "a year",
   lastOne: "last one",

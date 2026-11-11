@@ -11,9 +11,9 @@ import { getCategory } from "./category-utils";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { paletteColour } from "./palette-colour";
-import { buildComingUp, buildSubscriptionsModel, monthPeriod } from "./subscriptions-model";
+import { buildComingUp, buildSubscriptionsModel, buildSubsGlance, monthPeriod } from "./subscriptions-model";
 import { ICON_REGISTRY } from "./ui-options";
-import { useIsMobileLayout } from "./use-viewport";
+import { useCompactSummaryCard } from "./use-viewport";
 import { useRepeatingCharges } from "./use-repeating-charges";
 import { saveRepeatingChoice } from "./repeating-charges-api";
 
@@ -212,12 +212,42 @@ function Fold({ label, hint, rows, categories, yearPeriod, phone, onOpen }) {
   );
 }
 
+// The wide card's glance (shown from a 1,064px page, subscriptions-section.css):
+// chips for what went up and the next charge due, and one stacked bar of what
+// is paid by kind. With money hidden: no amount and no bar (its shares would
+// say how the money splits).
+function SubsGlance({ glance, hiddenMoney }) {
+  const { priceRises, next, kinds } = glance;
+  if (!priceRises && !next && !kinds.length) {
+    return null;
+  }
+  return (
+    <div className="subs-glance">
+      <div className="subs-glance-chips">
+        {priceRises ? <span className="subs-chip is-up">{copy.priceRises(priceRises)}</span> : null}
+        {next ? <span className="subs-chip">{copy.nextCharge(next.name, hiddenMoney || next.amountMinor === null ? "" : wholeMoney(next.amountMinor), next.date)}</span> : null}
+      </div>
+      {hiddenMoney || kinds.length < 2 ? null : (
+        <div className="subs-kinds">
+          <div className="subs-kinds-bar" role="img" aria-label={copy.kindBarLabel}>
+            {kinds.map((kind) => <span key={kind.key} className={`subs-kind is-${kind.key}`} style={{ width: `${kind.share * 100}%` }} />)}
+          </div>
+          <div className="subs-kinds-legend">
+            {kinds.map((kind) => <span key={kind.key}><i className={`subs-kind-dot is-${kind.key}`} aria-hidden="true" />{copy.kindLabel[kind.key]}</span>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * @param {{ view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: (task: () => Promise<any>) => any, reserveHeight?: number }} props
  */
 export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, reserveHeight = 0 }) {
   const queryClient = useQueryClient();
-  const phone = useIsMobileLayout();
+  // Summary's cards sit a third of a wide page across, so they use the short form everywhere.
+  const phone = useCompactSummaryCard();
   const [showAll, setShowAll] = useState(false);
   const [tab, setTab] = useState("all");
   const [openSeries, setOpenSeries] = useState(null);
@@ -228,6 +258,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   const { answer, refresh } = useRepeatingCharges({ queryClient, viewId: view.id, scope: view.selectedScope, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildSubscriptionsModel(answer), [answer]);
   const comingUp = useMemo(() => buildComingUp(answer), [answer]);
+  const glance = useMemo(() => buildSubsGlance(model, comingUp), [model, comingUp]);
   const hiddenMoney = !useMoneyPrivacy().areTotalsVisible;
   const cardRef = useRef(null);
   // The height Summary reserves next time on this device (0: nothing shown).
@@ -290,7 +321,9 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   if (model.isEmpty) {
     return null;
   }
-  const rows = phone && !showAll ? model.phoneRows : model.rows;
+  // Narrow, 4 rows then Show all; a wide card (subscriptions-section.css)
+  // lists the 8 in two columns and hides the button when there are no more.
+  const rows = phone && !showAll ? model.glanceRows : model.rows;
   const rowProps = { categories, yearPeriod: model.yearPeriod, phone, onOpen: (series) => { setErrorMessage(""); setOpenSeries(series); } };
   return (
     <section ref={cardRef} className="chart-card subs-card" aria-labelledby="subs-title">
@@ -308,6 +341,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           <Figure className="subs-total-figure" amount={model.totals.year} period={model.yearPeriod} name={copy.title} />
         </div>
       </div>
+      {glance ? <SubsGlance glance={glance} hiddenMoney={hiddenMoney} /> : null}
       {notice ? (
         <p className="subs-notice" role="status">
           <span>{notice.failed ? copy.saveFailed : copy.done[notice.action]}</span>
@@ -330,16 +364,16 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           </ul>
         </>
       ) : (
-      <ul className="subs-list" aria-label={copy.title}>
+      <ul className={`subs-list ${showAll ? "is-all" : "is-glance"}`} aria-label={copy.title}>
         {rows.map((series) => <SeriesRow key={series.key} series={series} {...rowProps} />)}
-        {phone && !showAll && model.rows.length > rows.length ? (
-          <li className="subs-fold">
+        {phone && !showAll && model.rows.length > 4 ? (
+          <li className="subs-fold" data-wide-hide={model.rows.length <= rows.length ? "" : undefined}>
             <button type="button" className="subs-fold-button" onClick={() => setShowAll(true)}>
               <span>{copy.seeAll(model.rows.length)}</span>
             </button>
           </li>
         ) : null}
-        {!phone || showAll ? (
+        {!phone || showAll || rows.length >= model.rows.length ? (
           <>
             <Fold label={copy.stopped(model.stopped.length)} hint={copy.show} rows={model.stopped} {...rowProps} />
             <Fold label={copy.mightRepeat(model.mightRepeat.length)} hint={copy.mightRepeatHint} rows={model.mightRepeat} {...rowProps} />

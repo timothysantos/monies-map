@@ -9,7 +9,7 @@ import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { getPersonColourVars } from "./person-colour";
 import { useCardRewards } from "./use-card-rewards";
-import { useIsMobileLayout } from "./use-viewport";
+import { useCompactSummaryCard } from "./use-viewport";
 
 // Miles and cashback (design.md "Miles and cashback"; DOMAIN.md "Card
 // reward rule"): what each credit card has earned so far this month (or
@@ -224,7 +224,8 @@ function Picture({ picture, pooled, phone }) {
  */
 export function CardRewardsSection({ view, enabled, fetchRequiredQuery }) {
   const queryClient = useQueryClient();
-  const phone = useIsMobileLayout();
+  // Summary's cards sit a third of a wide page across, so they use the short form everywhere.
+  const phone = useCompactSummaryCard();
   const { answer } = useCardRewards({ queryClient, viewId: view.id, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildCardRewardsModel(answer), [answer]);
   if (!model || model.isEmpty) {

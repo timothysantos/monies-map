@@ -275,3 +275,108 @@
   color: var(--muted);
   font-size: 0.86rem;
 }
+
+/* The wide card (design.md "Summary dashboard layout"): from a 1,064px page
+   Subscriptions and bills is half the row. The month's total is the
+   headline (about 52px), under it chips for what went up and the next charge
+   due and one bar of what is paid by kind, and the 8 charges most worth a
+   look sit in two columns. Narrower, none of this shows: 4 charges and
+   Show all, as on a phone. */
+.subs-glance {
+  display: none;
+}
+
+.subs-list.is-glance > li:nth-child(n + 5):not(.subs-fold) {
+  display: none;
+}
+
+@container shell (min-width: 1064px) {
+  .summary-card-slot .subs-card .subs-totals {
+    grid-template-columns: auto auto;
+    align-items: end;
+    justify-content: start;
+    gap: 28px;
+    max-width: none;
+    margin: 12px 0;
+  }
+
+  .summary-card-slot .subs-card .subs-total:first-child {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .summary-card-slot .subs-card .subs-total:first-child .subs-total-figure {
+    font-size: 3.25rem;
+    line-height: 1.05;
+  }
+
+  .subs-glance {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  .subs-glance-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .subs-kinds-bar {
+    display: flex;
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--chip);
+  }
+
+  .subs-kind.is-monthly,
+  .subs-kind-dot.is-monthly {
+    background: var(--pastel-sky);
+  }
+
+  .subs-kind.is-varies,
+  .subs-kind-dot.is-varies {
+    background: var(--pastel-butter);
+  }
+
+  .subs-kind.is-yearly,
+  .subs-kind-dot.is-yearly {
+    background: var(--pastel-lavender);
+  }
+
+  .subs-kinds-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .subs-kind-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: 50%;
+  }
+
+  .subs-list.is-glance {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subs-list.is-glance > li:nth-child(n + 5):not(.subs-fold) {
+    display: grid;
+  }
+
+  .subs-list.is-glance > li.subs-fold {
+    grid-column: 1 / -1;
+  }
+
+  .subs-list.is-glance > li.subs-fold[data-wide-hide] {
+    display: none;
+  }
+}

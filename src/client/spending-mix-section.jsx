@@ -55,6 +55,16 @@ const DONUT_SIZE = {
   wide: { height: 380, innerRadius: 92, outerRadius: 142 },
   widePoster: { height: 440, innerRadius: 110, outerRadius: 168 }
 };
+// On Summary's dashboard the card is half the page: a donut about 250px
+// across with the total in the middle (the list beside it from a 600px card,
+// a window of about 1,400px; under that the list sits below it),
+// and on a phone one about 280px across, the list under it.
+const DASHBOARD_DONUT_SIZE = {
+  phone: { height: 340, innerRadius: 92, outerRadius: 140 },
+  phonePoster: { height: 420, innerRadius: 92, outerRadius: 140 },
+  wide: { height: 340, innerRadius: 80, outerRadius: 125 },
+  widePoster: { height: 440, innerRadius: 110, outerRadius: 168 }
+};
 
 function readListShown() {
   try {
@@ -73,7 +83,7 @@ function writeListShown(shown) {
 }
 
 /**
- * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), className?: string }} props
+ * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, className?: string }} props
  */
 export function SpendingMixSection({
   donutData,
@@ -81,6 +91,7 @@ export function SpendingMixSection({
   onCategoryAppearanceChange,
   period,
   sliceFacts = undefined,
+  dashboard = false,
   className = ""
 }) {
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
@@ -97,7 +108,8 @@ export function SpendingMixSection({
   // Hidden categories stay hidden across months and ranges; the reset counts
   // only the ones this data has, so a month without them shows no reset.
   const hiddenCount = donutData.filter((item) => hiddenCategoryIds.has(getDonutItemId(item))).length;
-  const size = DONUT_SIZE[`${isMobileLayout ? "phone" : "wide"}${listShown ? "" : "Poster"}`];
+  const sizeKey = `${isMobileLayout ? "phone" : "wide"}${listShown ? "" : "Poster"}`;
+  const size = (dashboard ? DASHBOARD_DONUT_SIZE : DONUT_SIZE)[sizeKey];
 
   function toggleCategoryVisibility(item) {
     setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));

@@ -9,6 +9,9 @@ import { COMING_UP_DAYS, upcomingCharges } from "../domain/repeating-charges";
 import { roundRange } from "../domain/pace";
 
 const PHONE_ROWS = 4;
+// A wide card lists the 8 most worth a look in two columns (the rest hide
+// behind the same Show all on a narrow one).
+const GLANCE_ROWS = 8;
 
 const sumOf = (list, pick) => ({
   amountMinor: list.reduce((sum, series) => sum + pick(series).amountMinor, 0),
@@ -46,6 +49,7 @@ export function buildSubscriptionsModel(answer) {
     },
     rows,
     phoneRows: phoneOrder(rows).slice(0, PHONE_ROWS),
+    glanceRows: phoneOrder(rows).slice(0, GLANCE_ROWS),
     stopped,
     mightRepeat: answer.mightRepeat,
     takenOff: answer.takenOff,
@@ -84,4 +88,36 @@ export function buildComingUp(answer, days = COMING_UP_DAYS) {
   // outward, one amount rounded to its nearest step.
   const total = roundRange(upcoming.reduce((sum, item) => sum + item.lowMinor, 0), upcoming.reduce((sum, item) => sum + item.highMinor, 0));
   return { endDate: addDays(today, days), count: upcoming.length, total, groups: groups.filter((group) => group.items.length) };
+}
+
+// The wide card's glance (design.md "Summary dashboard layout"), from facts
+// already on the card: how many charges went up, the next charge due (name,
+// day and, when it is one amount, the amount) and the listed charges' cost
+// over the 12 months split by what kind they are, for the stacked bar.
+export function buildSubsGlance(model, comingUp) {
+  if (!model) {
+    return null;
+  }
+  const priceRises = model.rows.filter((series) => series.wentUp).length;
+  const first = comingUp?.groups?.[0]?.items?.[0] ?? null;
+  const next = first ? {
+    name: first.series?.name ?? "",
+    date: first.date,
+    amountMinor: first.lowMinor === first.highMinor ? first.lowMinor : null
+  } : null;
+  const kinds = [
+    { key: "monthly", minor: 0 },
+    { key: "varies", minor: 0 },
+    { key: "yearly", minor: 0 }
+  ];
+  for (const series of model.rows) {
+    const kind = series.period === "yearly" ? kinds[2] : series.kind === "varies" ? kinds[1] : kinds[0];
+    kind.minor += Math.max(0, series.year.amountMinor);
+  }
+  const total = kinds.reduce((sum, kind) => sum + kind.minor, 0);
+  return {
+    priceRises,
+    next,
+    kinds: kinds.filter((kind) => kind.minor > 0).map((kind) => ({ ...kind, share: total > 0 ? kind.minor / total : 0 }))
+  };
 }

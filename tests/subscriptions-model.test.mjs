@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildComingUp, buildSubscriptionsModel } from "../src/client/subscriptions-model.js";
+import { buildSubsGlance, buildComingUp, buildSubscriptionsModel } from "../src/client/subscriptions-model.js";
 
 const series = (key, extra = {}) => ({
   key,
@@ -73,4 +73,26 @@ test("coming up: this week to Sunday, next week, later; a bill that changes keep
   assert.equal(coming.total.lowMinor % 1_000, 0);
   assert.equal(coming.total.highMinor % 1_000, 0);
   assert.ok(coming.total.highMinor - high < 5_000 && low - coming.total.lowMinor < 5_000);
+});
+
+test("the wide card's glance: price rises, the next charge due and the cost split by kind; 8 rows for two columns", () => {
+  const model = buildSubscriptionsModel(answer);
+  const glance = buildSubsGlance(model, buildComingUp(answer));
+  assert.equal(glance.priceRises, 1);
+  assert.deepEqual(glance.next, { name: "NETFLIX", date: "2026-11-14", amountMinor: 1000 });
+  // Listed charges only: the stopped VIU is not in the bar; SP SERVICES varies.
+  assert.deepEqual(glance.kinds.map((kind) => kind.key), ["monthly", "varies"]);
+  assert.equal(glance.kinds[1].minor, 6000);
+  assert.equal(glance.kinds[0].minor, 223560 + 6000 * 3);
+  assert.ok(Math.abs(glance.kinds.reduce((sum, kind) => sum + kind.share, 0) - 1) < 1e-9);
+  assert.equal(model.glanceRows.length, 5, "fewer than 8 charges lists them all");
+  assert.equal(model.glanceRows[0].key.startsWith("SINGTEL"), true, "what went up leads");
+});
+
+test("a range that changes has no single amount for the next charge, and no card means no glance", () => {
+  const onlyVarying = { ...answer, series: [answer.series[2]] };
+  const glance = buildSubsGlance(buildSubscriptionsModel(onlyVarying), buildComingUp(onlyVarying));
+  assert.equal(glance.next.amountMinor, null);
+  assert.equal(glance.priceRises, 0);
+  assert.equal(buildSubsGlance(null, null), null);
 });

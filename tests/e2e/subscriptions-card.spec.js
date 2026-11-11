@@ -51,15 +51,20 @@ test.describe("Subscriptions and bills", () => {
     const netflix = card.locator('[data-series="NETFLIX COM|monthly"]');
     const singtel = card.locator('[data-series="SINGTEL MOBILE|monthly"]');
     await expect(netflix).toContainText("Netflix");
-    await expect(netflix).toContainText("Subscriptions MO · monthly, around the 14th · Citi Rewards • Joyce");
-    await expect(netflix.locator(".subs-year")).toContainText("$79.92");
+    // On the dashboard the card always uses its short form (design.md
+    // "Summary dashboard layout"): the usual amount and a short line.
+    await expect(netflix).toContainText("Monthly · around the 14th");
+    await expect(netflix.locator(".subs-year")).toHaveCount(0);
     const newMonth = MONTHS[Number(monthsAgo(1).slice(5)) - 1];
-    await expect(singtel).toContainText(`Went up: $38.90 → $42.90 in ${newMonth}`);
+    await expect(singtel).toContainText(`Went up $4.00 in ${newMonth}`);
+    // The wide card (1,100px and up) has chips and a bar above its charges.
+    await expect(card.locator(".subs-glance-chips")).toContainText("1 price rise");
+    await expect(card.locator(".subs-glance-chips")).toContainText("Next: ");
 
-    await netflix.locator(".subs-year [data-fig]").click();
+    await netflix.locator(".subs-usual [data-fig]").click();
     await page.getByRole("button", { name: "View entries", exact: true }).click();
     await expect(page).toHaveURL(/\/entries\?.*entry_figure=spent/);
-    await expect(page.locator(".entries-totals, .entries-lead, main").first()).toContainText("$79.92");
+    await expect(page.locator(".entries-totals, .entries-lead, main").first()).toContainText("$19.98");
   });
 
   test("phone: the rows most worth a look come first, with the shorter words", async ({ page }) => {
@@ -109,6 +114,8 @@ test.describe("Subscriptions and bills", () => {
     await expect(dialog).toBeHidden();
     await expect(card.locator(".subs-notice")).toContainText("Taken off the list");
     await expect(card.locator('.subs-list > [data-series="SINGTEL MOBILE|monthly"]')).toHaveCount(0);
+    const seeAll = card.getByRole("button", { name: /^See all \d+/ });
+    if (await seeAll.count()) await seeAll.click();
     await expect(card).toContainText("1 taken off the list");
 
     await card.locator(".subs-notice").getByRole("button", { name: "Undo" }).click();
