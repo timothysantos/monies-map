@@ -1816,6 +1816,28 @@ frames are in `docs/audits/hover-and-chart-motion/`.
   pop in; `data-donut-motion` armed, playing, done; off for reduced motion).
   The svg holds its place by aspect ratio (420 x 380) and the pill's height is
   reserved while the chunk loads.
+- **Marks that draw in** (owner mockup 2026-11-11; `use-first-view-motion.js`):
+  one hook, one observer per card or tile, plays once when the card first
+  scrolls into view (`data-chart-motion` armed, playing, done; `off` for
+  reduced motion, with the final state at once). Only transforms and stroke
+  dashes animate, so nothing moves the page; every figure is in the DOM from
+  the start and only marks draw; money hidden shows no marks that reveal an
+  amount. The tiles' lines and bars grow from their start, Miles' ring fills
+  clockwise, Bank fees' bars grow up (`summary-tiles.css`); What changed's
+  bars grow from a centre line (`summary-changed.css`); each month tile's
+  progress bar fills (`summary-intent-outcome.css`); the month chart's
+  columns already grow from the baseline (`earned-spent-chart.css`).
+- **New marks** (all from figures the card already reads): the Miles tile's ring
+  is the bonus furthest through its cap this cycle (`bonusGauge`, the tile
+  rows drop to two to make room); Bank fees' bars are the year's standing fees by
+  month (`months` on `bankFeesYear`, from rows already classified), the biggest
+  month in the accent colour, none under two months; Tax reliefs rows end in
+  the share used as a percent; What changed draws each row's change from a
+  centre line, rose to the right for up, mint to the left for down, the
+  biggest change taking half the track; each month tile under Months against
+  plan has a bar of the share of its plan spent (full at the plan, rose once
+  over, none without a plan); a tapped column of the month chart shows a pill
+  with its exact figure over the plot (no room of its own).
 - **The Entries and Splits donut** (`donut-motion.css`, `spending-mix-recharts.jsx`):
   it waits hidden until half of it is seen, then sweeps in clockwise from
   the top (a turning wedge clip on the ring's own layer, 720 ms, so the

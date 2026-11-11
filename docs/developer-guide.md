@@ -3327,3 +3327,18 @@ figures are `spending-mix-bubbles.jsx` (lazy, beside the section), shared figure
 attributes are `spending-mix-slice-figure.js`, and the first-view draw-in is
 the generic `use-first-view-motion.js` (`armed`, `playing`, `done`, or `off`
 for reduced motion), the one hook for every card that draws in.
+
+### Marks that draw in
+
+`src/client/use-first-view-motion.js` is the one hook: give it a ref and an
+attribute, put `data-chart-motion={motion}` on the card, and key the CSS on
+`armed`, `playing` and `done` (it is `off` for reduced motion, and the CSS is
+also inside `prefers-reduced-motion: no-preference`). Animate only transforms and
+stroke dashes, never a number, and never mark a figure hidden while armed
+(`tests/e2e/summary-chart-marks.spec.js` checks the figures stay readable). Pass
+`ready: false` while a card waits for its data. The tile marks
+(`summary-tiles.css`), What changed (`summary-changed.css`) and the month tiles
+(`summary-intent-outcome.css`) all use it; the month chart keeps its own older
+state machine (`earned-spent-chart.js`). A card that holds another chart
+must use its own attribute (Months against plan uses `data-intent-motion`): the
+month chart's CSS keys on `data-chart-motion` of any ancestor.

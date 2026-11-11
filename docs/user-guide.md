@@ -3428,3 +3428,17 @@ A new household starts with these categories. You can change their icons and
 colours, and add your own.
 
 :::categories
+
+### Charts that draw in
+
+Charts and bars on Summary draw themselves once, the first time you scroll
+them into view: the ring around Spending Mix, the small bars and lines on the
+tiles, the bars on What changed this month (a bar from the middle line: red to
+the right when a category went up, green to the left when it went down), and
+the thin bar under each month in Months against plan. Every number is already
+there; only the bars move. If you have turned on reduced motion on your device,
+nothing moves and the charts show at once. Tap a column of Earned vs spent by
+month to see its exact figure in a small pill. With money hidden these bars are
+hidden too, because their length would show amounts. On the Miles tile a ring shows how
+much of your best bonus you have used; Bank fees shows a bar for each month with a
+fee, the biggest month darker; Tax reliefs shows how much of each relief you have used.
