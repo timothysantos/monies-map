@@ -37,6 +37,9 @@ function wrapName(name, maxChars = 16) {
   return clipped;
 }
 
+// The "N more" bubble is plain grey (the muted ink), not a category colour.
+const MORE_COLOUR = "var(--muted)";
+const colourOf = (colour) => (colour === MORE_COLOUR ? colour : paletteColour(colour));
 const inkOf = (colour, mix = 62) => `color-mix(in srgb, ${paletteColour(colour)} ${mix}%, var(--text))`;
 
 function moveBetweenSlices(event) {
@@ -71,7 +74,7 @@ export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sli
 
   const percentOf = (valueMinor) => `${Math.round((valueMinor / (shareTotal || 1)) * 100)}%`;
   const summary = selectedMore
-    ? { name: copy.moreName(more.count ?? 0), valueMinor: more.valueMinor ?? 0, colour: "#b9ad9c", item: null }
+    ? { name: copy.moreName(more.count ?? 0), valueMinor: more.valueMinor ?? 0, colour: MORE_COLOUR, item: null }
     : { name: selected.label, valueMinor: selected.valueMinor, colour: selected.color, item: selected };
   const summaryShare = percentOf(summary.valueMinor);
   const nameLines = wrapName(summary.name);
@@ -161,7 +164,7 @@ export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sli
             const isMore = bubble.kind === "more";
             const item = isMore ? null : items.get(bubble.key);
             const isSelected = isMore ? selectedMore !== null : selected?.key === bubble.key;
-            const colour = isMore ? "#b9ad9c" : item.color;
+            const colour = isMore ? MORE_COLOUR : item.color;
             const radius = isSelected ? BUBBLE.selectedRadius : BUBBLE.radius;
             const Icon = item ? getIconComponent(item.iconKey) : null;
             const ink = isMore ? "var(--muted)" : inkOf(colour);
@@ -181,7 +184,7 @@ export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sli
                 }}
               >
                 <g className="mix-bubble-disc">
-                  <circle cx={bubble.x} cy={bubble.y} r={radius} style={{ fill: paletteColour(colour) }} fillOpacity={isSelected ? 0.26 : 0.2} />
+                  <circle cx={bubble.x} cy={bubble.y} r={radius} style={{ fill: colourOf(colour) }} fillOpacity={isSelected ? 0.26 : 0.2} />
                   {isSelected ? <circle cx={bubble.x} cy={bubble.y} r={radius} fill="none" strokeWidth="2" style={{ stroke: ink }} /> : null}
                   {isMore ? (
                     <g fill="currentColor" style={{ color: ink }}>
@@ -212,7 +215,7 @@ export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sli
       </svg>
       <p
         className="mix-pill"
-        style={{ "--pill-colour": paletteColour(summary.colour), "--pill-ink": selectedMore ? "var(--muted)" : inkOf(summary.colour, 45) }}
+        style={{ "--pill-colour": colourOf(summary.colour), "--pill-ink": selectedMore ? "var(--muted)" : inkOf(summary.colour, 45) }}
         {...(selected ? { ...pillFigure, role: "button", tabIndex: 0 } : {})}
       >
         {hidden ? `${summary.name} · ${summaryShare}` : `${summary.name} · ${money(summary.valueMinor)} · ${summaryShare}`}
