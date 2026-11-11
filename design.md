@@ -2074,6 +2074,74 @@ is never out of sight.
   and Money insights, not a card. Owner decision D5 stands: Money insights
   is movable but never hideable.
 
+## Summary dashboard layout
+
+Owner request, 2026-11-11 ("a lot of unutilised space ... too much at one
+glance ... not a dashboard feel"); mockup `Main.dc.html` and `Phone.dc.html`
+in the review artifact. Phase 1 is layout only: no new cards, no behaviour
+change.
+
+- **One grid.** The lead (spent, earned, kept) and the registered cards are
+  items of `.summary-grid` (`summary-body.css`), in the person's order. The
+  page's own width decides, through the `shell` container (so a docked Ask
+  panel narrows the grid the same way): a phone is one column; from a 724px
+  page (760px window) two columns; from a 1,064px page (1,100px window) twelve
+  columns with the 16px gap. On Summary the page is up to 1,400px wide
+  (`.shell:has(.summary-grid)`); every other page keeps 1,200px.
+- **Registry, not CSS, owns the spans.** `SUMMARY_CARD_LAYOUT`
+  (`summary-card-order.js`) gives each card a default `span` of 12 (4, 6, 8 or
+  12), a `minWidth` (a test checks the span is wide enough at 1,064px) and a
+  `tile` slot. Usual order and spans: lead 8 + Money insights 4; Intent vs
+  Outcome (with the Earned vs spent chart and its pace sentence) 8 + What
+  changed this month 4; Spending Mix 6 + Subscriptions and bills 6; Miles and
+  cashback 6 + Investments over time 6; Tax reliefs 6 + The accounts shown 6.
+  The lead takes 8 when the first shown card is 4 wide, else the row.
+- **Order stays predictable.** Rows fill left to right in the person's order,
+  never out of it (no `grid-auto-flow: dense`). `packSummarySpans` grows the
+  last card of a row that does not fill it, so hiding a card leaves no hole and
+  a moved card keeps its default span until its row asks it to grow. It is
+  worked out for 12 and for 2 columns and handed to the CSS as `--s12` and
+  `--s2`. A card with no body (What changed outside the month in progress)
+  takes no place; a slot that renders nothing (Investments with no data) is
+  `display: none`, which can leave a short row.
+- **A glance, opened in place.** Intent vs Outcome shows the latest 6 months
+  as small tiles (month, spent, how far over or under plan, in the money
+  tones; each opens its month) and **Open the details**, which opens the full
+  month cards (the existing Details row pattern, kept in memory only). A link
+  to `#month-YYYY-MM` opens them at once. The accounts card shows its first 3
+  rows and **Show all N ›**. Subscriptions and bills, What changed this month
+  and Miles and cashback always use their short (phone) form with their own
+  Show all (`useCompactSummaryCard`), because on the grid they are a third of
+  the page.
+- **Impact at a glance.** The lead's spent figure is about 56px on a wide
+  page (2.6rem on a phone) and "$x over plan" or "$x under plan" is a chip in
+  its money tone's own fill and ink (`.summary-lead-slot`, so Month's lead is
+  untouched); What changed's up and down figures are 1.1rem. No new colours
+  and no new wording: every chip is an existing deterministic fact.
+- **Spending Mix** (`dashboard` prop, `DASHBOARD_DONUT_SIZE`): half the row, a
+  donut about 250px across with the total in its middle (unchanged: dots when
+  money is hidden), and 280px on a phone with the legend under it. The legend
+  (a colour dot, the name, amount and share, the existing rows) goes beside the
+  donut from a 600px card (a window of about 1,400px) and under it below that.
+  The ring needs about 40px on each side for its slice labels, so it is not
+  larger beside a narrower list.
+- **Subscriptions and bills** on a wide page (1,064px and up): half the row;
+  the month's total is the headline (3.25rem), under it a "price rise" chip
+  and a "Next: name amount on date" chip (no amount with money hidden), one
+  bar of the 12 months' cost by kind (monthly, changes each month, yearly:
+  sky, butter and lavender; not shown with money hidden) and the 8 charges
+  most worth a look in two columns. Narrower, 4 charges and See all. The tabs,
+  Coming up, the choices dialog and the stopped, might-repeat and taken-off
+  folds are unchanged (the folds show once the list is not cut short).
+- **Tiles (phase 2, not built).** `SummaryTile` in `summary-card-order.js` is
+  the shape a card's `tile` will take: 4 columns wide, a title, a 34px headline
+  figure, one short line, and optionally rows (3 or 4 label and value pairs), a
+  small chart, bars or chips. Owner sizing for later: about 264px tall on a
+  desktop, about 150px and two across on a phone. Nothing reads `tile` yet.
+- Kept: the layout-shift guard (reserved heights), money hidden, colour presets
+  and dark mode, the first-screen budgets, openable figures and the card
+  spacing block below.
+
 ## Summary card spacing
 
 The cards under Money insights (What changed, Subscriptions and bills,
@@ -2082,9 +2150,9 @@ share one block of rules at the end of `src/client/summary-body.css`, each
 prefixed with `.summary-card-slot` so it wins whichever card stylesheet loads
 last (visual polish pass, 2026-11-11; no copy or behaviour changed):
 
-- The slot owns the 16px between cards; a card has no margin of its own and an
-  empty slot takes none (so a card with no data leaves no gap). The accounts
-  list, which is not a card, gets the same gap under it.
+- The dashboard grid owns the 16px between cards ("Summary dashboard layout"
+  below); a card has no margin of its own and an empty slot is not drawn (so a
+  card with no data leaves no gap).
 - Head: a 1rem bold title in the ink colour (Investments and Tax reliefs no
   longer use the small uppercase eyebrow), an optional 0.86rem muted line 4px
   below, then 16px to the content.

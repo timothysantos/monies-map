@@ -3004,10 +3004,17 @@ Every card Summary draws under the top summary must be registered, or a
 person cannot hide or move it. Three one-line additions, and a test that
 fails if any is missing (`tests/summary-card-registry.test.mjs`):
 
-1. Add its id (lowercase letters only, at most 20) to `SUMMARY_CARD_IDS` in
-   `src/client/summary-card-order.js`, at the place it should usually sit.
-   Anyone who saved an order before it existed sees it in that place,
-   shown, with no migration.
+1. Add it to `SUMMARY_CARD_LAYOUT` in `src/client/summary-card-order.js`
+   (`SUMMARY_CARD_IDS` is its keys, so the key order is the usual order): the
+   id (lowercase letters only, at most 20), its default `span` of the 12-column
+   dashboard grid (4, 6, 8 or 12), a `minWidth` the span must satisfy at the
+   narrowest 12-column page (1,064px; `tests/summary-card-registry.test.mjs`
+   checks it) and `tile: null` (a later small tile: `SummaryTile`). Anyone who
+   saved an order before it existed sees it in that place, shown, with no
+   migration. A card with no span fails the registry test. The panel turns the
+   spans into rows (`packSummarySpans`: rows fill in order, the last card of a
+   short row grows, so hiding a card leaves no hole); design.md "Summary
+   dashboard layout".
 2. Add its body to `cardBody` in `summary-panel.jsx` (lazy-load a heavy one
    as the others do, and keep any request inside it so a hidden card reads
    nothing). Do not draw a card anywhere else in the panel.
@@ -3015,8 +3022,8 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
    plain words a grandparent follows.
 
 Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
-only on an owner decision. Registered today: `insights`, `changed`, `subs` (which holds
-Coming up and Bank fees), `investments`, `taxreliefs`, `mix`, `plan`, `accounts`, `miles`. The server only checks
+only on an owner decision. Registered today, in the usual order: `insights`, `plan`, `changed`, `mix`, `subs` (which holds
+Coming up and Bank fees), `miles`, `investments`, `taxreliefs`, `accounts`. The server only checks
 the stored string's shape, so no server change is needed for a new card.
 
 ## How are bank fees this year worked out?

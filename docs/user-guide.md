@@ -372,6 +372,12 @@ over plan.
   are counted separately. It is an estimate from your entries; your card
   statement's points are the final word. Tap an amount to see the entries
   behind it. Set the rules in **Settings**, **Cards and rewards**.
+- **Summary is a dashboard** on a wide screen: the top summary sits beside
+  Money insights, the chart beside What changed this month, and the other cards
+  in rows of two, so you see more without scrolling. On a tablet the
+  cards are two across, and on a phone one under another, as before. Long
+  lists start short: **Show all** (or **Open the details** under the months)
+  opens the rest in place.
 - **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
   move the cards under the top summary up or down, and tap a card's name to
   hide or show it. **Done** keeps your order; **Reset to the usual order**
@@ -431,12 +437,15 @@ over plan.
   amount, its share and a thin bar. The bigger slices are named on the donut
   with their share where there is room; small slices are only in the list. The top five show; **Show all** lists
   the rest. Pick a month to see that month's ([Month](#month)).
-- **Intent vs Outcome**: one card per month, newest first. Each leads with
+- **Intent vs Outcome**: the latest six months show as small tiles (what you
+  spent and how far under or over plan; select one to open that month). **Open
+  the details** shows one card per month, newest first. Each leads with
   what you spent against what you planned, with a bar, the percent of plan
   and how far under or over you are. Your planned and actual income sit
   under it, and **Details** opens the income, spending and savings figures.
 - **The accounts shown**: one list with each account's current balance and
-  whether a statement has confirmed it. Select an account to open its entries.
+  whether a statement has confirmed it. The first three show; **Show all**
+  lists the rest. Select an account to open its entries.
   An investment account you have imported an iFAST or StashAway statement for says what
   its latest statement said it was worth, with the statement's date ("$2,023.90 on 30 Sep 2026, as the statement says"). That is the statement's
   figure on that day, not a forecast and not money you can spend; the
