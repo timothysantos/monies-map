@@ -2210,10 +2210,12 @@ card in a dialog or sheet.
   tile as one entry; a hidden card's tile and its `#summary-<id>` link do
   nothing. `showsAsTile(id, isDesktop)` decides the form.
 - **Layout.** Consecutive tiles form one full-width block of the grid: 3
-  across from a 1,064px page, 2 across below it, each 264px tall (236px below).
-  A tile that has nothing to show is not drawn; a reserve of the same height
-  holds its place while its chunk loads (layout-shift guard).
-- **A tile** is one button: title and "Open ›", a headline (44px), one status
+  across from a 1,064px page, 2 across below it, each 264px tall (at least 236px
+  below, growing with its content; two tiles in a row share the taller height).
+  A tile that has nothing to show is not drawn; a reserve of 236px holds its
+  place while its chunk loads (layout-shift guard).
+- **A tile** is one button: title and "Open ›", a headline (44px on a desktop; see "Summary phone type
+  scale"), one status
   chip (mint, rose, butter or sky, from the pastel tokens), a few rows and a
   small mark (a line, a by-kind bar, week bars or progress bars). The models
   are `summary-tiles-model.js` (tested with negatives); `summary-tiles.jsx`
@@ -2363,6 +2365,37 @@ only source and must never be treated as the release authority.
 The install action opens its target window synchronously before asynchronous
 save work so browser popup protection does not turn a successful setup into a
 dead button. Failure closes the placeholder window and leaves an inline error.
+
+### Summary phone type scale
+
+The owner found Summary's numbers too big on a phone (2026-11-11): the tile
+headline was the desktop 44px in a 175px tile, so figures were clipped, a
+range wrapped onto three lines and rows ran under the marks. The scale below
+is for a phone (a page under 600px) and keeps the desktop's sizes from 1,064px.
+
+| Part | Before | Phone now |
+| --- | --- | --- |
+| Tile headline | 44px, fixed | `clamp(1rem, min(17cqw, 100cqw / (chars x 0.62)), 1.75rem)` of the tile (about 24px at 390px, 18px at 320px); 44px cap from a 600px page |
+| Range headline | "$2,150 to $2,250" | "$2,150 - $2,250" with an en dash (CSS swaps the word; the words stay for a screen reader) |
+| Lead spent figure | 41.6px | 36px (56px from 724px, unchanged) |
+| Spending Mix total | 30px at 390 | `clamp(1.6rem, 7vw, 2.75rem)`, about 27px at 390, one line |
+| Investments worth | 28.8px | `clamp(1.35rem, 6vw, 1.8rem)`, about 23px at 390 |
+| Bank fees total (sheet) | 44px | `clamp(1.75rem, 8vw, 2.75rem)`, about 31px at 390 |
+| What changed up or down amount | 17.6px | 16px |
+| Tile title, rows, labels | 16px, 13.8px, 12.8px | 15px, 13.8px, 12.8px (title back to 16px from 600px) |
+| Chip or pill | 11.8px, 22px tall, 9px sides | 12px, 26px tall, 10px sides, 1.25 line height |
+
+Rules: nothing under 12px (the donut centre label moved from 11.5px to 12px);
+the headline sets its own size from its tile (the tile is a size container,
+`container: summary-tile / inline-size`) so it never clips, with `--len` the
+characters it holds; a tile is `min-height: 236px` and grows, every part keeps
+its size (`flex: none`) so a mark or bar sits in its own space under the rows
+and never covers one; two tiles in a row share a height (the cell is a flex
+row). A chip stays on one line; the long "days left, until date" chip may take
+a second line inside its pill (radius 14px, `text-wrap: balance`). A title may
+take two lines; at 320px "Open ›" drops under it. Guarded by
+`tests/e2e/summary-phone-type.spec.js` (320 to 430 and 768, demo data and a
+$1,234,567.89 fee).
 
 ## Import Preview Matcher Boundary
 
