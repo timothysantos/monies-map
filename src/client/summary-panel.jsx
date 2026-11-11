@@ -78,6 +78,11 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
   useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
+  // Summary is wider than the other pages (summary-body.css).
+  useLayoutEffect(() => {
+    document.body.dataset.summaryDashboard = "";
+    return () => { delete document.body.dataset.summaryDashboard; };
+  }, []);
   const leadModel = useMemo(() => buildSummaryLeadModel(view.summaryPage?.metricCards, {
     categoryShare: view.summaryPage?.categoryShareChart,
     investmentMoves: view.summaryPage?.investmentMoves ?? null

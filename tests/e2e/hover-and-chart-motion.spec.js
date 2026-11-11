@@ -13,7 +13,8 @@ import { reseedDemo } from "./helpers";
 
 const VIEW = "person-tim";
 const MONTH = "2026-05";
-const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=2025-06&summary_end=${MONTH}`;
+// A link that targets one month opens Intent vs Outcome's full month cards.
+const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=2025-06&summary_end=${MONTH}#month-${MONTH}`;
 const ENTRIES_URL = `/entries?view=${VIEW}&month=${MONTH}`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 
@@ -183,6 +184,8 @@ test.describe("charts", () => {
   });
 
   test("the month chart plays once on first view and ends exactly as a still chart draws it, with nothing on the page moving", async ({ page, browser }) => {
+    // On the dashboard the chart sits near the top: a short window keeps it off screen at first.
+    await page.setViewportSize({ width: 1280, height: 400 });
     await page.goto(SUMMARY_URL);
     const chart = page.locator("[data-earned-spent-chart]");
     await expect(chart).toHaveAttribute("data-chart-motion", "armed", { timeout: 30_000 });
@@ -204,7 +207,7 @@ test.describe("charts", () => {
     const shifts = await page.evaluate((from) => window.__layoutShifts.filter((shift) => shift.at >= from).reduce((sum, shift) => sum + shift.value, 0), start);
     expect(shifts).toBeLessThan(0.01);
 
-    const stillContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce", storageState: { cookies: [], origins: [] } });
+    const stillContext = await browser.newContext({ viewport: { width: 1280, height: 400 }, reducedMotion: "reduce", storageState: { cookies: [], origins: [] } });
     const still = await stillContext.newPage();
     await showMoney(still);
     await still.goto(new URL(SUMMARY_URL, page.url()).toString());

@@ -168,8 +168,10 @@
   }
 }
 
-/* The Summary page is wider than the rest of the app: up to 1,400px. */
-.shell:has(.summary-grid) {
+/* The Summary page is wider than the rest of the app: up to 1,400px (the
+   panel marks the body while it is on screen; a :has() would search every
+   descendant, tests/page-flags.test.mjs). */
+body[data-summary-dashboard] .shell {
   max-width: 1400px;
 }
 

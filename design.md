@@ -2087,7 +2087,7 @@ change.
   panel narrows the grid the same way): a phone is one column; from a 724px
   page (760px window) two columns; from a 1,064px page (1,100px window) twelve
   columns with the 16px gap. On Summary the page is up to 1,400px wide
-  (`.shell:has(.summary-grid)`); every other page keeps 1,200px.
+  (`body[data-summary-dashboard] .shell`); every other page keeps 1,200px.
 - **Registry, not CSS, owns the spans.** `SUMMARY_CARD_LAYOUT`
   (`summary-card-order.js`) gives each card a default `span` of 12 (4, 6, 8 or
   12), a `minWidth` (a test checks the span is wide enough at 1,064px) and a
