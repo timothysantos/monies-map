@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { SheetDialog } from "./sheet-dialog";
 import { canHideSummaryCard, moveSummaryCard } from "./summary-card-order";
+import { cardSubtitle, cardTitle } from "./summary-card-head";
 
 // Arrange Summary (design.md "Arrange Summary"): the cards under the top
 // summary in their order, each shown or hidden, moved with Up and Down (44 px
@@ -13,19 +14,12 @@ import { canHideSummaryCard, moveSummaryCard } from "./summary-card-order";
 // button leave everything as it was. Loaded only when "Arrange cards" (or
 // "Edit cards" on a phone) is opened.
 
-const NAMES = {
-  insights: { name: "Money insights", about: "What needs a look, and what went well" },
-  changed: { name: "What changed this month", about: "This month so far against the same days last month" },
-  subs: { name: "Subscriptions and bills", about: "Charges that come back every month or year" },
-  miles: { name: "Miles and cashback", about: "What each card earned this month, and which card to use next" },
-  coming: { name: "Coming up", about: "The charges due soon" },
-  bankfees: { name: "Bank fees this year", about: "What the banks and cards charged, by kind" },
-  investments: { name: "Investments over time", about: "What your investments were worth on their statements" },
-  taxreliefs: { name: "Tax reliefs this year", about: "What you put into SRS, CPF and charity gifts, against the limits" },
-  mix: { name: "Spending Mix", about: "Spending by category" },
-  plan: { name: "Intent vs Outcome", about: "Each month against its plan" },
-  planSimple: { name: "Earned vs spent by month", about: "What came in and what went out, month by month" },
-  accounts: { name: "The accounts shown", about: "Current wallet balances" }
+// Each row is a card's title and subtitle from the shared list
+// (copy/summary-card-titles.js); the plan card reads as its Simple form in
+// Simple.
+const describe = (id, leadView) => {
+  const key = id === "plan" && leadView === "simple" ? "planSimple" : id;
+  return { name: cardTitle(key), about: cardSubtitle(key) };
 };
 
 /**
@@ -34,11 +28,10 @@ const NAMES = {
 export function SummaryCardEditor({ cards, leadView, phone, onSave, onClose }) {
   const [draft, setDraft] = useState(cards);
   const [announcement, setAnnouncement] = useState("");
-  const describe = (id) => NAMES[id === "plan" && leadView === "simple" ? "planSimple" : id];
   const move = (index, step) => {
     const next = moveSummaryCard(draft, index, step);
     setDraft(next);
-    const name = describe(draft[index].id).name;
+    const name = describe(draft[index].id, leadView).name;
     setAnnouncement(`${name}: ${index + step + 1} of ${draft.length}`);
   };
   const toggle = (index) => {
@@ -61,7 +54,7 @@ export function SummaryCardEditor({ cards, leadView, phone, onSave, onClose }) {
       <p className="summary-cards-note">The top summary always stays first.</p>
       <ol className="summary-cards-list" aria-label="Summary cards">
         {draft.map((card, index) => {
-          const { name, about } = describe(card.id);
+          const { name, about } = describe(card.id, leadView);
           const hideable = canHideSummaryCard(card.id);
           return (
             <li key={card.id} className={`summary-cards-row ${card.hidden ? "is-hidden" : ""}`} data-card={card.id}>

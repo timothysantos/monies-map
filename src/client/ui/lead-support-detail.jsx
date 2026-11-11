@@ -495,3 +495,7 @@ export function BottomActions({
     </div>
   );
 }
+
+// The shared Summary card head and the card title list ride in this
+// first-screen chunk (design.md "Summary card titles").
+export { CardHead } from "../summary-card-head";

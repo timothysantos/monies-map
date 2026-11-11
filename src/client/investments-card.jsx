@@ -14,6 +14,7 @@ import { useSummaryCardQuery } from "./use-summary-card-query";
 import { useIsMobileLayout } from "./use-viewport";
 import { investmentPutInFigure } from "../domain/money-figures";
 import { signTone } from "../domain/money-tone";
+import { CardHead, cardTitle } from "./summary-card-head";
 
 // Investments over time (design.md "Investments over time"; DOMAIN.md
 // "Investments Over Time"): a Summary card built only from what the
@@ -141,13 +142,7 @@ export function InvestmentsCard({ view, enabled, fetchRequiredQuery }) {
   const grewTone = moneyToneClass(signTone(answer.grewMinor), "soft");
   return (
     <section className="chart-card invest-card" aria-labelledby="invest-title" data-fig-view="household" data-fig-period={period}>
-      <div className="invest-head">
-        <div>
-          <h3 id="invest-title" className="invest-eyebrow">{copy.title}</h3>
-          {phone ? null : <p className="invest-sub">{copy.worthOn(answer.asOfDate)}</p>}
-        </div>
-        <StatementFigure className="invest-worth" name={copy.title}>{money(answer.worthMinor)}</StatementFigure>
-      </div>
+      <CardHead id="investments" titleId="invest-title" className="invest-head" action={<StatementFigure className="invest-worth" name={cardTitle("investments")}>{money(answer.worthMinor)}</StatementFigure>} />
       {phone ? (
         <>
           <p className="invest-phone-line">

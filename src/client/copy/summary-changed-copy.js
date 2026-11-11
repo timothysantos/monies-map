@@ -7,9 +7,6 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export const monthName = (month) => MONTHS[Number(String(month).slice(5, 7)) - 1] ?? "";
 
 export const summaryChangedCopy = {
-  title: "What changed this month",
-  // "November so far, against the same days of October."
-  intro: (month, baseMonth) => `${monthName(month)} so far, against the same days of ${monthName(baseMonth)}.`,
   quiet: "Nothing has moved much so far this month.",
   up: "up",
   down: "down",

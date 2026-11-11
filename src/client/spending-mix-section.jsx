@@ -24,6 +24,7 @@ import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { buildSpendChangeNote } from "./spend-change-model";
 import { EmptyState } from "./ui-states";
 import { useIsMobileLayout } from "./use-viewport";
+import { CardHead, cardTitle } from "./summary-card-head";
 
 // Spending Mix: spending by category as a donut, its slices labelled with
 // their name and share where there is room (never a bare share: a label that
@@ -113,16 +114,21 @@ export function SpendingMixSection({
     });
   }
 
+  const listToggle = donutData.length ? (
+    <button type="button" className="subtle-action spending-mix-list-toggle" aria-expanded={listShown} onClick={toggleList}>
+      {listShown ? mixCopy.hideList : mixCopy.showList}
+    </button>
+  ) : null;
+
   return (
     <section className={["chart-card", "spending-mix-card", dashboard ? "is-dashboard" : "", className].filter(Boolean).join(" ")} data-fig-period={period}>
-      <div className="chart-head spending-mix-head">
-        <h3>{messages.summary.spendingMix}</h3>
-        {donutData.length ? (
-          <button type="button" className="subtle-action spending-mix-list-toggle" aria-expanded={listShown} onClick={toggleList}>
-            {listShown ? mixCopy.hideList : mixCopy.showList}
-          </button>
-        ) : null}
-      </div>
+      {/* Summary's card wears the shared head; Month's has the same title and no period line. */}
+      {dashboard ? <CardHead id="mix" className="spending-mix-head is-spaced" context={{ first: period.split(":")[0], last: period.split(":")[1] }} action={listToggle} /> : (
+        <div className="chart-head spending-mix-head">
+          <h3>{cardTitle("mix")}</h3>
+          {listToggle}
+        </div>
+      )}
       {donutData.length ? (
         <div className={`summary-mix ${listShown ? "" : "is-poster"}`}>
           <div className="summary-mix-chart">
@@ -153,7 +159,7 @@ export function SpendingMixSection({
 
           {listShown ? (
             <SpendingMixList
-              label={messages.summary.spendingMix}
+              label={cardTitle("mix")}
               items={donutData}
               topCount={topCount}
               expanded={listExpanded}

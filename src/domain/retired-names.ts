@@ -9,7 +9,8 @@ export const RETIRED_NAMES: ReadonlyArray<{ pattern: RegExp; retired: string; us
   { pattern: /overplanned/i, retired: "Overplanned", use: "Planned more than you earn" },
   { pattern: /\bto allocate\b/i, retired: "To allocate", use: "Not planned yet" },
   { pattern: /\bmoney jobs?\b/i, retired: "Money jobs", use: "Where your money goes" },
-  { pattern: /\bwallets in view\b/i, retired: "Wallets in view", use: "The accounts shown" },
+  { pattern: /\bwallets in view\b/i, retired: "Wallets in view", use: "Accounts" },
+  { pattern: /\bintent (?:vs\.?|versus) outcome\b/i, retired: "Intent vs Outcome", use: "Plan vs actual" },
   { pattern: /\bbudget buckets?\b/i, retired: "Budget bucket", use: "Monthly budget" },
   { pattern: /\bplanned items?\b/i, retired: "Planned items", use: "Bills and dated payments" },
   { pattern: /\bfrom its statement\b/i, retired: "from its statement", use: "as the statement says" }

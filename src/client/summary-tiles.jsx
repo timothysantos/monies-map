@@ -23,6 +23,7 @@ import { useCardRewards } from "./use-card-rewards";
 import { useRepeatingCharges } from "./use-repeating-charges";
 import { useSummaryCardQuery } from "./use-summary-card-query";
 import { useFirstViewMotion } from "./use-first-view-motion";
+import { CardHead, cardSubtitle, cardTitle } from "./summary-card-head";
 
 // Summary's tiles (design.md "Summary tiles"): a glance at a card, built from
 // the data the card already reads (the same queries, so nothing new is read),
@@ -129,7 +130,7 @@ function Visual({ id, tile }) {
   );
 }
 
-function TileView({ tile, title, label = null, onOpen }) {
+function TileView({ tile, subtitle, onOpen }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const headline = formatHeadline(tile.headline);
   // Its marks draw in once, the first time the tile scrolls into view; the
@@ -138,10 +139,10 @@ function TileView({ tile, title, label = null, onOpen }) {
   return (
     <button ref={ref} type="button" className="summary-tile" data-tile={tile.id} data-chart-motion={motion} aria-haspopup="dialog" onClick={() => onOpen(tile.id)}>
       <span className="summary-tile-head">
-        <span className="summary-tile-title">{title}</span>
+        <span className="summary-tile-title">{cardTitle(tile.id)}</span>
         <span className="summary-tile-open">{copy.open}</span>
       </span>
-      {label && areTotalsVisible ? <span className="summary-tile-label">{label}</span> : null}
+      <span className="summary-tile-label">{subtitle}</span>
       <span className="summary-tile-headline" style={{ "--len": headlineLength(headline) }}>
         <span className="summary-tile-figure">{headlineContent(headline)}</span>
         {tile.id === "miles" && tile.headline?.kind === "miles" ? <small>{copy.milesSoFar}</small> : null}
@@ -182,7 +183,7 @@ function SubsTileCard({ view, enabled, fetchRequiredQuery, onOpen, id }) {
     return buildSubsTile({ model, glance: buildSubsGlance(model, buildComingUp(answer)), hidden, labels: { inMonth: subscriptionsCopy.inMonth, priceRises: subscriptionsCopy.priceRises } });
   }, [answer, hidden, id]);
   if (!tile) return null;
-  return <TileView tile={tile} title={copy.titles[id]} label={id === "subs" ? subscriptionsCopy.inMonth(answer.focusMonth) : null} onOpen={onOpen} />;
+  return <TileView tile={tile} subtitle={cardSubtitle(id)} onOpen={onOpen} />;
 }
 
 function InvestmentsTile({ view, enabled, fetchRequiredQuery, onOpen }) {
@@ -195,7 +196,7 @@ function InvestmentsTile({ view, enabled, fetchRequiredQuery, onOpen }) {
   const tile = useMemo(() => buildInvestmentsTile({
     answer, hidden, formatSigned: signed, labels: { grewBy: copy.grewBy, putIn: investmentsCopy.putIn, paidOut: investmentsCopy.paidOut }
   }), [answer, hidden]);
-  return tile ? <TileView tile={tile} title={copy.titles.investments} onOpen={onOpen} /> : null;
+  return tile ? <TileView tile={tile} subtitle={cardSubtitle("investments")} onOpen={onOpen} /> : null;
 }
 
 function MilesTile({ view, enabled, fetchRequiredQuery, onOpen }) {
@@ -204,7 +205,7 @@ function MilesTile({ view, enabled, fetchRequiredQuery, onOpen }) {
   const { answer } = useCardRewards({ queryClient, viewId: view.id, enabled, fetchRequiredQuery });
   const model = useMemo(() => buildCardRewardsModel(answer), [answer]);
   const tile = useMemo(() => buildMilesTile({ model, hidden, labels: { estimate: cardRewardsCopy.estimate } }), [model, hidden]);
-  return tile ? <TileView tile={tile} title={copy.titles.miles} onOpen={onOpen} /> : null;
+  return tile ? <TileView tile={tile} subtitle={cardSubtitle("miles")} onOpen={onOpen} /> : null;
 }
 
 function TaxTile({ view, enabled, fetchRequiredQuery, onOpen }) {
@@ -215,13 +216,13 @@ function TaxTile({ view, enabled, fetchRequiredQuery, onOpen }) {
   const fetcher = useCallback((options) => requestTaxReliefs(viewId, options), [viewId]);
   const answer = useSummaryCardQuery({ queryClient, queryKey, enabled, fetchRequiredQuery, fetcher, abortMessage: "Tax reliefs request aborted." });
   const tile = useMemo(() => buildTaxTile({ answer, hidden, labels: { daysLeft: copy.taxDaysLeft, relief: taxReliefsCopy.reliefs } }), [answer, hidden]);
-  return tile ? <TileView tile={tile} title={copy.titles.taxreliefs} onOpen={onOpen} /> : null;
+  return tile ? <TileView tile={tile} subtitle={cardSubtitle("taxreliefs", { year: answer.year })} onOpen={onOpen} /> : null;
 }
 
 function BankFeesTile({ fees, onOpen }) {
   const hidden = useHidden();
   const tile = useMemo(() => buildBankFeesTile({ fees, hidden, labels: { kinds: copy.bankFeeKinds, chargeCount: copy.chargeCount } }), [fees, hidden]);
-  return tile ? <TileView tile={tile} title={copy.titles.bankfees} onOpen={onOpen} /> : null;
+  return tile ? <TileView tile={tile} subtitle={cardSubtitle("bankfees")} onOpen={onOpen} /> : null;
 }
 
 /**
@@ -250,15 +251,13 @@ export function BankFeesCard({ fees, rangeEndMonth }) {
   const refunded = fees.refundedParts?.reduce((sum, part) => sum + part.minor, 0) ?? 0;
   return (
     <section className="chart-card bankfees-card" aria-labelledby="bankfees-title" data-fig-period={`${fees.year}-01:${rangeEndMonth}`}>
-      <div className="bankfees-head">
-        <h3 id="bankfees-title">{copy.titles.bankfees}</h3>
-        <p>{copy.bankFees.intro}</p>
-      </div>
+      <CardHead id="bankfees" titleId="bankfees-title" />
+      <p className="bankfees-note">{copy.bankFees.intro}</p>
       <p className="bankfees-total">
-        <span data-fig="spent" data-fig-ids={fees.ids.join(" ")} data-fig-name={copy.titles.bankfees} tabIndex={0} role="button">{areTotalsVisible ? whole(fees.netMinor) : HIDDEN}</span>
+        <span data-fig="spent" data-fig-ids={fees.ids.join(" ")} data-fig-name={cardTitle("bankfees")} tabIndex={0} role="button">{areTotalsVisible ? whole(fees.netMinor) : HIDDEN}</span>
         <small>{copy.bankFees.charges(count)}</small>
       </p>
-      <ul className="bankfees-list" aria-label={copy.titles.bankfees}>
+      <ul className="bankfees-list" aria-label={cardTitle("bankfees")}>
         {fees.parts.map((part) => (
           <li key={part.kind} className="bankfees-row">
             <span>{copy.bankFeeKinds[part.kind] ?? copy.bankFeeKinds.other_fee}<small> · {copy.bankFees.charges(part.count)}</small></span>
@@ -282,9 +281,9 @@ export function SummaryTileSheet({ id, view, categories, enabled, fetchRequiredQ
   return (
     <SheetDialog
       className="summary-tile-sheet"
-      title={copy.sheetTitles[id]}
+      title={cardTitle(id)}
       descriptionHidden
-      description={copy.sheetTitles[id]}
+      description={cardSubtitle(id, id === "taxreliefs" ? { year: new Date().getFullYear() } : {})}
       hideSubmit
       quietLabel="Close"
       onQuiet={onClose}

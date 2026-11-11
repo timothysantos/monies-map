@@ -12,6 +12,7 @@ import { formatMonthLabel, money } from "./formatters";
 import { buildIntentMonthCard, buildMonthStrip, monthListStartsOpen } from "./summary-intent-outcome-model";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
 import { useFirstViewMotion } from "./use-first-view-motion";
+import { CardHead, monthsContext } from "./summary-card-head";
 
 const copy = messages.summary.intent;
 const leadCopy = messages.summary.lead;
@@ -57,10 +58,7 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote,
   const { ref: motionRef, motion } = useFirstViewMotion({ attribute: "intentMotion", playMs: 1000, threshold: 0.3 });
   return (
     <section ref={motionRef} className="chart-card summary-intent" data-intent-motion={motion}>
-      <div className="chart-head">
-        <h3>{messages.summary.intentVsOutcome}</h3>
-        <p>{messages.summary.intentVsOutcomeDetail}</p>
-      </div>
+      <CardHead id="plan" className="is-spaced" context={monthsContext(months)} />
       {/* The column + line chart (earned-spent-chart.js): earned, spent and the plan, month by month. */}
       {chart}
       {strip.length ? (

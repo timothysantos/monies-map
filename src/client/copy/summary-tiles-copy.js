@@ -4,24 +4,7 @@
 export const summaryTilesCopy = {
   open: "Open ›",
   chargeCount: (count) => `${count} ${count === 1 ? "charge" : "charges"}`,
-  // A tile's title.
-  titles: {
-    subs: "Subscriptions and bills",
-    coming: "Coming up",
-    investments: "Investments",
-    miles: "Miles and cashback",
-    taxreliefs: "Tax reliefs",
-    bankfees: "Bank fees this year"
-  },
-  // What a tile opens: the card's own name, as the sheet's title.
-  sheetTitles: {
-    subs: "Subscriptions and bills",
-    coming: "Coming up",
-    investments: "Investments over time",
-    miles: "Miles and cashback",
-    taxreliefs: "Tax reliefs",
-    bankfees: "Bank fees this year"
-  },
+  // Tile and sheet titles and subtitles are in summary-card-titles.js.
   roomLeft: "of room left",
   // The Tax reliefs tile's chip: short enough for one line in a half-width
   // tile; the card says "until 31 Dec" in full (taxReliefsCopy.daysLeft).

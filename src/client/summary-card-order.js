@@ -32,7 +32,7 @@ import { createPreferenceStore } from "./viewer-preference-store";
  * @typedef {{ label: string, value: string, tone?: string }} SummaryTileRow
  * The small tile's content (summary-tiles-model.js): a title, a headline, one
  * status chip, and 3 or 4 `rows`, a small `chart` (series of numbers), `bars`
- * or `chips`. About 264px tall on a desktop, about 236px and two across on a
+ * or `chips`. About 284px tall on a desktop, about 256px and two across on a
  * phone.
  * @typedef {{ span: 4, title: string, headline: string, line: string, rows?: SummaryTileRow[], chart?: number[], bars?: Array<{ label: string, share: number }>, chips?: string[] }} SummaryTile
  * @typedef {{ on: "always" | "phone", tileOnly?: boolean }} SummaryTileForm

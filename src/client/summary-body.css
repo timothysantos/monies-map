@@ -103,14 +103,10 @@
   min-width: 0;
 }
 
-.summary-accounts-head h3 {
-  margin: 0;
-}
-
-.summary-accounts-head p {
+.summary-accounts-note {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
 }
 
@@ -262,11 +258,20 @@ body[data-summary-dashboard] .shell {
   margin-bottom: 0;
 }
 
-.summary-card-slot .subs-head h3,
-.summary-card-slot .chg-head h3,
-.summary-card-slot .cr-head h3,
-.summary-card-slot .invest-eyebrow,
-.summary-card-slot .tax-eyebrow {
+/* The one card head (summary-card-head.jsx, design.md "Summary card titles"):
+   a 1rem bold title and, 4px under it, one 13px muted subtitle line, the same
+   on every card; an action sits at the top right. Doubled class so it wins
+   over each card's own older rule. */
+.summary-card-slot .summary-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.summary-card-slot .summary-card-head .summary-card-title {
+  display: block;
   margin: 0;
   color: var(--text);
   font-size: 1rem;
@@ -276,15 +281,30 @@ body[data-summary-dashboard] .shell {
   text-transform: none;
 }
 
-.summary-card-slot .subs-intro,
-.summary-card-slot .chg-intro,
-.summary-card-slot .cr-intro,
-.summary-card-slot .cr-quiet,
-.summary-card-slot .invest-sub,
-.summary-card-slot .tax-sub {
+.summary-card-slot .summary-card-head .summary-card-sub {
+  display: block;
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.summary-card-slot .summary-card-head.is-spaced {
+  margin-bottom: 16px;
+}
+
+/* A line that says more than the subtitle does, under the head. */
+.summary-card-slot .subs-intro,
+.summary-card-slot .cr-intro,
+.summary-card-slot .cr-quiet,
+.summary-card-slot .tax-sub,
+.summary-card-slot .bankfees-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
   line-height: 1.4;
 }
 
@@ -367,7 +387,7 @@ body[data-summary-dashboard] .shell {
 
 /* Summary's tiles (summary-tiles.jsx, design.md "Summary tiles"): one block
    of the grid, 3 across from a 1,064px page and 2 across below it, every tile
-   264px tall (at least 236px on a tablet or phone, growing with its content); a cell that draws nothing is not
+   284px tall (at least 256px on a tablet or phone, growing with its content); a cell that draws nothing is not
    drawn. The reserve holds a tile's place while its chunk loads. */
 .summary-tiles {
   display: grid;
@@ -390,7 +410,7 @@ body[data-summary-dashboard] .shell {
 }
 
 .summary-tile-reserve {
-  height: 236px;
+  height: 256px;
 }
 
 @container shell (min-width: 1064px) {
@@ -400,6 +420,6 @@ body[data-summary-dashboard] .shell {
   }
 
   .summary-tile-reserve {
-    height: 264px;
+    height: 284px;
   }
 }

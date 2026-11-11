@@ -126,7 +126,6 @@ export const messages = {
     nextAriaLabel: "Next period"
   },
   summary: {
-    spendingMix: "Spending Mix",
     // The Summary tab's month choice: the phone island control, its "Pick a
     // month" sheet and the desktop month row (summary-month-picker.jsx).
     monthChoice: {
@@ -212,8 +211,6 @@ export const messages = {
     // The accounts card shows its first rows; the rest open in place.
     accountsShowAll: (count) => `Show all ${count} ›`,
     accountsShowFewer: "Show fewer",
-    intentVsOutcome: "Intent vs Outcome",
-    intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
     // Each Intent vs Outcome month card (summary-intent-outcome.jsx).
     intent: {
       plannedIncome: "Planned income",

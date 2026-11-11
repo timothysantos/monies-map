@@ -10,6 +10,7 @@ import { useMoneyPrivacy } from "./money-privacy";
 import { getPersonColourVars } from "./person-colour";
 import { useCardRewards } from "./use-card-rewards";
 import { useCompactSummaryCard } from "./use-viewport";
+import { CardHead } from "./summary-card-head";
 
 // Miles and cashback (design.md "Miles and cashback"; DOMAIN.md "Card
 // reward rule"): what each credit card has earned so far this month (or
@@ -234,10 +235,7 @@ export function CardRewardsSection({ view, enabled, fetchRequiredQuery }) {
   const pooled = model.suggestFrom === "household";
   return (
     <section className="chart-card cr-card-panel" aria-labelledby="cr-title" data-card-rewards>
-      <div className="cr-head">
-        <h3 id="cr-title">{copy.title}</h3>
-        <span className="cr-estimate">{copy.estimate}</span>
-      </div>
+      <CardHead id="miles" titleId="cr-title" />
       <p className="cr-intro">{copy.finalWord}</p>
       {model.pictures.map((picture) => <Picture key={picture.personId} picture={picture} pooled={pooled || picture.personId === "household"} phone={phone} />)}
       {model.notSetUp ? <p className="cr-quiet">{copy.notSetUp(model.notSetUp)}</p> : null}

@@ -19,12 +19,18 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 // page's createElement, `MonthIcon` its chevron, `chart` the column +
 // line chart above the rows), so its chunk leans only
 // on the first screen's own chunks, as money-jobs-detail.js does.
-export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon, chart = null }) {
+export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon, head, chart = null }) {
   const rows = buildEarnedSpentMonths(months, categoryShareByMonth, investmentMovesByMonth);
   return h(
     "section",
     { className: "chart-card summary-earned-spent", "data-earned-spent": "" },
-    h("div", { className: "chart-head" }, h("h3", null, copy.title), h("p", null, copy.detail)),
+    // The shared card head (summary-card-head.jsx), written by hand: this chunk imports no React, so the page hands it the title and subtitle from the list.
+    h("div", { className: "summary-card-head is-spaced" }, h(
+      "div",
+      { className: "summary-card-heading" },
+      h("h3", { className: "summary-card-title" }, head.title),
+      h("p", { className: "summary-card-sub" }, head.subtitle)
+    )),
     // The column + line chart (earned-spent-chart.js), handed in by the
     // page, which owns its lazy chunk; nothing when there is one month.
     chart,

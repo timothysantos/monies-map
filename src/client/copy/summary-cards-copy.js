@@ -11,8 +11,6 @@ export const shortMonth = (month) => SHORT_MONTHS[Number(String(month).slice(5, 
 export const dayMonth = (date) => `${Number(String(date).slice(8, 10))} ${shortMonth(String(date).slice(0, 7))}`;
 
 export const investmentsCopy = {
-  title: "Investments",
-  worthOn: (date) => `Worth on the latest statements, ${dayMonth(date)}`,
   putInSince: "You put in since Jan",
   grewBy: "Grew by",
   paidOut: "Paid out (dividends, interest)",
@@ -36,7 +34,6 @@ export const investmentsCopy = {
 };
 
 export const taxReliefsCopy = {
-  title: (year) => `Tax reliefs for ${year}`,
   filedIn: (year) => `Counts for the tax you file in ${Number(year) + 1}`,
   daysLeft: (days) => (days <= 0 ? "Last day, until 31 Dec" : `${days} ${days === 1 ? "day" : "days"} left, until 31 Dec`),
   reliefs: {

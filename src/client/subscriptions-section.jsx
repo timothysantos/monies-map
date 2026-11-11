@@ -16,6 +16,7 @@ import { ICON_REGISTRY } from "./ui-options";
 import { useCompactSummaryCard } from "./use-viewport";
 import { useRepeatingCharges } from "./use-repeating-charges";
 import { saveRepeatingChoice } from "./repeating-charges-api";
+import { CardHead, cardTitle } from "./summary-card-head";
 
 // A rounded total reads "$540", never "$540.00".
 const wholeMoney = (minor) => money(minor).replace(/\.00(?=\D*$)/, "");
@@ -324,21 +325,21 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
   // Narrow, 4 rows then Show all; a wide card (subscriptions-section.css)
   // lists the 8 in two columns and hides the button when there are no more.
   const rows = phone && !showAll ? model.glanceRows : model.rows;
+  // The Coming up sheet wears Coming up's own title and subtitle.
+  const headId = initialTab === "coming" ? "coming" : "subs";
   const rowProps = { categories, yearPeriod: model.yearPeriod, phone, onOpen: (series) => { setErrorMessage(""); setOpenSeries(series); } };
   return (
     <section ref={cardRef} className="chart-card subs-card" aria-labelledby="subs-title">
-      <div className="subs-head">
-        <h3 id="subs-title">{copy.title}</h3>
-        <p className="subs-intro">{phone ? copy.introPhone : copy.introChoices}</p>
-      </div>
+      <CardHead id={headId} titleId="subs-title" />
+      <p className="subs-intro">{phone ? copy.introPhone : copy.introChoices}</p>
       <div className="subs-totals">
         <div className="subs-total">
           <span className="subs-total-label">{copy.inMonth(model.focusMonth)}</span>
-          <Figure className="subs-total-figure" amount={model.totals.focus} period={model.focusPeriod} name={copy.title} />
+          <Figure className="subs-total-figure" amount={model.totals.focus} period={model.focusPeriod} name={cardTitle(headId)} />
         </div>
         <div className="subs-total">
           <span className="subs-total-label">{copy.lastYear}</span>
-          <Figure className="subs-total-figure" amount={model.totals.year} period={model.yearPeriod} name={copy.title} />
+          <Figure className="subs-total-figure" amount={model.totals.year} period={model.yearPeriod} name={cardTitle(headId)} />
         </div>
       </div>
       {glance ? <SubsGlance glance={glance} hiddenMoney={hiddenMoney} /> : null}
@@ -364,7 +365,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
           </ul>
         </>
       ) : (
-      <ul className={`subs-list ${showAll ? "is-all" : "is-glance"}`} aria-label={copy.title}>
+      <ul className={`subs-list ${showAll ? "is-all" : "is-glance"}`} aria-label={cardTitle(headId)}>
         {rows.map((series) => <SeriesRow key={series.key} series={series} {...rowProps} />)}
         {phone && !showAll && model.rows.length > 4 ? (
           <li className="subs-fold" data-wide-hide={model.rows.length <= rows.length ? "" : undefined}>

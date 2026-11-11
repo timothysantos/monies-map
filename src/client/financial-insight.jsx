@@ -10,6 +10,7 @@ import { useIsMobileLayout } from "./use-viewport";
 // The check-in's own styles ship with the route that shows it, not with
 // the first-screen stylesheet.
 import "./money-checkin.css";
+import { cardSubtitle, cardTitle } from "./summary-card-head";
 
 // Money insights (the money check-in in code): one computed signal worth
 // knowing (with its kind chip, a way to think about it and at most one
@@ -77,13 +78,30 @@ function insightLabelFor(audienceName) {
   return audienceName ? `${audienceName}'s money insights` : "Household money insights";
 }
 
+// The label above the insights. Summary's card wears the shared card head
+// (title and subtitle from the list, as every Summary card); Month keeps its
+// own eyebrow, which says whose insights they are.
+function InsightLabel({ audienceName, className }) {
+  if (!className.includes("financial-insight-summary")) {
+    return <span className="financial-insight-label">{insightLabelFor(audienceName)}</span>;
+  }
+  return (
+    <span className="financial-insight-label summary-card-head">
+      <span className="summary-card-heading">
+        <span className="summary-card-title">{cardTitle("insights")}</span>
+        <span className="summary-card-sub">{cardSubtitle("insights")}</span>
+      </span>
+    </span>
+  );
+}
+
 // The insights' frame while their module loads: the label and one empty
 // line, with the same box as the insights, so nothing new is said.
 function FinancialInsightFrame({ audienceName = "", className = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   return (
     <section className={`financial-insight ${className}`.trim()} aria-label="Money insights" aria-busy={areTotalsVisible ? "true" : undefined} data-checkin-mode={areTotalsVisible ? "loading" : undefined}>
-      <span className="financial-insight-label">{insightLabelFor(audienceName)}</span>
+      <InsightLabel audienceName={audienceName} className={className} />
       <div className="financial-insight-content">
         {areTotalsVisible
           ? <p className="financial-insight-narrative" aria-hidden="true">{"\u00a0"}</p>
@@ -113,7 +131,6 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
     ready
   }), [calmLines, clock.nowMs, clock.today, contextKey, memorySnapshot, period, ready, seed, signals, triviaRotation]);
   const { headline } = view;
-  const insightLabel = insightLabelFor(audienceName);
   const [isExpanded, setIsExpanded] = useState(false);
   const [quote, setQuote] = useState(null);
   const alsoId = useId();
@@ -129,7 +146,7 @@ function FinancialInsightCheckIn({ audienceName = "", checkIn, actions = [], onC
   // picture lines have none to show, and still hand Ask their line. A line
   // with no signal (calm, quiet, sorted) is plain text.
   const lineSignal = (signal) => (signal && (signal.basis || signal.kind === "just_for_fun" || signal.kind === "long_view") && areTotalsVisible ? signal : undefined);
-  const label = <span className="financial-insight-label">{insightLabel}</span>;
+  const label = <InsightLabel audienceName={audienceName} className={className} />;
   const foldRow = (
     <>
       {isOpenNow ? null : label}

@@ -13,14 +13,6 @@
   gap: 8px;
 }
 
-.cr-estimate {
-  border-radius: 999px;
-  background: var(--chip);
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 600;
-}
-
 .cr-picture + .cr-picture {
   margin-top: 16px;
   padding-top: 12px;

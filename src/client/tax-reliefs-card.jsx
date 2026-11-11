@@ -9,6 +9,7 @@ import { getPersonColourVars } from "./person-colour";
 import { queryKeys } from "./query-keys";
 import { requestTaxReliefs } from "./summary-cards-api";
 import { useSummaryCardQuery } from "./use-summary-card-query";
+import { CardHead } from "./summary-card-head";
 
 // Tax reliefs this year (design.md "Tax reliefs"; DOMAIN.md "Tax Relief"):
 // for each person, the SRS and CPF cash top-ups and charity gifts that lower
@@ -76,13 +77,8 @@ export function TaxReliefsCard({ view, enabled, fetchRequiredQuery }) {
   const times = timesWords(answer.charityTimes);
   return (
     <section className="chart-card tax-card" aria-labelledby="tax-title" data-fig-view="household" data-fig-period={`${answer.year}-01:${answer.today.slice(0, 7)}`}>
-      <div className="tax-head">
-        <div>
-          <h3 id="tax-title" className="tax-eyebrow">{copy.title(answer.year)}</h3>
-          <p className="tax-sub">{copy.filedIn(answer.year)}</p>
-        </div>
-        <span className="tax-deadline">{copy.daysLeft(answer.daysLeft)}</span>
-      </div>
+      <CardHead id="taxreliefs" titleId="tax-title" context={{ year: answer.year }} className="tax-head" action={<span className="tax-deadline">{copy.daysLeft(answer.daysLeft)}</span>} />
+      <p className="tax-sub">{copy.filedIn(answer.year)}</p>
       {answer.people.map((person) => (
         <div key={person.personId} className="tax-person" data-person={person.personId} style={getPersonColourVars(person.name)}>
           <h4 className="tax-person-name"><span className="tax-person-dot" aria-hidden="true" />{person.name}</h4>

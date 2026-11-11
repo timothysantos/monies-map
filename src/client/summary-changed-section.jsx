@@ -10,6 +10,7 @@ import { queryKeys } from "./query-keys";
 import { requestSummaryChanged } from "./summary-changed-api";
 import { useSummaryCardQuery } from "./use-summary-card-query";
 import { useFirstViewMotion } from "./use-first-view-motion";
+import { CardHead, cardTitle } from "./summary-card-head";
 
 // What changed this month (design.md "What changed card"; DOMAIN.md "What
 // Changed Card"): the month so far against the same point of the month
@@ -141,12 +142,9 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
   const biggest = Math.max(1, ...rows.map((row) => Math.abs(row.diffMinor)));
   return (
     <section ref={motionRef} className="chart-card chg-card" aria-labelledby="chg-title" data-fig-period={`${changed.month}:${changed.month}`} data-chart-motion={motion}>
-      <div className="chg-head">
-        <h3 id="chg-title">{copy.title}</h3>
-        <p className="chg-intro">{copy.intro(changed.month, changed.baseMonth)}</p>
-      </div>
+      <CardHead id="changed" titleId="chg-title" context={{ month: changed.month, baseMonth: changed.baseMonth }} className="is-spaced" />
       {rows.length ? (
-        <ul className="chg-list" aria-label={copy.title}>
+        <ul className="chg-list" aria-label={cardTitle("changed")}>
           {shown.map((row) => (
             <Row
               key={row.category}

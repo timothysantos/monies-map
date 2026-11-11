@@ -24,6 +24,7 @@ import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows } from "./ui/lead-support-detail";
 import { SimpleDetail } from "./ui/spend-lead-group";
+import { CardHead, cardSubtitle, cardTitle, monthsContext } from "./summary-card-head";
 // Arrange cards loads only when it is opened.
 const SummaryCardEditor = lazy(() => import("./summary-card-editor").then((module) => ({ default: module.SummaryCardEditor })));
 // The Monthly Note dialog is only needed once a note is opened.
@@ -325,6 +326,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
       <Suspense fallback={<div className="summary-plan-reserve" aria-hidden="true" />}>
         <SimpleDetail
           part="months"
+          head={{ title: cardTitle("planSimple"), subtitle: cardSubtitle("planSimple", monthsContext(safeSummaryPage.months)) }}
           months={safeSummaryPage.months}
           categoryShareByMonth={safeSummaryPage.categoryShareByMonth}
           investmentMovesByMonth={safeSummaryPage.investmentMovesByMonth}
@@ -538,11 +540,11 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   return (
     <section className="summary-accounts">
       <div className="summary-accounts-body">
-        <div className="summary-accounts-head">
-          <h3>The accounts shown</h3>
-          <p>Current wallet balances from the ledger. These do not change with the selected summary range.</p>
+        <div>
+          <CardHead id="accounts" titleId="summary-accounts-title" />
+          <p className="summary-accounts-note">These do not change with the selected summary range.</p>
         </div>
-        <DetailRows label="The accounts shown">
+        <DetailRows label={cardTitle("accounts")}>
           {listed.map((account) => (
             <DetailRow
               key={account.accountId}

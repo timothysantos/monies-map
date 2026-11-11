@@ -3,9 +3,6 @@
 // those parts, never in the first screen. Hidden money shows shares only:
 // no amount, and no word that says which side of zero a period ended on.
 export const simpleViewCopy = {
-  // "Earned vs spent by month" (summary-earned-spent.js).
-  title: "Earned vs spent by month",
-  detail: "What came in and what went out, month by month.",
   earned: "Earned",
   spent: "Spent",
   invested: "Invested",
