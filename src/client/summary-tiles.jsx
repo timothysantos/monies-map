@@ -53,6 +53,20 @@ function formatHeadline(headline) {
   return formatValue(headline);
 }
 
+// A range reads "$2,150 to $2,250"; a phone shows it as "$2,150–$2,250" (CSS
+// swaps the word for a dash, the words stay for a screen reader).
+function headlineContent(headline) {
+  const parts = typeof headline === "string" ? headline.split(" to ") : [headline];
+  if (parts.length !== 2) return headline;
+  return <>{parts[0]}<span className="summary-tile-to"> to </span><span className="summary-tile-dash" aria-hidden="true">{"\u2009\u2013\u2009"}</span>{parts[1]}</>;
+}
+
+// The characters the headline holds, so a phone can size it to fit its tile
+// (summary-tiles.css); a range counts its dash as one character.
+function headlineLength(headline) {
+  return String(headline).replace(" to ", "--").length;
+}
+
 const TONE_CLASS = { mint: "money-in", rose: "money-short" };
 
 // The miles bonus furthest through its cap: a ring that fills clockwise from
@@ -127,8 +141,8 @@ function TileView({ tile, title, label = null, onOpen }) {
         <span className="summary-tile-open">{copy.open}</span>
       </span>
       {label && areTotalsVisible ? <span className="summary-tile-label">{label}</span> : null}
-      <span className="summary-tile-headline">
-        {headline}
+      <span className="summary-tile-headline" style={{ "--len": headlineLength(headline) }}>
+        <span className="summary-tile-figure">{headlineContent(headline)}</span>
         {tile.id === "miles" && tile.headline?.kind === "miles" ? <small>{copy.milesSoFar}</small> : null}
         {tile.id === "taxreliefs" && tile.headline ? <small>{copy.roomLeft}</small> : null}
       </span>

@@ -108,15 +108,17 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 22px;
-  padding: 0 9px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 10px;
   border: 1px solid var(--card-border);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--chip);
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .subs-chip.is-up {

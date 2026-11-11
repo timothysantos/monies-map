@@ -63,7 +63,7 @@
 }
 
 .chg-diff {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -77,15 +77,17 @@
 .chg-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 0 9px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 10px;
   border: 1px solid var(--pastel-butter-line);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--pastel-butter);
   color: var(--pastel-butter-ink);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .chg-meta {

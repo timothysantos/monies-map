@@ -3618,7 +3618,7 @@ body[data-ask-dock="docked"] .environment-banner {
 .donut-center span {
   color: var(--muted);
   max-width: 110px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.08em;
