@@ -108,6 +108,42 @@ test("Miles tile: the miles so far, an Estimate chip, the cards that earned most
   assert.ok(buildMilesTile({ model, hidden: true, labels: { estimate: "Estimate" } }).rows.every((row) => row.value === null));
 });
 
+test("Miles tile: a ring gauge for the bonus furthest through its cap; none without a cap or with nothing used; hidden money drops it", () => {
+  const card = (name, bonuses) => ({ name, unit: "miles", earned: 100, bonuses });
+  const model = { isEmpty: false, pictures: [{ cards: [
+    card("Citi", [{ capMinor: 100000, usedMinor: 30000 }]),
+    card("UOB Lady's", [{ capMinor: 100000, usedMinor: 62000 }, { capMinor: null, usedMinor: 99999 }])
+  ] }] };
+  const labels = { estimate: "Estimate" };
+  assert.deepEqual(buildMilesTile({ model, hidden: false, labels }).gauge, { percent: 62, cardName: "UOB Lady's" });
+  // The ring takes the room of two of the four rows.
+  assert.equal(buildMilesTile({ model, hidden: false, labels }).rows.length, 2);
+  assert.equal(buildMilesTile({ model: { ...model, pictures: [{ cards: [card("A", []), card("B", []), card("C", []), card("D", [])] }] }, hidden: false, labels }).rows.length, 4);
+  // Over the cap reads as full, never above 100.
+  assert.equal(buildMilesTile({ model: { ...model, pictures: [{ cards: [card("A", [{ capMinor: 1000, usedMinor: 4000 }])] }] }, hidden: false, labels }).gauge.percent, 100);
+  // No cap, or nothing used: no gauge.
+  assert.equal(buildMilesTile({ model: { ...model, pictures: [{ cards: [card("A", [{ capMinor: null, usedMinor: 500 }]), card("B", [{ capMinor: 1000, usedMinor: 0 }])] }] }, hidden: false, labels }).gauge, null);
+  assert.equal(buildMilesTile({ model: { ...model, pictures: [{ cards: [{ name: "A", unit: "miles", earned: 5 }] }] }, hidden: false, labels }).gauge, null);
+  assert.equal(buildMilesTile({ model, hidden: true, labels }).gauge, null);
+});
+
+test("Tax reliefs tile rows carry the share used as a percent; hidden money drops it", () => {
+  const tax = { year: "2026", daysLeft: 51, people: [{ name: "Ethan", reliefs: [{ key: "srs", amountMinor: 1000000, limitMinor: 1530000, roomMinor: 530000 }, { key: "cpf_self", amountMinor: 900000, limitMinor: 800000, roomMinor: 0 }, { key: "x", amountMinor: 5, limitMinor: 0, roomMinor: 0 }] }] };
+  const labels = { daysLeft: (days) => `${days} days left`, relief: { srs: "SRS", cpf_self: "CPF", x: "X" } };
+  assert.deepEqual(buildTaxTile({ answer: tax, hidden: false, labels }).rows.map((row) => row.value), [{ kind: "percent", percent: 65 }, { kind: "percent", percent: 100 }, null]);
+  assert.ok(buildTaxTile({ answer: tax, hidden: true, labels }).rows.every((row) => row.value === null));
+});
+
+test("Bank fees tile: by-month bars, each a share of the biggest month, the biggest marked; under two months, none", () => {
+  const labels = { kinds: { annual_fee: "Annual fees" }, chargeCount: (count) => `${count} charges` };
+  const fees = { netMinor: 14200, parts: [{ kind: "annual_fee", minor: 14200, count: 3 }], months: [{ month: "2026-03", minor: 1000 }, { month: "2026-06", minor: 12000 }, { month: "2026-09", minor: 1200 }] };
+  const tile = buildBankFeesTile({ fees, hidden: false, labels });
+  assert.deepEqual(tile.months.map((item) => [item.month, Math.round(item.share * 100), item.isBiggest]), [["2026-03", 8, false], ["2026-06", 100, true], ["2026-09", 10, false]]);
+  assert.deepEqual(buildBankFeesTile({ fees: { ...fees, months: [{ month: "2026-06", minor: 14200 }] }, hidden: false, labels }).months, []);
+  assert.deepEqual(buildBankFeesTile({ fees: { ...fees, months: undefined }, hidden: false, labels }).months, []);
+  assert.deepEqual(buildBankFeesTile({ fees, hidden: true, labels }).months, []);
+});
+
 test("Tax reliefs tile: the room left, the days left, one bar per relief and person; nothing used has no tile", () => {
   const tax = {
     year: "2026", daysLeft: 51,

@@ -195,15 +195,126 @@
 }
 
 .summary-tile-weeks > span {
-  flex: 1;
+  flex: 0 1 28px;
   border-radius: 3px 3px 0 0;
   background: var(--pastel-sky);
+}
+
+/* Miles: the bonus used, as a ring with its percent, and a caption. */
+.summary-tile-gauge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.summary-tile-ring {
+  flex: none;
+  width: 52px;
+  height: 52px;
+}
+
+.summary-tile-ring-track {
+  stroke: var(--chip);
+}
+
+.summary-tile-ring-fill {
+  stroke: var(--accent-strong);
+}
+
+.summary-tile-ring-text {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.summary-tile-gauge-caption {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+/* Bank fees: one bar a month, the biggest month marked. */
+.summary-tile-months {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 34px;
+  margin-top: auto;
+}
+
+.summary-tile-months > span {
+  flex: 0 1 22px;
+  border-radius: 3px 3px 0 0;
+  background: var(--pastel-sky);
+}
+
+.summary-tile-months > .is-biggest {
+  background: var(--accent-strong);
+}
+
+/* The marks draw in once, on the tile's first view (use-first-view-motion.js:
+   armed, playing, done; never armed for reduced motion). Transforms and
+   stroke dashes only, so nothing moves the page; every figure is in the page
+   from the start. */
+@media (prefers-reduced-motion: no-preference) {
+  .summary-tile-line,
+  .summary-tile-track > span,
+  .summary-tile-stack > span {
+    transform-origin: left center;
+  }
+
+  .summary-tile-weeks > span,
+  .summary-tile-months > span {
+    transform-origin: center bottom;
+  }
+
+  [data-chart-motion="armed"] :is(.summary-tile-line, .summary-tile-track > span, .summary-tile-stack > span) {
+    transform: scaleX(0);
+  }
+
+  [data-chart-motion="armed"] :is(.summary-tile-weeks > span, .summary-tile-months > span) {
+    transform: scaleY(0);
+  }
+
+  [data-chart-motion="armed"] .summary-tile-ring-fill {
+    stroke-dasharray: 0 100;
+  }
+
+  [data-chart-motion="playing"] :is(.summary-tile-line, .summary-tile-track > span, .summary-tile-stack > span) {
+    animation: tile-grow-x 640ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  [data-chart-motion="playing"] :is(.summary-tile-weeks > span, .summary-tile-months > span) {
+    animation: tile-grow-y 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  [data-chart-motion="playing"] .summary-tile-ring-fill {
+    animation: tile-ring 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes tile-grow-x {
+    from { transform: scaleX(0); }
+  }
+
+  @keyframes tile-grow-y {
+    from { transform: scaleY(0); }
+  }
+
+  @keyframes tile-ring {
+    from { stroke-dasharray: 0 100; }
+  }
 }
 
 /* Hidden money: a tile keeps only its words, no marks. */
 html[data-money-privacy="hidden"] .summary-tile-stack,
 html[data-money-privacy="hidden"] .summary-tile-bars,
 html[data-money-privacy="hidden"] .summary-tile-weeks,
+html[data-money-privacy="hidden"] .summary-tile-months,
+html[data-money-privacy="hidden"] .summary-tile-gauge,
 html[data-money-privacy="hidden"] .summary-tile-line {
   display: none;
 }

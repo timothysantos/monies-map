@@ -13,7 +13,7 @@ import { buildComingUp } from "./subscriptions-model";
 
 const ROWS = 4;
 
-const hiddenTile = (tile) => ({ ...tile, headline: null, chip: null, change: null, bars: [], points: [], rows: tile.rows.map((row) => ({ label: row.label, value: null })) });
+const hiddenTile = (tile) => ({ ...tile, headline: null, chip: null, change: null, bars: [], points: [], gauge: null, months: [], rows: tile.rows.map((row) => ({ label: row.label, value: null })) });
 const finish = (tile, hidden) => (hidden ? hiddenTile(tile) : tile);
 const plural = (count, one, many) => (count === 1 ? one : many);
 
@@ -68,6 +68,21 @@ export function buildInvestmentsTile({ answer, hidden, labels, formatSigned }) {
   }, hidden);
 }
 
+// The miles bonus furthest through its cap this cycle, as a ring gauge: how
+// much of the cap is used, and the card it is on. Only bonuses with a cap; a
+// card whose bonus has no cap, or nothing used, has no gauge.
+function bonusGauge(milesCards) {
+  let best = null;
+  for (const card of milesCards) {
+    for (const bonus of card.bonuses ?? []) {
+      if (!(bonus.capMinor > 0)) continue;
+      const share = Math.min(1, Math.max(0, bonus.usedMinor / bonus.capMinor));
+      if (share > 0 && (!best || share > best.share)) best = { share, cardName: card.name };
+    }
+  }
+  return best ? { percent: Math.round(best.share * 100), cardName: best.cardName } : null;
+}
+
 /** @param {{ model: any, hidden: boolean, labels: { estimate: string } }} input */
 export function buildMilesTile({ model, hidden, labels }) {
   if (!model || model.isEmpty) return null;
@@ -76,11 +91,14 @@ export function buildMilesTile({ model, hidden, labels }) {
   const total = milesCards.reduce((sum, card) => sum + card.earned, 0);
   const useMiles = milesCards.length > 0;
   const value = (card) => ({ kind: card.unit === "miles" ? "miles" : "cashback", amount: card.earned });
+  const gauge = bonusGauge(milesCards);
   return finish({
+    gauge,
     id: "miles",
     headline: useMiles ? { kind: "miles", amount: total } : { kind: "cashback", amount: cards.reduce((sum, card) => sum + card.earned, 0) },
     chip: { text: labels.estimate, tone: "butter" },
-    rows: [...cards].sort((left, right) => right.earned - left.earned).slice(0, ROWS).map((card) => ({ label: card.name, value: value(card) })),
+    // The ring takes the room of two rows.
+    rows: [...cards].sort((left, right) => right.earned - left.earned).slice(0, gauge ? ROWS - 2 : ROWS).map((card) => ({ label: card.name, value: value(card) })),
     bars: [],
     points: []
   }, hidden);
@@ -96,13 +114,26 @@ export function buildTaxTile({ answer, hidden, labels }) {
     headline: { kind: "money", minor: room },
     headlineLabel: null,
     chip: { text: labels.daysLeft(answer.daysLeft), tone: answer.daysLeft <= 60 ? "butter" : "sky" },
-    rows: reliefs.slice(0, 3).map((item) => ({ label: `${item.person} · ${labels.relief[item.relief.key]}`, value: null })),
+    rows: reliefs.slice(0, 3).map((item) => ({
+      label: `${item.person} · ${labels.relief[item.relief.key]}`,
+      value: item.relief.limitMinor > 0 ? { kind: "percent", percent: Math.round(Math.min(1, item.relief.amountMinor / item.relief.limitMinor) * 100) } : null
+    })),
     bars: reliefs.slice(0, 3).map((item) => ({
       key: `${item.person}-${item.relief.key}`,
       share: item.relief.limitMinor > 0 ? Math.min(1, item.relief.amountMinor / item.relief.limitMinor) : 0
     })),
     points: []
   }, hidden);
+}
+
+// The year's fees by month as small bars: each month's share of the biggest
+// month, the biggest one marked. Two or more months, or no chart.
+function feeMonths(months) {
+  const list = (months ?? []).filter((item) => item.minor > 0);
+  if (list.length < 2) return [];
+  const biggest = Math.max(...list.map((item) => item.minor));
+  const first = list.find((item) => item.minor === biggest);
+  return list.map((item) => ({ key: item.month, month: item.month, share: item.minor / biggest, isBiggest: item === first }));
 }
 
 /** @param {{ fees: any, hidden: boolean, labels: { kinds: Record<string, string>, chargeCount: (count: number) => string } }} input */
@@ -115,6 +146,7 @@ export function buildBankFeesTile({ fees, hidden, labels }) {
     chip: { text: labels.chargeCount(count), tone: "sky" },
     rows: fees.parts.slice(0, ROWS).map((part) => ({ label: labels.kinds[part.kind] ?? labels.kinds.other_fee, value: { kind: "money", minor: part.minor } })),
     bars: fees.parts.slice(0, ROWS).map((part) => ({ key: part.kind, share: part.minor / fees.netMinor })),
+    months: feeMonths(fees.months),
     points: []
   }, hidden);
 }

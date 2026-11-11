@@ -21,6 +21,7 @@ import { requestInvestmentsOverTime, requestTaxReliefs } from "./summary-cards-a
 import { useCardRewards } from "./use-card-rewards";
 import { useRepeatingCharges } from "./use-repeating-charges";
 import { useSummaryCardQuery } from "./use-summary-card-query";
+import { useFirstViewMotion } from "./use-first-view-motion";
 
 // Summary's tiles (design.md "Summary tiles"): a glance at a card, built from
 // the data the card already reads (the same queries, so nothing new is read),
@@ -41,6 +42,7 @@ function formatValue(value) {
   if (value.kind === "money") return whole(value.minor);
   if (value.kind === "miles") return cardRewardsCopy.miles(value.amount);
   if (value.kind === "cashback") return money(Math.floor(value.amount));
+  if (value.kind === "percent") return `${value.percent}%`;
   return null;
 }
 
@@ -53,7 +55,32 @@ function formatHeadline(headline) {
 
 const TONE_CLASS = { mint: "money-in", rose: "money-short" };
 
+// The miles bonus furthest through its cap: a ring that fills clockwise from
+// the top with the percent in its middle, and what it is the percent of.
+function Gauge({ gauge }) {
+  return (
+    <span className="summary-tile-gauge" aria-hidden="true">
+      <svg viewBox="0 0 48 48" className="summary-tile-ring">
+        <circle cx="24" cy="24" r="19" fill="none" strokeWidth="6" className="summary-tile-ring-track" />
+        <circle cx="24" cy="24" r="19" fill="none" strokeWidth="6" pathLength="100" strokeDasharray={`${gauge.percent} ${100 - gauge.percent}`} transform="rotate(-90 24 24)" className="summary-tile-ring-fill" />
+        <text x="24" y="24" textAnchor="middle" dominantBaseline="central" className="summary-tile-ring-text">{gauge.percent}%</text>
+      </svg>
+      <span className="summary-tile-gauge-caption">{copy.bonusUsed(gauge.cardName)}</span>
+    </span>
+  );
+}
+
 function Visual({ id, tile }) {
+  if (tile.gauge) return <Gauge gauge={tile.gauge} />;
+  if (tile.months?.length) {
+    return (
+      <span className="summary-tile-months" aria-hidden="true">
+        {tile.months.map((month, index) => (
+          <span key={month.key} className={month.isBiggest ? "is-biggest" : undefined} style={{ height: `${Math.max(14, Math.round(month.share * 100))}%`, "--i": index }} />
+        ))}
+      </span>
+    );
+  }
   if (tile.points.length > 1) {
     const low = Math.min(...tile.points);
     const high = Math.max(...tile.points);
@@ -69,20 +96,20 @@ function Visual({ id, tile }) {
   if (id === "taxreliefs") {
     return (
       <span className="summary-tile-bars" aria-hidden="true">
-        {tile.bars.map((bar) => <span key={bar.key} className="summary-tile-track"><span style={{ width: `${Math.round(bar.share * 100)}%` }} /></span>)}
+        {tile.bars.map((bar, index) => <span key={bar.key} className="summary-tile-track"><span style={{ width: `${Math.round(bar.share * 100)}%`, "--i": index }} /></span>)}
       </span>
     );
   }
   if (id === "coming") {
     return (
       <span className="summary-tile-weeks" aria-hidden="true">
-        {tile.bars.map((bar) => <span key={bar.key} style={{ height: `${Math.max(12, Math.round(bar.share * 100))}%` }} />)}
+        {tile.bars.map((bar, index) => <span key={bar.key} style={{ height: `${Math.max(12, Math.round(bar.share * 100))}%`, "--i": index }} />)}
       </span>
     );
   }
   return (
     <span className="summary-tile-stack" aria-hidden="true">
-      {tile.bars.map((bar, index) => <span key={bar.key} className={`is-k${index % 4}`} style={{ width: `${bar.share * 100}%` }} />)}
+      {tile.bars.map((bar, index) => <span key={bar.key} className={`is-k${index % 4}`} style={{ width: `${bar.share * 100}%`, "--i": index }} />)}
     </span>
   );
 }
@@ -90,8 +117,11 @@ function Visual({ id, tile }) {
 function TileView({ tile, title, label = null, onOpen }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const headline = formatHeadline(tile.headline);
+  // Its marks draw in once, the first time the tile scrolls into view; the
+  // figures are in the page from the start (use-first-view-motion.js).
+  const { ref, motion } = useFirstViewMotion({ attribute: "chartMotion", playMs: 1200, threshold: 0.3 });
   return (
-    <button type="button" className="summary-tile" data-tile={tile.id} aria-haspopup="dialog" onClick={() => onOpen(tile.id)}>
+    <button ref={ref} type="button" className="summary-tile" data-tile={tile.id} data-chart-motion={motion} aria-haspopup="dialog" onClick={() => onOpen(tile.id)}>
       <span className="summary-tile-head">
         <span className="summary-tile-title">{title}</span>
         <span className="summary-tile-open">{copy.open}</span>

@@ -40,6 +40,9 @@ export interface BankFeesYear {
   refundedMinor: number;
   // The fees that stand, by kind, largest first.
   parts: Array<{ kind: BankFeeKind; minor: number; count: number }>;
+  // The same standing fees by the month they were charged, oldest first (the
+  // Bank fees tile's small bar chart; only marks, never a figure).
+  months: Array<{ month: string; minor: number }>;
   refundedParts: Array<{ kind: BankFeeKind; minor: number; count: number }>;
   // Every fee row and refund row of the year: View entries opens them, and
   // their Spent total is netMinor (a paired charge and its refund net to 0).
@@ -81,6 +84,15 @@ function byKind(list: Array<{ kind: BankFeeKind; amountMinor: number }>) {
     .sort((left, right) => right.minor - left.minor || left.kind.localeCompare(right.kind));
 }
 
+function byMonth(list: Array<{ date: string; amountMinor: number }>) {
+  const totals = new Map<string, number>();
+  for (const item of list) {
+    const month = item.date.slice(0, 7);
+    totals.set(month, (totals.get(month) ?? 0) + item.amountMinor);
+  }
+  return [...totals.entries()].map(([month, minor]) => ({ month, minor })).sort((left, right) => left.month.localeCompare(right.month));
+}
+
 /** The year's fees from its rows (already in the view and the window). */
 export function buildBankFeesYear(year: string, rows: BankFeeRow[]): BankFeesYear {
   const classified = rows
@@ -116,6 +128,7 @@ export function buildBankFeesYear(year: string, rows: BankFeeRow[]): BankFeesYea
     netMinor: standing - unpairedRefundsMinor,
     refundedMinor: refunded.reduce((sum, charge) => sum + charge.amountMinor, 0),
     parts,
+    months: byMonth(open),
     refundedParts: byKind(refunded),
     ids,
     penaltyMonths: [...new Set(classified

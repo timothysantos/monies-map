@@ -23,6 +23,8 @@ export const summaryTilesCopy = {
     bankfees: "Bank fees this year"
   },
   roomLeft: "of room left",
+  // Under the Miles tile's ring: what the percent in its middle is of.
+  bonusUsed: (cardName) => `of the ${cardName} bonus used`,
   milesSoFar: "miles so far",
   grewBy: (amount) => `Grew by ${amount}`,
   // The change note's quiet words after the arrow and percent.

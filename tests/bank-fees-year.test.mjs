@@ -84,3 +84,17 @@ test("a refund on another account, of another amount, or filed as income does no
   assert.equal(fees.ids.includes(fees.ids.at(-1)), true);
   assert.equal(fees.ids.length, 5, "the refund filed as income is not one of the year's rows");
 });
+
+test("the standing fees by the month they were charged, oldest first; refunded charges leave their month", () => {
+  const fees = buildBankFeesYear("2026", fixture());
+  assert.deepEqual(fees.months, [
+    { month: "2026-03", minor: 150 },
+    { month: "2026-04", minor: 10_120 },
+    { month: "2026-05", minor: 180 },
+    { month: "2026-06", minor: 1_940 },
+    { month: "2026-07", minor: 130 },
+    { month: "2026-08", minor: 120 }
+  ]);
+  // No fees at all: no months.
+  assert.deepEqual(buildBankFeesYear("2026", []).months, []);
+});
