@@ -1,7 +1,7 @@
 // Every card on Summary under the top summary is registered for Arrange
 // Summary (design.md "Arrange Summary", developer guide "How to register a
 // Summary card"): it has an id in SUMMARY_CARD_IDS, a body in the panel's
-// `cardBody`, and a name in the editor's NAMES. This fails the moment a card
+// `cardBody`, and a title and subtitle in the shared list that the editor reads. This fails the moment a card
 // is added in one place and not the others, or drawn in the panel outside the
 // registered list (where it could be neither hidden nor moved).
 import assert from "node:assert/strict";
@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { SUMMARY_CARD_IDS, SUMMARY_CARD_LAYOUT } from "../src/client/summary-card-order.js";
+import { SUMMARY_CARD_TITLES } from "../src/client/copy/summary-card-titles.js";
 
 const panel = readFileSync(new URL("../src/client/summary-panel.jsx", import.meta.url), "utf8");
 const editor = readFileSync(new URL("../src/client/summary-card-editor.jsx", import.meta.url), "utf8");
@@ -36,9 +37,10 @@ test("every registered card has a body in the Summary panel, and every body is r
 });
 
 test("every registered card is named in the Arrange editor, and the editor names no other", () => {
-  const names = keysOf(editor, "const NAMES = {", 2).filter((key) => key !== "planSimple");
-  assert.ok(names.length >= 5, "the editor's names were found");
+  const names = Object.keys(SUMMARY_CARD_TITLES).filter((key) => key !== "planSimple");
+  assert.ok(names.length >= 5, "the list's names were found");
   assert.deepEqual(sorted(names), sorted(SUMMARY_CARD_IDS));
+  assert.match(editor, /cardTitle\(key\)/, "the editor reads its names from the shared list");
   assert.match(editor, /planSimple/, "the Simple view's name for the month card stays");
 });
 
@@ -76,7 +78,7 @@ test("the panel draws no card outside the registered list", () => {
   assert.ok(start > 0);
   const outside = panel.slice(start).replace(/\{summaryCards\.filter[\s\S]*?\.list\}/, "");
   const tags = [...new Set([...outside.matchAll(/<([A-Z][A-Za-z]+)/g)].map((match) => match[1]))];
-  const allowed = new Set(["SummaryLead", "SummaryScopeSwitch", "Suspense", "SummaryCardEditor", "MonthNoteDialog", "SummaryTileSheet"]);
+  const allowed = new Set(["CardHead", "SummaryLead", "SummaryScopeSwitch", "Suspense", "SummaryCardEditor", "MonthNoteDialog", "SummaryTileSheet"]);
   const surprises = tags.filter((tag) => !allowed.has(tag) && !/^(DetailRows?|PrivateMoney)$/.test(tag));
   assert.deepEqual(surprises, [], `Summary draws ${surprises.join(", ")} outside the registered cards`);
 });

@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { summaryChangedCopy as copy } from "../src/client/copy/summary-changed-copy.js";
+import { cardSubtitle, cardTitle } from "../src/client/copy/summary-card-titles.js";
 import { readSummaryChanged, requestSummaryChanged, summaryChangedEndpoint } from "../src/client/summary-changed-api.js";
 import { findRetiredNames } from "../src/domain/retired-names.ts";
 import { findAppJargon } from "../src/domain/money-signals/tone.ts";
@@ -37,10 +38,10 @@ test("the request names the view, and the scope only for a person", () => {
 
 test("the words are plain, name no retired term and never forecast or say safe to spend", () => {
   const words = [
-    copy.title, copy.intro("2026-11", "2026-10"), copy.quiet, copy.up, copy.down, copy.moreThanUsual, copy.soFar, copy.lastMonth,
+    cardTitle("changed"), cardSubtitle("changed", { month: "2026-11", baseMonth: "2026-10" }), copy.quiet, copy.up, copy.down, copy.moreThanUsual, copy.soFar, copy.lastMonth,
     copy.shopsBehind, copy.openRow("Food"), copy.showAll(7)
   ];
-  assert.equal(copy.intro("2026-11", "2026-10"), "November so far, against the same days of October.");
+  assert.equal(cardSubtitle("changed", { month: "2026-11", baseMonth: "2026-10" }), "November so far, against the same days of October");
   for (const text of words) {
     assert.deepEqual(findRetiredNames(text), [], text);
     assert.deepEqual(findAppJargon(text), [], text);

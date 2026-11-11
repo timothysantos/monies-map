@@ -86,7 +86,8 @@ test("the retired names are rejected in plan copy, and their replacements pass",
     ["Overplanned", "Planned more than you earn"],
     ["To allocate", "Not planned yet"],
     ["Money jobs", "Where your money goes"],
-    ["Wallets in view", "The accounts shown"],
+    ["Wallets in view", "Accounts"],
+    ["Intent vs Outcome", "Plan vs actual"],
     ["Add a budget bucket", "Add a monthly budget"],
     ["Planned items", "Bills and dated payments"],
     ["Worth $5 on 1 Jan, from its statement", "$5 on 1 Jan, as the statement says"]
@@ -94,5 +95,5 @@ test("the retired names are rejected in plan copy, and their replacements pass",
     assert.equal(findRetiredNames(old).length, 1, old);
     assert.deepEqual(findRetiredNames(now), [], now);
   }
-  assert.equal(RETIRED_NAMES.length, 7);
+  assert.equal(RETIRED_NAMES.length, 8);
 });
