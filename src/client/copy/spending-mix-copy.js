@@ -20,5 +20,7 @@ export const spendingMixCopy = {
   moreName: (count) => `${count} more categories`,
   shareOfSpending: (percent) => `${percent} of spending`,
   chartLabel: "Spending by category: tap a bubble or a slice to see its amount",
+  // The note under the total (spend-change-model.js): after the arrow and percent.
+  changeVs: (months, partial) => `vs the ${months === 1 ? "month" : `${months} months`} before${partial ? " (full months only)" : ""}`,
   showInChart: (name) => `Show ${name} in the chart`
 };

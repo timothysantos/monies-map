@@ -157,6 +157,35 @@ Heading of the expanded list:
 - Entries: Also this month
 - Splits: Also in this group
 
+## Change notes under a big number
+
+Owner decision, 2026-11-11. A change note is one quiet line under a big
+figure: the arrow and percent in the money tone (growth in investments is mint;
+spending that went up is rose, down is mint), then the words in the quiet grey
+("▲ 2% since Jan"). Rules (`changeNote`, `src/client/summary-tiles-model.js`,
+tested in `tests/summary-tiles-model.test.mjs`):
+
+- It is worked out only from two figures the card already reads, never from a
+  new read, an estimate or AI.
+- It is left out when there is nothing to compare to (no earlier figure, or one
+  too small), when nothing changed (under 1%), and with money hidden (no arrow,
+  no percent).
+- Investments has both figures (what it grew by, over its starting worth).
+  Spending Mix's total has them too (2026-11-11): the range's complete months
+  against the same number of months straight before them, both from the stored
+  month totals the Summary page already loads (`spendChange`,
+  `src/domain/summary-spend-change.ts`, `src/client/spend-change-model.js`;
+  tested in `tests/summary-spend-change.test.mjs`,
+  `tests/spend-change-model.test.mjs` and `tests/e2e/summary-spend-change.spec.js`).
+  Spending up is rose, down is mint. A range that ends in the month in progress
+  leaves that month out of both sides and the note ends "(full months only)".
+  With any earlier month not stored, or an earlier total under $100, there is no
+  note. The words: `▼ 6% vs the 6 months before` (one month: `vs the month
+  before`; partial: `vs the 11 months before (full months only)`).
+- Subscriptions (the card has no last-month total), Miles (no earlier period is
+  read), Bank fees (no earlier year is read) and the lead card (the owner's
+  "vs the same days of last month" needs day-level history the page does not
+  read) carry no note until a card reads one.
 ## Summary and Month (shared)
 
 ### statementGap (To do)
@@ -2092,21 +2121,3 @@ Public domain; wording copied exactly from the source named. Shown only in the e
 - Column 2: “It is life near the bone where it is sweetest.” Henry David Thoreau, Walden (1854). Source: Walden, "Conclusion" (Project Gutenberg #205). Fits: enough, enjoy.
 - Column 3: “Insist on yourself; never imitate.” Ralph Waldo Emerson, Essays: First Series, "Self-Reliance" (1841). Source: Essays: First Series, "Self-Reliance" (Project Gutenberg #2944). Fits: enjoy, change.
 - Column 4: “I went to the woods because I wished to live deliberately” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: plan, enjoy.
-
-
-## Change notes under a big number
-
-Owner decision, 2026-11-11. A change note is one quiet line under a big
-figure: the arrow and percent in the money tone (growth in investments is mint;
-spending that went up is rose, down is mint), then the words in the quiet grey
-("▲ 2% since Jan"). Rules (`changeNote`, `src/client/summary-tiles-model.js`,
-tested in `tests/summary-tiles-model.test.mjs`):
-
-- It is worked out only from two figures the card already reads, never from a
-  new read, an estimate or AI.
-- It is left out when there is nothing to compare to (no earlier figure, or one
-  too small), when nothing changed (under 1%), and with money hidden (no arrow,
-  no percent).
-- Today only Investments has both figures (what it grew by, over its starting
-  worth). Subscriptions, Miles, Bank fees and the lead card read no earlier
-  period, so they carry no note until a card reads one.

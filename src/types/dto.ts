@@ -1290,6 +1290,16 @@ export interface InvestmentMovesDto {
   outOfMinor: number;
 }
 
+// Spending over the range's complete months against the same number of months
+// straight before it (summary-spend-change.ts): left out without that history.
+export interface SummarySpendChangeDto {
+  months: number;
+  currentMinor: number;
+  previousMinor: number;
+  // The range ends in the month in progress, which is left out of both sides.
+  partial: boolean;
+}
+
 export interface SummaryPageDto {
   metricCards: MetricCardDto[];
   availableMonths: string[];
@@ -1312,6 +1322,7 @@ export interface SummaryPageDto {
   // Bank fees from 1 January to the range's last month (bank-fees-year.ts),
   // for the "fees this year" Money insights line; left out with no fee.
   bankFeesYear?: import("../domain/bank-fees-year").BankFeesYear;
+  spendChange?: SummarySpendChangeDto;
   notes: string[];
 }
 

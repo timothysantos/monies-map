@@ -315,6 +315,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
           dashboard
+          spendChange={safeSummaryPage.spendChange}
           period={`${safeSummaryPage.rangeStartMonth}:${safeSummaryPage.rangeEndMonth}`}
         />
       </Suspense>

@@ -63,6 +63,17 @@
   line-height: 1.05;
 }
 
+/* The change note under the total: the arrow and percent in a money tone
+   (money-in, money-short), the words in the muted ink. */
+.summary-mix-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.summary-mix-note b {
+  font-weight: 700;
+}
+
 /* Beside the donut when the card itself is 600px or wider (a container query:
    the card is narrow on a phone, a tablet's half row or beside the Ask panel). */
 .spending-mix-card {

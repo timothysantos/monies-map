@@ -445,7 +445,10 @@ over plan.
   biggest slices have a bubble beside them with the category's own icon and its
   share; the rest are grouped in one "more" bubble (tap it to see the whole
   list). Tap a bubble or a slice and its name, amount and share show in the
-  middle of the ring and under it. The top five show; **Show all** lists
+  middle of the ring and under it. Under the total, a note such as "▼ 6% vs the 6
+  months before" shows whether spending went down (green) or up (red) against
+  the same number of months before the ones you are looking at; it is left out
+  when there is not enough history, and while money is hidden. The top five show; **Show all** lists
   the rest. Pick a month to see that month's ([Month](#month)).
 - **Intent vs Outcome**: the latest six months show as small tiles (what you
   spent and how far under or over plan; select one to open that month). **Open

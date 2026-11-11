@@ -20,7 +20,8 @@ import { getCategory, getCategoryTheme } from "./category-utils";
 import { paletteColour } from "./palette-colour";
 import { rowMotionProps } from "./row-motion";
 import { money } from "./formatters";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
+import { buildSpendChangeNote } from "./spend-change-model";
 import { EmptyState } from "./ui-states";
 import { useIsMobileLayout } from "./use-viewport";
 
@@ -66,7 +67,7 @@ function writeListShown(shown) {
 }
 
 /**
- * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, className?: string }} props
+ * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, spendChange?: any, className?: string }} props
  */
 export function SpendingMixSection({
   donutData,
@@ -75,8 +76,11 @@ export function SpendingMixSection({
   period,
   sliceFacts = undefined,
   dashboard = false,
+  spendChange = undefined,
   className = ""
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const changeNote = useMemo(() => buildSpendChangeNote(spendChange, { hidden: !areTotalsVisible }), [spendChange, areTotalsVisible]);
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
   const [listShown, setListShown] = useState(readListShown);
   const isMobileLayout = useIsMobileLayout();
@@ -124,6 +128,12 @@ export function SpendingMixSection({
           <div className="summary-mix-chart">
             <p className="summary-mix-total">
               <span className="summary-mix-total-amount" data-total-spend><PrivateMoney>{money(visibleTotalMinor)}</PrivateMoney></span>
+              {changeNote ? (
+                <span className="summary-mix-note" data-change-note>
+                  <b className={changeNote.tone === "mint" ? "money-in" : "money-short"}>{changeNote.arrow} {changeNote.percent}%</b>{" "}
+                  {mixCopy.changeVs(changeNote.months, changeNote.partial)}
+                </span>
+              ) : null}
             </p>
             <Suspense fallback={<div className={`spending-mix-bubbles-reserve ${listShown ? "" : "is-poster"}`} aria-hidden="true" />}>
               <LazySpendingMixBubbles

@@ -2142,6 +2142,18 @@ change.
   the whole svg up to 460px wide, about 354px on a phone with the legend under
   it. The legend (a colour dot, the name, amount and share, the existing rows)
   goes beside the donut from a 760px card and under it below that.
+- **Change notes** (owner, 2026-11-11; rules in `docs/money-insights-copy.md`
+  "Change notes under a big number"): a one-line note under a big figure, the
+  arrow and whole percent in the money tone (spending up rose, down mint,
+  growth mint) and quiet words after it, only where the card already has the
+  two figures. Spending Mix's total carries one ("▼ 6% vs the 6 months
+  before"): the range's complete months against the same number of months
+  straight before them, from the stored month totals the Summary page loads
+  anyway (`spendChange`, `summary-spend-change.ts`; the month in progress is
+  left out of both sides and the note says "(full months only)"). It is left
+  out without that history, on an earlier total under $100, under a whole
+  percent, and with money hidden. Subscriptions, Miles, Bank fees and the lead
+  card have no earlier figure on their card, so they have no note yet.
 - **Subscriptions and bills** on a wide page (1,064px and up): half the row;
   the month's total is the headline (3.25rem), under it a "price rise" chip
   and a "Next: name amount on date" chip (no amount with money hidden), one

@@ -8,6 +8,7 @@ import { sumInvestmentMoves } from "../investment-moves";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import { loadBankFeesYear } from "./summary-bank-fees";
+import { buildSpendChange } from "../summary-spend-change";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
@@ -65,12 +66,17 @@ export async function buildSummaryPageDto(
       return moves ? [{ month, ...moves }] : [];
     })
   );
+  // The Spending Mix note: the range against the months before it, from the
+  // stored month totals already loaded (nothing is read for it).
+  const spendChange = buildSpendChange(summaryRangeMonths, summaryPage.months, summaryMonths, getCurrentMonthKey());
   return {
     viewId,
     label,
     // Left out when the year has no fee at all, so most pages do not grow.
-    summaryPage: bankFeesYear && (bankFeesYear.parts.length || bankFeesYear.refundedParts.length)
-      ? { ...summaryPage, bankFeesYear }
-      : summaryPage
+    summaryPage: {
+      ...summaryPage,
+      ...(bankFeesYear && (bankFeesYear.parts.length || bankFeesYear.refundedParts.length) ? { bankFeesYear } : {}),
+      ...(spendChange ? { spendChange } : {})
+    }
   };
 }
