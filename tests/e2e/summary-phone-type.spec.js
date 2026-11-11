@@ -88,9 +88,9 @@ async function tileProblems(tile) {
     for (const chip of element.querySelectorAll(".summary-tile-chip")) {
       const chipBox = rect(chip);
       const lines = textRect(chip);
-      // One line; only a long chip (the days left and the date) may take a second line inside its pill.
+      // One line, always: a chip is a few words, short enough for a half-width tile.
       const chipLines = new Set(lines.map((box) => Math.round(box.top))).size;
-      if (chipLines > (chip.textContent.length > 20 ? 2 : 1)) problems.push(`${id}: chip "${chip.textContent}" wraps onto ${chipLines} lines`);
+      if (chipLines > 1) problems.push(`${id}: chip "${chip.textContent}" wraps onto ${chipLines} lines`);
       const left = Math.min(...lines.map((box) => box.left));
       const right = Math.max(...lines.map((box) => box.right));
       if (left - chipBox.left < 8 || chipBox.right - right < 8) problems.push(`${id}: chip "${chip.textContent}" has under 8px of room on a side`);

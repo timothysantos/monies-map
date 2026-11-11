@@ -36,3 +36,17 @@ test("the pace lint rejects a reassurance or a promise", () => {
     assert.ok(findPaceProblems(bad).length > 0, bad);
   }
 });
+
+test("a range whose ends read the same is one figure, never '$20 to $20'", async () => {
+  const { rangeWords } = await import("../src/domain/money-signals/format.ts");
+  assert.equal(rangeWords("$20", "$20"), "$20");
+  assert.equal(rangeWords("$20.00", "$20.01"), "$20.00 to $20.01");
+  assert.equal(rangeWords("$20", "$35"), "$20 to $35");
+  assert.equal(paceCopy.comingUpTotal("$20", "$20", "2026-12-10"), "About $20 by 10 Dec, if they come as usual");
+  assert.equal(paceCopy.line("$4,700", "$4,700", "2026-11-30"), "If this keeps up: about $4,700 by 30 Nov");
+  assert.equal(paceCopy.left("$7,350", "$7,350"), "About $7,350 left of what comes in.");
+  assert.equal(paceCopy.everyday(1, "$12.00", "$12.00"), "Everyday spending, 1 day to go: $12.00");
+  assert.equal(paceCopy.bills("$198.46", "$198.46"), "Bills still to come: $198.46");
+  assert.equal(paceCopy.year("$9,000", "$9,000", 2026), "If this keeps up, about $9,000 kept in 2026 by 31 Dec.");
+  assert.equal(paceCopy.comingUpTotal("$20", "$20.01", "2026-12-10"), "About $20 to $20.01 by 10 Dec, if they come as usual");
+});

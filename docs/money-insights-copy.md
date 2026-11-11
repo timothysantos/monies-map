@@ -15,7 +15,9 @@ stays kind; perspective, not advice. No exclamation marks, no emoji, and
 no percentage without the money amount beside it.
 
 A look ahead says "If this keeps up" and gives a range ("about $4,700 to
-$5,100 by 30 Nov"), never one number. Words the pace lint rejects: safe,
+$5,100 by 30 Nov"). When both ends read the same, it is the one figure
+("about $4,700 by 30 Nov", never "$4,700 to $4,700"; `rangeWords`, also used
+by Summary's tiles and Ask), still "about". Words the pace lint rejects: safe,
 safely, can afford, you'll be fine, will have, guaranteed, forecast,
 projection.
 

@@ -7,6 +7,7 @@ import { cardRewardsCopy as cardRewardsCopy, formatMiles } from "./copy/card-rew
 import { summaryTilesCopy as copy } from "./copy/summary-tiles-copy";
 import { dayMonth, subscriptionsCopy } from "./copy/subscriptions-copy";
 import { investmentsCopy, taxReliefsCopy } from "./copy/summary-cards-copy";
+import { rangeWords } from "../domain/money-signals/format";
 import { money } from "./formatters";
 import { useMoneyPrivacy } from "./money-privacy";
 import { queryKeys } from "./query-keys";
@@ -48,7 +49,7 @@ function formatValue(value) {
 
 function formatHeadline(headline) {
   if (!headline) return HIDDEN;
-  if (headline.kind === "range") return `${whole(headline.lowMinor)} to ${whole(headline.highMinor)}`;
+  if (headline.kind === "range") return rangeWords(whole(headline.lowMinor), whole(headline.highMinor));
   if (headline.kind === "miles") return formatMiles(headline.amount);
   return formatValue(headline);
 }
@@ -213,7 +214,7 @@ function TaxTile({ view, enabled, fetchRequiredQuery, onOpen }) {
   const queryKey = useMemo(() => queryKeys.taxReliefs(viewId), [viewId]);
   const fetcher = useCallback((options) => requestTaxReliefs(viewId, options), [viewId]);
   const answer = useSummaryCardQuery({ queryClient, queryKey, enabled, fetchRequiredQuery, fetcher, abortMessage: "Tax reliefs request aborted." });
-  const tile = useMemo(() => buildTaxTile({ answer, hidden, labels: { daysLeft: taxReliefsCopy.daysLeft, relief: taxReliefsCopy.reliefs } }), [answer, hidden]);
+  const tile = useMemo(() => buildTaxTile({ answer, hidden, labels: { daysLeft: copy.taxDaysLeft, relief: taxReliefsCopy.reliefs } }), [answer, hidden]);
   return tile ? <TileView tile={tile} title={copy.titles.taxreliefs} onOpen={onOpen} /> : null;
 }
 

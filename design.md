@@ -1955,7 +1955,7 @@ that invalidates a page. A failed read, or nothing to show, shows nothing.
 - Tax reliefs: a person block per person in their colour with a bar for each
   relief, the room left ("$4,300 more would still count this year."), "Full
   limit reached.", gifts "counted 2½ times, so $1,250 off your income", the
-  pill "N days left, until 31 Dec" and the IRAS footnote. Never tax saved.
+  pill "N days left, until 31 Dec" (the tile's chip is just "N days left") and the IRAS footnote. Never tax saved.
 - Figures: both cards count whole amounts, so `data-fig-view="household"`.
   Put in opens as `invested`/`took_out`, each relief amount as `outflow`,
   narrowed to its ids; worth, grew by and paid out open the statements.
@@ -2391,8 +2391,8 @@ the headline sets its own size from its tile (the tile is a size container,
 characters it holds; a tile is `min-height: 236px` and grows, every part keeps
 its size (`flex: none`) so a mark or bar sits in its own space under the rows
 and never covers one; two tiles in a row share a height (the cell is a flex
-row). A chip stays on one line; the long "days left, until date" chip may take
-a second line inside its pill (radius 14px, `text-wrap: balance`). A title may
+row). A chip always stays on one line: the Tax reliefs tile says "50 days left"
+("1 day left", "Last day"); the card keeps "until 31 Dec". A title may
 take two lines; at 320px "Open ›" drops under it. Guarded by
 `tests/e2e/summary-phone-type.spec.js` (320 to 430 and 768, demo data and a
 $1,234,567.89 fee).

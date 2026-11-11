@@ -283,3 +283,12 @@ export function stableHash(value: string) {
 export function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
 }
+
+/**
+ * A range's words from two already-formatted amounts: "$20 to $30", but a
+ * single "$20" when both ends read the same (equal ends, or ends that only
+ * differ below what is shown). Tiles, the pace line, its card and Ask share it.
+ */
+export function rangeWords(low: string, high: string): string {
+  return low === high ? low : `${low} to ${high}`;
+}

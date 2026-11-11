@@ -23,6 +23,9 @@ export const summaryTilesCopy = {
     bankfees: "Bank fees this year"
   },
   roomLeft: "of room left",
+  // The Tax reliefs tile's chip: short enough for one line in a half-width
+  // tile; the card says "until 31 Dec" in full (taxReliefsCopy.daysLeft).
+  taxDaysLeft: (days) => (days <= 0 ? "Last day" : `${days} ${days === 1 ? "day" : "days"} left`),
   // Under the Miles tile's ring: what the percent in its middle is of.
   bonusUsed: (cardName) => `of the ${cardName} bonus used`,
   milesSoFar: "miles so far",

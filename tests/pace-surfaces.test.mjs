@@ -244,6 +244,11 @@ test("Ask's pace answer: the same sums as the line, Month's spent and plan, and 
   const wording = buildPaceWording(facts, money);
   assert.equal(wording, "If this keeps up, November's spending ends at about $4,700 to $5,100 by 30 Nov, under the $5,200 plan. That's $2,140.00 spent so far, everyday spending for the 20 days to go at this month's pace and your usual pace, and 4 bills still to come on their usual days. One big cost is counted once, not repeated.");
   assert.equal(buildPacePromptFacts(facts, money)[0], "If this keeps up, spending by month end: about $4,700 to $5,100");
+  // Equal ends read as one figure in Ask's words too, never "$5,000 to $5,000".
+  const equal = { ...facts, range: { ...facts.range, addLowMinor: 286_000, addHighMinor: 286_000, everydayLowMinor: 100_000, everydayHighMinor: 100_000, billsLowMinor: 20_000, billsHighMinor: 20_000, oneOffs: [] } };
+  assert.match(buildPaceWording(equal, money), /ends at about \$[\d,]+ by 30 Nov/);
+  assert.ok(!/to \$[\d,]+ by 30 Nov/.test(buildPaceWording(equal, money)));
+  assert.ok(!/\$[\d,.]+ to \$[\d,.]+/.test(buildPacePromptFacts(equal, money).join("\n")), buildPacePromptFacts(equal, money).join("\n"));
   const quiet = (extra) => buildPaceWording(buildPaceAnswerFacts({ month: "2026-11", today: TODAY, viewId: "household", scope: "direct_plus_shared", spentMinor: 214_000, planMinor: 0, ...extra }), money);
   assert.equal(quiet({ pace: { month: "2026-11", quiet: "early" } }), "It's too early in November to say where it ends. Ask again after the 5th.");
   assert.equal(quiet({ pace: { month: "2026-11", quiet: "imports" } }), "The latest statements aren't in yet, so there's no pace until they're imported.");

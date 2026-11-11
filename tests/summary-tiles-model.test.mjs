@@ -190,3 +190,17 @@ test("change note: the arrow and percent only from two figures the card has, nev
   assert.equal(changeNote({ current: 100, base: 1000000, upIsGood: true }), null, "under 1% is no change");
   assert.equal(changeNote({ current: 5000, base: 100000, upIsGood: true, hidden: true }), null);
 });
+
+test("Tax reliefs tile chip: the days alone, one line in a half-width tile; the card keeps 'until 31 Dec'", async () => {
+  const { summaryTilesCopy } = await import("../src/client/copy/summary-tiles-copy.js");
+  const { taxReliefsCopy } = await import("../src/client/copy/summary-cards-copy.js");
+  assert.equal(summaryTilesCopy.taxDaysLeft(50), "50 days left");
+  assert.equal(summaryTilesCopy.taxDaysLeft(1), "1 day left");
+  assert.equal(summaryTilesCopy.taxDaysLeft(0), "Last day");
+  for (const days of [0, 1, 9, 50, 365]) assert.ok(summaryTilesCopy.taxDaysLeft(days).length <= 20, `${days}`);
+  assert.equal(taxReliefsCopy.daysLeft(50), "50 days left, until 31 Dec");
+  assert.equal(taxReliefsCopy.daysLeft(0), "Last day, until 31 Dec");
+  const tax = { year: "2026", daysLeft: 50, people: [{ name: "Ethan", reliefs: [{ key: "srs", amountMinor: 0, limitMinor: 1530000, roomMinor: 1530000 }] }] };
+  const tile = buildTaxTile({ answer: tax, hidden: false, labels: { daysLeft: summaryTilesCopy.taxDaysLeft, relief: { srs: "SRS" } } });
+  assert.equal(tile.chip.text, "50 days left");
+});

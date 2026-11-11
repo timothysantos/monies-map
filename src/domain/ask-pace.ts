@@ -7,7 +7,7 @@
 import { paceTotals, type PaceBehindAccount, type PaceBill, type PaceQuiet, type PaceRange } from "./pace";
 import { paceQuietAnswer } from "./pace-quiet";
 import type { PaceDto } from "./pages/pace-facts";
-import { compactMoney, monthName } from "./money-signals/format";
+import { compactMoney, monthName, rangeWords } from "./money-signals/format";
 import type { AskAnswerCardDto, AskAnswerLineDto, PersonScope } from "../types/dto";
 
 export interface PaceAnswerFacts {
@@ -117,7 +117,7 @@ export function buildPaceWording(facts: PaceAnswerFacts, money: Money): string {
   const side = sideOfPlan(facts);
   const plan = compactMoney(money, facts.planMinor);
   const sentences = [
-    `If this keeps up, ${month}'s spending ends at about ${low} to ${high} by ${MONTH_END(facts.month)} ${month.slice(0, 3)}${side ? `, ${side} the ${plan} plan` : facts.planMinor > 0 ? `, close to the ${plan} plan` : ""}.`,
+    `If this keeps up, ${month}'s spending ends at about ${rangeWords(low, high)} by ${MONTH_END(facts.month)} ${month.slice(0, 3)}${side ? `, ${side} the ${plan} plan` : facts.planMinor > 0 ? `, close to the ${plan} plan` : ""}.`,
     `That's ${money(facts.spentMinor)} spent so far, everyday spending for the ${facts.range.daysLeft} days to go at this month's pace and your usual pace${facts.bills.length ? `, and ${facts.bills.length} ${facts.bills.length === 1 ? "bill" : "bills"} still to come on ${facts.bills.length === 1 ? "its" : "their"} usual ${facts.bills.length === 1 ? "day" : "days"}` : ""}.`
   ];
   if (facts.range.oneOffs.length) {
@@ -132,10 +132,10 @@ export function buildPacePromptFacts(facts: PaceAnswerFacts, money: Money): stri
     return [quietWords(facts)];
   }
   return [
-    `If this keeps up, spending by month end: about ${compactMoney(money, totals.shown.lowMinor)} to ${compactMoney(money, totals.shown.highMinor)}`,
+    `If this keeps up, spending by month end: about ${rangeWords(compactMoney(money, totals.shown.lowMinor), compactMoney(money, totals.shown.highMinor))}`,
     `Spent so far: ${money(facts.spentMinor)}`,
-    `Everyday spending, ${facts.range.daysLeft} days to go: ${money(facts.range.everydayLowMinor)} to ${money(facts.range.everydayHighMinor)}`,
-    `Bills still to come: ${money(facts.range.billsLowMinor)} to ${money(facts.range.billsHighMinor)}`,
+    `Everyday spending, ${facts.range.daysLeft} days to go: ${rangeWords(money(facts.range.everydayLowMinor), money(facts.range.everydayHighMinor))}`,
+    `Bills still to come: ${rangeWords(money(facts.range.billsLowMinor), money(facts.range.billsHighMinor))}`,
     ...(facts.planMinor > 0 ? [`Planned spend: ${money(facts.planMinor)}`] : [])
   ];
 }
