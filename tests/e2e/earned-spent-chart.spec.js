@@ -70,7 +70,7 @@ test.describe("Simple, desktop", () => {
   test("the chart sits above the month list in Earned vs spent by month, with the list's own figures", async ({ page }) => {
     await openSummary(page);
     const card = page.locator("[data-earned-spent]");
-    await expect(card.locator("h3")).toHaveText("Earned vs spent by month");
+    await expect(card.locator("h3")).toHaveText("Earned vs spent");
     await expect(chart(page)).toHaveCount(1);
     await expect(card.locator("[data-earned-spent-chart]")).toHaveCount(1);
     const chartBox = await chart(page).boundingBox();

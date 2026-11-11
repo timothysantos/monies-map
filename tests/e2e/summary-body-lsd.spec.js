@@ -27,7 +27,7 @@ const money = (minor) => moneyFormatter.format(minor / 100);
 const sumMinor = (data) => data.reduce((sum, item) => sum + item.valueMinor, 0);
 const percentOf = (item, data) => `${((item.valueMinor / sumMinor(data)) * 100).toFixed(1)}%`;
 
-const mixCard = (page) => page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
+const mixCard = (page) => page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending mix" }) });
 const walletsCard = (page) => page.locator(".summary-accounts");
 
 function box(locator) {
@@ -485,7 +485,7 @@ for (const device of [
       const { accountPills } = await loadSummaryAccountPills(page, { view: pageParams(page).view });
       expect(accountPills.length).toBeGreaterThan(1);
       const card = walletsCard(page);
-      await expect(card.getByRole("heading", { name: "The accounts shown" })).toBeVisible();
+      await expect(card.getByRole("heading", { name: "Accounts" })).toBeVisible();
       await expect(card.locator(".lsd-rows")).toHaveCount(1);
       const rows = card.locator(".summary-wallet-row");
       await expect(rows).toHaveCount(accountPills.length);

@@ -17,7 +17,7 @@ async function openSettings(page) {
 }
 
 async function openSummary(page) {
-  await gotoPageAfterApi(page, SUMMARY_URL, "/api/summary-page", () => page.getByRole("heading", { name: "Spending Mix" }));
+  await gotoPageAfterApi(page, SUMMARY_URL, "/api/summary-page", () => page.getByRole("heading", { name: "Spending mix" }));
 }
 
 function coloursRow(page) {

@@ -45,7 +45,7 @@ function pickTwoMonths(summary) {
 }
 
 function spendingMix(page) {
-  return page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
+  return page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending mix" }) });
 }
 
 async function expectMix(page, share) {

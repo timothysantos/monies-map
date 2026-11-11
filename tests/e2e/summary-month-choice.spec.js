@@ -244,7 +244,7 @@ test.describe("Summary tab month choice on a phone", () => {
     // An old link that focused one month no longer narrows the Spending Mix.
     await page.goto(`${SUMMARY_URL}&summary_focus=${summary.rangeMonths.at(-1)}`);
     await waitUsable(page);
-    const mix = page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
+    const mix = page.locator(".chart-card").filter({ has: page.getByRole("heading", { name: "Spending mix" }) });
     await expect(mix).toBeVisible();
     await expect(mix.locator(".summary-focus-button")).toHaveCount(0);
     await expect(mix.getByRole("button", { name: "Range overall" })).toHaveCount(0);
@@ -262,7 +262,7 @@ test.describe("Summary tab month choice on a phone", () => {
     await page.getByRole("dialog", { name: "Pick a month" }).locator(".summary-month-tile").first().click();
     await expect(page).toHaveURL(new RegExp(`/month\\?.*month=${newest}(&|$)`));
     await expect(page.locator(".month-panel-head")).toBeVisible();
-    const monthMix = page.locator(".month-panel .chart-card").filter({ has: page.getByRole("heading", { name: "Spending Mix" }) });
+    const monthMix = page.locator(".month-panel .chart-card").filter({ has: page.getByRole("heading", { name: "Spending mix" }) });
     await expect(monthMix.locator(".summary-mix-row")).toHaveCount(Math.min(newestShare.length, 3));
     await expect(monthMix.locator(".summary-focus-button")).toHaveCount(0);
   });

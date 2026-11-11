@@ -14,7 +14,7 @@ async function open(page, start, end) {
     page,
     `/summary?view=${VIEW}&month=${end}&summary_start=${start}&summary_end=${end}`,
     "/api/summary-page",
-    () => page.getByRole("heading", { name: "Spending Mix" })
+    () => page.getByRole("heading", { name: "Spending mix" })
   );
   await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 45_000 }).toBe(true);
 }

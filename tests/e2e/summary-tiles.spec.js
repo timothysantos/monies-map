@@ -46,14 +46,14 @@ test.describe("Summary tiles", () => {
     await addCharges(page);
   });
 
-  test("1440: Coming up and Bank fees are tiles, 3 across and 264px tall; Subscriptions and bills stays a big card", async ({ page }) => {
+  test("1440: Coming up and Bank fees are tiles, 3 across and 284px tall; Subscriptions and bills stays a big card", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openSummary(page);
     const coming = page.locator('[data-tile="coming"]');
     const fees = page.locator('[data-tile="bankfees"]');
     await expect(coming).toBeVisible({ timeout: 30_000 });
     await expect(fees).toBeVisible();
-    expect((await box(coming)).height).toBe(264);
+    expect((await box(coming)).height).toBe(284);
     // Subscriptions and bills is its big card on a desktop, not a tile.
     await expect(page.locator('[data-tile="subs"]')).toHaveCount(0);
     await expect(page.locator(".subs-card")).toBeVisible();
@@ -111,7 +111,7 @@ test.describe("Summary tiles", () => {
   test("a link with #summary-bankfees opens that card at once; a plain or unknown hash opens nothing", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openSummary(page, { hash: "#summary-bankfees" });
-    const dialog = page.getByRole("dialog", { name: "Bank fees this year" });
+    const dialog = page.getByRole("dialog", { name: "Bank fees" });
     await expect(dialog).toBeVisible({ timeout: 30_000 });
     await expect(dialog.locator(".bankfees-total")).toContainText("$192.60");
     await expect(dialog.locator(".bankfees-row").first()).toContainText("Annual fees");
@@ -126,7 +126,7 @@ test.describe("Summary tiles", () => {
   test("the card's own figure still opens its entries from inside the dialog", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openSummary(page, { hash: "#summary-bankfees" });
-    const dialog = page.getByRole("dialog", { name: "Bank fees this year" });
+    const dialog = page.getByRole("dialog", { name: "Bank fees" });
     await dialog.locator('.bankfees-total [data-fig]').click();
     await page.getByRole("button", { name: "View entries", exact: true }).click();
     await expect(page).toHaveURL(/\/entries\?/);
@@ -161,15 +161,15 @@ test.describe("Summary tiles", () => {
     await expect(page.locator('[data-tile="coming"]')).toBeVisible();
     await page.goto("/?view=household#summary-bankfees");
     await expect(page.locator(".summary-cards-arrange button")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("dialog", { name: "Bank fees this year" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Bank fees" })).toHaveCount(0);
   });
 
-  test("390: tiles are 2 across and 236px tall, Subscriptions and bills is one of them, and a tap opens a sheet that Esc closes", async ({ page }) => {
+  test("390: tiles are 2 across and 256px tall, Subscriptions and bills is one of them, and a tap opens a sheet that Esc closes", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openSummary(page);
     const subs = page.locator('[data-tile="subs"]');
     await expect(subs).toBeVisible({ timeout: 30_000 });
-    expect((await box(subs)).height).toBe(236);
+    expect((await box(subs)).height).toBe(256);
     // On a phone the big Subscriptions card is not drawn on the page.
     await expect(page.locator(".summary-card-slot .subs-card")).toHaveCount(0);
     const tiles = page.locator(".summary-tiles .summary-tile");

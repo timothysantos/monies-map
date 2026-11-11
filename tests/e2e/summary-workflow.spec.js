@@ -25,8 +25,8 @@ test.describe("summary workflow", () => {
 
     await page.goto(`/summary?view=household&month=${targetMonth}&scope=direct_plus_shared&summary_start=2025-06&summary_end=${targetMonth}`);
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Intent vs Outcome" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Spending mix" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Plan vs actual" })).toBeVisible();
     // The month is picked in the floating bar (All months is Summary).
     await expect(page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ })).toBeVisible();
     await expect(page.locator(".summary-mix-total-amount")).toBeVisible();
@@ -73,7 +73,7 @@ test.describe("summary workflow", () => {
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
     // The Summary check-in follows the scope with the figures: Joyce's
     // one-month Direct range has nothing that needs a look.
-    await expect(page.locator(".financial-insight-summary")).toContainText("Joyce's money insights");
+    await expect(page.locator(".financial-insight-summary")).toContainText("Money insights");
     await expect(page.locator(".financial-insight-summary")).toHaveAttribute("data-checkin-mode", "calm");
     await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText(SUMMARY_CALM);
 
@@ -223,7 +223,7 @@ test.describe("summary workflow", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05");
-    await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Spending mix" })).toBeVisible();
     await page.getByRole("button", { name: "Show money totals" }).click();
     const firstCard = page.locator(".summary-mix-list .summary-mix-row").first();
     await expect(firstCard).toBeVisible();

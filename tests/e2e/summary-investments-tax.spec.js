@@ -81,7 +81,7 @@ test.describe("Investments and Tax reliefs", () => {
     const { tax, invest, show } = await openSummary(page);
     await show("investments");
     await expect(invest.getByRole("heading", { name: "Investments" })).toBeVisible();
-    await expect(invest).toContainText("Worth on the latest statements");
+    await expect(invest).toContainText("On the latest statements");
     await expect(invest).toContainText("You put in since Jan");
     await expect(invest).toContainText("Grew by");
     await expect(invest).toContainText("Paid out");
@@ -90,7 +90,7 @@ test.describe("Investments and Tax reliefs", () => {
 
     await shoot(invest, "investments-desktop.png");
     await show("taxreliefs");
-    await expect(tax.getByRole("heading", { name: /^Tax reliefs for \d{4}$/ })).toBeVisible();
+    await expect(tax.getByRole("heading", { name: "Tax reliefs", exact: true })).toBeVisible();
     await expect(tax.locator(".tax-deadline")).toContainText(/(\d+ days? left|Last day), until 31 Dec/);
     await expect(tax).toContainText("$15,300");
     await expect(tax).toContainText("counted 2½ times");

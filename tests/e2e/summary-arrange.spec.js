@@ -32,7 +32,7 @@ test.describe("Arrange Summary", () => {
     // Money insights is never hidden.
     await expect(dialog.locator('[data-card="insights"] .summary-cards-name')).toBeDisabled();
     // The keyboard alone: Spending Mix up one place.
-    await dialog.getByRole("button", { name: "Move Spending Mix up" }).focus();
+    await dialog.getByRole("button", { name: "Move Spending mix up" }).focus();
     await page.keyboard.press("Enter");
     await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
     await expect(dialog.locator('[data-card="accounts"]')).toContainText("Hidden");
@@ -42,7 +42,7 @@ test.describe("Arrange Summary", () => {
 
     await page.locator(".summary-cards-arrange button").click();
     // Two moves up: above Intent vs Outcome (and under Money insights).
-    for (let move = 0; move < 2; move += 1) await dialog.getByRole("button", { name: "Move Spending Mix up" }).click();
+    for (let move = 0; move < 2; move += 1) await dialog.getByRole("button", { name: "Move Spending mix up" }).click();
     await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
@@ -68,8 +68,8 @@ test.describe("Arrange Summary", () => {
     await expect(sheet).toContainText("Tap a card's name to show or hide it.");
     const firstUp = sheet.getByRole("button", { name: "Move Money insights up" });
     await expect(firstUp).toBeDisabled();
-    await expect(sheet.getByRole("button", { name: "Move The accounts shown down" })).toBeDisabled();
-    const box = await sheet.getByRole("button", { name: "Move Spending Mix up" }).boundingBox();
+    await expect(sheet.getByRole("button", { name: "Move Accounts down" })).toBeDisabled();
+    const box = await sheet.getByRole("button", { name: "Move Spending mix up" }).boundingBox();
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeGreaterThanOrEqual(44);
     // Cancel, Reset and Done each have their own room: none overlaps another.

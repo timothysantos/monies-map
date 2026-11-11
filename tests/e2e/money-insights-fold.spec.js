@@ -78,7 +78,8 @@ test.describe("money insights fold on a phone", () => {
     const row = foldRow(page);
     const section = page.locator(".financial-insight");
     await expect(row).toHaveAttribute("aria-expanded", "false");
-    await expect(section.locator(".financial-insight-label")).toHaveText("Household money insights");
+    await expect(section.locator(".financial-insight-label .summary-card-title")).toHaveText("Money insights");
+    await expect(section.locator(".financial-insight-label .summary-card-sub")).toHaveText("Needs a look, and went well");
     // The card shows the real headline (also in the block's own text).
     const headline = (await section.locator(".checkin-fact").evaluate((element) => element.textContent)).trim();
     await expect(row.locator("strong")).toHaveText(headline);

@@ -198,7 +198,7 @@ test.describe("desktop", () => {
 
     // Earned vs spent by month: newest first, one row per month in the range.
     const list = page.locator("[data-earned-spent]");
-    await expect(list.locator("h3")).toHaveText("Earned vs spent by month");
+    await expect(list.locator("h3")).toHaveText("Earned vs spent");
     const rows = list.locator(".earned-spent-row");
     const months = expected.data.summaryPage.months.map((item) => item.month).sort().reverse();
     await expect(rows).toHaveCount(months.length);

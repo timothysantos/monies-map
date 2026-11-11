@@ -47,8 +47,8 @@ test.describe("What changed this month", () => {
   test("desktop: rows say up or down with the amount, a tap opens the shops, and a figure opens exactly its entries", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const card = await openSummary(page);
-    await expect(card.getByRole("heading", { name: "What changed this month" })).toBeVisible();
-    await expect(card.locator(".chg-intro")).toContainText("so far, against the same days of");
+    await expect(card.getByRole("heading", { name: "What changed", exact: true })).toBeVisible();
+    await expect(card.locator(".summary-card-sub")).toContainText("so far, against the same days of");
     const food = card.locator('[data-category="Food & Drinks"]');
     await expect(food.locator(".chg-diff")).toContainText(/^up \$/);
     await expect(food.locator(".chg-chip")).toHaveText("more than usual");

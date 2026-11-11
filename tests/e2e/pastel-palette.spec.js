@@ -28,7 +28,7 @@ test("donut segments and category icons read on the panel and stay distinct", as
   await reseedDemo(page);
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.setViewportSize({ width: 1280, height: 900 });
-  await gotoPageAfterApi(page, "/summary?view=household&month=2025-06&scope=direct_plus_shared&summary_start=2025-06&summary_end=2025-06", "/api/summary-page", () => page.getByRole("heading", { name: "Spending Mix" }));
+  await gotoPageAfterApi(page, "/summary?view=household&month=2025-06&scope=direct_plus_shared&summary_start=2025-06&summary_end=2025-06", "/api/summary-page", () => page.getByRole("heading", { name: "Spending mix" }));
   const segments = page.locator(".mix-arc");
   await expect(segments.first()).toBeVisible();
 

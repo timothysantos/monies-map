@@ -18,8 +18,8 @@ test.describe("mobile continuity", () => {
       () => page.getByRole("heading", { name: "Summary" })
     );
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: "Intent vs Outcome" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Spending mix" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Plan vs actual" })).toBeVisible({ timeout: 60_000 });
   });
 
   test("month page stays readable on mobile", async ({ page }) => {

@@ -74,7 +74,7 @@ test.describe("financial insights", () => {
     );
     const summaryInsight = page.locator(".financial-insight-summary");
     await expect(summaryInsight).toBeVisible();
-    await expect(summaryInsight).toContainText("Household money insights");
+    await expect(summaryInsight).toContainText("Money insights");
     // Seeded May 2026 has subscriptions of $28.70 and nothing to compare
     // them with in a May-only range: steady, and May is not their turn, so
     // the range is calm and nothing is listed under Also.
@@ -163,8 +163,8 @@ test.describe("financial insights", () => {
     const insight = page.locator(".financial-insight-summary");
     await expect(insight).toHaveAttribute("data-checkin-mode", "loading");
     await expect(insight).toHaveAttribute("aria-busy", "true");
-    expect((await insight.innerText()).trim()).toBe("HOUSEHOLD MONEY INSIGHTS");
-    await expect(page.getByText("Intent vs Outcome", { exact: true })).toBeVisible();
+    expect((await insight.innerText()).trim()).toBe("Money insights\nNeeds a look, and went well");
+    await expect(page.getByText("Plan vs actual", { exact: true })).toBeVisible();
 
     held.splice(0).forEach((release) => release());
     await expect(insight).not.toHaveAttribute("data-checkin-mode", "loading");
