@@ -16,7 +16,8 @@ const VIEW = "person-tim";
 const MONTH = "2026-05";
 const RANGE = { start: "2025-06", end: MONTH };
 const MONTH_URL = `/month?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
-const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
+// A link that targets one month opens Intent vs Outcome's full month cards.
+const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}#month-${MONTH}`;
 const INK = { in: "rgb(74, 92, 34)", short: "rgb(147, 54, 41)", plan: "rgb(45, 93, 94)", text: "rgb(53, 43, 36)", muted: "rgb(106, 95, 87)" };
 const SIGN_WORDING = /\b(Not planned yet|Planned more than you earn|over plan|under plan|% of plan)\b|[-−]\s?••••/;
 const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
@@ -397,7 +398,7 @@ test.describe("desktop", () => {
     await expect(row.locator(".month-actual-drilldown")).toHaveText(money(budgets[0].actualMinor));
   });
 
-  test("Intent vs Outcome: the month cards are a grid, 3 across at 1440px, 2 across at 1100px, latest first (open, full row)", async ({ page }) => {
+  test("Intent vs Outcome: the month cards are a grid, 2 across from 760px (the card is two thirds of the dashboard), latest first (open, full row)", async ({ page }) => {
     await revealMoney(page);
     await openSummary(page);
     const data = await loadSummaryPage(page, { view: VIEW, month: MONTH, summaryStart: RANGE.start, summaryEnd: RANGE.end });
@@ -409,9 +410,9 @@ test.describe("desktop", () => {
       for (const index of [1, 2, 3, 4]) boxes.push(await box(cards.nth(index)));
       return boxes.filter((card) => Math.abs(card.y - boxes[0].y) <= 1).length;
     };
-    expect(await across()).toBe(3);
+    expect(await across()).toBe(2);
     await expectNoSidewaysScroll(page, ".summary-intent");
-    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.setViewportSize({ width: 800, height: 900 });
     await expect.poll(across).toBe(2);
     await expectNoSidewaysScroll(page, ".summary-intent");
     await page.setViewportSize({ width: 1440, height: 900 });

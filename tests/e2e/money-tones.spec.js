@@ -32,7 +32,7 @@ async function revealMoney(page) {
 async function openSummary(page, view, month) {
   await gotoPageAfterApi(
     page,
-    `/summary?view=${view}&month=${month}&scope=direct_plus_shared&summary_start=${month}&summary_end=${month}`,
+    `/summary?view=${view}&month=${month}&scope=direct_plus_shared&summary_start=${month}&summary_end=${month}#month-${month}`,
     "/api/summary-page",
     () => page.getByRole("heading", { name: "Summary", exact: true })
   );

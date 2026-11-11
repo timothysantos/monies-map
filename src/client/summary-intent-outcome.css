@@ -116,28 +116,72 @@ html[data-money-privacy="hidden"] .summary-intent-plan.money-plan {
   }
 }
 
-/* Wide screens: the month cards are a grid, latest first, 2 across from
-   1,024px and 3 across from 1,440px, and the section takes the full row
-   under Spending Mix so the cards have room for their figures. */
-@media (min-width: 1024px) {
-  .summary-top-grid.has-intent-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* The glance: the latest months as small tiles in a row (three across on a
+   phone, six from a wide page), each its month, what it spent and how far
+   over or under its plan in the money tones. */
+.summary-intent-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
 
+.summary-intent-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-intent-tile:hover,
+.summary-intent-tile:focus-visible {
+  border-color: var(--accent-strong);
+}
+
+.summary-intent-tile-month {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-intent-tile-spent {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-intent-tile-line {
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+@container shell (min-width: 1064px) {
+  .summary-intent-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Opened in place, the month cards are 2 across from a tablet-wide page; a
+   card with its Details open is the full row, so nothing leaves a gap
+   beside it. */
+@container shell (min-width: 724px) {
   .summary-intent-months {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
 
-  /* A card with its Details open is the full row, so nothing leaves a gap
-     beside it. */
   .summary-intent-month.is-details-open {
     grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 1440px) {
-  .summary-intent-months {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

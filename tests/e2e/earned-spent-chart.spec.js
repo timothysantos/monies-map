@@ -16,7 +16,8 @@ import { reseedDemo } from "./helpers";
 const VIEW = "person-tim";
 const MONTH = "2026-05";
 const RANGE = { start: "2025-06", end: MONTH };
-const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}`;
+// A link that targets one month opens Intent vs Outcome's full month cards.
+const SUMMARY_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${RANGE.start}&summary_end=${RANGE.end}#month-${MONTH}`;
 const ONE_MONTH_URL = `/summary?view=${VIEW}&month=${MONTH}&scope=direct_plus_shared&summary_start=${MONTH}&summary_end=${MONTH}`;
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 

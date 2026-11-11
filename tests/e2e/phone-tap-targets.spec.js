@@ -24,10 +24,10 @@ const GAP = 8;
 const SCREENS = [
   {
     name: "Summary",
-    path: "/summary?view=person-tim&month=2026-05",
+    path: "/summary?view=person-tim&month=2026-05#month-2026-05",
     required: [".period-range-segment"],
     optional: [
-      ".financial-insight-fold", ".financial-insight-toggle", ".summary-mix-arrow", ".summary-mix-main", ".summary-mix-more", ".summary-wallet-row", ".summary-note-trigger",
+      ".financial-insight-fold", ".financial-insight-toggle", ".summary-mix-arrow", ".summary-mix-main", ".summary-mix-more", ".summary-wallet-row", ".summary-note-trigger", ".summary-intent-tile", ".summary-accounts-more",
       ".checkin-action", ".summary-chevron"
     ],
     // The month-by-month section and its chart load beside the first screen

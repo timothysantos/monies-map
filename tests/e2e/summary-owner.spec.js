@@ -7,7 +7,8 @@ import { reseedDemo } from "./helpers";
 // already covered the cancellation), and switching people while a range
 // change is loading only ever shows the newer person.
 
-const SUMMARY_URL = "/summary?view=household&month=2026-05";
+// A link that targets one month opens Intent vs Outcome's full month cards (the note rows).
+const SUMMARY_URL = "/summary?view=household&month=2026-05#month-2026-05";
 
 async function waitUsable(page) {
   await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);

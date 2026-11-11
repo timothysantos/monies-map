@@ -2,13 +2,14 @@ import "./summary-intent-outcome.css";
 import "./row-motion.css";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { monthMessages } from "./copy/en-SG-month";
-import { PrivateMoney } from "./money-privacy";
+import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
 import { formatMonthLabel, money } from "./formatters";
-import { buildIntentMonthCard } from "./summary-intent-outcome-model";
+import { buildIntentMonthCard, buildMonthStrip, monthListStartsOpen } from "./summary-intent-outcome-model";
 import { DetailRow, DetailRows, LeadCard, MetaChip, MoreDetails } from "./ui-components";
 
 const copy = messages.summary.intent;
@@ -44,6 +45,13 @@ const open = (fig, plan = null, ask = "") => ({
 // is wider than the card, so a phone never scrolls sideways.
 export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote, chart = null }) {
   const sortedMonths = [...months].sort((left, right) => right.month.localeCompare(left.month));
+  const strip = buildMonthStrip(months);
+  // The list starts as a glance: the latest months in one line each. "Open
+  // the details" shows the full cards, and a link that targets one month
+  // opens them at once. Kept in memory only.
+  const { hash } = useLocation();
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const [detailsOpen, setDetailsOpen] = useState(() => monthListStartsOpen(hash));
   return (
     <section className="chart-card summary-intent">
       <div className="chart-head">
@@ -52,17 +60,39 @@ export function SummaryIntentVsOutcomeSection({ months, onOpenMonth, onEditNote,
       </div>
       {/* The column + line chart (earned-spent-chart.js): earned, spent and the plan, month by month. */}
       {chart}
-      <div className="summary-intent-months">
-        {sortedMonths.map((month, index) => (
-          <IntentMonthCard
-            key={month.month}
-            card={buildIntentMonthCard(month)}
-            isInitiallyOpen={index === 0}
-            onOpenMonth={onOpenMonth}
-            onEditNote={onEditNote}
-          />
-        ))}
-      </div>
+      {strip.length ? (
+        <>
+          <ul className="summary-intent-strip" aria-label={copy.glanceLabel}>
+            {strip.map((item) => (
+              <li key={item.month} data-month={item.month}>
+                <button type="button" className="summary-intent-tile" onClick={() => onOpenMonth(item.month)}>
+                  <span className="summary-intent-tile-month">{formatMonthLabel(item.month)}</span>
+                  <span className={`summary-intent-tile-spent ${moneyToneClass(item.spent.tone)}`}><PrivateMoney>{money(item.spent.amountMinor)}</PrivateMoney></span>
+                  {item.headroom && areTotalsVisible ? (
+                    <span className={`summary-intent-tile-line ${moneyToneClass(item.headroom.tone)}`}>{money(item.headroom.amountMinor)} {item.headroom.isOver ? leadCopy.overPlan : leadCopy.underPlan}</span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <DetailRows label={copy.details}>
+            <MoreDetails label={copy.openDetails} openLabel={copy.details} open={detailsOpen} onOpenChange={setDetailsOpen} />
+          </DetailRows>
+        </>
+      ) : null}
+      {detailsOpen || !strip.length ? (
+        <div className="summary-intent-months">
+          {sortedMonths.map((month, index) => (
+            <IntentMonthCard
+              key={month.month}
+              card={buildIntentMonthCard(month)}
+              isInitiallyOpen={index === 0}
+              onOpenMonth={onOpenMonth}
+              onEditNote={onEditNote}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

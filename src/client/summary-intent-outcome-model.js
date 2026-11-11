@@ -55,3 +55,25 @@ export function buildIntentMonthCard(month) {
     note: month.note ?? ""
   };
 }
+
+// The glance at Summary's month list (design.md "Summary dashboard layout"):
+// the latest few months, newest first, each its month, what it spent and how
+// far over or under its plan, in the same money tones as the full cards. The
+// full cards open from "Open the details".
+export const MONTH_STRIP_LIMIT = 6;
+
+export function buildMonthStrip(months, limit = MONTH_STRIP_LIMIT) {
+  return [...months]
+    .sort((left, right) => right.month.localeCompare(left.month))
+    .slice(0, limit)
+    .map((month) => {
+      const { spent, headroom } = buildIntentMonthCard(month);
+      return { month: month.month, spent, headroom };
+    });
+}
+
+// A link that targets one month (`#month-2026-05`) opens the full cards, so
+// the person lands on the month they asked for instead of a strip.
+export function monthListStartsOpen(hash) {
+  return /^#month-\d{4}-(0[1-9]|1[0-2])$/.test(hash ?? "");
+}

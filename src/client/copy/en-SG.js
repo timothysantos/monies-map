@@ -209,6 +209,9 @@ export const messages = {
     fromMonth: "From",
     toMonth: "To",
     focusMonth: "Focus",
+    // The accounts card shows its first rows; the rest open in place.
+    accountsShowAll: (count) => `Show all ${count} ›`,
+    accountsShowFewer: "Show fewer",
     intentVsOutcome: "Intent vs Outcome",
     intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
     // Each Intent vs Outcome month card (summary-intent-outcome.jsx).
@@ -216,6 +219,8 @@ export const messages = {
       plannedIncome: "Planned income",
       actualIncome: "Actual income",
       details: "Details",
+      openDetails: "Open the details",
+      glanceLabel: "Months against plan",
       detailsHint: "Income · spend · savings · note",
       detailsFor: (monthLabel) => `${monthLabel} details`
     },
