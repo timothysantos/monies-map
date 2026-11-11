@@ -29,7 +29,7 @@ test.describe("summary workflow", () => {
     await expect(page.getByRole("heading", { name: "Intent vs Outcome" })).toBeVisible();
     // The month is picked in the floating bar (All months is Summary).
     await expect(page.locator(".mobile-context-sticky-wrap").getByRole("button", { name: /All months/ })).toBeVisible();
-    await expect(page.getByText("Total spend")).toBeVisible();
+    await expect(page.locator(".summary-mix-total-amount")).toBeVisible();
   });
 
   // Summary follows the route's scope, so on desktop a compact switch above

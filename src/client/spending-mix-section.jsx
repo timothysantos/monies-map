@@ -1,11 +1,10 @@
 import "./summary-body.css";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 import {
   CategoryAppearancePopover,
   mixShareText,
-  SpendingMixChart,
   SpendingMixList
 } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -48,23 +47,7 @@ import { useIsMobileLayout } from "./use-viewport";
 // empty state the Entries breakdown uses. The whole section is a lazy chunk
 // beside the first screen.
 const LIST_KEY = "monies-map:spending-mix-list";
-// The margin around the ring holds a label line above and below.
-const DONUT_SIZE = {
-  phone: { height: 260, innerRadius: 62, outerRadius: 96 },
-  phonePoster: { height: 340, innerRadius: 70, outerRadius: 110 },
-  wide: { height: 380, innerRadius: 92, outerRadius: 142 },
-  widePoster: { height: 440, innerRadius: 110, outerRadius: 168 }
-};
-// On Summary's dashboard the card is half the page: a donut about 250px
-// across with the total in the middle (the list beside it from a 600px card,
-// a window of about 1,400px; under that the list sits below it),
-// and on a phone one about 280px across, the list under it.
-const DASHBOARD_DONUT_SIZE = {
-  phone: { height: 340, innerRadius: 92, outerRadius: 140 },
-  phonePoster: { height: 420, innerRadius: 92, outerRadius: 140 },
-  wide: { height: 340, innerRadius: 80, outerRadius: 125 },
-  widePoster: { height: 440, innerRadius: 110, outerRadius: 168 }
-};
+const LazySpendingMixBubbles = lazy(() => import("./spending-mix-bubbles.jsx"));
 
 function readListShown() {
   try {
@@ -108,8 +91,12 @@ export function SpendingMixSection({
   // Hidden categories stay hidden across months and ranges; the reset counts
   // only the ones this data has, so a month without them shows no reset.
   const hiddenCount = donutData.filter((item) => hiddenCategoryIds.has(getDonutItemId(item))).length;
-  const sizeKey = `${isMobileLayout ? "phone" : "wide"}${listShown ? "" : "Poster"}`;
-  const size = (dashboard ? DASHBOARD_DONUT_SIZE : DONUT_SIZE)[sizeKey];
+  // Each slice carries its category's colour and own icon (the donut's bubbles).
+  const chartData = useMemo(
+    () => visibleDonutData.map((item, index) => ({ ...item, ...getCategoryTheme(categories, item, index) })),
+    [visibleDonutData, categories]
+  );
+  const [listExpanded, setListExpanded] = useState(false);
 
   function toggleCategoryVisibility(item) {
     setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
@@ -123,7 +110,7 @@ export function SpendingMixSection({
   }
 
   return (
-    <section className={["chart-card", "spending-mix-card", className].filter(Boolean).join(" ")} data-fig-period={period}>
+    <section className={["chart-card", "spending-mix-card", dashboard ? "is-dashboard" : "", className].filter(Boolean).join(" ")} data-fig-period={period}>
       <div className="chart-head spending-mix-head">
         <h3>{messages.summary.spendingMix}</h3>
         {donutData.length ? (
@@ -135,17 +122,18 @@ export function SpendingMixSection({
       {donutData.length ? (
         <div className={`summary-mix ${listShown ? "" : "is-poster"}`}>
           <div className="summary-mix-chart">
-            <SpendingMixChart
-              data={visibleDonutData}
-              categories={categories}
-              totalMinor={visibleTotalMinor}
-              callouts={false}
-              sliceLabels
-              sliceFacts={sliceFacts}
-              shareTotalMinor={totalMinor}
-              fullSize
-              {...size}
-            />
+            <p className="summary-mix-total">
+              <span className="summary-mix-total-amount" data-total-spend><PrivateMoney>{money(visibleTotalMinor)}</PrivateMoney></span>
+            </p>
+            <Suspense fallback={<div className={`spending-mix-bubbles-reserve ${listShown ? "" : "is-poster"}`} aria-hidden="true" />}>
+              <LazySpendingMixBubbles
+                chartData={chartData}
+                shareTotalMinor={totalMinor}
+                sliceFacts={sliceFacts}
+                poster={!listShown}
+                onShowAll={listShown ? () => setListExpanded(true) : undefined}
+              />
+            </Suspense>
             {hiddenCount ? (
               <button type="button" className="subtle-action donut-reset-action" onClick={() => setHiddenCategoryIds(new Set())}>
                 {messages.common.resetHiddenCategories(hiddenCount)}
@@ -158,6 +146,8 @@ export function SpendingMixSection({
               label={messages.summary.spendingMix}
               items={donutData}
               topCount={topCount}
+              expanded={listExpanded}
+              onExpandedChange={setListExpanded}
               renderRow={(item, index) => {
                 const category = getCategory(categories, item);
                 const categoryName = category?.name ?? item.label;

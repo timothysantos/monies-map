@@ -22,6 +22,47 @@
   font-weight: 600;
 }
 
+/* The icon-bubble donut's place while its chunk loads (spending-mix-bubbles.jsx,
+   donut-bubbles.css): the same aspect ratio and the pill's height, so the card
+   does not move when it lands. The total above it is in the section itself. */
+.spending-mix-bubbles-reserve {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.spending-mix-bubbles-reserve.is-poster {
+  max-width: 560px;
+}
+
+.spending-mix-bubbles-reserve::before {
+  content: "";
+  aspect-ratio: 420 / 380;
+}
+
+.spending-mix-bubbles-reserve::after {
+  content: "";
+  min-height: 34px;
+}
+
+/* The total above the ring and the note under it (a change note, where the
+   card has the history for one). */
+.summary-mix-total {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 4px;
+}
+
+.summary-mix-total-amount {
+  font-size: clamp(1.9rem, 6vw, 2.75rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+
 /* Beside the donut when the card itself is 600px or wider (a container query:
    the card is narrow on a phone, a tablet's half row or beside the Ask panel). */
 .spending-mix-card {
@@ -30,9 +71,9 @@
 
 /* Scoped to the card, so it outranks the one-column base in
    spending-mix-list.css whichever stylesheet lands last. */
-@container (min-width: 600px) {
+@container (min-width: 760px) {
   .spending-mix-card .summary-mix {
-    grid-template-columns: 316px minmax(0, 1fr);
+    grid-template-columns: 420px minmax(0, 1fr);
     align-items: center;
     gap: 20px;
   }

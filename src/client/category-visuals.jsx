@@ -181,10 +181,17 @@ export function CategoryAppearancePopover({ category, onChange }) {
 // all N" / "Show fewer" (`aria-expanded`). Each page draws its own rows
 // (`renderRow`): their taps differ; the look is spending-mix-list.css.
 /**
- * @param {{ label: string, items: any[], topCount: number, renderRow: (item: any, index: number) => any, className?: string }} props
+ * @param {{ label: string, items: any[], topCount: number, renderRow: (item: any, index: number) => any, className?: string, expanded?: boolean, onExpandedChange?: (expanded: boolean) => void }} props
  */
-export function SpendingMixList({ label, items, topCount, renderRow, className = "" }) {
-  const [showAll, setShowAll] = useState(false);
+export function SpendingMixList({ label, items, topCount, renderRow, className = "", expanded = undefined, onExpandedChange = undefined }) {
+  // The page may own whether the whole list shows (Summary's "N more" bubble opens it).
+  const [ownShowAll, setOwnShowAll] = useState(false);
+  const showAll = expanded ?? ownShowAll;
+  const setShowAll = (next) => {
+    const value = typeof next === "function" ? next(showAll) : next;
+    setOwnShowAll(value);
+    onExpandedChange?.(value);
+  };
   const listed = showAll ? items : items.slice(0, topCount);
   return (
     <DetailRows className={["summary-mix-list", className].filter(Boolean).join(" ")} label={label}>

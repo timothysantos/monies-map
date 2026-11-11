@@ -1797,7 +1797,26 @@ frames are in `docs/audits/hover-and-chart-motion/`.
   ending exactly where a still chart is drawn. Once played, a pointer on a
   column widens it by 18% from its centre and dims the other columns; a
   point grows 30%. All of it stays inside the plot, which clips.
-- **The Spending Mix donut** (`donut-motion.css`, `spending-mix-recharts.jsx`):
+- **The Spending Mix donut with icon bubbles** (`spending-mix-bubbles.jsx`,
+  `donut-bubbles.css`, `donut-bubbles-model.js`; owner mockup 2026-11-11, on
+  Summary and the Month page; Entries and Splits keep the Recharts donut
+  below): a thick ring with one arc per category, a bubble just outside each
+  of the biggest five slices at the slice's middle angle holding the
+  category's own icon in its colour (20% fill) with its whole-number share
+  beside it, and one three-dot "N more" bubble for the rest, so labels never
+  collide (bubbles too close are pushed along the ring; labels go on the
+  outer side). The total sits above the ring in the section (`summary-mix-total`).
+  A tap, click or focus on a slice or bubble selects it: the ring's middle
+  and the pill under it show name, amount and share (amount hidden with
+  money; share stays); the slice is still the category's openable figure
+  (hover or tap menu: View entries, Ask about this). The "N more" bubble
+  selects the rest and opens the whole list (`SpendingMixList`
+  `expanded`). It draws in once on first view through
+  `use-first-view-motion.js` (arcs one after another by stroke dash, bubbles
+  pop in; `data-donut-motion` armed, playing, done; off for reduced motion).
+  The svg holds its place by aspect ratio (420 x 380) and the pill's height is
+  reserved while the chunk loads.
+- **The Entries and Splits donut** (`donut-motion.css`, `spending-mix-recharts.jsx`):
   it waits hidden until half of it is seen, then sweeps in clockwise from
   the top (a turning wedge clip on the ring's own layer, 720 ms, so the
   slices arrive one after another), and the labels and the total fade in
@@ -2118,13 +2137,11 @@ change.
   its money tone's own fill and ink (`.summary-lead-slot`, so Month's lead is
   untouched); What changed's up and down figures are 1.1rem. No new colours
   and no new wording: every chip is an existing deterministic fact.
-- **Spending Mix** (`dashboard` prop, `DASHBOARD_DONUT_SIZE`): half the row, a
-  donut about 250px across with the total in its middle (unchanged: dots when
-  money is hidden), and 280px on a phone with the legend under it. The legend
-  (a colour dot, the name, amount and share, the existing rows) goes beside the
-  donut from a 600px card (a window of about 1,400px) and under it below that.
-  The ring needs about 40px on each side for its slice labels, so it is not
-  larger beside a narrower list.
+- **Spending Mix** (`dashboard` prop): half the row; the total above the
+  ring (dots when money is hidden), then the icon-bubble donut (see "Motion"),
+  the whole svg up to 460px wide, about 354px on a phone with the legend under
+  it. The legend (a colour dot, the name, amount and share, the existing rows)
+  goes beside the donut from a 760px card and under it below that.
 - **Subscriptions and bills** on a wide page (1,064px and up): half the row;
   the month's total is the headline (3.25rem), under it a "price rise" chip
   and a "Next: name amount on date" chip (no amount with money hidden), one

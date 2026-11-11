@@ -3315,3 +3315,15 @@ return action uses the existing month-choice navigation within the loaded range.
 Splits passes its search and clear callback to its existing group strip.
 `tests/e2e/island-context.spec.js` proves 390px height, scroll continuity, scope
 visibility, complete reset, touch targets, reduced motion and desktop exclusion.
+
+### Spending Mix's icon-bubble donut
+
+Summary's and Month's Spending Mix draw their donut as plain SVG, not Recharts
+(Entries and Splits keep the Recharts one). The geometry (arcs, the five
+biggest slices' bubbles, the "N more" bubble, bubbles pushed apart until no
+disc or label touches) is the pure `src/client/donut-bubbles-model.js`, tested
+in `tests/donut-bubbles-model.test.mjs`; the drawing, selection and openable
+figures are `spending-mix-bubbles.jsx` (lazy, beside the section), shared figure
+attributes are `spending-mix-slice-figure.js`, and the first-view draw-in is
+the generic `use-first-view-motion.js` (`armed`, `playing`, `done`, or `off`
+for reduced motion), the one hook for every card that draws in.

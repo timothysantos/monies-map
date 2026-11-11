@@ -140,9 +140,9 @@ test.describe("layout breakpoint switching", () => {
     await expectSamePage(page);
   });
 
-  test("the Summary spending chart takes its phone size on resize instead of keeping its first-render size", async ({ page }) => {
+  test("the Summary spending donut follows its card's width on resize and keeps its shape, without remounting", async ({ page }) => {
     await page.setViewportSize(DESKTOP);
-    const chart = page.locator(".spending-mix-chart .recharts-responsive-container").first();
+    const chart = page.locator(".spending-mix-bubbles .mix-svg").first();
     await gotoPageAfterApi(
       page,
       "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-05",
@@ -150,18 +150,21 @@ test.describe("layout breakpoint switching", () => {
       () => chart
     );
     await markPage(page);
-    const chartHeight = () => chart.evaluate((element) => Math.round(element.getBoundingClientRect().height));
-
-    // 380px is Spending Mix's desktop height (room for one line of slice label
-    // above and below the ring); the phone layout is 260px.
-    await expect.poll(chartHeight).toBe(380);
+    const size = () => chart.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { width: Math.round(box.width), ratio: Math.round((box.width / box.height) * 100) / 100 };
+    });
+    // The svg keeps its 420 x 380 shape at every width, so the card never jumps.
+    const wide = await size();
+    expect(wide.ratio).toBeCloseTo(420 / 380, 1);
+    expect(wide.width).toBeLessThanOrEqual(460);
     await page.setViewportSize(PHONE);
-    await expect.poll(chartHeight).toBe(260);
-    // The chart follows the phone breakpoint, not Month's portrait-tablet one.
+    await expect.poll(async () => (await size()).width).toBeLessThan(wide.width);
+    expect((await size()).ratio).toBeCloseTo(420 / 380, 1);
+    expect((await size()).width).toBeGreaterThan(280);
     await page.setViewportSize(PORTRAIT_TABLET);
-    await expect.poll(chartHeight).toBe(380);
+    await expect.poll(async () => (await size()).width).toBeGreaterThan(300);
     await page.setViewportSize(PHONE);
-    await expect.poll(chartHeight).toBe(260);
     await expectSamePage(page);
   });
 });

@@ -29,10 +29,10 @@ test("donut segments and category icons read on the panel and stay distinct", as
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoPageAfterApi(page, "/summary?view=household&month=2025-06&scope=direct_plus_shared&summary_start=2025-06&summary_end=2025-06", "/api/summary-page", () => page.getByRole("heading", { name: "Spending Mix" }));
-  const segments = page.locator(".recharts-pie-sector path, .recharts-sector:not(.donut-slice-hit)");
+  const segments = page.locator(".mix-arc");
   await expect(segments.first()).toBeVisible();
 
-  const fills = await segments.evaluateAll((elements) => elements.map((element) => element.getAttribute("fill")).filter(Boolean));
+  const fills = await segments.evaluateAll((elements) => elements.map((element) => element.getAttribute("stroke")).filter(Boolean));
   expect(fills.length).toBeGreaterThan(3);
   for (const fill of fills) {
     expect(contrast(parse(fill), [255, 255, 255]), `${fill} on white`).toBeGreaterThanOrEqual(3);

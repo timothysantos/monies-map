@@ -51,7 +51,7 @@ function spendingMix(page) {
 async function expectMix(page, share) {
   const mix = spendingMix(page);
   await expect(mix).toHaveCount(1);
-  await expect(mix.locator(".donut-center strong")).toHaveText(formatMoney(sumMinor(share)));
+  await expect(mix.locator(".summary-mix-total-amount")).toHaveText(formatMoney(sumMinor(share)));
   // The ranked list shows the top five (three on a phone); "Show all N" lists the rest
   // (tests/e2e/summary-body-lsd.spec.js covers the toggle).
   const rows = mix.locator(".summary-mix-row");
@@ -156,7 +156,7 @@ test.describe("Spending Mix for a picked month on a phone", () => {
     const text = await mix.innerText();
     expect(text).not.toMatch(/\$\s?\d/);
     expect(text).toContain("••••");
-    await expect(mix.locator(".donut-center strong")).not.toContainText("$");
+    await expect(mix.locator(".summary-mix-total-amount")).not.toContainText("$");
   });
 
   test("a category card opens Entries for that category and the picked month", async ({ page }) => {

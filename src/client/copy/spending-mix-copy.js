@@ -15,5 +15,10 @@ export const spendingMixCopy = {
   sliceLabel: (name, percent) => `${name}, ${percent} of spending`,
   // The Entries list's eye toggle (entries-overview.jsx), pressed while the
   // category's slice is in the donut.
+  // The icon-bubble donut (spending-mix-bubbles.jsx): the one bubble the slices
+  // after the biggest five share, and the ring's name for assistive tech.
+  moreName: (count) => `${count} more categories`,
+  shareOfSpending: (percent) => `${percent} of spending`,
+  chartLabel: "Spending by category: tap a bubble or a slice to see its amount",
   showInChart: (name) => `Show ${name} in the chart`
 };

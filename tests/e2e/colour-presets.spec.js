@@ -158,11 +158,11 @@ test("a chosen preset and mode are in place at the first frame after a reload", 
   expect(await page.evaluate(() => window.__firstFrame)).toEqual({ palette: "80s", mode: "dark", accent: "#ff7ad8", page: "#110c23" });
   await expect(page.locator('link[data-palette-sheet="80s-dark"]')).toHaveCount(1);
 
-  // Category colours follow the preset and mode: a donut segment's drawn
-  // fill is the preset's, while its fill attribute keeps the stored 70s colour.
-  const segment = page.locator(".recharts-pie-sector path, .recharts-sector").first();
+  // Category colours follow the preset and mode: a donut arc's drawn
+  // stroke is the preset's, while its stroke attribute keeps the stored 70s colour.
+  const segment = page.locator(".mix-arc").first();
   await expect(segment).toBeVisible();
-  const { attribute, drawn } = await segment.evaluate((element) => ({ attribute: element.getAttribute("fill"), drawn: getComputedStyle(element).fill }));
+  const { attribute, drawn } = await segment.evaluate((element) => ({ attribute: element.getAttribute("stroke"), drawn: getComputedStyle(element).stroke }));
   expect(attribute).toMatch(/^#[0-9A-F]{6}$/i);
   const presetColour = await rootToken(page, `--cat-${attribute.slice(1).toLowerCase()}`);
   expect(presetColour).toMatch(/^#[0-9a-f]{6}$/);

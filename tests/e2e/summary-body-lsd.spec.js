@@ -21,11 +21,6 @@ const SUMMARY_URL = `/summary?view=${VIEW}&month=2025-10&summary_start=${RANGE.s
 const { defaultBrowserType: _browser, ...iPhone13 } = devices["iPhone 13"];
 // The list's first rows: five on a desktop, three on a phone.
 const topCount = (page) => (page.viewportSize().width < 761 ? 3 : 5);
-// The ring's outer radius on each layout (spending-mix-section.jsx) and the
-// shortest slice edge that may carry a label (donut-label-layout.js).
-// The dashboard card is half a row: a donut about 250px across (280px on a phone).
-const OUTER_RADIUS = { phone: 140, desktop: 125 };
-const MIN_LABEL_ARC = 18;
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 const money = (minor) => moneyFormatter.format(minor / 100);
@@ -64,7 +59,7 @@ async function addThinSlices(page) {
 }
 
 async function openSummary(page) {
-  await gotoPageAfterApi(page, SUMMARY_URL, "/api/summary-page", () => mixCard(page).locator(".recharts-pie"));
+  await gotoPageAfterApi(page, SUMMARY_URL, "/api/summary-page", () => mixCard(page).locator(".mix-arc").first());
   await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 45_000 }).toBe(true);
   await expect(walletsCard(page)).toBeVisible();
 }
@@ -118,76 +113,68 @@ async function expectNoOverlappingLabels(page) {
   await expect(mixCard(page).locator(".donut-callout-badge")).toHaveCount(0);
 }
 
-// The slice labels: the biggest slice has one, a slice too thin for a label
-// has none, every label is clear of the ring and of every other label, inside
-// the chart, in plain page ink, and shows a share, never an amount.
-async function expectSliceLabels(page, share, deviceName) {
-  const chart = mixCard(page).locator(".spending-mix-chart");
-  await expect(chart.locator(".donut-slice-label").first()).toBeVisible();
+// The icon bubbles (spending-mix-bubbles.jsx): one for each of the five
+// biggest slices and one "N more" bubble for the rest, each with its own icon
+// (dots for "more") and its whole-number share, on the outer side; no two
+// clash, none leaves the chart, and a share is never an amount.
+async function expectBubbles(page, share) {
+  const chart = mixCard(page).locator(".spending-mix-bubbles");
+  await expect(chart.locator(".mix-bubble").first()).toBeVisible();
   const measured = await chart.evaluate((element) => {
-    const pie = element.querySelector(".recharts-pie-sector")?.closest(".recharts-pie") ?? element.querySelector(".recharts-pie");
-    const sectors = [...element.querySelectorAll(".recharts-pie-sector path, path.recharts-sector")].map((path) => path.getBoundingClientRect());
-    const ring = {
-      left: Math.min(...sectors.map((rect) => rect.left)),
-      right: Math.max(...sectors.map((rect) => rect.right)),
-      top: Math.min(...sectors.map((rect) => rect.top)),
-      bottom: Math.max(...sectors.map((rect) => rect.bottom))
-    };
-    const outer = element.getBoundingClientRect();
+    const rect = (node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; };
+    const svg = element.querySelector(".mix-svg");
+    const ring = rect(element.querySelector(".mix-ring"));
     return {
-      pie: Boolean(pie),
-      ring: { cx: (ring.left + ring.right) / 2, cy: (ring.top + ring.bottom) / 2, radius: (ring.right - ring.left) / 2 },
-      chart: { left: outer.left, right: outer.right, top: outer.top, bottom: outer.bottom },
-      labels: [...element.querySelectorAll(".donut-slice-label")].map((label) => {
-        const rect = label.getBoundingClientRect();
-        return {
-          key: label.getAttribute("data-slice-key"),
-          text: label.textContent,
-          fill: getComputedStyle(label).fill,
-          ink: getComputedStyle(document.body).color,
-          hidden: label.getAttribute("aria-hidden"),
-          x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom
-        };
-      })
+      svg: rect(svg),
+      ring: { cx: (ring.x + ring.right) / 2 },
+      bubbles: [...element.querySelectorAll(".mix-bubble")].map((node) => ({
+        name: node.getAttribute("data-bubble"),
+        percent: node.querySelector(".mix-bubble-percent").textContent,
+        anchor: node.querySelector(".mix-bubble-percent").getAttribute("text-anchor"),
+        icon: Boolean(node.querySelector("svg")),
+        dots: node.querySelectorAll(".mix-bubble-disc > g > circle").length,
+        disc: rect(node.querySelector("circle")),
+        text: rect(node.querySelector(".mix-bubble-percent"))
+      }))
     };
   });
-  const { ring, labels } = measured;
-  expect(ring.radius).toBeCloseTo(OUTER_RADIUS[deviceName], -1);
   const total = sumMinor(share);
-  const byKey = new Map(labels.map((label) => [label.key, label]));
-  expect(byKey.get(share[0].key)?.text, "the biggest slice is labelled").toContain(percentOf(share[0], share));
-  const thin = share.filter((item) => (item.valueMinor / total) * Math.PI * 2 * OUTER_RADIUS[deviceName] < MIN_LABEL_ARC);
-  expect(thin.length, "the fixture has slices too thin for a label").toBeGreaterThan(0);
-  for (const item of thin) {
-    expect(byKey.has(item.key), `${item.label} is too thin for a label`).toBe(false);
+  const ranked = [...share].sort((a, b) => b.valueMinor - a.valueMinor);
+  const top = ranked.slice(0, 5);
+  const rest = ranked.slice(5);
+  expect(measured.bubbles.length).toBe(top.length + (rest.length ? 1 : 0));
+  for (const item of top) {
+    const bubble = measured.bubbles.find((candidate) => candidate.name === item.label);
+    expect(bubble, `${item.label} has a bubble`).toBeTruthy();
+    expect(bubble.percent).toBe(`${Math.round((item.valueMinor / total) * 100)}%`);
+    expect(bubble.icon, `${item.label} shows its own icon`).toBe(true);
   }
-  for (const label of labels) {
-    const item = share.find((entry) => entry.key === label.key);
-    expect(item, `label ${label.text} names a slice`).toBeTruthy();
-    expect(label.text.endsWith(percentOf(item, share)), `${label.text} ends in its share`).toBe(true);
-    // Never a bare share: every label names its category.
-    expect(label.text.startsWith(item.label), `${label.text} names ${item.label}`).toBe(true);
-    expect(label.text).not.toMatch(/\$/);
-    expect(label.hidden).toBe("true");
-    expect(label.fill, `${label.text} in the page ink`).toBe(label.ink);
-    for (const [x, y] of [[label.x, label.y], [label.right, label.y], [label.x, label.bottom], [label.right, label.bottom]]) {
-      expect(Math.hypot(x - ring.cx, y - ring.cy), `${label.text} clear of the ring`).toBeGreaterThanOrEqual(ring.radius);
+  if (rest.length) {
+    const more = measured.bubbles.find((candidate) => candidate.name === "more");
+    expect(more.percent).toBe(`${Math.round((rest.reduce((sum, item) => sum + item.valueMinor, 0) / total) * 100)}%`);
+    expect(more.icon, "the more bubble is three dots, not an icon").toBe(false);
+    expect(more.dots).toBe(3);
+  }
+  const cards = measured.bubbles;
+  for (const bubble of cards) {
+    expect(bubble.percent).not.toMatch(/\$/);
+    // Labels on the outer side.
+    const right = bubble.disc.x + bubble.disc.width / 2 >= measured.ring.cx;
+    expect(bubble.anchor, `${bubble.name} labels on its outer side`).toBe(right ? "start" : "end");
+    expect(bubble.disc.x).toBeGreaterThanOrEqual(measured.svg.x - 1);
+    expect(bubble.disc.right).toBeLessThanOrEqual(measured.svg.right + 1);
+    expect(bubble.text.x).toBeGreaterThanOrEqual(measured.svg.x - 1);
+    expect(bubble.text.right).toBeLessThanOrEqual(measured.svg.right + 1);
+  }
+  const clash = (a, b) => Math.min(a.right, b.right) - Math.max(a.x, b.x) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y) > 0.5;
+  for (let i = 0; i < cards.length; i += 1) {
+    for (let j = i + 1; j < cards.length; j += 1) {
+      expect(clash(cards[i].disc, cards[j].disc), `${cards[i].name} / ${cards[j].name} bubbles`).toBe(false);
+      expect(clash(cards[i].text, cards[j].text), `${cards[i].name} / ${cards[j].name} labels`).toBe(false);
+      expect(clash(cards[i].disc, cards[j].text), `${cards[i].name} bubble / ${cards[j].name} label`).toBe(false);
     }
-    expect(label.x).toBeGreaterThanOrEqual(measured.chart.left - 1);
-    expect(label.right).toBeLessThanOrEqual(measured.chart.right + 1);
-    expect(label.y).toBeGreaterThanOrEqual(measured.chart.top - 1);
-    expect(label.bottom).toBeLessThanOrEqual(measured.chart.bottom + 1);
   }
-  for (let i = 0; i < labels.length; i += 1) {
-    for (let j = i + 1; j < labels.length; j += 1) {
-      const a = labels[i];
-      const b = labels[j];
-      const across = Math.min(a.right, b.right) - Math.max(a.x, b.x);
-      const down = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y);
-      expect(across > 0 && down > 0, `${a.text} / ${b.text} overlap`).toBe(false);
-    }
-  }
-  return labels;
+  return measured.bubbles;
 }
 
 // Everything tappable inside `selector` is at least 44px tall and wide. A
@@ -281,40 +268,36 @@ for (const device of [
       await reseedDemo(page);
     });
 
-    test("Spending Mix: labels on the big slices only, no overlapping text, the ranked top 5 and Show all", async ({ page }) => {
+    test("Spending Mix: bubbles on the five biggest slices and one 'more', no overlapping text, the ranked top 5 and Show all", async ({ page }) => {
       await setMoney(page, true);
       await addThinSlices(page);
       await openSummary(page);
       const share = await rangeShare(page);
-      await expect(mixCard(page).locator(".donut-center strong")).toHaveText(money(sumMinor(share)));
-      // The list as shown before (another test may have folded it on this device).
-      await expectSliceLabels(page, share, device.name);
+      await expect(mixCard(page).locator(".summary-mix-total-amount")).toHaveText(money(sumMinor(share)));
+      await expectBubbles(page, share);
       await expectNoOverlappingLabels(page);
       await expectRankedList(page, share);
       await expectShowAll(page, share);
-      await expectNoSidewaysScroll(page, ".chart-card:has(.spending-mix-chart)");
-      await expectTargets44(page, ".chart-card:has(.spending-mix-chart)");
+      await expectNoSidewaysScroll(page, ".chart-card:has(.spending-mix-bubbles)");
+      await expectTargets44(page, ".chart-card:has(.spending-mix-bubbles)");
       await expectNoOverlappingLabels(page);
     });
 
-    test("Spending Mix: Hide list folds the list away for a bigger donut with more names, remembered on the device", async ({ page }) => {
+    test("Spending Mix: Hide list folds the list away for a bigger donut, remembered on the device", async ({ page }) => {
       await setMoney(page, true);
       await openSummary(page);
       const card = mixCard(page);
       const toggle = card.getByRole("button", { name: "Hide list" });
       await expect(toggle).toHaveAttribute("aria-expanded", "true");
-      const before = await box(card.locator(".spending-mix-chart"));
-      const namedBefore = await card.locator(".donut-slice-label").count();
+      const before = await box(card.locator(".spending-mix-bubbles"));
       await toggle.click();
       await expect(card.locator(".summary-mix-list")).toHaveCount(0);
       await expect(card.getByRole("button", { name: "Show list" })).toHaveAttribute("aria-expanded", "false");
-      const after = await box(card.locator(".spending-mix-chart"));
+      const after = await box(card.locator(".spending-mix-bubbles"));
       expect(after.width, "the donut takes the card").toBeGreaterThanOrEqual(before.width);
-      expect(after.height).toBeGreaterThan(before.height);
-      expect(await card.locator(".donut-slice-label").count()).toBeGreaterThanOrEqual(namedBefore);
-      for (const text of await card.locator(".donut-slice-label").allTextContents()) {
-        expect(text, "a label names its category").toMatch(/^\D/);
-      }
+      expect(after.height).toBeGreaterThanOrEqual(before.height);
+      // The same bubbles stay, and the donut keeps its shape.
+      expect(await card.locator(".mix-bubble").count()).toBeGreaterThanOrEqual(2);
       // Remembered on this device.
       await page.reload();
       await expect(mixCard(page).getByRole("button", { name: "Show list" })).toBeVisible({ timeout: 30_000 });
@@ -346,11 +329,17 @@ for (const device of [
       if (device.name === "desktop") {
         // A resting pointer opens it too, without taking the focus.
         await page.mouse.move(0, 0);
-        await restPointerOn(page, slice.locator(".donut-slice-label"));
+        await restPointerOn(page, mixCard(page).locator(`.mix-bubble[data-bubble="${share[0].label}"] .mix-bubble-disc circle`).first());
         await expect(menu).toBeVisible();
         await expect(menu.getByRole("button", { name: "View entries" })).not.toBeFocused();
       } else {
-        await slice.locator(".donut-slice-label").tap();
+        // A touch on the bubble: bring it into view at once (the page's smooth
+        // scrolling would keep moving it), then touch its centre.
+        const disc = mixCard(page).locator(`.mix-bubble[data-bubble="${share[0].label}"] .mix-bubble-disc circle`).first();
+        await disc.evaluate((element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+        await page.waitForTimeout(500);
+        const target = await box(disc);
+        await page.touchscreen.tap(target.x + target.width / 2, target.y + target.height / 2);
         await expect(menu).toBeVisible();
       }
       await menu.getByRole("button", { name: "View entries" }).click();
@@ -433,18 +422,26 @@ for (const device of [
       await expect(page.locator("[data-figure-menu] .figure-menu-title")).toHaveText(share[0].label);
     });
 
-    test("Spending Mix: the list sits under the donut on a phone and beside it on a wide desktop (the card is half the page)", async ({ page }) => {
+    test("Spending Mix: the list sits under the donut on a phone and on a half-page card, and beside it on a card 760px wide", async ({ page }) => {
       if (device.name === "desktop") await page.setViewportSize({ width: 1440, height: 900 });
       await setMoney(page, true);
       await openSummary(page);
-      const chart = await box(mixCard(page).locator(".spending-mix-chart"));
+      const chart = await box(mixCard(page).locator(".spending-mix-bubbles"));
       const list = await box(mixCard(page).locator(".summary-mix-list"));
       if (device.name === "phone") {
         expect(list.y, "list under the donut").toBeGreaterThanOrEqual(chart.bottom - 1);
         expect(list.width).toBeGreaterThan(390 - 40);
       } else {
-        expect(list.x, "list beside the donut").toBeGreaterThanOrEqual(chart.right - 1);
-        expect(list.y).toBeLessThan(chart.bottom);
+        // The icon bubbles need about 420px, so the list sits beside the donut
+        // only when the card itself is 760px or wider (a very wide window);
+        // at half a 1,440px page it sits under it.
+        const card = await box(mixCard(page));
+        if (card.width - 40 >= 760) {
+          expect(list.x, "list beside the donut").toBeGreaterThanOrEqual(chart.right - 1);
+          expect(list.y).toBeLessThan(chart.bottom);
+        } else {
+          expect(list.y, "list under the donut").toBeGreaterThanOrEqual(chart.bottom - 1);
+        }
       }
     });
 
@@ -453,7 +450,7 @@ for (const device of [
       await openSummary(page);
       const share = await rangeShare(page);
       const first = mixCard(page).locator(".summary-mix-row").first();
-      const total = mixCard(page).locator(".donut-center strong");
+      const total = mixCard(page).locator(".summary-mix-total-amount");
 
       // The main tap hides the category from the donut and shows it again.
       const toggle = first.locator(".summary-mix-main");
@@ -528,11 +525,12 @@ for (const device of [
       const mixText = await mix.innerText();
       expect(mixText).not.toMatch(/\$\s?\d/);
       expect(mixText).toContain("••••");
-      await expect(mix.locator(".donut-center strong")).not.toContainText("$");
+      await expect(mix.locator(".summary-mix-total-amount")).not.toContainText("$");
       await expect(mix.locator(".summary-mix-percent").first()).toHaveText(percentOf(share[0], share));
       await expect(mix.locator(".summary-mix-amount").first()).not.toContainText("$");
-      // The slice labels keep their shares: a share is not an amount.
-      expect((await expectSliceLabels(page, share, device.name)).length).toBeGreaterThan(0);
+      // The bubbles keep their shares: a share is not an amount.
+      expect((await expectBubbles(page, share)).length).toBeGreaterThan(0);
+      await expect(mix.locator(".mix-pill")).not.toContainText("$");
       await expectNoOverlappingLabels(page);
 
       const wallets = walletsCard(page);

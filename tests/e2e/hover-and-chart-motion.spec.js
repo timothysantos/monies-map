@@ -161,11 +161,13 @@ async function chartGeometry(page) {
 }
 
 async function donutGeometry(page) {
-  return page.locator(".spending-mix-chart").first().evaluate((donut, origin = donut.getBoundingClientRect()) => ({
-    sectors: [...donut.querySelectorAll(".recharts-pie-sector path")].map((node) => node.getAttribute("d")),
-    labels: [...donut.querySelectorAll(".donut-slice-label")].map((node) => { const box = node.getBoundingClientRect(); return [box.x - origin.x, box.y - origin.y, box.width, box.height].map(Math.round); }),
-    clip: getComputedStyle(donut.querySelector(".recharts-pie")).clipPath,
-    labelOpacity: [...donut.querySelectorAll(".donut-slice-label")].map((node) => getComputedStyle(node.closest(".recharts-surface > g")).opacity)
+  return page.locator(".spending-mix-bubbles").first().evaluate((donut, origin = donut.getBoundingClientRect()) => ({
+    arcs: [...donut.querySelectorAll(".mix-arc")].map((node) => [node.getAttribute("stroke-dasharray"), node.getAttribute("stroke-dashoffset")]),
+    bubbles: [...donut.querySelectorAll(".mix-bubble")].map((node) => { const box = node.getBoundingClientRect(); return [box.x - origin.x, box.y - origin.y, box.width, box.height].map(Math.round); }),
+    percents: [...donut.querySelectorAll(".mix-bubble-percent")].map((node) => node.textContent),
+    // Marks wait hidden before the first view; a figure never does.
+    percentOpacity: [...donut.querySelectorAll(".mix-bubble-percent")].map((node) => getComputedStyle(node).opacity),
+    arcOpacity: [...donut.querySelectorAll(".mix-arc")].map((node) => getComputedStyle(node).opacity)
   }));
 }
 
@@ -220,21 +222,28 @@ test.describe("charts", () => {
     await stillContext.close();
   });
 
-  test("the Spending Mix donut sweeps in on first view, leaves no clip, and rests exactly as a still donut", async ({ page, browser }) => {
+  test("the Spending Mix donut draws in on first view, never hides a figure, and rests exactly as a still donut", async ({ page, browser }) => {
     await page.setViewportSize({ width: 1440, height: 480 });
     await page.goto(SUMMARY_URL);
-    const donut = page.locator(".spending-mix-chart").first();
+    const donut = page.locator(".spending-mix-bubbles").first();
     await expect(donut).toHaveAttribute("data-donut-motion", /^(armed|playing|done)$/, { timeout: 30_000 });
-    await donut.locator(".recharts-pie-sector").first().waitFor({ state: "attached" });
+    await donut.locator(".mix-arc").first().waitFor({ state: "attached" });
     const start = await page.evaluate(() => performance.now());
+    if ((await donut.getAttribute("data-donut-motion")) === "armed") {
+      // Waiting off screen: the arcs are not drawn yet, but every percentage is in the page and readable.
+      const waiting = await donutGeometry(page);
+      expect(new Set(waiting.arcOpacity)).toEqual(new Set(["0"]));
+      expect(new Set(waiting.percentOpacity)).toEqual(new Set(["1"]));
+      expect(waiting.percents.length).toBeGreaterThan(1);
+    }
     await donut.evaluate((node) => node.scrollIntoView({ block: "center" }));
     await expect(donut).toHaveAttribute("data-donut-motion", "playing");
-    const playing = await donutGeometry(page);
-    expect(playing.clip).toMatch(/polygon/);
+    expect(await donut.locator(".mix-arc").first().evaluate((node) => getComputedStyle(node).animationName)).toBe("mix-draw");
+    expect(await donut.locator(".mix-bubble-disc").first().evaluate((node) => getComputedStyle(node).animationName)).toBe("mix-pop");
     await expect(donut).toHaveAttribute("data-donut-motion", "done", { timeout: 5_000 });
     const rested = await donutGeometry(page);
-    expect(rested.clip).toBe("none");
-    expect(new Set(rested.labelOpacity)).toEqual(new Set(["1"]));
+    expect(new Set(rested.arcOpacity)).toEqual(new Set(["1"]));
+    expect(await donut.locator(".mix-arc").first().evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
     const shifts = await page.evaluate((from) => window.__layoutShifts.filter((shift) => shift.at >= from).reduce((sum, shift) => sum + shift.value, 0), start);
     expect(shifts).toBeLessThan(0.01);
 
@@ -242,21 +251,21 @@ test.describe("charts", () => {
     const still = await stillContext.newPage();
     await showMoney(still);
     await still.goto(new URL(SUMMARY_URL, page.url()).toString());
-    const stillDonut = still.locator(".spending-mix-chart").first();
+    const stillDonut = still.locator(".spending-mix-bubbles").first();
     await expect(stillDonut).toHaveAttribute("data-donut-motion", "off", { timeout: 30_000 });
-    await stillDonut.locator(".recharts-pie-sector").first().waitFor({ state: "attached" });
+    await stillDonut.locator(".mix-arc").first().waitFor({ state: "attached" });
     await stillDonut.evaluate((node) => node.scrollIntoView({ block: "center" }));
     await donut.evaluate((node) => node.scrollIntoView({ block: "center" }));
+    expect(await stillDonut.locator(".mix-arc").first().evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
     const stillGeometry = await donutGeometry(still);
-    expect(stillGeometry.clip).toBe("none");
-    expect((await donutGeometry(page)).sectors).toEqual(stillGeometry.sectors);
-    expect((await donutGeometry(page)).labels).toEqual(stillGeometry.labels);
+    expect(new Set(stillGeometry.arcOpacity)).toEqual(new Set(["1"]));
+    expect(await donutGeometry(page)).toEqual(stillGeometry);
     await stillContext.close();
   });
 
   test("a pointer on a slice lifts it in its own colour, and on a column widens it and dims the others", async ({ page }) => {
     await page.goto(SUMMARY_URL);
-    const donut = page.locator(".spending-mix-chart").first();
+    const donut = page.locator(".spending-mix-bubbles").first();
     await donut.evaluate((node) => node.scrollIntoView({ block: "center" }));
     await expect(donut).toHaveAttribute("data-donut-motion", "done", { timeout: 10_000 });
     // A point on the ring inside one slice: the middle of its arc.

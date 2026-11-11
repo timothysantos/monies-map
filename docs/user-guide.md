@@ -441,8 +441,11 @@ over plan.
   lowest month are left out, so one bonus doesn't count).
 - **Spending Mix**: a donut of spending by category over the whole range,
   with the categories ranked beside it (under it on a phone): each shows its
-  amount, its share and a thin bar. The bigger slices are named on the donut
-  with their share where there is room; small slices are only in the list. The top five show; **Show all** lists
+  amount, its share and a thin bar. The total is above the ring. The five
+  biggest slices have a bubble beside them with the category's own icon and its
+  share; the rest are grouped in one "more" bubble (tap it to see the whole
+  list). Tap a bubble or a slice and its name, amount and share show in the
+  middle of the ring and under it. The top five show; **Show all** lists
   the rest. Pick a month to see that month's ([Month](#month)).
 - **Intent vs Outcome**: the latest six months show as small tiles (what you
   spent and how far under or over plan; select one to open that month). **Open
@@ -527,7 +530,9 @@ over plan.
   phone, the button beside the View and scope bar): **All months** is this
   page. Pick a month to open that month's plan
   ([Pick a month](#pick-a-month)).
-- **The donut**: each slice with room is named with its share. Point at a
+- **The donut**: the five biggest slices have a bubble with the category's icon
+  and its share; the rest share a "more" bubble. Tap a bubble or slice to show
+  its name, amount and share in the middle and under the ring. Point at a
   slice (on a phone, tap it; with the keyboard, Tab to the donut and use the
   arrow keys, then Enter) for its category name (first, in bold, with its
   colour; its row in the list is marked while the menu is open), its amount,
