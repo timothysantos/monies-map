@@ -172,16 +172,17 @@ test.describe("desktop", () => {
 
   test("Summary adds almost no layout shift while the lead loads", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    // A device that has seen the import banner keeps its room (App.jsx
+    // ImportInboxBannerSlot), so the banner landing moves nothing. The first
+    // visit of all, which cannot know, is not what this measures.
+    await openSummary(page);
+    await expect(page.locator(".import-banner-slot [role='status'], .import-banner-slot .state-banner").first()).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => page.evaluate(() => Number(window.localStorage.getItem("monies-map:import-banner-height")))).toBeGreaterThan(0);
     await page.addInitScript(() => {
       window.__shift = 0;
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          // A banner that mounts above the Summary (the import reminder) moves
-          // the whole panel as one block; that is the shell's, not the
-          // dashboard's layout, so it is not counted here. Every other shift
-          // (a card or the lead moving inside the panel) is.
-          const panelOnly = entry.sources.length > 0 && entry.sources.every((source) => source.node instanceof Element && source.node.classList.contains("panel"));
-          if (!entry.hadRecentInput && !panelOnly) window.__shift += entry.value;
+          if (!entry.hadRecentInput) window.__shift += entry.value;
         }
       }).observe({ type: "layout-shift", buffered: true });
     });

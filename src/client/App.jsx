@@ -2,7 +2,7 @@
 // share it; as its own chunk it stops the bundler merging React and the copy
 // into the entry, which adds two first-screen files (check:bundle fails).
 import "./account-display";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal, flushSync } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -320,6 +320,11 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [importInboxBanner, setImportInboxBanner] = useState(null);
+  // Whether the Imports cache has answered yet (the banner reads it), and the
+  // height the banner had on this device last time: kept as its slot until
+  // the answer comes, so the banner arriving moves nothing under it.
+  const [importBannerKnown, setImportBannerKnown] = useState(false);
+  const [importBannerReserve] = useState(readImportBannerHeight);
   const [routePageError, setRoutePageError] = useState("");
   const [isRetryingRoutePage, setIsRetryingRoutePage] = useState(false);
   // Summary data is not replaced until the next response arrives, so keep the
@@ -2478,6 +2483,13 @@ export function App() {
     && importInboxBanner.summary.requiredFileCount > 0
   );
 
+  // Once the answer is in and there is nothing behind, the next visit reserves nothing.
+  useEffect(() => {
+    if (importBannerKnown && !showImportInboxBanner && ["summary", "month"].includes(renderedTabId)) {
+      writeImportBannerHeight(0);
+    }
+  }, [importBannerKnown, renderedTabId, showImportInboxBanner]);
+
   // The import banner shows whatever the Imports query cache holds: filled by
   // visiting Imports, by desktop warmup, or by import mutations that refresh
   // it. The banner itself never fetches, so mobile never downloads the
@@ -2485,7 +2497,9 @@ export function App() {
   useEffect(() => {
     const importsKeyHash = hashKey(queryKeys.importsPage());
     const readBanner = () => {
-      setImportInboxBanner(/** @type {any} */ (queryClient.getQueryData(queryKeys.importsPage()))?.importsPage?.importInbox ?? null);
+      const cached = /** @type {any} */ (queryClient.getQueryData(queryKeys.importsPage()));
+      setImportInboxBanner(cached?.importsPage?.importInbox ?? null);
+      setImportBannerKnown(Boolean(cached?.importsPage));
     };
     readBanner();
     return queryClient.getQueryCache().subscribe((event) => {
@@ -3472,9 +3486,10 @@ export function App() {
         ) : null}
         {/* Route panels can hydrate lazily, so the fallback stays inside the
             routed region instead of replacing the whole shell. */}
-        {showImportInboxBanner ? (
-          <ImportInboxRouteBanner
-            inbox={importInboxBanner}
+        {showImportInboxBanner || (!importBannerKnown && importBannerReserve > 0 && ["summary", "month"].includes(renderedTabId)) ? (
+          <ImportInboxBannerSlot
+            reserve={importBannerReserve}
+            inbox={showImportInboxBanner ? importInboxBanner : null}
             onOpenImports={() => navigate(buildTabPath("imports", {
               viewId: selectedViewId,
               month: selectedMonth,
@@ -3600,6 +3615,42 @@ function RefreshFailureNotice({ onRetry, onDismiss }) {
         { label: messages.common.refreshFailedDismiss, onClick: onDismiss }
       ]}
     />
+  );
+}
+
+// The banner's slot: as tall as the banner was last time on this device while
+// the Imports answer is unknown (layout-shift guard, summary-plan-layout.spec.js),
+// so the banner lands in its place; the height is remembered for next time.
+const IMPORT_BANNER_HEIGHT_KEY = "monies-map:import-banner-height";
+
+function readImportBannerHeight() {
+  try {
+    const value = Number(window.localStorage.getItem(IMPORT_BANNER_HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? Math.min(value, 400) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeImportBannerHeight(height) {
+  try {
+    window.localStorage.setItem(IMPORT_BANNER_HEIGHT_KEY, String(Math.round(height)));
+  } catch {
+    // Blocked storage: the next visit reserves nothing.
+  }
+}
+
+function ImportInboxBannerSlot({ reserve, inbox, onOpenImports }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    if (inbox && ref.current) {
+      writeImportBannerHeight(ref.current.getBoundingClientRect().height);
+    }
+  });
+  return (
+    <div ref={ref} className="import-banner-slot" style={{ minHeight: reserve || undefined }}>
+      {inbox ? <ImportInboxRouteBanner inbox={inbox} onOpenImports={onOpenImports} /> : null}
+    </div>
   );
 }
 
