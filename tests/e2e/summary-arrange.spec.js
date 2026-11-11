@@ -8,7 +8,7 @@ import { reseedDemo } from "./helpers";
 // brings the usual order back. Without a login it is kept on the device.
 
 // What changed this month has no card outside the month in progress, so the demo shows no slot for it.
-const USUAL = ["insights", "plan", "mix", "subs", "miles", "investments", "taxreliefs", "accounts"];
+const USUAL = ["insights", "plan", "mix", "subs", "coming", "investments", "miles", "taxreliefs", "bankfees", "accounts"];
 
 // Every card is a slot of the dashboard grid, in the person's order.
 async function cardOrder(page) {
@@ -46,12 +46,12 @@ test.describe("Arrange Summary", () => {
     await dialog.locator('[data-card="accounts"] .summary-cards-name').click();
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
-    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "miles", "investments", "taxreliefs"]);
+    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "coming", "investments", "miles", "taxreliefs", "bankfees"]);
     await expect(page.locator(".summary-accounts")).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator(".summary-cards-arrange button")).toBeVisible({ timeout: 30_000 });
-    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "miles", "investments", "taxreliefs"]);
+    expect(await cardOrder(page)).toEqual(["insights", "mix", "plan", "subs", "coming", "investments", "miles", "taxreliefs", "bankfees"]);
 
     await page.locator(".summary-cards-arrange button").click();
     await dialog.getByRole("button", { name: "Reset to the usual order" }).click();

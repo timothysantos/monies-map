@@ -310,3 +310,37 @@ body[data-summary-dashboard] .shell {
   color: var(--accent-strong);
   font-weight: 700;
 }
+
+/* Summary's tiles (summary-tiles.jsx, design.md "Summary tiles"): one block
+   of the grid, 3 across from a 1,064px page and 2 across below it, every tile
+   264px tall (236px on a tablet or phone); a cell that draws nothing is not
+   drawn. The reserve holds a tile's place while its chunk loads. */
+.summary-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-tiles > :empty {
+  display: none;
+}
+
+.summary-tile-cell,
+.summary-tile-reserve {
+  min-width: 0;
+}
+
+.summary-tile-reserve {
+  height: 236px;
+}
+
+@container shell (min-width: 1064px) {
+  .summary-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .summary-tile-reserve {
+    height: 264px;
+  }
+}

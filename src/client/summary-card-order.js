@@ -17,36 +17,54 @@ import { createPreferenceStore } from "./viewer-preference-store";
 // usual order is null (Reset).
 //
 // The registry below is also the dashboard layout (design.md "Summary
-// dashboard layout"): each card carries its default `span` of the 12-column
-// grid (4 a third, 6 a half, 8 two thirds, 12 the row) and the narrowest
-// width worth giving it. A moved card keeps its span. `tile` is for a later
-// small tile that stands in for the card on the grid (4 columns: a title, a
-// headline, a short line and rows, a mini chart, bars or chips; see SummaryTile) and is
-// null until a card has one.
+// dashboard layout" and "Summary tiles"): each card carries its default `span`
+// of the 12-column grid (4 a third, 6 a half, 8 two thirds, 12 the row), the
+// narrowest width worth giving it, and its tile. A moved card keeps its span.
+// One registered card has both its card form and its tile form (a small
+// glance that opens the card in a sheet or dialog): `tile` says where the tile
+// replaces the card (`on: "always"`, or `"phone"` for a card that is a full
+// card on a desktop) and the sheet's hash (`#summary-<id>`). `tileOnly` is a
+// tile whose card form is only the sheet (Coming up opens Subscriptions and
+// bills on its Coming up tab). A card with no tile says `noTile: true`: the
+// registry test needs one or the other.
 /**
  * One row of a tile's list: a label, its value and, optionally, a tone.
  * @typedef {{ label: string, value: string, tone?: string }} SummaryTileRow
- * The small tile a card may carry later: 4 columns wide, a title, a 34px
- * headline, one short line, and what shows below them: 3 or 4 `rows`, a small
- * `chart` (series of numbers), `bars` (label, value, a 0 to 1 share) or
- * `chips` (short labels). Sized for a desktop about 264px tall, a phone about
- * 150px tall and two across.
+ * The small tile's content (summary-tiles-model.js): a title, a headline, one
+ * status chip, and 3 or 4 `rows`, a small `chart` (series of numbers), `bars`
+ * or `chips`. About 264px tall on a desktop, about 236px and two across on a
+ * phone.
  * @typedef {{ span: 4, title: string, headline: string, line: string, rows?: SummaryTileRow[], chart?: number[], bars?: Array<{ label: string, share: number }>, chips?: string[] }} SummaryTile
- * @typedef {{ span: 4 | 6 | 8 | 12, minWidth: number, tile: SummaryTile | null }} SummaryCardLayout
+ * @typedef {{ on: "always" | "phone", tileOnly?: boolean }} SummaryTileForm
+ * @typedef {{ span: 4 | 6 | 8 | 12, minWidth: number, tile?: SummaryTileForm, noTile?: true }} SummaryCardLayout
  */
 /** @type {Readonly<Record<string, SummaryCardLayout>>} */
 export const SUMMARY_CARD_LAYOUT = Object.freeze({
-  insights: { span: 4, minWidth: 280, tile: null },
-  plan: { span: 8, minWidth: 480, tile: null },
-  changed: { span: 4, minWidth: 280, tile: null },
-  mix: { span: 6, minWidth: 360, tile: null },
-  subs: { span: 6, minWidth: 360, tile: null },
-  miles: { span: 6, minWidth: 360, tile: null },
-  investments: { span: 6, minWidth: 360, tile: null },
-  taxreliefs: { span: 6, minWidth: 360, tile: null },
-  accounts: { span: 6, minWidth: 360, tile: null }
+  insights: { span: 4, minWidth: 280, noTile: true },
+  plan: { span: 8, minWidth: 480, noTile: true },
+  changed: { span: 4, minWidth: 280, noTile: true },
+  mix: { span: 6, minWidth: 360, noTile: true },
+  subs: { span: 6, minWidth: 360, tile: { on: "phone" } },
+  coming: { span: 6, minWidth: 360, tile: { on: "always", tileOnly: true } },
+  investments: { span: 6, minWidth: 360, tile: { on: "always" } },
+  miles: { span: 6, minWidth: 360, tile: { on: "always" } },
+  taxreliefs: { span: 6, minWidth: 360, tile: { on: "always" } },
+  bankfees: { span: 6, minWidth: 360, tile: { on: "always", tileOnly: true } },
+  accounts: { span: 6, minWidth: 360, noTile: true }
 });
 export const SUMMARY_CARD_IDS = Object.freeze(Object.keys(SUMMARY_CARD_LAYOUT));
+/** The sheet's hash for a card's tile: ASCII letters and hyphens only. */
+export const summaryTileHash = (id) => `#summary-${id}`;
+/** The card whose tile a hash names, or "" (not a tile, or not a registered one). */
+export function summaryTileFromHash(hash) {
+  const match = /^#summary-([a-z]{1,20})$/.exec(hash ?? "");
+  return match && SUMMARY_CARD_LAYOUT[match[1]]?.tile ? match[1] : "";
+}
+/** Whether a card draws as its tile where `isDesktop` says how wide the page is. */
+export const showsAsTile = (id, isDesktop) => {
+  const tile = SUMMARY_CARD_LAYOUT[id]?.tile;
+  return Boolean(tile) && (tile.on === "always" || !isDesktop);
+};
 /** The lead (spent, earned, kept) sits beside the first card when that card is a third wide. */
 export const SUMMARY_LEAD_SPAN = 8;
 export const SUMMARY_GRID_COLUMNS = 12;

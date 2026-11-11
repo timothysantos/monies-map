@@ -378,6 +378,13 @@ over plan.
   cards are two across, and on a phone one under another, as before. Long
   lists start short: **Show all** (or **Open the details** under the months)
   opens the rest in place.
+- **Tiles**: Coming up, Investments, Miles and cashback, Tax reliefs and
+  Bank fees this year show as small tiles, three across on a wide screen and
+  two across on a phone (where Subscriptions and bills is a tile too). Each
+  tile shows its main figure, one short note and a few lines. Tap a tile to
+  open the whole card in a window (a sheet from the bottom on a phone); press
+  Esc, swipe down or use the close button to go back. With money hidden a
+  tile shows only its names.
 - **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
   move the cards under the top summary up or down, and tap a card's name to
   hide or show it. **Done** keeps your order; **Reset to the usual order**

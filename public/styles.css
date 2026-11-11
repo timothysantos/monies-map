@@ -111,6 +111,11 @@ button {
   padding: 24px 18px 96px;
 }
 
+/* The import banner and the room kept for it (App.jsx ImportInboxBannerSlot). */
+.import-banner-slot {
+  display: flow-root;
+}
+
 .environment-banner {
   position: sticky;
   top: 0;

@@ -69,7 +69,12 @@ test.describe("Subscriptions and bills", () => {
 
   test("phone: the rows most worth a look come first, with the shorter words", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const card = await openSummary(page);
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/?view=household");
+    // On a phone Subscriptions and bills is a tile; the card opens in a sheet.
+    await page.locator('[data-tile="subs"]').click({ timeout: 30_000 });
+    const card = page.getByRole("dialog").locator(".subs-card");
+    await expect(card).toBeVisible({ timeout: 30_000 });
     const rows = card.locator(".subs-row");
     await expect(rows.first()).toContainText("Singtel");
     await expect(rows.first()).toContainText("Went up $4.00 in");

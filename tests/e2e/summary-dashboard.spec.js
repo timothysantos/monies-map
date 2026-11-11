@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { postJson, reseedDemo } from "./helpers";
 
 // Summary as a dashboard (design.md "Summary dashboard layout"): 12 columns
 // from a 1,100px window, two from 760px, one on a phone; the month list and
@@ -132,6 +132,16 @@ test.describe("Summary dashboard", () => {
   });
 
   test("hiding a card leaves no hole: its row-mate grows to fill the row", async ({ page }) => {
+    // Subscriptions and bills has charges, so Spending Mix and it fill their row
+    // (a card with nothing to show can leave a short row: design.md).
+    const now = new Date();
+    for (let back = 4; back >= 1; back -= 1) {
+      const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 14));
+      await postJson(page, "/api/entries/create", {
+        date: date.toISOString().slice(0, 10), description: "NETFLIX.COM 866-579-7172", accountName: "Citi Rewards", categoryName: "Subscriptions MO",
+        entryType: "expense", ownershipType: "direct", ownerName: "Joyce", amountMinor: 1998
+      });
+    }
     await page.setViewportSize({ width: 1440, height: 900 });
     await openSummary(page);
     await page.locator(".summary-cards-arrange button").click();

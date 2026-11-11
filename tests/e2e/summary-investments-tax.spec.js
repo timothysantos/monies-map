@@ -51,9 +51,18 @@ async function stubInvestments(page, ids) {
 async function openSummary(page, { money = true } = {}) {
   await page.addInitScript((shown) => window.localStorage.setItem("monies-map:money-totals-visible", shown), String(money));
   await page.goto("/?view=household");
-  const tax = page.locator(".tax-card");
-  await expect(tax).toBeVisible({ timeout: 30_000 });
-  return { tax, invest: page.locator(".invest-card") };
+  await expect(page.locator('[data-tile="taxreliefs"]')).toBeVisible({ timeout: 30_000 });
+  // The cards are tiles on Summary and open whole in a dialog or sheet
+  // (design.md "Summary tiles"); `show` opens one and closes the other.
+  const show = async (id) => {
+    if (await page.getByRole("dialog").count()) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
+    await page.locator(`[data-tile="${id}"]`).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  };
+  return { tax: page.locator(".tax-card"), invest: page.locator(".invest-card"), show };
 }
 
 test.describe("Investments and Tax reliefs", () => {
@@ -69,7 +78,8 @@ test.describe("Investments and Tax reliefs", () => {
 
   test("desktop: statements' worth, what was put in, the limits and the room left", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    const { tax, invest } = await openSummary(page);
+    const { tax, invest, show } = await openSummary(page);
+    await show("investments");
     await expect(invest.getByRole("heading", { name: "Investments" })).toBeVisible();
     await expect(invest).toContainText("Worth on the latest statements");
     await expect(invest).toContainText("You put in since Jan");
@@ -78,6 +88,8 @@ test.describe("Investments and Tax reliefs", () => {
     await expect(invest.locator(".invest-chart")).toBeVisible();
     expect(await invest.locator(".invest-row[data-account]").count()).toBeGreaterThan(0);
 
+    await shoot(invest, "investments-desktop.png");
+    await show("taxreliefs");
     await expect(tax.getByRole("heading", { name: /^Tax reliefs for \d{4}$/ })).toBeVisible();
     await expect(tax.locator(".tax-deadline")).toContainText(/(\d+ days? left|Last day), until 31 Dec/);
     await expect(tax).toContainText("$15,300");
@@ -86,13 +98,13 @@ test.describe("Investments and Tax reliefs", () => {
     // Never the tax saved.
     await expect(tax).not.toContainText(/tax saved|you save|should/i);
     await expect(tax.locator(".tax-person").first()).toHaveAttribute("style", /--person/);
-    await shoot(invest, "investments-desktop.png");
     await shoot(tax, "tax-reliefs-desktop.png");
   });
 
   test("a tax figure opens exactly its entries; a put in figure opens its transfers", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    const { tax, invest } = await openSummary(page);
+    const { tax, invest, show } = await openSummary(page);
+    await show("taxreliefs");
     const srs = tax.locator('[data-relief="srs"] [data-fig="outflow"]').first();
     const amount = (await srs.textContent()).trim();
     await srs.click();
@@ -100,7 +112,8 @@ test.describe("Investments and Tax reliefs", () => {
     await expect(page).toHaveURL(/\/entries\?.*entry_figure=outflow/);
     await expect(page.locator("main").first()).toContainText(amount);
 
-    await page.goBack();
+    await page.goto("/?view=household");
+    await page.locator('[data-tile="investments"]').click();
     await expect(invest).toBeVisible({ timeout: 30_000 });
     await invest.locator(".invest-tile-figure[data-fig]").first().click();
     await page.getByRole("button", { name: "View entries", exact: true }).click();
@@ -109,21 +122,25 @@ test.describe("Investments and Tax reliefs", () => {
 
   test("phone: compact, with the accounts one tap away", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const { invest } = await openSummary(page);
+    const { invest, tax, show } = await openSummary(page);
+    await show("investments");
     await expect(invest.locator(".invest-phone-line")).toContainText("You put in");
     await expect(invest.locator(".invest-tile")).toHaveCount(0);
     await expect(invest.locator(".invest-row[data-account]")).toHaveCount(0);
     await invest.getByRole("button", { name: "Tap for each account" }).click();
     expect(await invest.locator(".invest-row[data-account]").count()).toBeGreaterThan(0);
     await shoot(invest, "investments-phone.png");
-    await shoot(page.locator(".tax-card"), "tax-reliefs-phone.png");
+    await show("taxreliefs");
+    await shoot(tax, "tax-reliefs-phone.png");
   });
 
   test("with money hidden no amount, bar or room left shows", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    const { tax, invest } = await openSummary(page, { money: false });
+    const { tax, invest, show } = await openSummary(page, { money: false });
+    await show("investments");
     await expect(invest.locator(".invest-worth")).toHaveText("••••");
     await expect(invest.locator(".invest-chart")).toHaveCount(0);
+    await show("taxreliefs");
     await expect(tax.locator(".tax-bar")).toHaveCount(0);
     await expect(tax.locator(".tax-room")).toHaveCount(0);
     await expect(tax).not.toContainText("$");

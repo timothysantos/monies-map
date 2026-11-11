@@ -217,5 +217,7 @@ export { PaceChartSection, SubscriptionsSection } from "./subscriptions-section"
 export { InvestmentsCard } from "./investments-card";
 export { TaxReliefsCard } from "./tax-reliefs-card";
 export { SummaryChangedSection } from "./summary-changed-section";
+// The tiles and the sheet that opens a card from one ride here too.
+export { SummaryTile, SummaryTileSheet } from "./summary-tiles";
 // Miles and cashback rides here too, for the same reason.
 export { CardRewardsSection } from "./card-rewards-section";

@@ -38,7 +38,9 @@ async function addSpending(page) {
 async function openSummary(page, { money = true } = {}) {
   await page.addInitScript((shown) => window.localStorage.setItem("monies-map:money-totals-visible", shown), String(money));
   await page.goto("/?view=household");
-  const card = page.locator("[data-card-rewards]");
+  // Miles and cashback is a tile on Summary and opens whole in a dialog or sheet.
+  await page.locator('[data-tile="miles"]').click({ timeout: 30_000 });
+  const card = page.getByRole("dialog").locator("[data-card-rewards]");
   await expect(card).toBeVisible({ timeout: 30_000 });
   return card;
 }
@@ -97,13 +99,16 @@ test.describe("Miles and cashback on Summary", () => {
 
   test("Arrange cards can hide it and it reads nothing while hidden", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    const card = await openSummary(page);
-    await expect(card).toBeVisible();
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/?view=household");
+    await expect(page.locator('[data-tile="miles"]')).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: /Arrange cards/ }).click();
     const row = page.getByRole("dialog").getByText("Miles and cashback");
     await expect(row).toBeVisible();
     await row.click();
     await page.getByRole("button", { name: "Done" }).click();
+    // Its tile goes with it, and nothing reads its data while it is hidden.
+    await expect(page.locator('[data-tile="miles"]')).toHaveCount(0);
     await expect(page.locator("[data-card-rewards]")).toHaveCount(0);
   });
 });

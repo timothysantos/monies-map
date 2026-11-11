@@ -18,6 +18,8 @@ const NAMES = {
   changed: { name: "What changed this month", about: "This month so far against the same days last month" },
   subs: { name: "Subscriptions and bills", about: "Charges that come back every month or year" },
   miles: { name: "Miles and cashback", about: "What each card earned this month, and which card to use next" },
+  coming: { name: "Coming up", about: "The charges due soon" },
+  bankfees: { name: "Bank fees this year", about: "What the banks and cards charged, by kind" },
   investments: { name: "Investments over time", about: "What your investments were worth on their statements" },
   taxreliefs: { name: "Tax reliefs this year", about: "What you put into SRS, CPF and charity gifts, against the limits" },
   mix: { name: "Spending Mix", about: "Spending by category" },

@@ -2133,14 +2133,53 @@ change.
   most worth a look in two columns. Narrower, 4 charges and See all. The tabs,
   Coming up, the choices dialog and the stopped, might-repeat and taken-off
   folds are unchanged (the folds show once the list is not cut short).
-- **Tiles (phase 2, not built).** `SummaryTile` in `summary-card-order.js` is
-  the shape a card's `tile` will take: 4 columns wide, a title, a 34px headline
-  figure, one short line, and optionally rows (3 or 4 label and value pairs), a
-  small chart, bars or chips. Owner sizing for later: about 264px tall on a
-  desktop, about 150px and two across on a phone. Nothing reads `tile` yet.
 - Kept: the layout-shift guard (reserved heights), money hidden, colour presets
   and dark mode, the first-screen budgets, openable figures and the card
   spacing block below.
+
+## Summary tiles
+
+Owner decision, 2026-11-11 (the approved tile mockup; phase 2 of "Summary
+dashboard layout"). A tile is a compact glance at a card, built from the data
+the card already reads (the same queries, no new read, nothing on the first
+screen: the tiles ride in Spending Mix's lazy chunk) and opening the whole
+card in a dialog or sheet.
+
+- **Which cards.** Coming up, Investments, Miles and cashback, Tax reliefs and
+  Bank fees this year are tiles at every width; Subscriptions and bills is its
+  big card on a desktop (1,100px and up) and a tile below it. Coming up and
+  Bank fees are registered cards of their own (`tileOnly`: their card form is
+  the sheet; Coming up opens Subscriptions and bills on its Coming up tab,
+  Bank fees opens a new small card from the page's own `bankFeesYear`, in
+  kinds). The Splits tile is not built: Summary carries no Splits balance and
+  one would be a new read.
+- **Registry.** `SUMMARY_CARD_LAYOUT[id].tile` is `{ on: "always" | "phone",
+  tileOnly? }`; a card without a tile says `noTile: true` and the registry
+  test needs one or the other. Arrange cards moves or hides a card and its
+  tile as one entry; a hidden card's tile and its `#summary-<id>` link do
+  nothing. `showsAsTile(id, isDesktop)` decides the form.
+- **Layout.** Consecutive tiles form one full-width block of the grid: 3
+  across from a 1,064px page, 2 across below it, each 264px tall (236px below).
+  A tile that has nothing to show is not drawn; a reserve of the same height
+  holds its place while its chunk loads (layout-shift guard).
+- **A tile** is one button: title and "Open ›", a headline (44px), one status
+  chip (mint, rose, butter or sky, from the pastel tokens), a few rows and a
+  small mark (a line, a by-kind bar, week bars or progress bars). The models
+  are `summary-tiles-model.js` (tested with negatives); `summary-tiles.jsx`
+  only draws them. A change note ("▲ 2% since Jan", the arrow and percent in
+  the money tone, the rest quiet) shows only where the card has both figures:
+  Investments' growth against its starting worth. Subscriptions, Miles, Bank
+  fees and the lead have no earlier figure in what they read, so they have no
+  note (a note would need a new read; never an estimate).
+- **Hidden money.** A tile keeps its title and its row names and drops every
+  amount, direction, chip and mark (and the change note).
+- **Opening.** The existing dialog frame (`SheetDialog`): a bottom sheet on a
+  phone, a centred dialog on a desktop, Esc, swipe down and the 44px close
+  button close it, focus is trapped and returns to the tile. The URL gets
+  `#summary-<card>` (a push, so Back closes it; a link with the hash opens it;
+  a hidden or unknown card's hash opens nothing). In-place expansion is not
+  used (it would shift the page). A figure inside the dialog opens its menu
+  inside the dialog (`figure-menu.js`), which a modal dialog needs.
 
 ## Summary card spacing
 

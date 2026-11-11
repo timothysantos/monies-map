@@ -122,7 +122,7 @@ function markListRow(trigger) {
 // Under the figure, inside the page's 16 px gutters; above it when there is
 // no room below. A donut slice (SVG) is anchored at its middle, or at the
 // pointer that rested on it (`point`).
-function place(menu, trigger, point) {
+function place(menu, trigger, point, host = null) {
   let rect = trigger.getBoundingClientRect();
   if (point || trigger instanceof SVGElement) {
     const x = point?.x ?? rect.left + rect.width / 2;
@@ -135,6 +135,13 @@ function place(menu, trigger, point) {
   const left = Math.max(16, Math.min(rect.left, viewport - width - 16));
   const below = rect.bottom + 6;
   const top = below + height > window.innerHeight - 8 && rect.top - height - 6 > 8 ? rect.top - height - 6 : below;
+  if (host) {
+    // Inside a dialog: placed against the dialog, not the page.
+    const hostRect = host.getBoundingClientRect();
+    menu.style.left = `${left - hostRect.left + host.scrollLeft}px`;
+    menu.style.top = `${top - hostRect.top + host.scrollTop}px`;
+    return;
+  }
   menu.style.left = `${left + window.scrollX}px`;
   menu.style.top = `${top + window.scrollY}px`;
 }
@@ -247,8 +254,11 @@ export function openFigureMenu(trigger, { point = undefined, focus = true } = {}
     shield.addEventListener("click", () => close({ restoreFocus: true }));
     document.body.appendChild(shield);
   }
-  document.body.appendChild(menu);
-  place(menu, trigger, point);
+  // A figure inside a dialog (a tile's card on Summary) opens its menu inside
+  // the dialog, which traps focus and ignores presses outside it.
+  const host = trigger.closest?.("[role='dialog']") ?? null;
+  (host ?? document.body).appendChild(menu);
+  place(menu, trigger, point, host);
   trigger.setAttribute("aria-expanded", "true");
 
   const onKey = (event) => {

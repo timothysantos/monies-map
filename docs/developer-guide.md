@@ -3009,7 +3009,11 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
    id (lowercase letters only, at most 20), its default `span` of the 12-column
    dashboard grid (4, 6, 8 or 12), a `minWidth` the span must satisfy at the
    narrowest 12-column page (1,064px; `tests/summary-card-registry.test.mjs`
-   checks it) and `tile: null` (a later small tile: `SummaryTile`). Anyone who
+   checks it) and either `tile: { on: "always" | "phone", tileOnly? }` (the
+   card also has a small tile that opens it in a sheet: add its model to
+   `summary-tiles-model.js`, its drawing to `summary-tiles.jsx` and its sheet
+   title and hash `#summary-<id>`; design.md "Summary tiles") or `noTile: true`.
+   The registry test needs one of the two. Anyone who
    saved an order before it existed sees it in that place, shown, with no
    migration. A card with no span fails the registry test. The panel turns the
    spans into rows (`packSummarySpans`: rows fill in order, the last card of a
@@ -3022,8 +3026,9 @@ fails if any is missing (`tests/summary-card-registry.test.mjs`):
    plain words a grandparent follows.
 
 Only Money insights is never hidden (`NEVER_HIDDEN`); add another id there
-only on an owner decision. Registered today, in the usual order: `insights`, `plan`, `changed`, `mix`, `subs` (which holds
-Coming up and Bank fees), `miles`, `investments`, `taxreliefs`, `accounts`. The server only checks
+only on an owner decision. Registered today, in the usual order: `insights`, `plan`, `changed`, `mix`, `subs`, `coming`
+(tile only: opens Subscriptions and bills on its Coming up tab), `investments`, `miles`,
+`taxreliefs`, `bankfees` (tile only: opens the Bank fees card from the page's `bankFeesYear`), `accounts`. The server only checks
 the stored string's shape, so no server change is needed for a new card.
 
 ## How are bank fees this year worked out?

@@ -42,7 +42,7 @@ test("every registered card is named in the Arrange editor, and the editor names
   assert.match(editor, /planSimple/, "the Simple view's name for the month card stays");
 });
 
-test("every registered card has a default span, a minimum width and a tile slot, and its span fits its minimum width on the 12-column grid", () => {
+test("every registered card has a default span, a minimum width and a tile or noTile, and its span fits its minimum width on the 12-column grid", () => {
   // The grid is 12 columns from a 1,064px page, with 16px gaps and about 36px
   // of panel padding (summary-body.css): the narrowest a card gets is its
   // span of that.
@@ -52,7 +52,7 @@ test("every registered card has a default span, a minimum width and a tile slot,
     assert.ok([4, 6, 8, 12].includes(layout.span), `${id} needs a span of 4, 6, 8 or 12`);
     assert.ok(layout.minWidth > 0, `${id} needs a minWidth`);
     assert.ok(layout.span * columnWidth + (layout.span - 1) * 16 >= layout.minWidth, `${id} is wide enough at its span`);
-    assert.ok("tile" in layout, `${id} has a tile slot`);
+    assert.ok(Boolean(layout.tile) !== Boolean(layout.noTile), `${id} needs a tile, or an explicit noTile (and not both)`);
   }
   assert.deepEqual(sorted(Object.keys(SUMMARY_CARD_LAYOUT)), sorted(SUMMARY_CARD_IDS));
 });
@@ -60,7 +60,12 @@ test("every registered card has a default span, a minimum width and a tile slot,
 test("a card registered without a span is caught", () => {
   const { insights, ...rest } = SUMMARY_CARD_LAYOUT;
   assert.notDeepEqual(sorted(Object.keys(rest)), sorted(SUMMARY_CARD_IDS));
-  assert.equal(({ minWidth: 280, tile: null }).span, undefined);
+  assert.equal(({ minWidth: 280, noTile: true }).span, undefined);
+  // A card with neither a tile nor noTile (or both) fails the same test.
+  const neither = { span: 4, minWidth: 280 };
+  const both = { span: 4, minWidth: 280, tile: { on: "always" }, noTile: true };
+  assert.equal(Boolean(neither.tile) !== Boolean(neither.noTile), false);
+  assert.equal(Boolean(both.tile) !== Boolean(both.noTile), false);
 });
 
 test("the panel draws no card outside the registered list", () => {
@@ -71,7 +76,7 @@ test("the panel draws no card outside the registered list", () => {
   assert.ok(start > 0);
   const outside = panel.slice(start).replace(/\{summaryCards\.filter[\s\S]*?\.list\}/, "");
   const tags = [...new Set([...outside.matchAll(/<([A-Z][A-Za-z]+)/g)].map((match) => match[1]))];
-  const allowed = new Set(["SummaryLead", "SummaryScopeSwitch", "Suspense", "SummaryCardEditor", "MonthNoteDialog"]);
+  const allowed = new Set(["SummaryLead", "SummaryScopeSwitch", "Suspense", "SummaryCardEditor", "MonthNoteDialog", "SummaryTileSheet"]);
   const surprises = tags.filter((tag) => !allowed.has(tag) && !/^(DetailRows?|PrivateMoney)$/.test(tag));
   assert.deepEqual(surprises, [], `Summary draws ${surprises.join(", ")} outside the registered cards`);
 });

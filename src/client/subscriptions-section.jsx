@@ -242,14 +242,14 @@ function SubsGlance({ glance, hiddenMoney }) {
 }
 
 /**
- * @param {{ view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: (task: () => Promise<any>) => any, reserveHeight?: number }} props
+ * @param {{ view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: (task: () => Promise<any>) => any, reserveHeight?: number, initialTab?: "all" | "coming" }} props
  */
-export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, reserveHeight = 0 }) {
+export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, reserveHeight = 0, initialTab = "all" }) {
   const queryClient = useQueryClient();
   // Summary's cards sit a third of a wide page across, so they use the short form everywhere.
   const phone = useCompactSummaryCard();
   const [showAll, setShowAll] = useState(false);
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState(/** @type {string} */ (initialTab));
   const [openSeries, setOpenSeries] = useState(null);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");

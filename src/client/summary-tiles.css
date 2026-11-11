@@ -1,0 +1,279 @@
+/* Summary's tiles and the Bank fees card (summary-tiles.jsx, design.md
+   "Summary tiles"). A tile is a button: its title and "Open ›", a headline
+   (about 44px), one status chip, a few rows and a small visual. About 264px
+   tall on a desktop, 236px on a tablet and phone, whatever it holds, so
+   nothing moves while it loads (summary-body.css reserves the same height).
+   Colours are the tokens: a chip is a pastel's own fill and ink (mint, rose,
+   butter, sky), marks are the neutral and accent tokens. */
+.summary-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 236px;
+  padding: 16px 18px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@container shell (min-width: 1064px) {
+  .summary-tile {
+    height: 264px;
+  }
+}
+
+.summary-tile:hover,
+.summary-tile:focus-visible {
+  border-color: var(--accent-strong);
+}
+
+.summary-tile-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.summary-tile-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.summary-tile-open {
+  flex: none;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-tile-label {
+  margin-bottom: -4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-tile-headline {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 2.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-tile-headline small {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.summary-tile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 22px;
+}
+
+.summary-tile-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summary-tile-chip.is-mint { background: var(--pastel-mint); color: var(--pastel-mint-ink); }
+.summary-tile-chip.is-rose { background: var(--pastel-rose); color: var(--pastel-rose-ink); }
+.summary-tile-chip.is-butter { background: var(--pastel-butter); color: var(--pastel-butter-ink); }
+.summary-tile-chip.is-sky { background: var(--pastel-sky); color: var(--pastel-sky-ink); }
+
+.summary-tile-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.summary-tile-rows {
+  display: grid;
+  gap: 2px;
+  min-height: 0;
+}
+
+.summary-tile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.86rem;
+  line-height: 1.3;
+}
+
+.summary-tile-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-tile-row b {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-tile-line {
+  width: 100%;
+  height: 34px;
+  margin-top: auto;
+}
+
+.summary-tile-line polyline {
+  stroke: var(--accent-strong);
+}
+
+.summary-tile-stack,
+.summary-tile-bars {
+  display: flex;
+  margin-top: auto;
+}
+
+.summary-tile-stack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+.summary-tile-stack .is-k0 { background: var(--pastel-sky); }
+.summary-tile-stack .is-k1 { background: var(--pastel-butter); }
+.summary-tile-stack .is-k2 { background: var(--pastel-lavender); }
+.summary-tile-stack .is-k3 { background: var(--pastel-mint); }
+
+.summary-tile-bars {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.summary-tile-track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--chip);
+}
+
+.summary-tile-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-strong);
+}
+
+.summary-tile-weeks {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 28px;
+  margin-top: auto;
+}
+
+.summary-tile-weeks > span {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: var(--pastel-sky);
+}
+
+/* Hidden money: a tile keeps only its words, no marks. */
+html[data-money-privacy="hidden"] .summary-tile-stack,
+html[data-money-privacy="hidden"] .summary-tile-bars,
+html[data-money-privacy="hidden"] .summary-tile-weeks,
+html[data-money-privacy="hidden"] .summary-tile-line {
+  display: none;
+}
+
+/* The sheet the tile opens holds the whole card. */
+.summary-tile-sheet .chart-card {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Bank fees this year (the card a Bank fees tile opens). */
+.bankfees-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bankfees-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.bankfees-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 16px 0;
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.bankfees-total small {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.bankfees-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.bankfees-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.bankfees-row:last-child {
+  border-bottom: 0;
+}
+
+.bankfees-row small {
+  color: var(--muted);
+}
+
+.bankfees-refunded {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}

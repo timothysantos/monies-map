@@ -13,13 +13,13 @@ import { buildSummaryEntriesForIdsLocation, buildSummaryEntriesLocation } from "
 import { SummaryLead } from "./summary-lead";
 import { buildSummaryLeadModel } from "./summary-lead-model";
 import { useLeadView } from "./lead-view";
-import { packSummarySpans, SUMMARY_CARD_LAYOUT, SUMMARY_LEAD_SPAN, useSummaryCards } from "./summary-card-order";
+import { packSummarySpans, showsAsTile, SUMMARY_CARD_LAYOUT, SUMMARY_LEAD_SPAN, summaryTileFromHash, summaryTileHash, useSummaryCards } from "./summary-card-order";
 import { FinancialInsight } from "./financial-insight";
 import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
-import { useIsMobileLayout } from "./use-viewport";
+import { useIsMobileLayout, useMediaQuery } from "./use-viewport";
 import { reconciliationTone } from "../domain/money-tone";
 import { moneyToneClass } from "./money-tone-class";
 import { DetailRow, DetailRows } from "./ui/lead-support-detail";
@@ -57,6 +57,10 @@ const TaxReliefsCard = lazy(() => import("./spending-mix-section").then((module)
 // two first-screen files, check:bundle), reads its data only once the top
 // summary is usable and shows only for a range that ends in the month in
 // progress.
+// The small tile each card can stand in as, and the sheet or dialog that opens
+// the whole card from one (design.md "Summary tiles"), ride in the same chunk.
+const SummaryTile = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryTile })));
+const SummaryTileSheet = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryTileSheet })));
 const SummaryChangedSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryChangedSection })));
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
@@ -69,6 +73,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   const navigate = useNavigate();
   const location = useLocation();
   const isMobileLayout = useIsMobileLayout();
+  // From a 1,100px window the big cards show in full; below it (and for the
+  // cards that are always tiles) a tile stands in and opens the card in a sheet.
+  const isDesktop = useMediaQuery("(min-width: 1100px)");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [summaryCards, saveSummaryCards] = useSummaryCards();
   const [arrangingCards, setArrangingCards] = useState(false);
@@ -232,6 +239,31 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
     }
   }
 
+  // A tile opens its card in the sheet: the URL gets #summary-<card> (a push,
+  // so Back closes it; opened from a link there is nothing to go back to).
+  const tileTriggerRef = useRef(null);
+  function openTile(id) {
+    tileTriggerRef.current = document.activeElement;
+    navigate({ pathname: location.pathname, search: location.search, hash: summaryTileHash(id) }, { state: { summaryTile: true } });
+  }
+  function closeTile() {
+    if (location.state?.summaryTile) {
+      navigate(-1);
+    } else {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true });
+    }
+    // Focus goes back to the tile that opened it, after the sheet is gone.
+    window.setTimeout(() => {
+      const trigger = tileTriggerRef.current;
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+    }, 80);
+  }
+  const tileBody = (id) => (cardsUsable && fetchRequiredQuery ? (
+    <Suspense fallback={<div className="summary-tile-reserve" aria-hidden="true" />}>
+      <SummaryTile id={id} view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} fees={safeSummaryPage.bankFeesYear} onOpen={openTile} />
+    </Suspense>
+  ) : <div className="summary-tile-reserve" aria-hidden="true" />);
+
   // The cards under the top summary (design.md "Arrange Summary"), in the
   // person's order; a hidden card is not drawn and reads nothing.
   const cardBody = {
@@ -250,6 +282,9 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         <SummaryChangedSection view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
       </Suspense>
     ) : null,
+    // Coming up and Bank fees this year are tiles; their card is the sheet.
+    coming: tileBody("coming"),
+    bankfees: tileBody("bankfees"),
     subs: cardsUsable && fetchRequiredQuery ? (
       <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
         <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
@@ -317,11 +352,25 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   // Where each card sits on the grid: 12 columns on a wide page, 2 on a
   // tablet, 1 on a phone (the CSS picks by the page's width).
   const shownCards = summaryCards.filter((card) => !card.hidden && cardBody[card.id] !== null);
-  const defaultSpans = [SUMMARY_LEAD_SPAN, ...shownCards.map((card) => SUMMARY_CARD_LAYOUT[card.id].span)];
+  // Cards that draw as tiles sit together, 3 across on a desktop and 2 across
+  // on a tablet or phone, as one full-width block of the grid.
+  const blocks = [];
+  for (const card of shownCards) {
+    const last = blocks.at(-1);
+    if (showsAsTile(card.id, isDesktop)) {
+      if (last?.tiles) last.ids.push(card.id);
+      else blocks.push({ tiles: true, ids: [card.id] });
+    } else {
+      blocks.push({ tiles: false, id: card.id });
+    }
+  }
+  const defaultSpans = [SUMMARY_LEAD_SPAN, ...blocks.map((block) => (block.tiles ? 12 : SUMMARY_CARD_LAYOUT[block.id].span))];
   const wideSpans = packSummarySpans(defaultSpans, 12);
   const tabletSpans = packSummarySpans(defaultSpans, 2);
   const spanStyle = (index) => ({ "--s12": wideSpans[index], "--s2": tabletSpans[index] });
-  const slotSpans = { lead: spanStyle(0), cards: shownCards.map((_, index) => spanStyle(index + 1)) };
+  const slotSpans = { lead: spanStyle(0), blocks: blocks.map((_, index) => spanStyle(index + 1)) };
+  const sheetId = summaryTileFromHash(location.hash);
+  const sheetOpen = Boolean(sheetId) && summaryCards.some((card) => card.id === sheetId && !card.hidden);
 
   return (
     <article className="panel panel-accent">
@@ -352,9 +401,13 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
             rangeEndMonth={safeSummaryPage.rangeEndMonth}
           />
         </div>
-        {shownCards.map((card, index) => (
-          <div key={card.id} className="summary-card-slot" data-summary-card={card.id} data-span={SUMMARY_CARD_LAYOUT[card.id].span} style={slotSpans.cards[index]}>{cardBody[card.id]}</div>
-        ))}
+        {blocks.map((block, index) => (block.tiles ? (
+          <div key={block.ids.join("-")} className="summary-tiles" data-summary-tiles style={slotSpans.blocks[index]}>
+            {block.ids.map((id) => <div key={id} className="summary-tile-cell" data-summary-card={id}>{tileBody(id)}</div>)}
+          </div>
+        ) : (
+          <div key={block.id} className="summary-card-slot" data-summary-card={block.id} data-span={SUMMARY_CARD_LAYOUT[block.id].span} style={slotSpans.blocks[index]}>{cardBody[block.id]}</div>
+        )))}
       </div>
 
       <p className="summary-cards-arrange">
@@ -362,6 +415,22 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
           {isMobileLayout ? "Edit cards" : "Arrange cards"}
         </button>
       </p>
+
+      {sheetOpen ? (
+        <Suspense fallback={null}>
+          <SummaryTileSheet
+            id={sheetId}
+            view={view}
+            categories={categories}
+            enabled={cardsUsable}
+            fetchRequiredQuery={fetchRequiredQuery}
+            runBackgroundRefresh={runBackgroundRefresh}
+            fees={safeSummaryPage.bankFeesYear}
+            rangeEndMonth={safeSummaryPage.rangeEndMonth}
+            onClose={closeTile}
+          />
+        </Suspense>
+      ) : null}
 
       {arrangingCards ? (
         <Suspense fallback={null}>
