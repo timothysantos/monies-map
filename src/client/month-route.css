@@ -495,9 +495,12 @@
 }
 
 /* Spending Mix for the picked month, between the money insights and the
-   plan tables (month-panel.jsx). The card keeps the All months look. */
+   plan tables (month-panel.jsx). The card keeps the All months look. Only
+   the block margins are set: on a phone a chart card runs edge to edge with
+   negative inline margins (styles.css), and a plain `margin: 16px 0` reset
+   them and left the card 24px wider than the screen. */
 .month-spending-mix {
-  margin: 16px 0;
+  margin-block: 16px;
 }
 
 /* Month · Simple (month-overview.jsx MonthMoneyIn): "Money in" in the plan
@@ -505,7 +508,7 @@
 .month-money-in {
   display: grid;
   gap: 10px;
-  margin: 16px 0;
+  margin-block: 16px;
   border: 1px solid var(--card-border);
   background: var(--card);
   box-shadow: var(--card-shadow);
