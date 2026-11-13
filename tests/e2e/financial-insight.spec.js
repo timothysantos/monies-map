@@ -130,7 +130,10 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Month", exact: true })
     );
     const monthInsight = page.locator(".financial-insight-month");
-    await expect(monthInsight).toContainText("Tim's money insights");
+    // Month wears Summary's card head (the page head says whose view it is).
+    await expect(monthInsight.locator(".summary-card-title")).toHaveText("Money insights");
+    await expect(monthInsight.locator(".summary-card-sub")).toHaveText("Needs a look, and went well");
+    await expect(monthInsight).not.toContainText("Tim's money insights");
     await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("To do");
     await expect(monthInsight.locator(".checkin-fact")).toContainText(/\bbills? (?:you )?planned\b|\bplanned at\b/);
     expect(thinksOf(MONTH_COPY.unlinkedBills)).toContain((await monthInsight.locator(".checkin-think").innerText()).trim());
