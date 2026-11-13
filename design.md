@@ -2267,16 +2267,17 @@ drops them ("By month").
   list). Styled once in `summary-body.css` (title 1rem bold; subtitle 0.8125rem
   muted, 4px under it). The Simple month list is drawn without React, so it
   writes the same markup by hand. The Money insights card wears the same head
-  on Summary (the audience, "Joyce's", is no longer in its label: the page
-  head already says who is viewed); Month keeps its own eyebrow.
+  on Summary and on Month (the audience, "Joyce's", is no longer in its
+  label: the page head already says who is viewed); Entries and Splits keep
+  their eyebrow.
 - A tile's subtitle is the card's, on one line under its title; a narrow tile
   cuts it with an ellipsis, never a second wording. An extra sentence that
   says something the subtitle does not (the tax filing year, "less any they
   refunded", what a subscription is) stays as a quiet note under the head.
 - The Coming up sheet wears Coming up's title and subtitle, not Subscriptions
   and bills'.
-- Month's Spending mix has the same title and no subtitle (it is always one
-  month and says so above).
+- Month's Spending mix has the same title and subtitle with its one month
+  ("By category, Oct 2025"); see "Month cards".
 - "Intent vs Outcome" is a retired name (`retired-names.ts`): jargon. The
   other old names (What changed this month, Tax reliefs this year, Bank fees
   this year, Earned vs spent by month, Investments over time) are plain
@@ -2286,6 +2287,39 @@ drops them ("By month").
   no "The", no period word at the end; the owner's list word for word) and
   `tests/e2e/summary-card-titles.spec.js` (phone and desktop: same computed
   title and subtitle sizes on every card, tile and sheet share a title).
+
+## Month cards
+
+Owner report, 2026-11-13 ("The month view doesn't get the new cards"): the
+Month page (a month picked in the Summary tab) wears the Summary dashboard's
+design with the cards it already had; no card or data was added.
+
+- Its cards sit in Summary's grid and slots (`.summary-grid` and
+  `.summary-card-slot`, `summary-body.css`), one column at every width, with
+  `data-month-card`: Money insights, Spending mix, Money in (Simple), then
+  after the plan Monthly note and Accounts (side by side on a wide page).
+  The grid owns the 16px between cards; Month's own rules touch only block
+  margins, because a phone card runs edge to edge with negative inline
+  margins (styles.css). A `margin: 16px 0` on Spending mix and Money in reset
+  those and left both cards 24px wider than the screen
+  (`tests/e2e/month-phone-fit.spec.js`, with Summary at 390 and 375).
+- Every card wears `CardHead`. Money insights, Spending mix and Accounts use
+  Summary's list entries; Money in ("By source, Oct 2025") and Monthly note
+  are `MONTH_CARD_TITLES` in the same list
+  (`src/client/copy/summary-card-titles.js`).
+- Spending mix is Summary's section (`dashboard`): the icon-bubble donut that
+  draws in on first view, the same total size, and the change note "▼ 12% vs
+  the month before" for a complete month, from figures the tab already holds
+  (`selectMonthSpendChange`, docs/flows/month-flow.md). Hidden money shows
+  no note.
+- The lead stays the compact Month lead (`SpendLeadGroup` inline): its height
+  keeps Money insights above the fold on a phone (270px,
+  `summary-month-lsd.spec.js`) and its over-plan gap is text, not a chip
+  (`money-tones.spec.js`), so it does not take Summary's lead slot sizes.
+- Proof: `tests/e2e/month-cards.spec.js` (same computed head sizes as
+  Summary's at 390 and 1440, the titles, the note against the API figures,
+  the donut's first-view motion, no note with money hidden or in the range's
+  first month).
 
 ## Summary card spacing
 

@@ -214,6 +214,18 @@ month and scope (`handleOpenEntriesForActual`, as the tables' Actual
 drilldowns). `tests/e2e/month-spending-mix.spec.js` proves it on a phone
 and a desktop.
 
+Its change note (design.md "Month cards") compares this month's
+`summaryPage.months[0].realExpensesMinor` with the month before's stored
+total in the range's Summary page, which App.jsx already holds beside the
+Month page (`loadSummaryRangeContext`) and hands down as
+`rangeSummaryMonths`. `selectMonthSpendChange` (`month-spending-mix.js`)
+runs Summary's own rule (`buildSpendChange`): complete months only, the
+month before must be in the range, a base of at least $100. No request and
+no payload change: a month in progress or the range's first month has no
+note, and while the range page is on its way the note's line is held so
+the donut does not move. `tests/month-spend-change.test.mjs` and
+`tests/e2e/month-cards.spec.js`.
+
 Month mutations may also cause targeted refreshes in:
 
 - `entries`

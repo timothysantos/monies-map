@@ -656,7 +656,9 @@ stays highlighted, and the range at the top stays as it was.
 - **Spending mix**: the month's spending by category, the same donut and
   ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** offers that category's entries for this month. A month with no
-  spending says so instead of showing an empty donut.
+  spending says so instead of showing an empty donut. For a month that has
+  ended, the line under the total says how much more or less you spent than
+  in the month before ("▼ 12% vs the month before").
 - **Income**: planned income sources. On every plan row a thin bar shows how
   much of the plan you have used. On a phone each row is a small card; tap it
   to change it.
@@ -664,8 +666,11 @@ stays highlighted, and the range at the top stays as it was.
   Their actual comes from all entries in that category.
 - **Bills and dated payments**: fixed commitments such as savings, insurance, loans and
   subscriptions. Their actual comes from the entries you link to them.
-- **Monthly Note**: why the month looked the way it did.
-- **Accounts**: the tracked accounts.
+- **Monthly note**: why the month looked the way it did.
+- **Accounts**: the balances on the latest statements.
+
+Each card has the same name and one quiet line under it as the cards on
+Summary.
 
 ### What each control does
 
@@ -689,7 +694,7 @@ stays highlighted, and the range at the top stays as it was.
   for it ([Link bills and dated payments to entries](#link-bills-and-dated-payments-to-entries)).
 - **Actions**: Duplicate month, Reset month, Delete month
   ([Duplicate, reset or delete a month](#duplicate-reset-or-delete-a-month)).
-- **Draft a summary** (Monthly Note): drafts a note for you to edit when the
+- **Draft a summary** (Monthly note): drafts a note for you to edit when the
   optional writing assistant is switched on; otherwise it says it is off.
 
 Actual amounts are read-only on Month. They always come from Entries, so
