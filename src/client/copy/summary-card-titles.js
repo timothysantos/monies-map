@@ -34,12 +34,21 @@ export const SUMMARY_CARD_TITLES = {
   accounts: { title: "Accounts", subtitle: () => "Balances on the latest statements" }
 };
 
+// The Month page's own cards wear the same head (design.md "Month cards"):
+// Money insights, Spending mix and Accounts read the Summary entries above;
+// these two are the Month page's alone.
+export const MONTH_CARD_TITLES = {
+  moneyIn: { title: "Money in", subtitle: ({ month = "" } = {}) => (month ? `By source, ${formatMonthLabel(month)}` : "By source") },
+  monthNote: { title: "Monthly note", subtitle: () => "Why the month looked like this" }
+};
+
 /** The first and last month of a list of { month }, for a "By month" subtitle. */
 export const monthsContext = (months) => {
   const sorted = months.map((item) => item.month).sort();
   return { first: sorted[0], last: sorted.at(-1) };
 };
 
-export const cardTitle = (id) => SUMMARY_CARD_TITLES[id].title;
+const entryFor = (id) => SUMMARY_CARD_TITLES[id] ?? MONTH_CARD_TITLES[id];
+export const cardTitle = (id) => entryFor(id).title;
 /** @param {string} id @param {Record<string, any>} [context] the live words the subtitle needs (months, year) */
-export const cardSubtitle = (id, context = {}) => SUMMARY_CARD_TITLES[id].subtitle(context);
+export const cardSubtitle = (id, context = {}) => entryFor(id).subtitle(context);

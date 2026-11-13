@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { SUMMARY_CARD_IDS } from "../src/client/summary-card-order.js";
-import { cardSubtitle, cardTitle, SUMMARY_CARD_TITLES } from "../src/client/copy/summary-card-titles.js";
+import { cardSubtitle, cardTitle, MONTH_CARD_TITLES, SUMMARY_CARD_TITLES } from "../src/client/copy/summary-card-titles.js";
 import { findRetiredNames } from "../src/domain/retired-names.ts";
 
 const CONTEXT = { first: "2025-12", last: "2026-11", month: "2026-11", baseMonth: "2026-10", year: 2026 };
@@ -64,4 +64,21 @@ test("live subtitles follow their data: one month reads once, Coming up counts i
 test("the old names are gone: Intent vs Outcome is retired, and its replacement is not", () => {
   assert.equal(findRetiredNames("Intent vs Outcome").length, 1);
   assert.deepEqual(findRetiredNames("Plan vs actual"), []);
+});
+
+test("the Month page's own cards wear the same head from the same list: short names, a basis line, the month when given", () => {
+  assert.deepEqual(
+    Object.keys(MONTH_CARD_TITLES).map((id) => [id, cardTitle(id), cardSubtitle(id, { month: "2025-10" }), cardSubtitle(id)]),
+    [
+      ["moneyIn", "Money in", "By source, Oct 2025", "By source"],
+      ["monthNote", "Monthly note", "Why the month looked like this", "Why the month looked like this"]
+    ]
+  );
+  for (const [id, { title }] of Object.entries(MONTH_CARD_TITLES)) {
+    assert.ok(!SUMMARY_CARD_TITLES[id], `${id} is not also a Summary card`);
+    assert.deepEqual(findRetiredNames(title), [], `${id}: "${title}" is a retired name`);
+    assert.ok(title.split(" ").slice(1).every((word) => word === word.toLowerCase()), `${id}: "${title}" is not sentence case`);
+  }
+  // The Month's Spending mix reads Summary's entry with one month.
+  assert.equal(cardSubtitle("mix", { first: "2025-10", last: "2025-10" }), "By category, Oct 2025");
 });
