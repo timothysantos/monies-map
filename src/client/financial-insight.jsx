@@ -78,11 +78,11 @@ function insightLabelFor(audienceName) {
   return audienceName ? `${audienceName}'s money insights` : "Household money insights";
 }
 
-// The label above the insights. Summary's card wears the shared card head
-// (title and subtitle from the list, as every Summary card); Month keeps its
-// own eyebrow, which says whose insights they are.
+// The label above the insights. Summary's and Month's cards wear the shared
+// card head (title and subtitle from the list; the page head says whose);
+// Entries and Splits keep the eyebrow, which says whose insights they are.
 function InsightLabel({ audienceName, className }) {
-  if (!className.includes("financial-insight-summary")) {
+  if (!/financial-insight-(summary|month)/.test(className)) {
     return <span className="financial-insight-label">{insightLabelFor(audienceName)}</span>;
   }
   return (

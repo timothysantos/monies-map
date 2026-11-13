@@ -60,8 +60,6 @@ export const monthMessages = {
   },
   notesTitle: "Monthly Note",
   notesDetail: "Why the month looked like this.",
-  accountsTitle: "Accounts",
-  accountsDetail: "Tracked finance accounts.",
   editHint: "Click a row to edit the plan. Actual stays read-only because it should come from entries.",
   readOnlyCombinedHint: "Combined household view is read-only. Switch to a person view to edit the plan.",
   table: {

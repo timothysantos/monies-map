@@ -31,10 +31,6 @@
   flex-wrap: wrap;
 }
 
-.financial-insight-month {
-  margin-top: 16px;
-}
-
 .month-actual-cell {
   display: grid;
   gap: 4px;
@@ -412,10 +408,6 @@
   background: rgb(var(--accent-strong-rgb) / 0.06);
 }
 
-.panel-subgrid > section {
-  min-width: 0;
-}
-
 .month-plan-section table tbody tr {
   cursor: pointer;
 }
@@ -500,7 +492,37 @@
    negative inline margins (styles.css), and a plain `margin: 16px 0` reset
    them and left the card 24px wider than the screen. */
 .month-spending-mix {
-  margin-block: 16px;
+  margin-block: 0;
+}
+
+/* Month's cards (design.md "Month cards"): Summary's grid and slots
+   (summary-body.css) hold them, so the grid owns the 16px between cards and
+   a card has no block margin of its own. One column at every width; the
+   Monthly note and Accounts sit side by side on a wide page, as before.
+   Only block margins are touched: a phone card keeps its edge-to-edge
+   inline margins (styles.css). */
+.month-card-grid {
+  margin-top: 16px;
+}
+
+.month-card-grid .chart-card,
+.month-card-grid .financial-insight {
+  margin-block: 0;
+}
+
+.month-notes-grid > * {
+  --s2: 1;
+  --s12: 6;
+}
+
+/* The note keeps its paper box inside its card, also on a phone (where a
+   note card would otherwise run edge to edge). */
+.month-note-card .note-card {
+  margin-inline: 0;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
 }
 
 /* Month · Simple (month-overview.jsx MonthMoneyIn): "Money in" in the plan
@@ -508,14 +530,7 @@
 .month-money-in {
   display: grid;
   gap: 10px;
-  margin-block: 16px;
-  border: 1px solid var(--card-border);
-  background: var(--card);
-  box-shadow: var(--card-shadow);
-}
-
-.month-money-in .chart-head {
-  margin-bottom: 0;
+  margin-block: 0;
 }
 
 .month-money-in-empty {

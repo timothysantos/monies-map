@@ -2,7 +2,6 @@
 // route's chunk, not the first screen.
 export const monthSimpleCopy = {
   title: "Money in",
-  detail: "What came in this month, by source.",
   empty: "Nothing came in this month.",
   sources: (count) => `${count} entries`,
   planThisMonth: "Plan this month",

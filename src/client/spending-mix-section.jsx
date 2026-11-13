@@ -68,7 +68,7 @@ function writeListShown(shown) {
 }
 
 /**
- * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, spendChange?: any, className?: string }} props
+ * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, spendChange?: any, spendChangePending?: boolean, className?: string }} props
  */
 export function SpendingMixSection({
   donutData,
@@ -78,6 +78,7 @@ export function SpendingMixSection({
   sliceFacts = undefined,
   dashboard = false,
   spendChange = undefined,
+  spendChangePending = false,
   className = ""
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
@@ -122,13 +123,9 @@ export function SpendingMixSection({
 
   return (
     <section className={["chart-card", "spending-mix-card", dashboard ? "is-dashboard" : "", className].filter(Boolean).join(" ")} data-fig-period={period}>
-      {/* Summary's card wears the shared head; Month's has the same title and no period line. */}
-      {dashboard ? <CardHead id="mix" className="spending-mix-head is-spaced" context={{ first: period.split(":")[0], last: period.split(":")[1] }} action={listToggle} /> : (
-        <div className="chart-head spending-mix-head">
-          <h3>{cardTitle("mix")}</h3>
-          {listToggle}
-        </div>
-      )}
+      {/* Summary's and Month's cards wear the shared head: "By category" and the range, or the one month. */}
+      <CardHead id="mix" className="spending-mix-head is-spaced" context={{ first: period.split(":")[0], last: period.split(":")[1] }} action={listToggle} />
+
       {donutData.length ? (
         <div className={`summary-mix ${listShown ? "" : "is-poster"}`}>
           <div className="summary-mix-chart">
@@ -139,6 +136,10 @@ export function SpendingMixSection({
                   <b className={changeNote.tone === "mint" ? "money-in" : "money-short"}>{changeNote.arrow} {changeNote.percent}%</b>{" "}
                   {mixCopy.changeVs(changeNote.months, changeNote.partial)}
                 </span>
+              ) : spendChangePending && areTotalsVisible ? (
+                // The earlier month's figure is still on its way (Month): its
+                // line is held so the donut does not move when the note lands.
+                <span className="summary-mix-note" aria-hidden="true">{" "}</span>
               ) : null}
             </p>
             <Suspense fallback={<div className={`spending-mix-bubbles-reserve ${listShown ? "" : "is-poster"}`} aria-hidden="true" />}>

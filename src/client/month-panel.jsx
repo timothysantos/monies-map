@@ -42,7 +42,7 @@ import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { buildRequestErrorMessage } from "./request-errors";
 import { getRowDateValue } from "./table-helpers";
 import { selectMonthInsightEntries } from "./month-insight-facts";
-import { selectMonthSpendingMix } from "./month-spending-mix";
+import { selectMonthSpendChange, selectMonthSpendingMix } from "./month-spending-mix";
 import { SpendingMixSection } from "./spending-mix-section";
 import { PaceLine } from "./pace-line";
 import { useRepeatingCharges } from "./use-repeating-charges";
@@ -95,7 +95,7 @@ function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
-export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, isDemoEnvironment = false, cardsUsable = false, fetchRequiredQuery = undefined }) {
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, isDemoEnvironment = false, cardsUsable = false, fetchRequiredQuery = undefined, rangeSummaryMonths = null }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { areTotalsVisible } = useMoneyPrivacy();
@@ -270,6 +270,14 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     [view.id, view.monthPage]
   );
   const checkInClock = useCheckInClock();
+  // The note under Spending mix's total: this month against the month before,
+  // from the range's Summary page the tab already holds (no request).
+  const monthSpendChange = useMemo(() => selectMonthSpendChange({
+    month: view.monthPage.month,
+    monthSummary: selectedMonthSummary,
+    rangeMonths: rangeSummaryMonths,
+    currentMonth: checkInClock.today.slice(0, 7)
+  }), [checkInClock.today, rangeSummaryMonths, selectedMonthSummary, view.monthPage.month]);
   // The lead's model and the page's Plan | Simple view (lead-view.js).
   const monthLead = useMonthLead({
     cards: monthMetricCards,
@@ -1685,12 +1693,18 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         hidden={!areTotalsVisible}
       />
 
+      {/* Month's cards sit in Summary's grid and slots (design.md "Month
+          cards"): the shared head, the 16px between cards and the card
+          spacing come from summary-body.css, one column at every width. */}
+      <div className="summary-grid month-card-grid" data-month-cards>
+      <div className="summary-card-slot" data-month-card="insights">
       <FinancialInsight
         audienceName={view.id === "household" ? "" : view.label}
         checkIn={checkIn}
         onCheckInAction={handleCheckInAction}
         className="financial-insight-month"
       />
+      </div>
 
       {/* The Summary tab's picked month drives Spending Mix: this month's
           spending by category, read from the Month page already loaded. It
@@ -1698,6 +1712,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           tables (the editing work), as on All months it sits above Intent
           vs Outcome. A card's arrow opens Entries for the category in this
           month and scope, like the tables' Actual drilldowns. */}
+      <div className="summary-card-slot" data-month-card="mix">
       <SpendingMixSection
         className="month-spending-mix"
         donutData={monthSpendingMix.data}
@@ -1705,17 +1720,27 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         period={`${view.monthPage.month}:${view.monthPage.month}`}
         sliceFacts={monthSliceFacts}
+        dashboard
+        spendChange={monthSpendChange.spendChange}
+        spendChangePending={monthSpendChange.pending}
       />
+      </div>
 
       {/* Simple (lead-view.js): money in, and a way back to Plan, in the
           plan tables' place; the plan is edited in Plan. */}
       {monthLead.leadView === "simple" ? (
+        <div className="summary-card-slot" data-month-card="moneyIn">
         <MonthMoneyIn
+          month={view.monthPage.month}
           entries={insightEntries}
           onOpenEntries={(entryIds) => handleOpenEntriesForActual({ entryIds })}
           onPlanThisMonth={() => monthLead.setLeadView("plan")}
         />
-      ) : <>
+        </div>
+      ) : null}
+      </div>
+
+      {monthLead.leadView === "simple" ? null : <>
       {hasPlanStudioRows ? <PlanIslandActions mode={effectivePlanMode} disabled={studioSaving} onModeChange={setPlanMode} /> : null}
       {hasPlanStudioRows && effectivePlanMode === "tables" ? (
         <PlanModeSwitch mode={planMode} onChange={setPlanMode} studioDirty={studioDirty} />

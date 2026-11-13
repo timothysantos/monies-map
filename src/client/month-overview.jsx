@@ -19,6 +19,7 @@ import { InlineError } from "./ui-states";
 import { reconciliationTone } from "../domain/money-tone";
 import { getCurrentMonthKey } from "../lib/month";
 import { moneyToneClass } from "./money-tone-class";
+import { CardHead } from "./summary-card-head";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -292,14 +293,11 @@ export function MonthLead({ model, leadView, onLeadViewChange, month, categorySh
 // switches the page to Plan, where the plan is edited. Where the money went
 // is the Spending Mix above it (categories, amounts, shares, bars, each
 // opening its entries), shown in both views.
-export function MonthMoneyIn({ entries, onOpenEntries, onPlanThisMonth }) {
+export function MonthMoneyIn({ month = "", entries, onOpenEntries, onPlanThisMonth }) {
   const { rows } = useMemo(() => buildMoneyIn(entries), [entries]);
   return (
     <section className="chart-card month-money-in" data-money-in>
-      <div className="chart-head">
-        <h3>{monthSimpleCopy.title}</h3>
-        <p>{monthSimpleCopy.detail}</p>
-      </div>
+      <CardHead id="moneyIn" context={{ month }} />
       {rows.length ? (
         <DetailRows label={monthSimpleCopy.title}>
           {rows.map((row) => (
@@ -357,13 +355,12 @@ export function MonthNotesAndAccounts({
   onOpenEntriesForAccount
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
+  // Two cards in Summary's grid (design.md "Month cards"), side by side on a
+  // wide page, each with the shared head.
   return (
-    <div className="panel-subgrid">
-      <section>
-        <div className="panel-subhead">
-          <h3>{monthMessages.notesTitle}</h3>
-          <p>{monthMessages.notesDetail}</p>
-        </div>
+    <div className="summary-grid month-card-grid month-notes-grid" data-month-cards>
+      <section className="summary-card-slot chart-card month-note-card" data-month-card="monthNote">
+        <CardHead id="monthNote" className="is-spaced" />
         <div className="note-card-actions">
           <button
             type="button"
@@ -379,11 +376,8 @@ export function MonthNotesAndAccounts({
         </div>
       </section>
 
-      <section>
-        <div className="panel-subhead">
-          <h3>{monthMessages.accountsTitle}</h3>
-          <p>{monthMessages.accountsDetail}</p>
-        </div>
+      <section className="summary-card-slot chart-card month-accounts-card" data-month-card="accounts">
+        <CardHead id="accounts" className="is-spaced" />
         <div className="summary-account-pills">
           {visibleAccounts.map((account) => (
             <button

@@ -2189,6 +2189,7 @@ export function App() {
           isDemoEnvironment={appEnvironment === "demo"}
           cardsUsable={monthCardsUsable}
           fetchRequiredQuery={fetchRequiredQuery}
+          rangeSummaryMonths={summaryRangePage?.months ?? null}
         />
       );
     }
