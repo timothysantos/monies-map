@@ -2724,9 +2724,15 @@ Rules:
   mappings, statement fixes the user approved or undid; not fixes "Fix it
   for me" applied) it asks first in a popover, never a browser dialog
 - the intake queue keeps the rest of a drop after a commit, orders it with
-  `orderIntakeQueue` and counts covered rows with `describeIntakeCoverage`
+  `orderIntakeQueue` (ties by name, then content, so arrival order never
+  matters) and counts covered rows with `describeIntakeCoverage`
   (`import-intake-model.js`); the Done card (`buildImportDoneSummary`,
   `import-done-model.js`) offers the next queued file
+- files sent to Monies Map (DOMAIN.md "Waiting File") join the same queue:
+  `waiting-files-model.js` picks the ones not pulled this visit and words
+  the row's "Sent from your phone, 12 Nov"; `waiting-files-api.js` fetches
+  each file's bytes and removes one. The queue row is the existing row with
+  one more line; no new banner or control beyond its Remove
 - moving through a batch lives in `import-batch-model.js`:
   `findNextIntakeItem` (the next file waiting, never the one in review or a
   copy), `skipIntakeItem` (gives the item a `skipOrder`, which
