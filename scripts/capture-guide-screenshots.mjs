@@ -264,6 +264,17 @@ const SHOTS = [
     run: (page) => open(page, `/month?view=person-ethan&month=${MONTH}`)
   },
   {
+    // The month wrap-up: a month that has ended, after Money insights.
+    name: "month-wrap-up", device: "desktop",
+    run: async (page) => {
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const card = page.locator("#month-wrap-up");
+      await card.waitFor({ timeout: 30_000 });
+      await scrollToLocator(page, card, 90);
+      await page.waitForTimeout(500);
+    }
+  },
+  {
     name: "month-household", device: "desktop",
     run: async (page) => {
       await open(page, `/month?view=household&month=${MONTH}`);

@@ -755,6 +755,8 @@ with no entries has no Wrap up. With money hidden it shows counts and names
 only. The month reminder in Ask ("September is ready to close") opens Month
 at this card.
 
+![Wrap up for August: what changed, then each check with a tick or one button](/faq/guide/desktop/thumbs/month-wrap-up.webp)
+
 ### On a phone
 
 Rows open in an edit sheet that leads with the planned amount (see
