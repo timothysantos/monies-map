@@ -21,6 +21,7 @@ import { buildRemindersDto } from "./domain/pages/reminders";
 import { buildRepeatingChargesDto } from "./domain/pages/repeating-charges";
 import { buildInvestmentsOverTimeDto } from "./domain/pages/investments-over-time";
 import { buildTaxReliefsDto } from "./domain/pages/tax-reliefs";
+import { buildTripPageDayDto, buildTripPageDto } from "./domain/trip-page-projection";
 import { buildSummaryChangedDto } from "./domain/pages/summary-changed";
 import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
 import { CARD_REWARD_PATHS, handleCardRewardsRoute } from "./server/card-rewards-route";
@@ -684,6 +685,22 @@ export default {
     if (isUsuallySharedPath(url.pathname)) {
       return (await handleUsuallySharedRoute(request, url, env))
         ?? json({ ok: false, error: "Not found." }, 404);
+    }
+
+    // The trip page (DOMAIN.md "Trip or Event", "Trip page"): one trip's
+    // figures grouped in SQL, or one day's entries when the page opens that
+    // day. Read-only, no AI. An unknown trip (or another household's) reads
+    // as gone: tripPage null.
+    if (url.pathname === "/api/trip-page") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "The trip page only answers GET." }, 405, { Allow: "GET" });
+      }
+      const tripId = url.searchParams.get("trip");
+      const day = url.searchParams.get("day");
+      if (day !== null) {
+        return apiPageResponse("Trip page day", request, url, async () => ({ ok: true, tripDay: await buildTripPageDayDto(env.DB, tripId, day) }), timing);
+      }
+      return apiPageResponse("Trip page", request, url, async () => ({ ok: true, tripPage: await buildTripPageDto(env.DB, tripId) }), timing);
     }
 
     // Trips and events (src/server/trip-events-route.ts).

@@ -337,3 +337,70 @@ export function tripEventFigures(entries: TripFigureEntry[], trip: { startDate?:
  * opened as Spent narrowed to them, so Entries' total is the figure.
  */
 export const changedFigureMinor = repeatingFigureMinor;
+
+// ---- The trip page (DOMAIN.md "Trip or Event", "Trip page") ---------------
+//
+// The trip page counts the household's money: whole amounts, every entry on
+// the trip, as the trip view does in the household view. Spent is the
+// Entries Spent rule (an expense adds, a payback in a spending category
+// takes away; a transfer, and money in that is not a payback, count
+// nothing), so "View entries" from it opens the trip view in the household
+// view and its Spent lead is this figure to the cent. The page's rows
+// arrive grouped by SQL (day, category, kind of entry, who paid); one
+// group's entries share a kind and a category, so spendingMinor reads the
+// group's sum as it reads each entry. Days, categories and the people who
+// paid are each slices of the same groups, so each adds up to Spent, and
+// each day's and each payer's entry ids open exactly that slice.
+
+export interface TripPageGroup {
+  day: string;
+  categoryName: string;
+  entryType: EntryDto["entryType"];
+  // Who paid: the entry's owner; null for an entry nobody owns.
+  payerId: string | null;
+  amountMinor: number;
+  entryIds: string[];
+}
+
+export interface TripPageFigures {
+  spentMinor: number;
+  // Each day with spending, in date order.
+  byDay: Array<{ day: string; amountMinor: number; entryIds: string[] }>;
+  // Largest first; a category whose refunds outweigh it stays below zero,
+  // so the rows add up to Spent (the donut leaves it out, as Spending mix does).
+  byCategory: Array<{ categoryName: string; amountMinor: number; entryCount: number }>;
+  // Largest first.
+  byPayer: Array<{ payerId: string | null; amountMinor: number; entryIds: string[] }>;
+}
+
+export function tripPageFigures(groups: TripPageGroup[]): TripPageFigures {
+  let spent = 0;
+  const days = new Map<string, { amountMinor: number; entryIds: string[] }>();
+  const categories = new Map<string, { amountMinor: number; entryCount: number }>();
+  const payers = new Map<string | null, { amountMinor: number; entryIds: string[] }>();
+  for (const group of groups) {
+    const amount = spendingMinor({ entryType: group.entryType, categoryName: group.categoryName, amountMinor: group.amountMinor });
+    if (amount === 0 && group.entryType !== "expense") continue;
+    spent += amount;
+    const day = days.get(group.day) ?? { amountMinor: 0, entryIds: [] };
+    day.amountMinor += amount;
+    day.entryIds.push(...group.entryIds);
+    days.set(group.day, day);
+    const category = categories.get(group.categoryName) ?? { amountMinor: 0, entryCount: 0 };
+    category.amountMinor += amount;
+    category.entryCount += group.entryIds.length;
+    categories.set(group.categoryName, category);
+    const payer = payers.get(group.payerId) ?? { amountMinor: 0, entryIds: [] };
+    payer.amountMinor += amount;
+    payer.entryIds.push(...group.entryIds);
+    payers.set(group.payerId, payer);
+  }
+  return {
+    spentMinor: spent,
+    byDay: [...days].map(([day, value]) => ({ day, ...value })).sort((left, right) => left.day.localeCompare(right.day)),
+    byCategory: [...categories].map(([categoryName, value]) => ({ categoryName, ...value }))
+      .sort((left, right) => right.amountMinor - left.amountMinor || left.categoryName.localeCompare(right.categoryName)),
+    byPayer: [...payers].map(([payerId, value]) => ({ payerId, ...value }))
+      .sort((left, right) => right.amountMinor - left.amountMinor || String(left.payerId).localeCompare(String(right.payerId)))
+  };
+}

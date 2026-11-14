@@ -211,6 +211,64 @@ test("the trip view and the Trips & events totals read a bounded chain on the 10
   assert.deepEqual(failures, []);
 });
 
+// The trip page (DOMAIN.md "Trip page", GET /api/trip-page) on the 10k
+// household: a trip holding 200 entries over a year, a quarter of them on
+// Splits. Its figures are grouped in SQL by the link table, so the page is
+// one step of four reads (the trip, the groups, the five biggest, the
+// shares on Splits) and reads only the trip's own rows; a day it opens is
+// one read. Measured 2026-11-14: 4 round trips in 1 step, about 2,500 rows,
+// a 19 kB answer (the day and payer entry ids are most of it).
+test("the trip page reads one bounded step on the 10k household", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  await buildLargeHousehold(db);
+  await db.prepare("INSERT INTO trip_events (id, household_id, name, icon_key, start_date, end_date) VALUES ('trip-page-scale', 'household-1', 'Big move', 'house', '2025-09-01', '2026-08-31')").run();
+  await db.prepare(`
+    INSERT INTO trip_event_entries (transaction_id, trip_event_id, household_id)
+    SELECT id, 'trip-page-scale', 'household-1' FROM transactions
+    WHERE household_id = 'household-1' AND transaction_date BETWEEN '2025-09-01' AND '2026-08-31' AND entry_type = 'expense'
+    ORDER BY id LIMIT 200
+  `).run();
+  const tripEntries = (await db.prepare("SELECT transaction_id AS id FROM trip_event_entries WHERE trip_event_id = 'trip-page-scale' ORDER BY transaction_id LIMIT 50").all()).results;
+  for (const [index, row] of tripEntries.entries()) {
+    await db.prepare(`INSERT INTO split_expenses (id, household_id, split_group_id, payer_person_id, expense_date, description, total_amount_minor, currency, linked_transaction_id)
+      SELECT ?, 'household-1', NULL, 'person-tim', transaction_date, description, amount_minor, 'SGD', id FROM transactions WHERE id = ?`).bind(`scale-split-${index}`, row.id).run();
+    await db.prepare(`INSERT INTO split_expense_shares (id, split_expense_id, person_id, ratio_basis_points, amount_minor)
+      SELECT ?, ?, 'person-joyce', 5000, amount_minor / 2 FROM transactions WHERE id = ?`).bind(`scale-share-${index}`, `scale-split-${index}`, row.id).run();
+  }
+  const day = (await db.prepare("SELECT transactions.transaction_date AS day FROM trip_event_entries INNER JOIN transactions ON transactions.id = trip_event_entries.transaction_id WHERE trip_event_id = 'trip-page-scale' LIMIT 1").first()).day;
+  const counting = countingDatabase(db, { latencyMs: ROUND_TRIP_WAIT_MS });
+  const env = { DB: counting.db, ...template.config.vars };
+  const failures = [];
+  for (const [name, path, bounds] of [
+    ["trip page", "/api/trip-page?trip=trip-page-scale", { statements: 6, waves: 1, rows: 6_000, bytes: 40_000 }],
+    ["trip page day", `/api/trip-page?trip=trip-page-scale&day=${day}`, { statements: 2, waves: 1, rows: 2_000, bytes: 12_000 }]
+  ]) {
+    const call = async () => {
+      const response = await worker.fetch(new Request(`http://127.0.0.1${path}`), env);
+      const text = await response.text();
+      assert.equal(response.status, 200, `${name}: ${text.slice(0, 200)}`);
+      return text;
+    };
+    await call();
+    counting.reset();
+    const text = await call();
+    const measured = counting.summary();
+    const rows = measured.rowsRead + measured.batchRowsRead;
+    console.log(`# ${name}: ${measured.statements} round trips in ${measured.waves} sequential steps, ${rows} rows read, ${text.length} bytes`);
+    if (measured.statements > bounds.statements) failures.push(`${name}: ${measured.statements} round trips (max ${bounds.statements})`);
+    if (measured.waves > bounds.waves) failures.push(`${name}: ${measured.waves} sequential steps (max ${bounds.waves})`);
+    if (rows > bounds.rows) failures.push(`${name}: ${rows} rows read (max ${bounds.rows})`);
+    if (text.length > bounds.bytes) failures.push(`${name}: ${text.length} bytes (max ${bounds.bytes})`);
+    if (name === "trip page") {
+      const { tripPage } = JSON.parse(text);
+      assert.equal(tripPage.entryCount, 200);
+      assert.equal(tripPage.owed.onSplitsCount, 50);
+      assert.equal(tripPage.biggest.length, 5);
+    }
+  }
+  assert.deepEqual(failures, []);
+});
+
 // Trip suggestions (DOMAIN.md "Trip or Event", "Suggestions") on the 10k
 // household: the review list of a month-long trip linked to a split group,
 // "Booked before you went?" over the 12 months before it, and the Entries
