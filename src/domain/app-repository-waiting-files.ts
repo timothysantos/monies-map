@@ -196,11 +196,12 @@ export async function receiveWaitingFiles(
     return { ok: false, reason: "too_many_waiting" };
   }
 
-  const receivedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + WAITING_FILE_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const senderLabel = (options.senderLabel ?? "").slice(0, 80);
   const statements: D1PreparedStatement[] = [];
-  for (const file of fresh) {
+  for (const [index, file] of fresh.entries()) {
+    // A millisecond apart, so the files of one share list in the order sent.
+    const receivedAt = new Date(now.getTime() + index).toISOString();
     const chunks = splitIntoChunks(file.bytes);
     statements.push(
       db

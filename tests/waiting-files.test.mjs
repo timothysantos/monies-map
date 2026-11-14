@@ -71,7 +71,7 @@ test("anything else is refused before it is stored", () => {
 test("file names are made safe to store and show", () => {
   assert.equal(sanitizeWaitingFileName("eStatement_UOB_Cards_12May2026.pdf"), "eStatement_UOB_Cards_12May2026.pdf");
   assert.equal(sanitizeWaitingFileName("../../etc/passwd"), "passwd");
-  assert.equal(sanitizeWaitingFileName("C:\\Users\\tim\\Downloads\\ACCT_349.csv"), "ACCT_349.csv");
+  assert.equal(sanitizeWaitingFileName("C:\\Temp\\bank\\ACCT_349.csv"), "ACCT_349.csv");
   assert.equal(sanitizeWaitingFileName("<img src=x onerror=alert(1)>.csv"), "_img src_x onerror_alert(1)_.csv");
   assert.equal(sanitizeWaitingFileName("bad\u0000name\u202e.pdf"), "badname.pdf");
   assert.equal(sanitizeWaitingFileName("   ..."), "file");

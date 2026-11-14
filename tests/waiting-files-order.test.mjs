@@ -111,9 +111,11 @@ async function reviewAndCommit(workspace, item) {
     waitingFileId: item.waitingFile.id
   });
   assert.equal(commit.status, 200, JSON.stringify(commit.payload).slice(0, 400));
+  (workspace.importIds ??= []).push(commit.payload.importId);
 }
 
-// The account's ledger and statements as saved, without ids or clocks.
+// The rows this test's imports saved on the account and its April 2026
+// statement, without ids or clocks (the seeded demo rows move with today).
 async function ledgerOf(workspace, accountName) {
   const [account] = await rows(workspace.db, "SELECT id FROM accounts WHERE account_name = ?", accountName);
   const entries = await rows(workspace.db, `
@@ -122,12 +124,12 @@ async function ledgerOf(workspace, accountName) {
     FROM transactions t
     LEFT JOIN categories c ON c.id = t.category_id
     LEFT JOIN imports i ON i.id = t.import_id
-    WHERE t.account_id = ?
+    WHERE t.account_id = ? AND t.import_id IN (SELECT value FROM json_each(?))
     ORDER BY t.transaction_date, t.description, t.amount_minor
-  `, account.id);
+  `, account.id, JSON.stringify(workspace.importIds ?? []));
   const statements = await rows(workspace.db, `
     SELECT checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor
-    FROM account_balance_checkpoints WHERE account_id = ? ORDER BY checkpoint_month
+    FROM account_balance_checkpoints WHERE account_id = ? AND checkpoint_month = '2026-04' ORDER BY checkpoint_month
   `, account.id);
   return { entries, statements };
 }
@@ -154,9 +156,13 @@ test("the same two files in any order, in one share or two, queue and commit the
     results.push({ name, arrival, queue: order.map((item) => item.fileName), ledger: await ledgerOf(workspace, "UOB One"), remaining });
   }
 
-  // They arrived in different orders (two shares list in arrival order)...
-  assert.deepEqual(results[2].arrival, [STATEMENT[0], ACTIVITY[0]]);
-  assert.deepEqual(results[3].arrival, [ACTIVITY[0], STATEMENT[0]]);
+  // They arrived in different orders (the store lists them as sent)...
+  assert.deepEqual(results.map((result) => result.arrival), [
+    [STATEMENT[0], ACTIVITY[0]],
+    [ACTIVITY[0], STATEMENT[0]],
+    [STATEMENT[0], ACTIVITY[0]],
+    [ACTIVITY[0], STATEMENT[0]]
+  ]);
   // ...and every time the statement is reviewed before the activity...
   for (const result of results) {
     assert.deepEqual(result.queue, [STATEMENT[0], ACTIVITY[0]], result.name);
