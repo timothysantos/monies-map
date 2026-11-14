@@ -6,6 +6,17 @@ This doc describes the Summary page flow in three parts:
 - state flow
 - data flow
 
+## Leftovers (2026-11-14)
+
+- The Summary page DTO carries `splitBalances` (one row per used split group,
+  grouped in SQL, `pages/summary-split-balances.ts`) for the registered Splits
+  tile; the card it opens lists groups with `data-fig="splits"` amounts.
+- Change notes on the lead (`spendChange`), Subscriptions (`focusBeforeMinor`
+  on `/api/repeating-charges`), Miles (`earnedBefore` on each card of
+  `/api/card-rewards`) and Bank fees (`bankFeesYear.months`).
+- First visit on a wide screen keeps room for the import banner
+  (`import-banner-reserve.js`); a phone keeps none.
+
 ## Route Flow
 
 Route entry:

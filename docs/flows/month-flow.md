@@ -6,6 +6,13 @@ This doc describes the Month page flow in three parts:
 - state flow
 - data flow
 
+## What changed on Month (2026-11-14)
+
+For the month in progress only, Month shows Summary's "What changed" card
+unchanged between Money insights and Spending mix (`data-month-card="changed"`),
+a lazy import that reads its own `/api/summary-changed` once the page is usable.
+Other months leave an empty slot with no height.
+
 ## Route Flow
 
 Route entry:

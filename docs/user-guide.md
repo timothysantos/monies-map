@@ -328,7 +328,8 @@ over plan.
   the card and Spent, the bar and the sentence on the left.
 - **Money insights**: one thing worth knowing about the figures on screen
   ([Use Money insights](#use-money-insights)).
-- **What changed**: a card under Money insights. It compares
+- **What changed**: a card under Money insights (it also shows on the Month
+  page, for the month in progress only). It compares
   this month so far with the same days of last month (the 10th with the
   10th, never a whole month) and lists the three categories that went up
   most and the three that went down most, each with the difference, for
@@ -379,13 +380,30 @@ over plan.
   lists start short: **Show all** (or **Open the details** under the months)
   opens the rest in place.
 - **Card names**: every card under the top summary has a short name and, under it, one quiet line that says the period or what it counts: Spending mix, "By category, Dec 2025 to Nov 2026"; Plan vs actual, "By month, Dec 2025 to Nov 2026"; Tax reliefs, "For 2026". The same name and line show on the card, on its tile, at the top of the window a tile opens and in **Arrange cards**.
-- **Tiles**: Coming up, Investments, Miles and cashback, Tax reliefs and
-  Bank fees show as small tiles, three across on a wide screen and
+- **Tiles**: Coming up, Investments, Miles and cashback, Tax reliefs,
+  Bank fees and Splits show as small tiles, three across on a wide screen and
   two across on a phone (where Subscriptions and bills is a tile too). Each
   tile shows its main figure, one short note and a few lines. Tap a tile to
   open the whole card in a window (a sheet from the bottom on a phone); press
   Esc, swipe down or use the close button to go back. With money hidden a
   tile shows only its names.
+- **Splits tile**: who owes whom right now, in the same words as the Splits
+  page ("Joyce owes you", "You owe Joyce", or "Net balance" for the
+  household). It shows the biggest balance, then each group you have used, each
+  in its own currency; a group that is paid up reads "Settled up". It is
+  hidden until you have used a group. Tap it to open the list, and tap an
+  amount to open Splits at that group. It can be moved or hidden in **Arrange
+  cards** like the others.
+- **Change notes**: under the big number on the top card (Spent), Subscriptions
+  and bills, Miles and cashback and Bank fees, a quiet line such as "▲ 12% vs
+  the month before" says how this compares. Subscriptions compares the last
+  full month with the month before it. Miles and cashback compares what you
+  have earned so far this month with the same days of the month before. Bank
+  fees compares the last full month with the month before it (the month in
+  progress is left out). The top card uses the same note as Spending mix.
+  Spending or fees that went up show in red, earning more in green. A note is
+  left out when there is nothing to compare, the change is under 1%, or money
+  is hidden.
 - **Arrange cards** (on a phone, **Edit cards**), at the end of Summary:
   move the cards under the top summary up or down, and tap a card's name to
   hide or show it. **Done** keeps your order; **Reset to the usual order**

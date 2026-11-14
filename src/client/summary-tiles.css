@@ -486,3 +486,21 @@ html[data-money-privacy="hidden"] .summary-tile-line {
 .splits-balance-list [data-fig] {
   white-space: nowrap;
 }
+
+.splits-balance-list .bankfees-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.splits-balance-list .bankfees-row > b {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* A card in a phone sheet fits the sheet: the card's own edge-to-edge
+   margins would push it past the sheet's padding (Bank fees, Splits). */
+.summary-tile-sheet .summary-card-slot > :is(.bankfees-card, .splits-balance-card) {
+  margin-inline: 0;
+  width: auto;
+  max-width: 100%;
+}

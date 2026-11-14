@@ -118,6 +118,7 @@ import { MobileContextStatus, useContextAnnouncement } from "./mobile-context-st
 import { SummaryMonthIslandControl, SummaryMonthSelector } from "./summary-month-picker";
 import { getCurrentMonthKey } from "../lib/month";
 import { isMobileLayout } from "./use-viewport";
+import { GUESSED_RESERVE_MS, IMPORT_BANNER_HEIGHT_KEY, initialBannerReserve } from "./import-banner-reserve";
 import { useInsightAskLauncher } from "./use-insight-ask-launcher";
 import { useLiveSearchParams } from "./use-live-search-params";
 import { leadViewStore, useLeadView } from "./lead-view";
@@ -324,7 +325,11 @@ export function App() {
   // height the banner had on this device last time: kept as its slot until
   // the answer comes, so the banner arriving moves nothing under it.
   const [importBannerKnown, setImportBannerKnown] = useState(false);
-  const [importBannerReserve] = useState(readImportBannerHeight);
+  // A device that has never seen the banner keeps the room a banner usually
+  // takes (import-banner-reserve.js) and gives it back if no answer comes.
+  const [initialBanner] = useState(() => initialBannerReserve({ storage: readStorage(), phone: isMobileLayout(), width: window.innerWidth }));
+  const [guessedRoomReleased, setGuessedRoomReleased] = useState(false);
+  const importBannerReserve = guessedRoomReleased ? 0 : initialBanner.height;
   const [routePageError, setRoutePageError] = useState("");
   const [isRetryingRoutePage, setIsRetryingRoutePage] = useState(false);
   // Summary data is not replaced until the next response arrives, so keep the
@@ -2484,6 +2489,12 @@ export function App() {
     && importInboxBanner.summary.requiredFileCount > 0
   );
 
+  useEffect(() => {
+    if (!initialBanner.guessed || importBannerKnown) return undefined;
+    const timer = window.setTimeout(() => setGuessedRoomReleased(true), GUESSED_RESERVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [importBannerKnown, initialBanner.guessed]);
+
   // Once the answer is in and there is nothing behind, the next visit reserves nothing.
   useEffect(() => {
     if (importBannerKnown && !showImportInboxBanner && ["summary", "month"].includes(renderedTabId)) {
@@ -3622,14 +3633,11 @@ function RefreshFailureNotice({ onRetry, onDismiss }) {
 // The banner's slot: as tall as the banner was last time on this device while
 // the Imports answer is unknown (layout-shift guard, summary-plan-layout.spec.js),
 // so the banner lands in its place; the height is remembered for next time.
-const IMPORT_BANNER_HEIGHT_KEY = "monies-map:import-banner-height";
-
-function readImportBannerHeight() {
+function readStorage() {
   try {
-    const value = Number(window.localStorage.getItem(IMPORT_BANNER_HEIGHT_KEY));
-    return Number.isFinite(value) && value > 0 ? Math.min(value, 400) : 0;
+    return window.localStorage;
   } catch {
-    return 0;
+    return null;
   }
 }
 
