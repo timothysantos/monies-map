@@ -91,6 +91,22 @@ const PAYLOAD_APIS = [
 // after the others, because simplifying covers every open SGD record.
 const SETTLED_SPLITS_PAYLOAD = ["splits-page-settled", "/api/splits-page?view=person-tim&month=2026-05"];
 
+// A trip or event's own page (DOMAIN.md "Trip page"): the demo household's
+// May expenses put on one trip (at most 40, like a long weekend away). The
+// figures are grouped in SQL; the day and payer entry ids (for each
+// figure's View entries) are most of the answer. Measured last, because
+// putting entries on a trip adds their chips to the Entries page.
+const TRIP_PAGE_PAYLOAD = "trip-page";
+
+async function seedTripPage(page) {
+  const entries = await (await page.request.get("/api/entries-page?view=household&month=2026-05")).json();
+  const ids = entries.monthPage.entries.filter((entry) => entry.entryType === "expense").slice(0, 40).map((entry) => entry.id);
+  const saved = await (await page.request.post("/api/trip-events/save", { data: { name: "Penang weekend", startDate: "2026-05-01", endDate: "2026-05-31" } })).json();
+  const set = await page.request.post("/api/trip-events/entries/set", { data: { entryIds: ids, tripEventId: saved.tripEvent.id } });
+  expect(set.ok(), await set.text()).toBeTruthy();
+  return { tripId: saved.tripEvent.id, count: ids.length };
+}
+
 async function settleOneGroup(page) {
   const post = async (path, data) => {
     const response = await page.request.post(path, { data });
@@ -128,6 +144,12 @@ test("page API responses stay within their size budget at demo scale", async ({ 
   // None of the covered records travels with the page.
   expect(settledBody.splitsPage.activity.filter((item) => item.settlementCheckpointId && !item.isArchived)).toEqual([]);
   measured[SETTLED_SPLITS_PAYLOAD[0]] = (await settledSplits.body()).length;
+  const { tripId, count } = await seedTripPage(page);
+  const tripPage = await page.request.get(`/api/trip-page?trip=${tripId}`);
+  expect(tripPage.ok(), await tripPage.text()).toBeTruthy();
+  expect((await tripPage.json()).tripPage.entryCount).toBe(count);
+  expect(count).toBeGreaterThan(10);
+  measured[TRIP_PAGE_PAYLOAD] = (await tripPage.body()).length;
   if (process.env.UPDATE_API_PAYLOAD_BUDGET) {
     await writeFile(PAYLOAD_BUDGET_FILE, `${JSON.stringify(measured, null, 2)}\n`);
     console.log(`API payload budget recorded: ${JSON.stringify(measured)}`);
@@ -138,5 +160,5 @@ test("page API responses stay within their size budget at demo scale", async ({ 
     .filter(([name, bytes]) => bytes > Math.round((budget[name] ?? 0) * (1 + PAYLOAD_TOLERANCE)))
     .map(([name, bytes]) => `${name}: ${bytes} bytes, budget ${budget[name]} (+${PAYLOAD_TOLERANCE * 100}%)`);
   expect(over, `Page responses over budget. Send only what the screen reads, or update the budget deliberately:\n${over.join("\n")}`).toEqual([]);
-  expect(Object.keys(budget).sort()).toEqual([...PAYLOAD_APIS, SETTLED_SPLITS_PAYLOAD].map(([name]) => name).sort());
+  expect(Object.keys(budget).sort()).toEqual([...[...PAYLOAD_APIS, SETTLED_SPLITS_PAYLOAD].map(([name]) => name), TRIP_PAGE_PAYLOAD].sort());
 });

@@ -8,7 +8,7 @@
 // to the figure (figure-menu-model.js), whose Spent lead is that figure to
 // the cent (tests/openable-figures.test.mjs).
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -51,6 +51,7 @@ function figureProps(trip, extra = {}) {
     "data-fig": "trip",
     "data-fig-arg": trip.id,
     "data-fig-name": trip.name,
+    "data-fig-trip-name": trip.name,
     role: "button",
     tabIndex: 0,
     ...extra
@@ -81,9 +82,10 @@ function Bars({ title, rows, maxMinor, showTitle = true }) {
  * `onChange` opens the New sheet on this trip; `onCheckDates` its review
  * list ("Check entries from these dates"), offered when it has dates or a
  * linked split group.
- * @param {{ tripView: any, aggregateEntries: any[], pageEntries: any[], entryFilters: any, viewId: string, people: any[], investmentAccountIds?: Set<string>, entryCount: number, isMobile?: boolean, onClear: () => void, onPutAway: (trip: any, putAway: boolean) => void, onDelete: (trip: any) => void, onChange?: (trip: any) => void, onCheckDates?: (trip: any) => void }} props
+ * `onOpen` opens the trip's own page (DOMAIN.md "Trip page").
+ * @param {{ tripView: any, aggregateEntries: any[], pageEntries: any[], entryFilters: any, viewId: string, people: any[], investmentAccountIds?: Set<string>, entryCount: number, isMobile?: boolean, onClear: () => void, onPutAway: (trip: any, putAway: boolean) => void, onDelete: (trip: any) => void, onChange?: (trip: any) => void, onCheckDates?: (trip: any) => void, onOpen?: (trip: any) => void }} props
  */
-export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds, entryCount, isMobile = false, onClear, onPutAway, onDelete, onChange = undefined, onCheckDates = undefined }) {
+export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds, entryCount, isMobile = false, onClear, onPutAway, onDelete, onChange = undefined, onCheckDates = undefined, onOpen = undefined }) {
   const trip = tripView?.tripEvent ?? null;
   const model = useMemo(
     () => (trip ? buildTripEventLeadModel({ tripEvent: trip, aggregateEntries, pageEntries, entryFilters, viewId, people, investmentAccountIds }) : null),
@@ -196,6 +198,7 @@ export function TripEventLead({ tripView, aggregateEntries, pageEntries, entryFi
         </div>
       )}
       <div className="trip-lead-actions">
+        {onOpen ? <button type="button" className="subtle-action" data-trip-open="" onClick={() => onOpen(trip)}>{copy.openTrip(trip.name)}</button> : null}
         {onCheckDates && (trip.startDate || trip.splitGroupId) ? (
           <button type="button" className="subtle-action" data-trip-check-dates="" onClick={() => onCheckDates(trip)}>{copy.checkDates}</button>
         ) : null}
@@ -249,9 +252,11 @@ function useTripTotals({ open, viewId, month, selectedScope }) {
 /**
  * Trips & events: every one, newest first, each with its Spent; choosing
  * one opens its trip view. Put-away ones fold under "N put away · Show".
- * @param {{ open: boolean, onOpenChange: (open: boolean) => void, viewId: string, month: string, selectedScope: string, currentTripEventId?: string, onChoose: (trip: any) => void, footer?: any, emptyActions?: any }} props
+ * `onOpen` adds each row's arrow to the trip's own page (DOMAIN.md "Trip
+ * page"), the way Spending mix's rows carry an arrow beside their tap.
+ * @param {{ open: boolean, onOpenChange: (open: boolean) => void, viewId: string, month: string, selectedScope: string, currentTripEventId?: string, onChoose: (trip: any) => void, onOpen?: (trip: any) => void, footer?: any, emptyActions?: any }} props
  */
-export function TripEventsSheet({ open, onOpenChange, viewId, month, selectedScope, currentTripEventId = "", onChoose, footer = null, emptyActions = null }) {
+export function TripEventsSheet({ open, onOpenChange, viewId, month, selectedScope, currentTripEventId = "", onChoose, onOpen = undefined, footer = null, emptyActions = null }) {
   const totals = useTripTotals({ open, viewId, month, selectedScope });
   const [showPutAway, setShowPutAway] = useState(false);
   const today = todayInAppTimeZone();
@@ -262,7 +267,7 @@ export function TripEventsSheet({ open, onOpenChange, viewId, month, selectedSco
     const spent = totals.spent.get(trip.id);
     const isNow = isWithinTripEventDates(trip, today);
     return (
-      <li key={trip.id}>
+      <li key={trip.id} className={onOpen ? "trip-sheet-item has-open" : "trip-sheet-item"}>
         <button
           type="button"
           className={`trip-sheet-row ${trip.id === currentTripEventId ? "is-selected" : ""}`}
@@ -285,6 +290,21 @@ export function TripEventsSheet({ open, onOpenChange, viewId, month, selectedSco
             <span className="trip-pick-meta">{copy.entries(trip.entryCount)}</span>
           </span>
         </button>
+        {onOpen ? (
+          <button
+            type="button"
+            className="trip-sheet-open"
+            data-trip-sheet-open={trip.name}
+            aria-label={copy.openTrip(trip.name)}
+            title={copy.openTrip(trip.name)}
+            onClick={() => {
+              close();
+              onOpen(trip);
+            }}
+          >
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+        ) : null}
       </li>
     );
   };

@@ -326,6 +326,34 @@
   border-color: var(--accent-strong);
 }
 
+/* A row with its arrow to the trip's own page (DOMAIN.md "Trip page"): the
+   row's tap keeps opening the trip view, the 44px arrow beside it opens the
+   page, as Spending mix's rows carry their arrow. */
+.trip-sheet-item.has-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 4px;
+}
+
+.trip-sheet-open {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.trip-sheet-open:hover,
+.trip-sheet-open:focus-visible {
+  color: var(--accent-strong);
+}
+
 .trip-sheet-name {
   display: inline-flex;
   align-items: center;

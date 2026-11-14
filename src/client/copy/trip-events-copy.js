@@ -66,6 +66,8 @@ export const tripEventsCopy = Object.freeze({
   // The filter, the trip view and the Trips & events sheet.
   filterAll: "All trips & events",
   clear: "Clear",
+  // The trip's own page (DOMAIN.md "Trip page"): "Open Seoul trip".
+  openTrip: (name) => `Open ${name}`,
   missing: "This trip or event is gone.",
   spent: "Spent",
   before: "Before",

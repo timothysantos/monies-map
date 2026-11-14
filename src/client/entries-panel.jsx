@@ -81,6 +81,7 @@ import { readLastGroupId, writeLastGroupId } from "./splits-group-strip-model";
 import { getQuickSplitGroup } from "./split-picker-defaults";
 import { useTripEventsOnEntries } from "./use-trip-events-on-entries";
 import { tripEventsCopy } from "./copy/trip-events-copy";
+import { tripPageLocation } from "./trip-figure-search";
 import { changeEntryCategories, deleteTripEvent, forgetTripEvents, putAwayTripEvent, setTripEventEntries, undoPickedAddToSplits } from "./trip-events-api";
 import { pickSplitsCopy } from "./copy/pick-splits-copy";
 import { addedNotice as addedToSplitsNotice } from "./entry-pick-splits-model";
@@ -1062,6 +1063,10 @@ export function EntriesPanel({
       return next;
     });
   }, [setSearchParams]);
+  // The trip's own page (DOMAIN.md "Trip page"), keeping the view and month.
+  const openTripPage = useCallback((trip) => {
+    navigate(tripPageLocation(searchParams.toString(), trip.id));
+  }, [navigate, searchParams]);
   const clearTripView = useCallback(() => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -1570,6 +1575,7 @@ export function EntriesPanel({
                 onDelete={handleDeleteTrip}
                 onChange={openChangeTrip}
                 onCheckDates={openTripReview}
+                onOpen={openTripPage}
               />
             </Suspense>
           ) : null}
@@ -1922,6 +1928,7 @@ export function EntriesPanel({
             selectedScope={selectedScope}
             currentTripEventId={tripViewId}
             onChoose={chooseTripView}
+            onOpen={openTripPage}
             footer={<button type="button" className="lsd-quiet" data-trip-new="" onClick={() => openNewTrip([])}>{tripEventsCopy.newRow}</button>}
             emptyActions={(
               <TripEventsEmptyActions
