@@ -23,6 +23,7 @@ import { buildInvestmentsOverTimeDto } from "./domain/pages/investments-over-tim
 import { buildTaxReliefsDto } from "./domain/pages/tax-reliefs";
 import { buildTripPageDayDto, buildTripPageDto } from "./domain/trip-page-projection";
 import { buildSummaryChangedDto } from "./domain/pages/summary-changed";
+import { buildMonthWrapUpDto } from "./domain/month-wrap-up-projection";
 import { handleRepeatingChoiceRoute, REPEATING_CHOICE_PATH } from "./server/repeating-charges-route";
 import { CARD_REWARD_PATHS, handleCardRewardsRoute } from "./server/card-rewards-route";
 import { buildLedgerCheckupDto, readLedgerCheckupView } from "./domain/pages/ledger-checkup";
@@ -631,7 +632,24 @@ export default {
       return apiPageResponse("Summary changed", request, url, () => buildSummaryChangedDto(
         env.DB,
         url.searchParams.get("view") ?? "household",
-        (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
+        (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+        undefined,
+        url.searchParams.get("month") ?? ""
+      ), timing);
+    }
+
+    // The month wrap-up on the Month page (DOMAIN.md "Month Wrap-up"): what is
+    // left to check before a month is closed. Read-only, no AI; the card asks
+    // once the Month page is usable.
+    if (url.pathname === "/api/month-wrap-up") {
+      if (request.method !== "GET") {
+        return json({ ok: false, error: "Month wrap-up only answers GET." }, 405, { Allow: "GET" });
+      }
+      return apiPageResponse("Month wrap-up", request, url, () => buildMonthWrapUpDto(
+        env.DB,
+        url.searchParams.get("view") ?? "household",
+        (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+        url.searchParams.get("month") ?? ""
       ), timing);
     }
 

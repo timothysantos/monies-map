@@ -657,12 +657,23 @@ export function oneOffOverPlanSignal(input: MonthSignalInput): MoneySignal | nul
   };
 }
 
+// The category budgets over their plan (a planned amount, and $1 or more
+// spent past it), furthest over first. The plan variance this signal and the
+// month wrap-up (month-wrap-up.ts) both read, so they never disagree.
+export function budgetLinesOverPlan<Row extends Pick<MonthSignalPlanRow, "id" | "plannedMinor" | "actualMinor">>(
+  planSections: Array<{ key: string; rows?: Row[] }>
+): Row[] {
+  return planSections
+    .filter((section) => section.key === "budget_buckets")
+    .flatMap((section) => section.rows ?? [])
+    .filter((candidate) => candidate.plannedMinor > 0 && candidate.actualMinor - candidate.plannedMinor >= 100)
+    .sort((left, right) => (right.actualMinor - right.plannedMinor) - (left.actualMinor - left.plannedMinor) || left.id.localeCompare(right.id));
+}
+
 // Worth a look: the category budget furthest over its plan. Steady unless
 // it is 10% and $20 over (CATEGORY_OVER_RATIO, CATEGORY_OVER_MINOR).
 export function categoryOverPlanSignal(input: MonthSignalInput): MoneySignal | null {
-  const row = rows(input, "budget_buckets")
-    .filter((candidate) => candidate.plannedMinor > 0 && candidate.actualMinor - candidate.plannedMinor >= 100)
-    .sort((left, right) => (right.actualMinor - right.plannedMinor) - (left.actualMinor - left.plannedMinor) || left.id.localeCompare(right.id))[0];
+  const row = budgetLinesOverPlan(input.planSections)[0];
   if (!row) {
     return null;
   }

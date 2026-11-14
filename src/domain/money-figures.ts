@@ -404,3 +404,13 @@ export function tripPageFigures(groups: TripPageGroup[]): TripPageFigures {
       .sort((left, right) => right.amountMinor - left.amountMinor || String(left.payerId).localeCompare(String(right.payerId)))
   };
 }
+
+/**
+ * The month wrap-up (DOMAIN.md "Month Wrap-up"; the `wrap_up` figure): what
+ * is left in Other (no category) and the foreign currency estimates waiting
+ * for their statement are each the exact expenses the server named, at the
+ * view's amounts, opened as `spent` narrowed to those ids over the month,
+ * so the Entries Spent total is the figure to the cent. Its "What changed"
+ * rows are the `changed` figure.
+ */
+export const monthWrapUpFigureMinor = repeatingFigureMinor;

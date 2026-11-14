@@ -1311,6 +1311,48 @@ export interface SummarySplitBalanceDto {
   owes: string;
 }
 
+// The month wrap-up (DOMAIN.md "Month Wrap-up"; GET /api/month-wrap-up): the
+// facts its checklist reads that the Month page does not already hold. The
+// plan and the monthly note come from the Month page itself.
+export interface MonthWrapUpChangedRowDto {
+  category: string;
+  direction: "up" | "down";
+  diffMinor: number;
+  // The month's spending in the category, opening exactly these entries.
+  amountMinor: number;
+  ids: string[];
+}
+
+export interface MonthWrapUpSplitBalanceDto {
+  id: string;
+  name: string;
+  currency: string;
+  // Never zero; the sign is the Splits page's (the viewer's side).
+  balanceMinor: number;
+  // "Ethan owes you", "You owe Ethan", or "Ethan owes Serene" in the household view.
+  owes: string;
+  direction: "owed_to_you" | "you_owe" | "between";
+}
+
+export interface MonthWrapUpDto {
+  viewId: string;
+  scope: PersonScope;
+  month: string;
+  // The biggest rows of the month's "What changed" card, or null when there
+  // is nothing to compare or nothing moved much.
+  changed: { baseMonth: string; rowCount: number; rows: MonthWrapUpChangedRowDto[] } | null;
+  // Expenses still in Other (no category), and foreign currency estimates no
+  // statement has confirmed yet, at the view's amounts.
+  other: { ids: string[]; amountMinor: number };
+  estimates: { ids: string[]; amountMinor: number };
+  // The Import inbox's expected statements for the month, among the view's
+  // active bank and card accounts.
+  statements: { accountCount: number; missing: Array<{ id: string; name: string }> };
+  // What is owed right now, and the month's entries the "Usually shared"
+  // rule would put on Splits.
+  splits: { balances: MonthWrapUpSplitBalanceDto[]; usuallySharedIds: string[] };
+}
+
 export interface SummaryPageDto {
   metricCards: MetricCardDto[];
   availableMonths: string[];
