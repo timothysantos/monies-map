@@ -240,7 +240,7 @@ export const askCopy = {
     // The public demo only, when its own Claude allowance is used up.
     demoAllowanceNote: "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.",
     opened: (page) => `Opened ${page}.`,
-    pages: { summary: "Summary", month: "Month", entries: "Entries", splits: "Splits", imports: "Imports", settings: "Settings", help: "Help" },
+    pages: { summary: "Summary", month: "Month", entries: "Entries", splits: "Splits", imports: "Imports", settings: "Settings", help: "Help", trip: "the trip's page" },
     draftTag: "Draft",
     split: {
       label: "Add to Splits",

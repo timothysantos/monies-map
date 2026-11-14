@@ -23,7 +23,7 @@ const HISTORY_LIMIT = 8;
 const HISTORY_TEXT_LIMIT = 200;
 const TURN_TIMEOUT_MS = 15_000;
 const VARIANTS = new Set(["expense", "income", "transfer"]);
-const PAGES = new Set(["summary", "month", "entries", "splits", "imports", "settings", "help"]);
+const PAGES = new Set(["summary", "month", "entries", "splits", "imports", "settings", "help", "trip"]);
 
 /**
  * The recent conversation the model reads: the person's messages as

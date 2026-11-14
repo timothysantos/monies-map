@@ -344,7 +344,7 @@ async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string
 // Whether the rules could read the message as a trip or event one (with AI
 // off): a word such a message starts with, and a trip to name (or the word
 // trip, holiday or event). Reads only the trip list, and only then.
-const TRIP_MESSAGE_START = /^(?:please\s+)?(?:put|add|move|take|remove|tag|file|make|new|create|start|how much|what did|what was)\b/i;
+const TRIP_MESSAGE_START = /^(?:please\s+)?(?:put|add|move|take|remove|tag|file|make|new|create|start|how much|what did|what was|open|show|go to)\b/i;
 async function mayBeTripMessage(db: D1Database, text: string) {
   if (!TRIP_MESSAGE_START.test(text)) return false;
   if (/\b(trip|holiday|event)\b/i.test(text)) return true;

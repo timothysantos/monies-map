@@ -56,7 +56,7 @@ import {
   type AskResolveRequest
 } from "./ask-turn-actions";
 import { describeUsuallySharedAction, validateUsuallyShared } from "./ask-usually-shared";
-import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
+import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripPage, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
 export const ASK_TURN_ACTIONS = [
@@ -119,7 +119,7 @@ export const ASK_TURN_TOPICS = [
 ] as const;
 export type AskTurnTopic = typeof ASK_TURN_TOPICS[number];
 
-export const ASK_TURN_PAGES = ["summary", "month", "entries", "splits", "imports", "settings", "help"] as const;
+export const ASK_TURN_PAGES = ["summary", "month", "entries", "splits", "imports", "settings", "help", "trip"] as const;
 export type AskTurnPage = typeof ASK_TURN_PAGES[number];
 
 // Never from Ask (docs/proposals/ask-ai-first/inventory.md): the model
@@ -241,7 +241,7 @@ export const ASK_TURN_SCHEMA = {
       min_amount: nullableAmount,
       max_amount: nullableAmount
     }),
-    page: nullableObject({ name: { type: "string", enum: [...ASK_TURN_PAGES] }, month: nullableString, person: nullableString }),
+    page: nullableObject({ name: { type: "string", enum: [...ASK_TURN_PAGES] }, month: nullableString, person: nullableString, trip: nullableString }),
     clarify: nullableObject({ question: { type: "string" }, options: { type: "array", items: { type: "string" } } }),
     note: nullableString,
     recategorise: nullableObject({ category: nullableString, words: nullableString, month: nullableString, from_category: nullableString, rule: { type: ["boolean", "null"] } }),
@@ -578,7 +578,7 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     "- plan_change: change a month's plan: plan.ops (set, change, move or add a line; amounts as written) and plan.month.",
     "- answer_question: a question about their money: question.topic and the month or months; topic trip (question.trip as written) for what a trip cost.",
     "- search_entries: find, list or total entries: search.",
-    "- open_page: go to a page of the app.",
+    "- open_page: go to a page of the app; page.name trip with page.trip as written opens one trip or event's own page.",
     "- ask_clarification: unclear; clarify.question and clarify.options.",
     ...describePhase2Actions(),
     describeTripEventAction(),
@@ -1502,6 +1502,7 @@ function validatePage(action: AskTurnAction, context: AskTurnContext): AskTurnRe
   const raw = action.page ?? {};
   const page = (ASK_TURN_PAGES as readonly string[]).includes(String(raw.name)) ? raw.name as AskTurnPage : null;
   if (!page) return askBack({ code: "field_missing", field: "page.name", valid: [...ASK_TURN_PAGES] }, COPY.whichPage, ["Summary", "Entries", "Splits", "Imports"]);
+  if (page === "trip") return validateTripPage(raw.trip, context);
   const month = readMonth(raw.month, context);
   const found = findPerson(raw.person, context);
   const person = found === "unknown" ? null : found;

@@ -221,6 +221,29 @@ export function validateTripQuestion(said: unknown, context: AskTurnContext, vie
   );
 }
 
+// "Open the Seoul trip" (open_page with page.trip as said): the trip's own
+// page (DOMAIN.md "Trip page"), found by its name the way a money question
+// finds it. No name, two that fit, or none asks back with "Open …" chips.
+export function validateTripPage(said: unknown, context: AskTurnContext): AskTurnReply {
+  const trips = context.tripEvents;
+  if (!trips) return { kind: "note", text: TRIP_COPY.notReady };
+  const name = typeof said === "string" ? said.trim() : "";
+  const valid = trips.map((trip) => scrubName(trip.name)).slice(0, 12);
+  if (!name) {
+    return askBack({ code: "field_missing", field: "page.trip", valid }, TRIP_COPY.whichTripQuestion, pickerOrder(trips, context.today).slice(0, 4).map((trip) => chip(TRIP_COPY.chips.open(trip.name), trip.name)));
+  }
+  const found = findTrip(name, trips);
+  if (found.kind === "match") {
+    return { kind: "open_page", page: "trip", params: { trip: found.trip.id, name: found.trip.name, view: context.viewId, month: context.month } };
+  }
+  const options = found.kind === "ambiguous" ? found.trips : closestTrips(name, trips, 4);
+  return askBack(
+    { code: found.kind === "ambiguous" ? "ambiguous_name" : "unknown_trip_event", field: "page.trip", valid, got: name.slice(0, 40) },
+    found.kind === "ambiguous" ? TRIP_COPY.whichTripQuestion : TRIP_COPY.noSuchTrip(name),
+    options.map((trip) => chip(TRIP_COPY.chips.open(trip.name), trip.name))
+  );
+}
+
 type TripMatch =
   | { kind: "match"; trip: AskTurnTrip }
   | { kind: "ambiguous"; trips: AskTurnTrip[] }
@@ -518,6 +541,13 @@ export function readTripEventRules(text: string, trips: readonly AskTurnTrip[], 
   if (!message || !trips) return null;
   const knows = (name: string) => namesTrip(name, trips) || TRIP_WORDS.test(name.toLowerCase());
 
+  // "open the Seoul trip", "show me Bali trip": the trip's own page (DOMAIN.md
+  // "Trip page"), only for a name that is one of the household's trips.
+  const open = /^(?:please )?(?:open|show(?: me)?|go to|take me to)(?: the| our| my)? (.+?)(?: page)?\s*\??$/i.exec(message);
+  if (open && namesTrip(open[1].trim(), trips)) {
+    return action("open_page", { page: { name: "trip", trip: open[1].trim(), month: null, person: null } });
+  }
+
   const money = /^(?:how much (?:did|have) (?:we|i|you) (?:spend|spent|pay|paid) (?:on|for|in|during) |how much (?:was|were|did|is) |what did |what was the (?:total|cost) (?:of|for) )(?:the |our |my )?(.+?)(?: cost| come to)?\s*\??$/i.exec(message);
   if (money) {
     const name = money[1].trim();
@@ -624,7 +654,7 @@ function splitTripDays(text: string): { name: string; from: string | null; to: s
   return { name: trimmed, from: null, to: null };
 }
 
-function action(name: "set_trip_event" | "answer_question", parts: Record<string, unknown>): AskTurnAction {
+function action(name: "set_trip_event" | "answer_question" | "open_page", parts: Record<string, unknown>): AskTurnAction {
   return {
     action: name,
     entry: null,
@@ -661,6 +691,7 @@ export const TRIP_COPY = {
     putOn: (name: string) => `Put them on ${name}`,
     takeOff: (name: string) => `Take them off ${name}`,
     make: (name: string) => `Make "${name}"`,
-    howMuch: (name: string) => `How much was ${name}?`
+    howMuch: (name: string) => `How much was ${name}?`,
+    open: (name: string) => `Open ${name}`
   }
 };

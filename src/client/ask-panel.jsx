@@ -732,6 +732,14 @@ function AskConversation({
       if (reply.why) {
         appendThread(threadItem("note", { text: reply.why }));
       }
+      if (reply.page === "trip") {
+        // A trip or event's own page (DOMAIN.md "Trip page"): /trips/<id>,
+        // named by the trip; its id and name are not URL parameters.
+        const { trip = "", name = "", ...rest } = reply.params;
+        appendThread(threadItem("note", { text: askCopy.turn.opened(name || askCopy.turn.pages.trip) }));
+        goTo(`/trips/${encodeURIComponent(trip)}`, {}, new URLSearchParams(rest));
+        return;
+      }
       appendThread(threadItem("note", { text: askCopy.turn.opened(askCopy.turn.pages[reply.page]) }));
       goTo(reply.page === "help" ? "/faq" : `/${reply.page}`, {}, new URLSearchParams(reply.params));
     } else if (reply.kind === "clarify") {

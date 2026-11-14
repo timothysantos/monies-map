@@ -328,6 +328,53 @@ test("the rules reader: what it reads, and what it leaves alone", () => {
   }
 });
 
+// "Open the Seoul trip" (DOMAIN.md "Trip page"): open_page with page.trip
+// as said; the app finds the trip by its name, or asks back with "Open …"
+// chips. AI off reads the same message into the same reply. Nothing writes.
+test("open the Seoul trip: the trip's own page by name, typos too; no name, two holidays or an unknown name ask back; AI off reads the same", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const trips = await seed(api);
+  const before = await dumpDatabase(db);
+  const pageAction = (trip) => ({ action: "open_page", page: { name: "trip", trip, month: null, person: null } });
+
+  const { reply } = await turn(db, { text: "open the Seoul trip" }, pageAction("Seoul trip"));
+  assert.deepEqual(reply, { kind: "open_page", page: "trip", params: { trip: trips.seoul.id, name: "Seoul trip", view: TIM, month: THIS_MONTH } });
+  // The page reads it as one to open: /trips/<id>.
+  const read = readAskTurnResponse({ ok: true, mode: "ai", reply });
+  assert.equal(read.reply.kind, "open_page");
+  assert.equal(read.reply.page, "trip");
+  const typo = await turn(db, { text: "show me the seol trip" }, pageAction("seol trip"));
+  assert.equal(typo.reply.params.trip, trips.seoul.id);
+
+  // Negatives: no name, two that fit, a name that is none of them.
+  const none = await turn(db, { text: "open the trip page" }, pageAction(null));
+  assert.equal(none.reply.kind, "clarify");
+  assert.equal(none.reply.question, "Which trip or event do you mean?");
+  assert.ok(none.reply.options.includes("Open Seoul trip"), JSON.stringify(none.reply.options));
+  assert.ok(none.reply.options.length <= 4);
+  const two = await turn(db, { text: "open the holiday" }, pageAction("the holiday"));
+  assert.equal(two.reply.kind, "clarify");
+  assert.deepEqual([...two.reply.options].sort(), ["Open Bali holiday", "Open Penang holiday"]);
+  const unknown = await turn(db, { text: "open the tokyo trip" }, pageAction("tokyo trip"));
+  assert.equal(unknown.reply.kind, "clarify");
+  assert.match(unknown.reply.question, /no trip or event called "tokyo trip"/);
+  assert.ok(unknown.reply.options.every((option) => option.startsWith("Open ")));
+
+  // AI off: the rules read "open the Seoul trip" into the same reply; a page
+  // that is not a trip, or a name that is none, stays the page's own.
+  const off = (text) => post(db, { text }, { ai: false }).then(({ payload }) => payload);
+  const offOpen = await off("open the Seoul trip");
+  assert.equal(offOpen.mode, "rules");
+  assert.equal(offOpen.action, "open_page");
+  assert.deepEqual(offOpen.reply, reply);
+  assert.equal((await off("show me Bali holiday")).reply.params.trip, trips.bali.id);
+  for (const text of ["open splits", "open the tokyo trip", "show me my groceries"]) {
+    assert.equal((await off(text)).reply, undefined, text);
+  }
+  // Opening a page writes nothing.
+  await assertOnlyAllowanceChanged(db, before);
+});
+
 // The trip view's Spent, as Entries shows it for the answer's own link.
 async function tripViewSpent(api, filter, accounts) {
   const params = buildEntriesFilterSearch(filter);
