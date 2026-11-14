@@ -1,7 +1,6 @@
 import { getCurrentMonthKey } from "../lib/month";
-import { formatSummaryLeadRange } from "./summary-lead-model";
+import { buildLeadChangeNote, formatSummaryLeadRange } from "./summary-lead-model";
 import { SpendLeadGroup } from "./ui/spend-lead-group";
-import { buildSpendChangeNote } from "./spend-change-model";
 import { useMoneyPrivacy } from "./money-privacy";
 import { useMemo } from "react";
 import { useIsMobileLayout } from "./use-viewport";
@@ -20,8 +19,8 @@ import { useIsMobileLayout } from "./use-viewport";
 export function SummaryLead({ model, view, onViewChange, categoryShare, rangeStartMonth, rangeEndMonth, spendChange = undefined }) {
   const phone = useIsMobileLayout();
   const { areTotalsVisible } = useMoneyPrivacy();
-  // The same note, rule and words as under Spending mix's total (spend-change-model.js).
-  const changeNote = useMemo(() => buildSpendChangeNote(spendChange, { hidden: !areTotalsVisible }), [spendChange, areTotalsVisible]);
+  // The same note, rule and words as under Spending mix's total (summary-lead-model.js).
+  const changeNote = useMemo(() => buildLeadChangeNote(spendChange, { hidden: !areTotalsVisible }), [spendChange, areTotalsVisible]);
   if (!model) {
     return null;
   }

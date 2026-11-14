@@ -6,7 +6,6 @@ import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
-import { spendingMixCopy } from "../copy/spending-mix-copy";
 import { LeadCard } from "./lead-support-detail";
 import { MoneyJobs } from "./money-jobs";
 import { SavingsBar } from "./savings-bar";
@@ -76,7 +75,7 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
             {changeNote ? (
               <span className="summary-lead-change" data-change-note>
                 <b className={changeNote.tone === "mint" ? "money-in" : "money-short"}>{changeNote.arrow} {changeNote.percent}%</b>{" "}
-                {spendingMixCopy.changeVs(changeNote.months, changeNote.partial)}
+                {changeNote.words}
               </span>
             ) : null}
           </>

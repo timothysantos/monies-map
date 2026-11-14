@@ -62,7 +62,7 @@ const PlanStudio = lazy(() => import("./plan-studio.jsx"));
 // "What changed this month" is Summary's own card, unchanged: its code loads
 // beside the Month page, only for the month in progress (design.md "What
 // changed card"), and its data is read once the page is usable.
-const SummaryChangedSection = lazy(() => import("./summary-changed-section").then((module) => ({ default: module.SummaryChangedSection })));
+const SummaryChangedSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryChangedSection })));
 function PlanStudioReserve({ children = null }) {
   return (
     <div className="plan-studio-reserve" aria-hidden={children ? undefined : "true"} data-plan-studio-reserve>

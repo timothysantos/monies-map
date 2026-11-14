@@ -1988,7 +1988,7 @@ words in `copy/summary-changed-copy.js`).
 - On the Month page (2026-11-14): the same card, unchanged, in Month's grid
   between Money insights and Spending mix (`data-month-card="changed"`), only
   when the month viewed is the month in progress (the rule Summary uses for its
-  range). Its code loads as a lazy import beside the Month route; it reads its
+  range). Its code is a lazy import of Spending mix's chunk (which the Month route already loads; a chunk of its own added two first-screen files, check:bundle); it reads its
   own `GET /api/summary-changed` once the page is usable, so the Month page
   response is unchanged. Any other month, or nothing to compare, leaves an empty
   slot that takes no room. Proof: `tests/e2e/summary-leftovers.spec.js`.

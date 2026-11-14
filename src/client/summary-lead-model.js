@@ -100,3 +100,33 @@ export function formatSummaryLeadRange(startMonth, endMonth) {
     ? formatMonthLabel(startMonth)
     : `${formatMonthLabel(startMonth)} – ${formatMonthLabel(endMonth)}`;
 }
+
+// The change note after the lead's Spent figure: the same note, rule and words
+// as under Spending mix's total (spend-change-model.js and change-note.js,
+// which sit in the lazy Spending mix chunk). It is written out here, not
+// imported, so that no module is shared between the first screen and that
+// chunk (a shared module becomes a first-screen file of its own,
+// scripts/check-initial-bundle.mjs); tests/summary-lead-model.test.mjs holds
+// the two to the same answers.
+const CHANGE_MIN_BASE_MINOR = 10_000;
+
+/**
+ * @param {{ months: number, currentMinor: number, previousMinor: number, partial: boolean } | undefined} spendChange
+ * @param {{ hidden?: boolean }} [options]
+ */
+export function buildLeadChangeNote(spendChange, { hidden = false } = {}) {
+  if (!spendChange || hidden) return null;
+  const base = spendChange.previousMinor;
+  const diff = spendChange.currentMinor - base;
+  if (!(base >= CHANGE_MIN_BASE_MINOR) || !Number.isFinite(diff)) return null;
+  const percent = Math.round((Math.abs(diff) / base) * 100);
+  if (percent === 0 || diff === 0) return null;
+  const up = diff > 0;
+  return {
+    arrow: up ? "▲" : "▼",
+    percent,
+    // Spending that went up is rose, down is mint.
+    tone: up ? "rose" : "mint",
+    words: `vs the ${spendChange.months === 1 ? "month" : `${spendChange.months} months`} before${spendChange.partial ? " (full months only)" : ""}`
+  };
+}

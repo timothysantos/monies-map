@@ -37,7 +37,8 @@ export function buildSubsTile({ model, glance, hidden, labels }) {
 
 const monthBefore = (month, back = 1) => {
   const [year, number] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, number - 1 - back, 1)).toISOString().slice(0, 7);
+  const index = year * 12 + (number - 1) - back;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 };
 
 // The change notes on the Subscriptions, Miles and Bank fees tiles use

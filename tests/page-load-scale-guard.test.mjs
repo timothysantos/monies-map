@@ -125,10 +125,13 @@ test("a 10k-transaction household with heavy stored previews and diagnostics kee
 // on 12 before its model call. Rows read pin the whole-table reads away
 // (every page read ~24,000 rows for its month list alone).
 const ROUND_TRIP_WAIT_MS = 30;
+// summary-page person: 17 round trips since 2026-11-14 (one grouped read of the
+// split groups' open balances for the Splits tile, run beside the others in the
+// same wave, so the chain is no longer; measured 17 against a limit of 16).
 const PAGE_CHAINS = [
   { name: "app-shell", path: "/api/app-shell?view=household", maxStatements: 4, maxWaves: 2, maxRowsRead: 2_000 },
   { name: "summary-page household", path: "/api/summary-page?view=household&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxWaves: 3, maxRowsRead: 45_000 },
-  { name: "summary-page person", path: "/api/summary-page?view=person-tim&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxWaves: 3, maxRowsRead: 45_000 },
+  { name: "summary-page person", path: "/api/summary-page?view=person-tim&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 17, maxWaves: 3, maxRowsRead: 45_000 },
   { name: "summary-account-pills", path: "/api/summary-account-pills?view=household", maxStatements: 11, maxWaves: 2, maxRowsRead: 100_000 },
   { name: "month-page", path: "/api/month-page?view=person-tim&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxWaves: 3, maxRowsRead: 30_000 },
   { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 8, maxWaves: 3, maxRowsRead: 10_000 },
