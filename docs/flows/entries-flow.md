@@ -211,6 +211,38 @@ Entries mutations may also refresh:
 depending on the kind of change and whether the row change affects ledger
 evidence.
 
+## Trip page
+
+A trip or event's own page (DOMAIN.md "Trip page", design.md "Trip page")
+sits under Entries: route `/trips/<id>`, tab id `trip`
+(`getSelectedTabId`), the Entries tab lit (`routeIds`), a lazy route module
+(`route-modules.js` `trip`, never warmed automatically:
+`NO_AUTOMATIC_MODULE_ROUTES`). It has no shell page request: the panel
+(`trip-panel.jsx`) owns its data through `trip-page-owner.js`.
+
+- Ways in: a trip figure's menu ("Open Seoul trip", figure-menu-model.js,
+  anywhere but the page itself), the trip view lead's "Open Seoul trip", and
+  each Trips & events row's arrow (`TripEventsSheet` `onOpen`). Each keeps
+  the URL's view, month and scope (`tripPageLocation`,
+  trip-figure-search.js).
+- Reads: `GET /api/trip-page?trip=<id>` once when the page opens (required,
+  through the shell's `fetchRequiredQuery`, bypassing the kept answer, so a
+  change made on Entries shows when the page opens again), and
+  `GET /api/trip-page?trip=<id>&day=YYYY-MM-DD` once per day the person
+  opens. A superseded read never lands (generation). `{ tripPage: null }` is
+  "This trip or event is gone."; a failed read shows "Try again".
+- Server: `src/domain/trip-page-projection.ts`, one step of four reads (the
+  trip, the figures grouped by day, category, kind and payer, the five
+  biggest, the shares on Splits), all bounded by the trip's link rows
+  (tests/page-load-scale-guard.test.mjs; `trip-page` in the API payload
+  budget).
+- Figures: the household's whole amounts (`data-fig-view="household"`);
+  each opens the trip view on Entries narrowed (a day or payer by
+  `entry_id`, a category by `entry_category`), whose Spent lead is the
+  figure to the cent (tests/openable-figures.test.mjs, "trip page").
+- Writes: none. Nothing on the page changes data; it is read again when it
+  opens.
+
 ## Ownership Notes
 
 Entries owns:

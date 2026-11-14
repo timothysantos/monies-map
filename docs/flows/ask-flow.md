@@ -529,7 +529,19 @@ code (`src/client/ask-trip-answer.js`: `readEntriesFilterParams`,
 lead to the cent (`tests/ask-trip-events.test.mjs`). Its chip is Open in
 Entries, the trip view. No figure comes from the model or the turn.
 
+"Open the Seoul trip" (a trip or event's own page, DOMAIN.md "Trip page")
+is `open_page` with `page.name` `trip` and `page.trip` as written
+(`validateTripPage`): the trip is found by its name the way the money
+question finds it (typos too), and the reply is `open_page` with
+`params: { trip, name, view, month }`; the page notes "Opened Seoul trip."
+and goes to `/trips/<id>`. No name ("open the trip page") asks "Which trip
+or event do you mean?" with up to 4 "Open …" chips (the trip on now
+first); two that fit ("the holiday") or an unknown name (one repair turn,
+then "There's no trip or event called …") ask with the nearest trips'
+"Open …" chips. Nothing is written.
+
 With AI off, the server's trips rule reader (`readTripEventRules`) reads
+"open / show me / go to <name>" (only a name that is one of the trips),
 "put / add / move <these | it | the X one | paid in won | last week's> on
 <name>", "take these off the trip", "new trip <name> 3-5 May", `Make
 "<name>"` and "how much was / did we spend on <name>?" into the same

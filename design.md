@@ -3881,11 +3881,70 @@ only. Summary and Month do not change.
   away to `entry_id`. Spent is the list itself, so it offers Open Splits (when
   linked) and Ask only. The rule is `tripEventFigures` in money-figures.ts;
   `tests/openable-figures.test.mjs` proves every pill and bar for five views
-  and scopes.
+  and scopes. Every trip figure's menu also offers "Open Seoul trip", the
+  trip's own page (see "Trip page"), except on that page.
 - Trips & events sheet: newest first, each with its Spent (an openable
   figure) worked out from one `trip=all` page read through the Entries code,
   so each equals its trip view's lead; put-away ones fold under "N put away ·
-  Show"; empty, it teaches what it is for.
+  Show"; empty, it teaches what it is for. Each row carries a 44 px arrow
+  (aria-label "Open Seoul trip") beside its tap, as Spending mix's rows do:
+  the row's tap still opens the trip view, the arrow the trip page. The trip
+  view's lead has "Open Seoul trip" first in its quiet actions.
+
+## Trip page
+
+A trip or event's own page (DOMAIN.md "Trip page"; owner approved
+2026-11-14 without a mockup), `/trips/<id>`, a lazy route (`trip-panel.jsx`,
+`trip-page.css`, copy in `copy/en-SG-trip.js`). It belongs under Entries:
+the Entries tab stays lit (its `routeIds`), the header's month control is
+passive, and the page keeps the URL's view, month and scope for the way back.
+
+- Layout: Summary's card grid and card head (`summary-grid`,
+  `summary-card-slot`, `summary-card-head`), so it reads as the Summary
+  dashboard. Twelve columns wide: the header across; Where it went and Day
+  by day side by side; Who paid, Still owed and Biggest spending in thirds
+  (halves without Still owed). Two columns from a 724 px page, one on a
+  phone in that order.
+- Header: the trip's icon, its name (h2), "13 – 19 May 2026 · 4 entries"
+  (the trip's own dates, else its entries' first and last day), the eyebrow
+  "Spent" and the amount, then (only when there are some) the butter
+  "Estimate" chip with "2 amounts were paid in another currency and are
+  estimates until the card statement comes in.". An empty trip says
+  "Nothing is on it yet. Put entries on it from Entries." A quiet "Open in
+  Entries" opens the trip view in the household view.
+- Where it went: Summary's Spending mix card itself (`SpendingMixSection`,
+  not a copy), titled "Where it went", "By category", with category colours
+  from the palette. Its slices and list arrows are trip figures
+  (`figureAttrs`: `data-fig-trip-category`) instead of a month's category.
+- Day by day ("Tap a day to see what was spent"): one row a day with
+  spending: "Wed 13 May", a bar (the accent tint the trip view uses) and the
+  amount, plain ink. The row's tap opens that day's entries under it (read
+  then, `GET /api/trip-page?trip&day`); a 44 px arrow beside it is the day's
+  figure ("View entries for Wed 13 May").
+- An entry row (a day's, Biggest spending's): its readable name (the note's
+  first line), a quiet line (day · category · who paid · the Wallet amount
+  of an estimate), the "Estimate" chip when it is one, and the amount signed
+  with its money tone (an expense rose, a payback mint), itself a figure
+  opening that one entry.
+- Who paid ("From each person's cards and accounts"): one row per payer:
+  the person's chip (`cr-owner` with `getPersonColourVars`), a bar in their
+  colour, the amount (a figure: their entry ids) and their share of Spent.
+- Still owed ("For this trip's entries on Splits", only when on Splits):
+  "Joyce owes Tim" and the amount (a figure: Open Splits and Ask), or
+  "Nobody owes anything for this trip."; "Open Splits" at the top right
+  opens the trip's split group.
+- Biggest spending ("The 5 largest entries").
+- Figures: `data-fig-view="household"` on the page, so every View entries
+  opens the household's trip view whatever view the app is in; the menu
+  never offers "Open Seoul trip" on the page itself.
+- States: "Loading this trip or event…"; a failed read "This trip or event
+  didn't load." with "Try again"; a gone trip "This trip or event is gone."
+  with "Open Entries"; a day that did not load "These entries didn't load.
+  Tap the day to try again.". Hidden money hides every amount and its tone;
+  shares stay.
+- Data: `trip-page-owner.js` holds the page and the opened days (one read
+  when the page opens, through the shell's required read, bypassing the kept
+  answer; a superseded read never lands).
 - Picking many (`entry-pick-model.js`, pure and unit tested): a wide
   screen's filter bar has "Pick"; Shift-click or Ctrl/Cmd-click on a row
   also starts picking and picks it. On a phone a press and hold (about

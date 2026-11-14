@@ -504,7 +504,22 @@ const SHOTS = [
       await page.unroute("**/api/month-page**");
     }
   },
+  // A trip's own page (DOMAIN.md "Trip page"): the showcase's Japan trip,
+  // linked to its split group, with one day opened.
+  {
+    name: "trip-page", device: "desktop",
+    run: async (page) => {
+      await open(page, `/trips/showcase-trip-japan?view=household&month=${MONTH}`);
+      await page.locator("[data-trip-page] [data-trip-day] .trip-row-main").nth(1).click();
+      await page.locator("[data-trip-page] .trip-day.is-open [data-trip-entry]").first().waitFor();
+      await waitUsable(page);
+    }
+  },
   // Phone
+  {
+    name: "phone-trip-page", device: "phone",
+    run: (page) => open(page, `/trips/showcase-trip-japan?view=household&month=${MONTH}`)
+  },
   {
     name: "phone-summary", device: "phone",
     run: (page) => open(page, `/summary?view=person-ethan&month=${MONTH}`)

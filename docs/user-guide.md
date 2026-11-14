@@ -904,6 +904,35 @@ undoes it). **Delete** takes the trip off its entries and keeps the entries;
 the note at the bottom has **Undo**. On a phone, the filter is in the **View
 and scope** sheet, and the bar at the bottom names the trip with **Clear**.
 
+**A page for one trip.** Each trip or event also has a page of its own that
+shows everything about it at once. To open it, tap the arrow at the end of
+the trip's line in **Trips & events**, choose **Open Seoul trip** under
+the trip's summary on Entries, or tap any of its amounts and choose
+**Open Seoul trip**. You can also type "open the Seoul trip" in Ask. The
+page always counts the whole household's money,
+whoever you are looking at in the rest of the app:
+
+- At the top: the trip's name, its dates, how many entries it holds and
+  **Spent**. If some amounts were paid in another currency and the card
+  statement has not come in yet, a yellow **Estimate** label says how many.
+- **Where it went**: the same ring of categories as on Summary.
+- **Day by day**: one line for each day money was spent, with a bar. Tap a
+  day to see what was bought that day, right there. Each purchase shows the
+  first line of its note when it has one (for example "Dinner at Gwangjang
+  Market"), so you can tell them apart.
+- **Who paid**: how much came from each person's cards and accounts.
+- **Still owed**: if any of the trip's spending is on Splits, who still owes
+  whom for it, with **Open Splits**. It only counts this trip's entries, not
+  other shared costs.
+- **Biggest spending**: the five largest purchases.
+
+Every amount opens like other figures: **View entries** shows exactly that
+money in Entries. **Open in Entries** at the top shows all of the trip's
+entries there.
+
+![A trip's own page: Spent, where it went, day by day with one day open, who paid, what is still owed and the biggest spending](/faq/guide/desktop/thumbs/trip-page.webp)
+![On a phone the trip's cards stack one under another](/faq/guide/phone/thumbs/phone-trip-page.webp)
+
 **Make one with everything from its dates.** In the list of trips, choose
 **New trip or event** (or **Make your first one** when there are none yet).
 Only the name is needed. You can also give it its first and last day, what

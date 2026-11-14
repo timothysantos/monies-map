@@ -2186,6 +2186,39 @@ Suggestions (`src/domain/trip-event-suggestions.ts`; owner decision 4 = A):
   trip. One tap puts it on (`suggestion`), with Undo. It never applies by
   itself; Ask's safe set does not change.
 
+Trip page (owner approved 2026-11-14, built without a mockup; design.md
+"Trip page"): one trip or event on a page of its own, `/trips/<id>`, what it
+cost the household. Read-only, no AI.
+- `trip page`: the household's money, whole amounts, every entry on the
+  trip, whatever view the app is in. Its figures are one rule
+  (`tripPageFigures`, money-figures.ts) over the trip's entries grouped in
+  SQL by day, category, kind and who paid: `Spent` is the Entries Spent rule
+  (an expense adds, a payback in a spending category takes away; transfers
+  and other money in count nothing), and the days, the categories and the
+  people who paid are each slices that add up to it. Each figure's View
+  entries opens the trip view in the household view, whose Spent lead is
+  the figure to the cent
+- dates: the trip's own first and last day; a trip without dates shows its
+  entries' first and last day
+- `who paid`: each entry's owner (`transactions.owner_person_id`), the
+  person whose card or account it came from; an entry with no owner is
+  "Shared". Not the same as a person's share (the trip view's person pills)
+- `readable name`: an entry shows the first line of its note when it has
+  one (the owner writes "what and where" there), else its description
+- `still owed`: shown only when the trip follows a split group or any of its
+  entries is on Splits. Each of the trip's entries on Splits whose split is
+  not settled (its batch is open and no active settle-up covers it); every
+  share someone other than the split's payer carries is owed to the payer,
+  in the ledger's money (the same conversion every projection uses), and
+  two people's debts to each other cancel. Cash on the linked group (no
+  entry) and settle-ups not yet closing a batch are not counted: it is the
+  trip's entries only
+- an entry still a Foreign Currency Estimate (a Wallet amount in another
+  currency, no statement yet) wears the butter "Estimate" chip and shows its
+  Wallet amount; the header counts them
+- `biggest spending`: the five largest expenses
+- a trip that is not this household's, or gone, reads as gone (no figure)
+
 Storage:
 - `trip_events` (additive; every reader tolerates it missing)
 - `trip_event_entries` (one row per entry, `transaction_id` primary key;
@@ -2199,6 +2232,9 @@ Code:
   `/suggestions`, `/search`, `/new-defaults`)
 - `src/domain/trip-event-suggestions.ts` (the review list's groups and
   ticks, home bills, the dashed chip rule, a New sheet's defaults)
+- `src/domain/trip-page.ts` (readable name, open estimate, still owed),
+  `src/domain/trip-page-projection.ts` (the page's grouped read, a day's
+  entries) behind `GET /api/trip-page?trip=<id>[&day=YYYY-MM-DD]`
 
 ### Split Batch
 

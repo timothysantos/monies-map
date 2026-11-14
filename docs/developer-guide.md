@@ -2880,6 +2880,20 @@ at two steps on the 10k household). The DTO echoes the month and adds
 trip from its own travel entries (`demo-showcase-data.ts`), only when the
 tables exist.
 
+The trip page (`/trips/<id>`, the lazy `trip` route: `trip-panel.jsx`,
+`trip-page-owner.js`, `trip-page-api.js`) reads
+`GET /api/trip-page?trip=<id>`: one step of four reads in
+`src/domain/trip-page-projection.ts`, all bounded by the trip's link rows,
+the figures grouped in SQL by day, category, kind and payer and read by
+`tripPageFigures` (money-figures.ts). `&day=YYYY-MM-DD` returns that day's
+entries when the page opens a day. An unknown trip, or another household's,
+answers `{ ok: true, tripPage: null }`. The page counts the household's
+whole amounts and every figure opens the trip view in the household view at
+that figure. Tests: `tests/trip-page.test.mjs` (scenarios, a settled split,
+another household's trip, an empty trip), the "trip page" test in
+`tests/openable-figures.test.mjs`, the scale guard, the `trip-page` payload
+budget and `tests/e2e/trip-page.spec.js`.
+
 Migration: the tables are `CREATE TABLE IF NOT EXISTS`, so export the
 production D1 first, then run `npm run db:migrate:remote` and
 `npm run db:migrate:demo` before deploying code that uses them; running it
