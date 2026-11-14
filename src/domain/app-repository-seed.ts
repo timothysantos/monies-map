@@ -335,6 +335,13 @@ export async function clearDemoData(db: D1Database) {
   // Trips and events (additive tables, so maybe missing) go with the entries.
   await db.prepare("DELETE FROM trip_event_entries").run().catch(() => undefined);
   await db.prepare("DELETE FROM trip_events").run().catch(() => undefined);
+  // Files sent to Monies Map belong to the household being replaced
+  // (additive tables, so maybe missing).
+  await db.batch([
+    db.prepare("DELETE FROM waiting_file_chunks"),
+    db.prepare("DELETE FROM waiting_files"),
+    db.prepare("DELETE FROM waiting_file_daily_counts")
+  ]).catch(() => undefined);
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_activity_history",

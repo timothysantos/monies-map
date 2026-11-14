@@ -956,3 +956,46 @@ CREATE TABLE IF NOT EXISTS card_reward_rules (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (household_id, account_id)
 );
+
+-- Waiting files (DOMAIN.md "Waiting File"): statement and activity files
+-- sent from a phone or Mac share sheet, kept unread until Imports opens them
+-- for the normal review. One row per file; the bytes are split across
+-- waiting_file_chunks. A file's rows are deleted for good when its import
+-- commits, when it is removed, or 30 days after it arrived
+-- (src/domain/waiting-files-config.ts). arrived_via is plain text
+-- ('shortcut' today) so another way in needs no migration. Additive: every
+-- reader tolerates the tables missing (the feature is simply off).
+CREATE TABLE IF NOT EXISTS waiting_files (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  file_name TEXT NOT NULL CHECK (length(file_name) <= 200),
+  file_kind TEXT NOT NULL CHECK (file_kind IN ('pdf', 'csv', 'tsv', 'xls')),
+  content_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  chunk_count INTEGER NOT NULL,
+  arrived_via TEXT NOT NULL,
+  sender_label TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'waiting',
+  received_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  UNIQUE (household_id, sha256),
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+CREATE TABLE IF NOT EXISTS waiting_file_chunks (
+  file_id TEXT NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  bytes BLOB NOT NULL,
+  PRIMARY KEY (file_id, chunk_index),
+  FOREIGN KEY (file_id) REFERENCES waiting_files(id) ON DELETE CASCADE
+);
+
+-- Files received per household per day, for the daily limit. Never holds
+-- a name or a byte.
+CREATE TABLE IF NOT EXISTS waiting_file_daily_counts (
+  household_id TEXT NOT NULL,
+  day TEXT NOT NULL,
+  received_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (household_id, day)
+);
