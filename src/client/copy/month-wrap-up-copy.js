@@ -48,6 +48,8 @@ export const monthWrapUpCopy = {
     none: "Nothing to settle",
     // With money hidden: how many, never who owes whom.
     many: (count) => `${count} to settle`,
+    // With more than one group: "Baby River: Tim owes Joyce".
+    inGroup: (groupName, owes) => `${groupName}: ${owes}`,
     usuallyShared: (count) => `${plural(count, "entry", "entries")} you usually share, not on Splits yet`,
     open: "Open Splits"
   },

@@ -66,9 +66,12 @@ test.describe("Month cards wear Summary's design", () => {
 
       await page.goto(MONTH_URL());
       await expect(page.locator('[data-month-card="mix"] .summary-card-title')).toBeVisible({ timeout: 30_000 });
+      // October has ended: its wrap-up (design.md "Month wrap-up") lands after Money insights.
+      await expect(page.locator('[data-month-card="wrapUp"] .summary-card-title')).toBeVisible({ timeout: 30_000 });
       const heads = await readMonthHeads(page);
       expect(heads.map(({ id, title, sub }) => [id, title, sub])).toEqual([
         ["insights", "Money insights", "Needs a look, and went well"],
+        ["wrapUp", "Wrap up", "October: 4 of 5 checks done"],
         ["mix", "Spending mix", "By category, Oct 2025"],
         ["monthNote", "Monthly note", "Why the month looked like this"],
         ["accounts", "Accounts", "Balances on the latest statements"]

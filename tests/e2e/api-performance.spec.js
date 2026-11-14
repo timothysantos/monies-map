@@ -16,7 +16,8 @@ const PAGE_APIS = [
   ["Imports page", "/api/imports-page"],
   ["Settings page", "/api/settings-page?view=household"],
   ["Ledger check-up", "/api/ledger-checkup?view=household"],
-  ["Reminders", "/api/reminders?view=household"]
+  ["Reminders", "/api/reminders?view=household"],
+  ["Month wrap-up", "/api/month-wrap-up?view=household&month=2025-10"]
 ];
 
 function readServerTiming(header) {
@@ -82,7 +83,12 @@ const PAYLOAD_APIS = [
   ["repeating-charges", "/api/repeating-charges?view=household"],
   // Miles and cashback on Summary (DOMAIN.md "Card reward rule"): read once
   // the top summary is usable, never on the first screen.
-  ["card-rewards", "/api/card-rewards?view=household"]
+  ["card-rewards", "/api/card-rewards?view=household"],
+  // The Month page's wrap-up (DOMAIN.md "Month Wrap-up"): read once the
+  // Month page is usable, never on the first screen. Ids of the few entries
+  // left to look at, statement names and Splits balances; the plan and the
+  // note are on the Month page already and are not sent again.
+  ["month-wrap-up", "/api/month-wrap-up?view=household&month=2025-10"]
 ];
 
 // The Splits page once a settlement covered part of a group: the covered

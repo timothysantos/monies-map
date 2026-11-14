@@ -78,7 +78,8 @@ export function buildMonthWrapUpView({ answer, planSections, monthNote, hidden }
         const { balances, usuallySharedIds } = wrapUp.splits;
         const lines = hidden ? [] : balances.map((balance) => ({
           key: balance.id,
-          text: balance.owes,
+          // Several groups each say which ("Baby River: Tim owes Joyce").
+          text: balances.length > 1 ? copy.splits.inGroup(balance.name, balance.owes) : balance.owes,
           // Owed to you is mint, a debt rose; the household's "Ethan owes Serene" has no side.
           figure: { fig: "splits", amountMinor: Math.abs(balance.balanceMinor), currency: balance.currency, arg: balance.id, name: balance.name, tone: balance.direction === "between" ? "neutral" : signTone(balance.direction === "owed_to_you" ? 1 : -1) }
         }));
