@@ -1713,6 +1713,67 @@ leave Ask.
   app never removes an entry on its own.
 - **Rollback import** on a batch: undo it ([Undo an import](#undo-an-import)).
 
+### Send files from your phone
+
+You can send a statement PDF or a bank export to Monies Map straight from
+the **Share** button on your iPhone, iPad or Mac, for example from the
+bank's app, Files or Mail, instead of opening Imports and dropping it. The
+file waits in Monies Map. The next time you open Imports it is already in
+the **File intake queue**, marked **Sent from your phone** with the day it
+arrived, and you review and commit it as usual. Nothing is imported,
+certified or matched until you do.
+
+![Two files sent from the phone wait in the File intake queue, each marked "Sent from your phone"](/faq/guide/desktop/thumbs/imports-sent-files.webp)
+
+What it takes: PDF statements and CSV, TSV or XLS bank exports, up to 10 MB
+a file and 10 files at a time. Photos, zip files and web pages are turned
+away. A file you already sent and have not imported yet is kept once; the
+Shortcut says **Already received**. A locked PDF stays locked: Imports asks
+for its password on this device when it opens the file, as it does for a
+file you drop.
+
+How long it is kept: a sent file is deleted for good as soon as you commit
+its import or select **Remove** on its row, or after 30 days if you never
+open it.
+
+Set it up once:
+
+1. In Monies Map, open **Settings**, then **Send files to Monies Map**.
+   Select **Make a key**. You need the **Address** and the **Key** shown
+   there.
+
+   ![Settings, Send files to Monies Map: the Address, the Key and Make a new key](/faq/guide/desktop/thumbs/settings-send-files.webp)
+
+2. On your iPhone (or Mac), open the **Shortcuts** app and make a new
+   Shortcut called **Send to Monies Map**.
+3. Open the Shortcut's details (the **i** button) and turn on **Show in
+   Share Sheet**. Under **Share Sheet Types**, choose only **Files** and
+   **PDFs**.
+4. Add the action **Receive Files from Share Sheet** (it may already be
+   there as "Receive **Files** input from **Share Sheet**"). If there is no
+   input, choose **Stop and respond**.
+5. Add **Repeat with Each** and choose **Shortcut Input**, so several files
+   are sent one by one.
+6. Inside the repeat, add **Get Contents of URL**. Paste the **Address**
+   from Settings. Select **Show More** and set:
+   - **Method**: **POST**
+   - **Headers**: add one header named `X-Monies-Files-Key` and paste the
+     **Key** from Settings as its value
+   - **Request Body**: **Form**. Add a field of type **File** named `file`
+     and choose **Repeat Item** as its value.
+7. Still inside the repeat, add **Get Dictionary Value**, get **Value** for
+   key `message` from **Contents of URL**, then **Show Notification** with
+   that value. You see "Got it. The file is waiting in Monies Map" for
+   each file, or why it was turned away.
+8. Close the repeat (**End Repeat** is added for you) and tap **Done**.
+
+To send a file, open it, tap **Share**, then **Send to Monies Map**. Then
+open **Imports** in Monies Map when you are ready to review.
+
+If the Shortcut says it does not recognise the key, copy the **Key** from
+Settings again. **Make a new key** stops the old key at once (do this if
+you lose your phone), so paste the new one into the Shortcut afterwards.
+
 ### On a phone
 
 Imports is under the **•••** button. Everything works the same, one column
@@ -1731,6 +1792,9 @@ set up**). Select a row to open it; it opens right under its row.
 - **People**: rename the two household members.
 - **Accounts**: add, edit, archive and reconcile accounts.
 - **Apple Pay shortcut**: record Apple Pay purchases automatically.
+- **Send files to Monies Map**: the **Address** and **Key** for sending bank
+  files from your phone's Share button, and **Make a new key**
+  ([Send files from your phone](#send-files-from-your-phone)).
 - **Ask and AI**: how much Claude credit Ask has left, with **Top up in the
   Claude Console** and **I've topped up**, and when it was last checked
   ([When Claude credits run low](#when-claude-credits-run-low)). If Claude

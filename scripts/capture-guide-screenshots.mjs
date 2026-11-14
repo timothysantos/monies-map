@@ -22,7 +22,7 @@
 // Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone,iphone}/
 // (the "On your iPhone" gallery is shot on the phone profile at the iphone size).
 /* global window, document, HTMLElement -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
-import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { chromium, devices, webkit } from "@playwright/test";
@@ -152,6 +152,24 @@ async function sampleCardExport() {
   await mkdir(path.dirname(target), { recursive: true });
   await copyFile("tests/fixtures/uob-current-transactions/CC_TXN_History_06052026211223-onecard-tim-06-may.xls", target);
   return target;
+}
+
+// Two sanitized bank files sent the way the phone's Shortcut sends them,
+// with a key made for the demo household.
+async function sendSampleFiles(page) {
+  const keyResponse = await page.request.post("/api/settings/file-intake/new-key");
+  const { key } = await keyResponse.json();
+  const files = [
+    ["eStatement_UOB_One_Apr2026.pdf", "application/pdf", "tests/fixtures/locked-pdf/uob-one-savings-apr-2026.plain.pdf"],
+    ["ACC_TXN_History_04052026210351.xls", "application/vnd.ms-excel", "tests/fixtures/uob-current-transactions/ACC_TXN_History_04052026210351.xls"]
+  ];
+  for (const [name, mimeType, source] of files) {
+    const response = await page.request.post("/api/shortcuts/files/send", {
+      headers: { "X-Monies-Files-Key": key },
+      multipart: { file: { name, mimeType, buffer: await readFile(source) } }
+    });
+    if (!response.ok()) throw new Error(`Could not send ${name}: ${response.status()}`);
+  }
 }
 
 const splitsUrl = (view = "person-ethan", extra = "") => `/splits?view=${view}&month=${MONTH}${extra}`;
@@ -1027,6 +1045,29 @@ const SHOTS = [
       await page.locator('[data-ask-card="saved"]').waitFor();
       await page.waitForTimeout(600);
       await hideCaret(page);
+    }
+  },
+  {
+    // Files sent from the phone wait in the queue (DOMAIN.md "Waiting File").
+    // They are removed again once captured, so no later shot sees them.
+    name: "imports-sent-files", device: "desktop",
+    run: async (page, capture) => {
+      await sendSampleFiles(page);
+      await open(page, `/imports?view=household&month=${MONTH}`);
+      await page.locator(".import-intake-arrival").first().waitFor({ timeout: 60_000 });
+      await scrollToLocator(page, page.getByRole("heading", { name: "File intake queue" }), 20);
+      await capture("imports-sent-files");
+      const listed = await (await page.request.get("/api/imports-page")).json();
+      for (const file of listed.importsPage.waitingFiles ?? []) {
+        await page.request.post("/api/waiting-files/remove", { data: { id: file.id } });
+      }
+    }
+  },
+  {
+    name: "settings-send-files", device: "desktop",
+    run: async (page) => {
+      await page.request.post("/api/settings/file-intake/new-key");
+      await openSettingsSection(page, "Send files to Monies Map");
     }
   }
 ];
