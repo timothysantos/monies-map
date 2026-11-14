@@ -115,6 +115,9 @@ test("the household's repeating charges, with exact figures, and reading changes
   assert.equal(singtel.year.amountMinor, 4 * 3890 + 4290);
   assert.deepEqual(household.mightRepeat, []);
   assert.deepEqual(household.takenOff, []);
+  // The month before the focus month, for Subscriptions' change note: Netflix $19.98,
+  // Singtel $38.90 and SP Group $98.00, all charged two months ago.
+  assert.equal(household.focusBeforeMinor, 1998 + 3890 + 9800);
 });
 
 test("a person view counts their own charges at their share, in the scope", async (t) => {
@@ -125,6 +128,8 @@ test("a person view counts their own charges at their share, in the scope", asyn
   assert.deepEqual(tim.series.map((series) => series.key), ["SP DIGITAL PTE LTD|monthly", "SINGTEL MOBILE|monthly"]);
   const sp = tim.series[0];
   assert.deepEqual(sp.year, { amountMinor: 5930 + 7143 + 4900 + 6555, ids: ids.sp });
+  // The month before, at Tim's own amounts: Singtel and his half of SP Group.
+  assert.equal(tim.focusBeforeMinor, 3890 + 4900);
   const direct = await getCharges(fetch, `view=${TIM}&scope=direct`);
   assert.deepEqual(direct.series.map((series) => series.key), ["SINGTEL MOBILE|monthly"]);
   const shared = await getCharges(fetch, `view=${TIM}&scope=shared`);

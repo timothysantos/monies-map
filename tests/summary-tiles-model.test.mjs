@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildSubscriptionsModel, buildSubsGlance } from "../src/client/subscriptions-model.js";
-import { buildBankFeesTile, buildComingTile, buildInvestmentsTile, buildMilesTile, buildSubsTile, buildTaxTile, changeNote } from "../src/client/summary-tiles-model.js";
+import { buildBankFeesTile, buildComingTile, buildInvestmentsTile, buildMilesTile, buildSubsTile, buildSplitsTile, buildTaxTile, changeNote } from "../src/client/summary-tiles-model.js";
 
 const series = (key, extra = {}) => ({
   key, name: key.split("|")[0], period: "monthly", kind: "fixed", status: "active", category: "Bills", account: "UOB One",
@@ -203,4 +203,99 @@ test("Tax reliefs tile chip: the days alone, one line in a half-width tile; the 
   const tax = { year: "2026", daysLeft: 50, people: [{ name: "Ethan", reliefs: [{ key: "srs", amountMinor: 0, limitMinor: 1530000, roomMinor: 1530000 }] }] };
   const tile = buildTaxTile({ answer: tax, hidden: false, labels: { daysLeft: summaryTilesCopy.taxDaysLeft, relief: { srs: "SRS" } } });
   assert.equal(tile.chip.text, "50 days left");
+});
+
+// ---- Change notes on the Subscriptions, Miles and Bank fees tiles (the Spending mix note's helper and rule)
+
+const monthly = (key, oct) => series(key, { focus: { amountMinor: oct, ids: ["o"] } });
+// `before` is the server's focusBeforeMinor: the same series' charges the month before.
+const subsChange = (list, before, hidden = false) => buildSubsTile({
+  model: buildSubscriptionsModel({ ...answer, focusBeforeMinor: before, series: list }), glance: null, hidden, labels: subsLabels
+}).change;
+
+test("Subscriptions tile change note: this month's total against the month before, rose when it went up, mint when it fell", () => {
+  // September $400, October $460: up 15%.
+  assert.deepEqual(subsChange([monthly("A|monthly", 33000), monthly("B|monthly", 13000)], 40000), { arrow: "▲", percent: 15, tone: "rose", vs: "month" });
+  assert.deepEqual(subsChange([monthly("A|monthly", 28000), monthly("B|monthly", 20000)], 50000), { arrow: "▼", percent: 4, tone: "mint", vs: "month" });
+});
+
+test("Subscriptions tile change note: nothing when it did not move, the month before is missing or too small a base, or money is hidden", () => {
+  assert.equal(subsChange([monthly("A|monthly", 20000)], 20000), null);
+  assert.equal(subsChange([monthly("A|monthly", 12_000)], 9_000), null, "under $100 the month before: no percentage");
+  assert.equal(subsChange([monthly("A|monthly", 20000)], 0), null, "no charge the month before");
+  assert.equal(subsChange([monthly("A|monthly", 20000)], undefined), null, "an older answer without the figure");
+  assert.equal(subsChange([monthly("A|monthly", 33000)], 30000, true), null);
+});
+
+const rewardsModel = (cards) => ({ isEmpty: false, pictures: [{ cards }] });
+const milesChange = (cards, hidden = false) => buildMilesTile({ model: rewardsModel(cards), hidden, labels: { estimate: "Estimate" } }).change;
+
+test("Miles tile change note: earned so far against the same days of the cycle before; earning more is mint", () => {
+  assert.deepEqual(milesChange([{ name: "Citi", unit: "miles", earned: 600, earnedBefore: 500 }, { name: "UOB", unit: "miles", earned: 300, earnedBefore: 300 }]), { arrow: "▲", percent: 13, tone: "mint", vs: "month" });
+  assert.deepEqual(milesChange([{ name: "Citi", unit: "miles", earned: 400, earnedBefore: 500 }]), { arrow: "▼", percent: 20, tone: "rose", vs: "month" });
+  // Cashback card only: the same rule on the cashback.
+  assert.equal(milesChange([{ name: "OCBC", unit: "cashback", earned: 1500, earnedBefore: 1000 }]).percent, 50);
+});
+
+test("Miles tile change note: none when nothing was earned before, a base under 100, no change, or money is hidden", () => {
+  assert.equal(milesChange([{ name: "Citi", unit: "miles", earned: 600, earnedBefore: 0 }]), null);
+  assert.equal(milesChange([{ name: "Citi", unit: "miles", earned: 600, earnedBefore: 99 }]), null);
+  assert.equal(milesChange([{ name: "Citi", unit: "miles", earned: 500, earnedBefore: 500 }]), null);
+  assert.equal(milesChange([{ name: "Citi", unit: "miles", earned: 600 }]), null, "an older answer without the figure");
+  assert.equal(milesChange([{ name: "Citi", unit: "miles", earned: 600, earnedBefore: 500 }], true), null);
+});
+
+const feeLabels = { kinds: { annual_fee: "Annual fees" }, chargeCount: (count) => `${count} charges` };
+const feeChange = (months, currentMonth = "2026-11", hidden = false) => buildBankFeesTile({
+  fees: { year: "2026", netMinor: 5000, parts: [{ kind: "annual_fee", minor: 5000, count: 2 }], months }, hidden, labels: feeLabels, currentMonth
+}).change;
+
+test("Bank fees tile change note: the last full month against the month before, never the month in progress", () => {
+  // Today is in November: October $30 against September $20 is up 50%; November's partial fee is left out.
+  assert.deepEqual(feeChange([{ month: "2026-09", minor: 2000 }, { month: "2026-10", minor: 3000 }, { month: "2026-11", minor: 9900 }]), { arrow: "▲", percent: 50, tone: "rose", vs: "fullMonths" });
+  assert.equal(feeChange([{ month: "2026-09", minor: 2000 }, { month: "2026-10", minor: 1000 }]).tone, "mint");
+});
+
+test("Bank fees tile change note: none for no fee the month before, a base under $10, January, no change, or hidden money", () => {
+  assert.equal(feeChange([{ month: "2026-10", minor: 3000 }]), null);
+  assert.equal(feeChange([{ month: "2026-09", minor: 900 }, { month: "2026-10", minor: 3000 }]), null);
+  assert.equal(feeChange([{ month: "2026-12", minor: 2000 }, { month: "2026-01", minor: 3000 }], "2026-01"), null, "the month before is last year's");
+  assert.equal(feeChange([{ month: "2026-09", minor: 2000 }, { month: "2026-10", minor: 2000 }]), null);
+  assert.equal(feeChange([{ month: "2026-09", minor: 2000 }, { month: "2026-10", minor: 3000 }], "2026-11", true), null);
+});
+
+// ---- The Splits tile
+
+const balances = [
+  { id: "g-japan", name: "Japan trip", currency: "JPY", balanceMinor: 2_673_000, owes: "Serene owes you" },
+  { id: "g-home", name: "Home", currency: "SGD", balanceMinor: -4500, owes: "You owe Serene" },
+  { id: "g-done", name: "Old dinner", currency: "SGD", balanceMinor: 0, owes: "Settled up" }
+];
+const splitsLabels = { settledUp: "Settled up" };
+
+test("Splits tile: the biggest balance as the headline with who owes whom, every used group as a row in its own currency", () => {
+  const tile = buildSplitsTile({ balances, hidden: false, labels: splitsLabels });
+  assert.equal(tile.id, "splits");
+  assert.deepEqual(tile.headline, { kind: "currency", minor: 2_673_000, currency: "JPY" });
+  assert.deepEqual(tile.chip, { text: "Serene owes you", tone: "mint" });
+  assert.deepEqual(tile.rows, [
+    { label: "Japan trip", value: { kind: "currency", minor: 2_673_000, currency: "JPY" }, tone: "mint" },
+    { label: "Home", value: { kind: "currency", minor: 4500, currency: "SGD" }, tone: "rose" },
+    { label: "Old dinner", value: null, tone: null }
+  ]);
+  // A debt is a rose chip; the household has no direction, so sky.
+  assert.equal(buildSplitsTile({ balances: [balances[1]], hidden: false, labels: splitsLabels }).chip.tone, "rose");
+  assert.equal(buildSplitsTile({ balances: [{ ...balances[0], owes: "Net balance" }], hidden: false, labels: splitsLabels }).chip.tone, "sky");
+});
+
+test("Splits tile: all settled reads Settled up; none used has no tile; hidden money keeps group names only", () => {
+  const settled = buildSplitsTile({ balances: [balances[2]], hidden: false, labels: splitsLabels });
+  assert.deepEqual(settled.headline, { kind: "words", text: "Settled up" });
+  assert.equal(settled.chip, null);
+  assert.equal(buildSplitsTile({ balances: [], hidden: false, labels: splitsLabels }), null);
+  assert.equal(buildSplitsTile({ balances: undefined, hidden: false, labels: splitsLabels }), null);
+  const hidden = buildSplitsTile({ balances, hidden: true, labels: splitsLabels });
+  assert.equal(hidden.headline, null);
+  assert.equal(hidden.chip, null);
+  assert.deepEqual(hidden.rows, [{ label: "Japan trip", value: null }, { label: "Home", value: null }, { label: "Old dinner", value: null }]);
 });

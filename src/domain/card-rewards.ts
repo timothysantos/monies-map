@@ -440,6 +440,11 @@ export interface CardThisCycle {
   resetsOn: string;
   // Miles, or cashback cents, rounded down.
   earned: number;
+  // What the same days of the cycle before earned (the cycle's first day to
+  // the same day in it, never past that cycle's end): the change note on
+  // Summary's Miles and cashback compares against it, so a cycle half through
+  // is not set against a whole one. 0 when nothing was earned then.
+  earnedBefore: number;
   spendMinor: number;
   ids: string[];
   bonuses: BonusProgress[];
@@ -465,6 +470,10 @@ export function cardsThisCycle(cards: RewardCard[], entries: RewardEntry[], toda
     const start = cycleStart(today, cycle);
     const mine = actual.filter((item) => item.accountId === card.accountId);
     const inCycle = mine.filter((item) => item.entry.date >= start);
+    const daysIn = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000);
+    const previousStart = cycleStart(addDays(start, -1), cycle);
+    const samePoint = addDays(previousStart, daysIn);
+    const inCycleBefore = mine.filter((item) => item.entry.date >= previousStart && item.entry.date <= samePoint && item.entry.date < start);
     const bonuses = card.rules.bonuses.map((bonus): BonusProgress => {
       const bonusStart = cycleStart(today, bonus.cycle);
       const inBonusCycle = mine.filter((item) => item.entry.date >= bonusStart && !item.quote.excluded && bonusMatches(bonus, item.entry));
@@ -502,6 +511,7 @@ export function cardsThisCycle(cards: RewardCard[], entries: RewardEntry[], toda
       cycleStart: start,
       resetsOn: nextCycleStart(today, cycle),
       earned: floorEarned(inCycle.reduce((sum, item) => sum + item.earned, 0)),
+      earnedBefore: floorEarned(inCycleBefore.reduce((sum, item) => sum + item.earned, 0)),
       spendMinor: inCycle.reduce((sum, item) => sum + item.entry.amountMinor, 0),
       ids: inCycle.map((item) => item.entry.id).sort(),
       bonuses,

@@ -1,10 +1,10 @@
 // The note under Spending Mix's total (design.md "Change notes"): "▼ 6% vs
 // the 6 months before", from the page's own `spendChange` (the range's
 // complete months against the same number of months before them). Spending
-// that went up is rose, down is mint (changeNote, summary-tiles-model.js).
+// that went up is rose, down is mint (changeNote, change-note.js).
 // No note without that history, when nothing moved by a whole percent, or with
 // money hidden (an arrow and percent would show which way it went).
-import { changeNote } from "./summary-tiles-model";
+import { changeNote } from "./change-note";
 
 const MIN_BASE_MINOR = 10_000;
 

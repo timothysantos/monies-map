@@ -37,6 +37,8 @@ export function readRepeatingCharges(body) {
     today: body.today,
     focusMonth: body.focusMonth,
     yearStartMonth: typeof body.yearStartMonth === "string" ? body.yearStartMonth : body.focusMonth,
+    // The month before the focus month, for the change note; null without it.
+    focusBeforeMinor: Number.isFinite(body.focusBeforeMinor) ? body.focusBeforeMinor : null,
     series: readList(body.series),
     mightRepeat: readList(body.mightRepeat),
     takenOff: readList(body.takenOff),

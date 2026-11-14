@@ -6,6 +6,7 @@ import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
 import { metricCardToneClass, moneyToneClass } from "../money-tone-class";
 import { money } from "../formatters";
+import { spendingMixCopy } from "../copy/spending-mix-copy";
 import { LeadCard } from "./lead-support-detail";
 import { MoneyJobs } from "./money-jobs";
 import { SavingsBar } from "./savings-bar";
@@ -41,7 +42,7 @@ const planWords = messages.summary.monthChoice;
 // Simple is "Earned $x · Spent $y" over the same savings bar without its plan
 // bar, and nothing else: the plan line, the money jobs and the Income, Saved
 // and Remaining budget figures (each a plan or a repeat of the lead) go.
-export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, children = null }) {
+export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onViewChange, categoryShare = [], className = "", leadClassName = "", inline = false, changeNote = null, children = null }) {
   const simple = view === "simple";
   const over = model.headroom?.isOver;
   return (
@@ -65,10 +66,20 @@ export function SpendLeadGroup({ model, periodLabel, period, view = "plan", onVi
             <PrivateMoney>{money(model.spent.amountMinor)}</PrivateMoney>
           </span>
         )}
-        amountAside={simple ? null : (
-          <span className={`summary-lead-plan ${moneyToneClass("plan")}`} {...fig("plan", "")}>
-            {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
-          </span>
+        amountAside={simple && !changeNote ? null : (
+          <>
+            {simple ? null : (
+              <span className={`summary-lead-plan ${moneyToneClass("plan")}`} {...fig("plan", "")}>
+                {planWords.planPrefix} <PrivateMoney>{money(model.plannedSpendMinor)}</PrivateMoney> {planWords.planSuffix}
+              </span>
+            )}
+            {changeNote ? (
+              <span className="summary-lead-change" data-change-note>
+                <b className={changeNote.tone === "mint" ? "money-in" : "money-short"}>{changeNote.arrow} {changeNote.percent}%</b>{" "}
+                {spendingMixCopy.changeVs(changeNote.months, changeNote.partial)}
+              </span>
+            ) : null}
+          </>
         )}
       >
         {simple ? null : <SpendLine model={model} />}

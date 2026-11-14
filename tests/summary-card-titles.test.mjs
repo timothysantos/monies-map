@@ -48,6 +48,7 @@ test("the owner's list, title and subtitle, word for word", () => {
       ["miles", "Miles and cashback", "This month, estimate"],
       ["taxreliefs", "Tax reliefs", "For 2026"],
       ["bankfees", "Bank fees", "This year"],
+      ["splits", "Splits", "Who owes whom right now"],
       ["accounts", "Accounts", "Balances on the latest statements"]
     ]
   );

@@ -6,6 +6,8 @@ import { buildCardRewardsModel } from "./card-rewards-model";
 import { cardRewardsCopy as copy, formatMiles } from "./copy/card-rewards-copy";
 import { shortMonthName } from "./copy/subscriptions-copy";
 import { money } from "./formatters";
+import { ChangeNoteLine } from "./change-note-line";
+import { milesChange } from "./summary-tiles-model";
 import { useMoneyPrivacy } from "./money-privacy";
 import { getPersonColourVars } from "./person-colour";
 import { useCardRewards } from "./use-card-rewards";
@@ -186,12 +188,14 @@ function Picture({ picture, pooled, phone }) {
           <div className="cr-total">
             <span className="cr-total-label">{copy.milesSoFar}</span>
             <Figure ids={picture.milesTotal.ids} period={picture.milesTotal.period} name={copy.milesSoFar} className="cr-total-figure">{areTotalsVisible ? formatMiles(picture.milesTotal.amount) : HIDDEN}</Figure>
+            <ChangeNoteLine note={milesChange(picture.cards.filter((card) => card.unit === "miles"), !areTotalsVisible)} className="cr-total-note" />
           </div>
         ) : null}
         {picture.cashbackTotal ? (
           <div className="cr-total">
             <span className="cr-total-label">{copy.backSoFar}</span>
             <Figure ids={picture.cashbackTotal.ids} period={picture.cashbackTotal.period} name={copy.backSoFar} className="cr-total-figure">{money(Math.floor(picture.cashbackTotal.amount))}</Figure>
+            <ChangeNoteLine note={milesChange(picture.cards.filter((card) => card.unit === "cashback"), !areTotalsVisible)} className="cr-total-note" />
           </div>
         ) : null}
       </div>

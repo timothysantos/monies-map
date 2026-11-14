@@ -54,6 +54,10 @@ export interface RepeatingChargesDto {
   today: string;
   focusMonth: string;
   yearStartMonth: string;
+  // What the counted series' charges came to in the month before the focus
+  // month: the base of the change note on Subscriptions and bills (one number,
+  // no list).
+  focusBeforeMinor: number;
   series: RepeatingSeriesDto[];
   mightRepeat: RepeatingSeriesDto[];
   takenOff: RepeatingSeriesDto[];
@@ -234,6 +238,7 @@ export async function buildRepeatingChargesDto(
   }
 
   const result = findRepeatingCharges({ today, rows, accountLatestDate, choices });
+  const monthBefore = addMonths(result.focusMonth, -1);
   const toDto = (series: RepeatingSeries): RepeatingSeriesDto => ({
     key: series.seriesKey,
     name: series.name,
@@ -261,6 +266,9 @@ export async function buildRepeatingChargesDto(
     today,
     focusMonth: result.focusMonth,
     yearStartMonth: result.yearStartMonth,
+    focusBeforeMinor: result.series.reduce((sum, series) => sum + series.charges
+      .filter((charge) => charge.date.slice(0, 7) === monthBefore)
+      .reduce((total, charge) => total + charge.amountMinor, 0), 0),
     series: result.series.map(toDto),
     mightRepeat: result.mightRepeat.map(toDto),
     takenOff: result.takenOff.map(toDto),

@@ -104,6 +104,8 @@ export interface CardRewardCardDto {
   resetsOn: string;
   period: string;
   earned: number;
+  // What the same days of the cycle before earned (the Miles change note).
+  earnedBefore: number;
   spendMinor: number;
   ids: string[];
   bonuses: CardRewardBonusDto[];
@@ -195,6 +197,7 @@ export async function buildCardRewardsDto(db: D1Database, selectedViewId = "hous
       resetsOn: card.resetsOn,
       period: periodOf(card.cycleStart, dayBefore(card.resetsOn)),
       earned: card.earned,
+      earnedBefore: card.earnedBefore,
       spendMinor: card.spendMinor,
       ids: card.ids,
       bonuses: card.bonuses.map(({ cycleStart: bonusStart, ...bonus }) => ({ ...bonus, period: periodOf(bonusStart, dayBefore(bonus.resetsOn)) })),

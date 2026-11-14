@@ -261,7 +261,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
   }
   const tileBody = (id) => (cardsUsable && fetchRequiredQuery ? (
     <Suspense fallback={<div className="summary-tile-reserve" aria-hidden="true" />}>
-      <SummaryTile id={id} view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} fees={safeSummaryPage.bankFeesYear} onOpen={openTile} />
+      <SummaryTile id={id} view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} fees={safeSummaryPage.bankFeesYear} splits={safeSummaryPage.splitBalances} onOpen={openTile} />
     </Suspense>
   ) : <div className="summary-tile-reserve" aria-hidden="true" />);
 
@@ -283,9 +283,10 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
         <SummaryChangedSection view={view} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
       </Suspense>
     ) : null,
-    // Coming up and Bank fees this year are tiles; their card is the sheet.
+    // Coming up, Bank fees this year and Splits are tiles; their card is the sheet.
     coming: tileBody("coming"),
     bankfees: tileBody("bankfees"),
+    splits: tileBody("splits"),
     subs: cardsUsable && fetchRequiredQuery ? (
       <Suspense fallback={<SubscriptionsReserve height={subsReserveHeight} />}>
         <SubscriptionsSection view={view} categories={categories} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} runBackgroundRefresh={runBackgroundRefresh} reserveHeight={subsReserveHeight} />
@@ -402,6 +403,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
             categoryShare={safeSummaryPage.categoryShareChart}
             rangeStartMonth={safeSummaryPage.rangeStartMonth}
             rangeEndMonth={safeSummaryPage.rangeEndMonth}
+            spendChange={safeSummaryPage.spendChange}
           />
         </div>
         {blocks.map((block, index) => (block.tiles ? (
@@ -429,6 +431,7 @@ export function SummaryPanel({ view, selectedMonth, categories, accounts = [], o
             fetchRequiredQuery={fetchRequiredQuery}
             runBackgroundRefresh={runBackgroundRefresh}
             fees={safeSummaryPage.bankFeesYear}
+            splits={safeSummaryPage.splitBalances}
             rangeEndMonth={safeSummaryPage.rangeEndMonth}
             onClose={closeTile}
           />

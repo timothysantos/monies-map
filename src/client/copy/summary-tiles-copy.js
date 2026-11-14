@@ -3,6 +3,7 @@
 
 export const summaryTilesCopy = {
   open: "Open ›",
+  settledUp: "Settled up",
   chargeCount: (count) => `${count} ${count === 1 ? "charge" : "charges"}`,
   // Tile and sheet titles and subtitles are in summary-card-titles.js.
   roomLeft: "of room left",

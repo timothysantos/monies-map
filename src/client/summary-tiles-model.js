@@ -9,7 +9,10 @@
 // then not drawn). With money hidden a tile keeps its title and the names of
 // its rows and drops every amount, direction, chip and mark that would show
 // one (`hidden: true`), as the cards do.
+import { changeNote } from "./change-note";
 import { buildComingUp } from "./subscriptions-model";
+
+export { changeNote };
 
 const ROWS = 4;
 
@@ -27,8 +30,31 @@ export function buildSubsTile({ model, glance, hidden, labels }) {
     chip: glance?.priceRises ? { text: labels.priceRises(glance.priceRises), tone: "butter" } : null,
     rows: model.glanceRows.slice(0, ROWS).map((series) => ({ label: series.name, value: { kind: "money", minor: series.latest.amountMinor } })),
     bars: (glance?.kinds ?? []).map((kind) => ({ key: kind.key, share: kind.share })),
-    points: []
+    points: [],
+    change: subsChange(model, hidden)
   }, hidden);
+}
+
+const monthBefore = (month, back = 1) => {
+  const [year, number] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, number - 1 - back, 1)).toISOString().slice(0, 7);
+};
+
+// The change notes on the Subscriptions, Miles and Bank fees tiles use
+// Spending mix's rule (changeNote; design.md "Change notes"): worked out only
+// from figures the card already holds, nothing when the comparison is missing,
+// too small to count, or money is hidden. `vs` names the words after the
+// percent (summary-tiles.jsx): "month" is "vs the month before",
+// "fullMonths" adds "(full months only)".
+//
+// Subscriptions: the month's total (the last full month) against the month
+// before it (the server's `focusBeforeMinor`, the same charges), rose when it went up. A base under
+// $100 is too small, as it is for Spending mix.
+export function subsChange(model, hidden) {
+  if (hidden || !Number.isFinite(model.focusBeforeMinor)) return null;
+  const base = model.focusBeforeMinor;
+  const note = changeNote({ current: model.totals.focus.amountMinor - base, base, upIsGood: false, minBase: 10_000 });
+  return note ? { ...note, vs: "month" } : null;
 }
 
 /** @param {{ answer: any, hidden: boolean, labels: { chargeCount: (count: number) => string, dayMonth: (date: string) => string } }} input */
@@ -83,6 +109,18 @@ function bonusGauge(milesCards) {
   return best ? { percent: Math.round(best.share * 100), cardName: best.cardName } : null;
 }
 
+// Miles and cashback: earned so far this cycle against the same days of the
+// cycle before (the server's `earnedBefore`, card-rewards.ts), so half a cycle
+// is not set against a whole one; earning more is mint. A base under 100 miles
+// (or 100 cents) is too small, and an answer without the figure says nothing.
+export function milesChange(cards, hidden) {
+  if (hidden || cards.some((card) => !Number.isFinite(card.earnedBefore))) return null;
+  const earned = cards.reduce((sum, card) => sum + card.earned, 0);
+  const base = cards.reduce((sum, card) => sum + card.earnedBefore, 0);
+  const note = changeNote({ current: earned - base, base, upIsGood: true, minBase: 100 });
+  return note ? { ...note, vs: "month" } : null;
+}
+
 /** @param {{ model: any, hidden: boolean, labels: { estimate: string } }} input */
 export function buildMilesTile({ model, hidden, labels }) {
   if (!model || model.isEmpty) return null;
@@ -100,7 +138,8 @@ export function buildMilesTile({ model, hidden, labels }) {
     // The ring takes the room of two rows.
     rows: [...cards].sort((left, right) => right.earned - left.earned).slice(0, gauge ? ROWS - 2 : ROWS).map((card) => ({ label: card.name, value: value(card) })),
     bars: [],
-    points: []
+    points: [],
+    change: milesChange(useMiles ? milesCards : cards, hidden)
   }, hidden);
 }
 
@@ -136,8 +175,23 @@ function feeMonths(months) {
   return list.map((item) => ({ key: item.month, month: item.month, share: item.minor / biggest, isBiggest: item === first }));
 }
 
-/** @param {{ fees: any, hidden: boolean, labels: { kinds: Record<string, string>, chargeCount: (count: number) => string } }} input */
-export function buildBankFeesTile({ fees, hidden, labels }) {
+// Bank fees: the last full month's fees against the month before it, both in
+// the fee year (so none in January), never the month in progress. A base under
+// $10 is too small; fees that went up are rose. Months with no fee are absent
+// from the list, so they count as nothing.
+export function feesChange(fees, currentMonth, hidden) {
+  if (hidden || !currentMonth) return null;
+  const last = monthBefore(currentMonth);
+  const before = monthBefore(currentMonth, 2);
+  if (!last.startsWith(fees.year) || !before.startsWith(fees.year)) return null;
+  const minorOf = (month) => fees.months?.find((item) => item.month === month)?.minor ?? 0;
+  const base = minorOf(before);
+  const note = changeNote({ current: minorOf(last) - base, base, upIsGood: false, minBase: 1_000 });
+  return note ? { ...note, vs: "fullMonths" } : null;
+}
+
+/** @param {{ fees: any, hidden: boolean, currentMonth?: string, labels: { kinds: Record<string, string>, chargeCount: (count: number) => string } }} input */
+export function buildBankFeesTile({ fees, hidden, labels, currentMonth = "" }) {
   if (!fees || !fees.parts?.length || fees.netMinor <= 0) return null;
   const count = fees.parts.reduce((sum, part) => sum + part.count, 0);
   return finish({
@@ -147,21 +201,33 @@ export function buildBankFeesTile({ fees, hidden, labels }) {
     rows: fees.parts.slice(0, ROWS).map((part) => ({ label: labels.kinds[part.kind] ?? labels.kinds.other_fee, value: { kind: "money", minor: part.minor } })),
     bars: fees.parts.slice(0, ROWS).map((part) => ({ key: part.kind, share: part.minor / fees.netMinor })),
     months: feeMonths(fees.months),
+    points: [],
+    change: feesChange(fees, currentMonth, hidden)
+  }, hidden);
+}
+
+/** @param {{ balances: Array<{ name: string, currency: string, balanceMinor: number, owes: string }> | undefined, hidden: boolean, labels: { settledUp: string } }} input */
+export function buildSplitsTile({ balances, hidden, labels }) {
+  if (!balances?.length) return null;
+  const amount = (balance) => ({ kind: "currency", minor: Math.abs(balance.balanceMinor), currency: balance.currency });
+  // Who owes whom reads from the viewer: owed to you is mint, a debt rose;
+  // the household has no direction ("Net balance"), so it is sky.
+  const toneOf = (balance) => (balance.balanceMinor === 0 ? null : balance.owes === "Net balance" ? "sky" : balance.balanceMinor > 0 ? "mint" : "rose");
+  const top = balances[0];
+  return finish({
+    id: "splits",
+    headline: top.balanceMinor === 0 ? { kind: "words", text: labels.settledUp } : amount(top),
+    chip: top.balanceMinor === 0 ? null : { text: top.owes, tone: toneOf(top) },
+    rows: balances.slice(0, ROWS).map((balance) => ({
+      label: balance.name,
+      value: balance.balanceMinor === 0 ? null : amount(balance),
+      // Money tones are text only; sky is the household's neutral, so a row has no tone then.
+      tone: toneOf(balance) === "sky" ? null : toneOf(balance)
+    })),
+    bars: [],
     points: []
   }, hidden);
 }
 
 export { plural };
 
-// The change note under a big number (owner, 2026-11-11): "▲ 12%" and the
-// quiet words after it. Worked out only from two figures the card already
-// has; with no base to compare to (nothing, or too small), or money hidden,
-// there is no note: never an estimate. `upIsGood` sets the tone (mint for
-// growth in investments, rose for spending that went up).
-export function changeNote({ current, base, upIsGood, minBase = 1, hidden = false }) {
-  if (hidden || base === null || base === undefined || !(base >= minBase) || !Number.isFinite(current)) return null;
-  const percent = Math.round((Math.abs(current) / base) * 100);
-  if (percent === 0 || current === 0) return null;
-  const up = current > 0;
-  return { arrow: up ? "▲" : "▼", percent, tone: up === upIsGood ? "mint" : "rose" };
-}

@@ -50,6 +50,7 @@ export const SUMMARY_CARD_LAYOUT = Object.freeze({
   miles: { span: 6, minWidth: 360, tile: { on: "always" } },
   taxreliefs: { span: 6, minWidth: 360, tile: { on: "always" } },
   bankfees: { span: 6, minWidth: 360, tile: { on: "always", tileOnly: true } },
+  splits: { span: 6, minWidth: 360, tile: { on: "always", tileOnly: true } },
   accounts: { span: 6, minWidth: 360, noTile: true }
 });
 export const SUMMARY_CARD_IDS = Object.freeze(Object.keys(SUMMARY_CARD_LAYOUT));

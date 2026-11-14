@@ -200,6 +200,30 @@ test("this cycle: miles per card, bonus room left and the reset day; a cashback 
   assert.equal(earnedOnCard(cards[1].rules, "citi", entries.filter((item) => item.accountId === "citi" && item.date >= "2026-10-18")), citi.earned);
 });
 
+test("earned before: the same days of the cycle before, so a half-finished cycle is not set against a whole one", () => {
+  const { cards } = household();
+  const entries = [
+    entry("citi", "2026-09-20", 10_000, "Shopping"), // in the first 23 days of the cycle before
+    entry("citi", "2026-10-11", 10_000, "Shopping"), // day 24 of it: the last day counted is 11 Oct (today, 10 Nov, is 23 days into the cycle that began 18 Oct)
+    entry("citi", "2026-10-12", 90_000, "Shopping"), // after the same point: left out
+    entry("citi", "2026-10-19", 10_000, "Shopping"), // this cycle, not before
+    entry("ladys", "2026-10-02", 20_000, "Food & Drinks"), // calendar cycle: 1 to 10 Oct
+    entry("ladys", "2026-10-25", 20_000, "Food & Drinks") // after the same point of October
+  ];
+  const cycle = cardsThisCycle(cards, entries, "2026-11-10");
+  const citi = cycle.find((card) => card.accountId === "citi");
+  const quote = (accountId, list) => earnedOnCard(cards.find((card) => card.accountId === accountId).rules, accountId, list);
+  const citiEntries = entries.filter((item) => item.accountId === "citi");
+  assert.equal(citi.earnedBefore, quote("citi", citiEntries.filter((item) => item.date >= "2026-09-18" && item.date <= "2026-10-11")));
+  assert.ok(citi.earnedBefore > 0);
+  // The $900 on 12 Oct would have made it far bigger: it is not in.
+  assert.ok(citi.earnedBefore < quote("citi", citiEntries.filter((item) => item.date < "2026-10-18")));
+  const ladys = cycle.find((card) => card.accountId === "ladys");
+  assert.equal(ladys.earnedBefore, quote("ladys", entries.filter((item) => item.accountId === "ladys" && item.date <= "2026-10-10")));
+  // A card with nothing in the cycle before has 0, never null.
+  assert.equal(cycle.find((card) => card.accountId === "pm").earnedBefore, 0);
+});
+
 test("cap notices: used up (with the person's own card that still has room), nearly used, and a cashback minimum to go", () => {
   const { cards } = household();
   const entries = [

@@ -1985,6 +1985,13 @@ words in `copy/summary-changed-copy.js`).
 - Quiet: one line, "Nothing has moved much so far this month."
 - Hidden money: names only, A to Z, no amounts, no up or down, no mark.
 - Colours: tokens only; money is not toned (it lists what moved).
+- On the Month page (2026-11-14): the same card, unchanged, in Month's grid
+  between Money insights and Spending mix (`data-month-card="changed"`), only
+  when the month viewed is the month in progress (the rule Summary uses for its
+  range). Its code loads as a lazy import beside the Month route; it reads its
+  own `GET /api/summary-changed` once the page is usable, so the Month page
+  response is unchanged. Any other month, or nothing to compare, leaves an empty
+  slot that takes no room. Proof: `tests/e2e/summary-leftovers.spec.js`.
 
 ## Miles and cashback
 
@@ -2174,8 +2181,11 @@ change.
   anyway (`spendChange`, `summary-spend-change.ts`; the month in progress is
   left out of both sides and the note says "(full months only)"). It is left
   out without that history, on an earlier total under $100, under a whole
-  percent, and with money hidden. Subscriptions, Miles, Bank fees and the lead
-  card have no earlier figure on their card, so they have no note yet.
+  percent, and with money hidden. 2026-11-14: the lead card (under the Spent
+  figure), Subscriptions and bills, Miles and cashback and Bank fees carry the
+  same note, each from a figure its card now reads (see
+  `docs/money-insights-copy.md` "Change notes under a big number" for the four
+  rules); a card with nothing to compare shows nothing.
 - **Subscriptions and bills** on a wide page (1,064px and up): half the row;
   the month's total is the headline (3.25rem), under it a "price rise" chip
   and a "Next: name amount on date" chip (no amount with money hidden), one
@@ -2202,8 +2212,18 @@ card in a dialog or sheet.
   Bank fees are registered cards of their own (`tileOnly`: their card form is
   the sheet; Coming up opens Subscriptions and bills on its Coming up tab,
   Bank fees opens a new small card from the page's own `bankFeesYear`, in
-  kinds). The Splits tile is not built: Summary carries no Splits balance and
-  one would be a new read.
+  kinds). **Splits** (2026-11-14) is a registered tile-only card too: who owes
+  whom right now, from the page's own `splitBalances` (one small row per split
+  group that has been used, grouped in SQL by `pages/summary-split-balances.ts`
+  with the Splits page's own open-balance rule, no list copy, left out when no
+  group was used so the tile is not drawn). The headline is the biggest
+  balance in its group's own currency with a chip for who owes whom in the
+  Splits page's words ("Serene owes you", "You owe Serene", "Net balance" for
+  the household; mint when owed to you, rose for a debt, sky for the
+  household), the rows are the groups, and an all-settled household reads
+  "Settled up". The card it opens lists each group; its amount is an openable
+  figure (`data-fig="splits"`: Open Splits at that group, and Ask about this).
+  Hidden money keeps the group names only.
 - **Registry.** `SUMMARY_CARD_LAYOUT[id].tile` is `{ on: "always" | "phone",
   tileOnly? }`; a card without a tile says `noTile: true` and the registry
   test needs one or the other. Arrange cards moves or hides a card and its
@@ -2221,9 +2241,9 @@ card in a dialog or sheet.
   are `summary-tiles-model.js` (tested with negatives); `summary-tiles.jsx`
   only draws them. A change note ("▲ 2% since Jan", the arrow and percent in
   the money tone, the rest quiet) shows only where the card has both figures:
-  Investments' growth against its starting worth. Subscriptions, Miles, Bank
-  fees and the lead have no earlier figure in what they read, so they have no
-  note (a note would need a new read; never an estimate).
+  Investments' growth against its starting worth; Subscriptions, Miles and
+  Bank fees (2026-11-14) against the month before, with Spending mix's helper
+  and words (see "Change notes").
 - **Hidden money.** A tile keeps its title and its row names and drops every
   amount, direction, chip and mark (and the change note).
 - **Opening.** The existing dialog frame (`SheetDialog`): a bottom sheet on a
@@ -2260,6 +2280,7 @@ drops them ("By month").
 | `miles` | Miles and cashback | This month, estimate |
 | `taxreliefs` | Tax reliefs | For 2026 |
 | `bankfees` | Bank fees | This year |
+| `splits` | Splits | Who owes whom right now |
 | `accounts` | Accounts | Balances on the latest statements |
 
 - One head: `summary-card-head.jsx` (`CardHead`: the title, the subtitle and
@@ -2303,6 +2324,8 @@ design with the cards it already had; no card or data was added.
   margins (styles.css). A `margin: 16px 0` on Spending mix and Money in reset
   those and left both cards 24px wider than the screen
   (`tests/e2e/month-phone-fit.spec.js`, with Summary at 390 and 375).
+- What changed (the Summary card as it is) joins them for the month in
+  progress, after Money insights (see "What changed card").
 - Every card wears `CardHead`. Money insights, Spending mix and Accounts use
   Summary's list entries; Money in ("By source, Oct 2025") and Monthly note
   are `MONTH_CARD_TITLES` in the same list

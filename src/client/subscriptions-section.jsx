@@ -9,6 +9,8 @@ import { PaceLine, PaceQuietNote } from "./pace-line";
 import { paceLineWords } from "./pace-line-model";
 import { getCategory } from "./category-utils";
 import { money } from "./formatters";
+import { ChangeNoteLine } from "./change-note-line";
+import { subsChange } from "./summary-tiles-model";
 import { useMoneyPrivacy } from "./money-privacy";
 import { paletteColour } from "./palette-colour";
 import { buildComingUp, buildSubscriptionsModel, buildSubsGlance, monthPeriod } from "./subscriptions-model";
@@ -336,6 +338,7 @@ export function SubscriptionsSection({ view, categories, enabled, fetchRequiredQ
         <div className="subs-total">
           <span className="subs-total-label">{copy.inMonth(model.focusMonth)}</span>
           <Figure className="subs-total-figure" amount={model.totals.focus} period={model.focusPeriod} name={cardTitle(headId)} />
+          <ChangeNoteLine note={subsChange(model, hiddenMoney)} className="subs-total-note" />
         </div>
         <div className="subs-total">
           <span className="subs-total-label">{copy.lastYear}</span>

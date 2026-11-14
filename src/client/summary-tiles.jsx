@@ -8,7 +8,9 @@ import { summaryTilesCopy as copy } from "./copy/summary-tiles-copy";
 import { dayMonth, subscriptionsCopy } from "./copy/subscriptions-copy";
 import { investmentsCopy, taxReliefsCopy } from "./copy/summary-cards-copy";
 import { rangeWords } from "../domain/money-signals/format";
-import { money } from "./formatters";
+import { money, moneyWithCurrency } from "./formatters";
+import { getCurrentMonthKey } from "../lib/month";
+import { ChangeNoteLine } from "./change-note-line";
 import { useMoneyPrivacy } from "./money-privacy";
 import { queryKeys } from "./query-keys";
 import { buildSubscriptionsModel, buildSubsGlance, buildComingUp } from "./subscriptions-model";
@@ -17,7 +19,7 @@ import { CardRewardsSection } from "./card-rewards-section";
 import { SubscriptionsSection } from "./subscriptions-section";
 import { TaxReliefsCard } from "./tax-reliefs-card";
 import { SheetDialog } from "./sheet-dialog";
-import { buildBankFeesTile, buildComingTile, buildInvestmentsTile, buildMilesTile, buildSubsTile, buildTaxTile } from "./summary-tiles-model";
+import { buildBankFeesTile, buildComingTile, buildInvestmentsTile, buildMilesTile, buildSplitsTile, buildSubsTile, buildTaxTile, feesChange } from "./summary-tiles-model";
 import { requestInvestmentsOverTime, requestTaxReliefs } from "./summary-cards-api";
 import { useCardRewards } from "./use-card-rewards";
 import { useRepeatingCharges } from "./use-repeating-charges";
@@ -45,6 +47,8 @@ function formatValue(value) {
   if (value.kind === "miles") return cardRewardsCopy.miles(value.amount);
   if (value.kind === "cashback") return money(Math.floor(value.amount));
   if (value.kind === "percent") return `${value.percent}%`;
+  // A split group's balance in the group's own currency, as the Splits page shows it.
+  if (value.kind === "currency") return moneyWithCurrency(value.minor, value.currency);
   return null;
 }
 
@@ -52,6 +56,7 @@ function formatHeadline(headline) {
   if (!headline) return HIDDEN;
   if (headline.kind === "range") return rangeWords(whole(headline.lowMinor), whole(headline.highMinor));
   if (headline.kind === "miles") return formatMiles(headline.amount);
+  if (headline.kind === "words") return headline.text;
   return formatValue(headline);
 }
 
@@ -150,15 +155,13 @@ function TileView({ tile, subtitle, onOpen }) {
       </span>
       <span className="summary-tile-meta">
         {tile.chip ? <span className={`summary-tile-chip is-${tile.chip.tone}`}>{tile.chip.text}</span> : null}
-        {tile.change ? (
-          <span className="summary-tile-note"><b className={TONE_CLASS[tile.change.tone]}>{tile.change.arrow} {tile.change.percent}%</b> {copy.changeSinceJan}</span>
-        ) : null}
+        <ChangeNoteLine note={tile.change} />
       </span>
       <span className="summary-tile-rows">
         {tile.rows.map((row) => (
           <span key={row.label} className="summary-tile-row">
             <span>{row.label}</span>
-            {areTotalsVisible && row.value ? <b>{formatValue(row.value)}</b> : null}
+            {areTotalsVisible && row.value ? <b className={row.tone ? TONE_CLASS[row.tone] : undefined}>{formatValue(row.value)}</b> : null}
           </span>
         ))}
       </span>
@@ -221,22 +224,31 @@ function TaxTile({ view, enabled, fetchRequiredQuery, onOpen }) {
 
 function BankFeesTile({ fees, onOpen }) {
   const hidden = useHidden();
-  const tile = useMemo(() => buildBankFeesTile({ fees, hidden, labels: { kinds: copy.bankFeeKinds, chargeCount: copy.chargeCount } }), [fees, hidden]);
+  const tile = useMemo(() => buildBankFeesTile({ fees, hidden, currentMonth: getCurrentMonthKey(), labels: { kinds: copy.bankFeeKinds, chargeCount: copy.chargeCount } }), [fees, hidden]);
   return tile ? <TileView tile={tile} subtitle={cardSubtitle("bankfees")} onOpen={onOpen} /> : null;
+}
+
+// Splits: who owes whom right now, from the Summary page's own answer (no read
+// of its own). Hidden when no group has been used.
+function SplitsTile({ balances, onOpen }) {
+  const hidden = useHidden();
+  const tile = useMemo(() => buildSplitsTile({ balances, hidden, labels: { settledUp: copy.settledUp } }), [balances, hidden]);
+  return tile ? <TileView tile={tile} subtitle={cardSubtitle("splits")} onOpen={onOpen} /> : null;
 }
 
 /**
  * The tile of a registered card. It draws nothing when its card would show
  * nothing; `onOpen(id)` opens the card in the sheet.
- * @param {{ id: string, view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, fees?: any, onOpen: (id: string) => void }} props
+ * @param {{ id: string, view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, fees?: any, splits?: any, onOpen: (id: string) => void }} props
  */
-export function SummaryTile({ id, view, enabled, fetchRequiredQuery, fees = undefined, onOpen }) {
+export function SummaryTile({ id, view, enabled, fetchRequiredQuery, fees = undefined, splits = undefined, onOpen }) {
   const shared = { view, enabled, fetchRequiredQuery, onOpen };
   if (id === "subs" || id === "coming") return <SubsTileCard {...shared} id={id} />;
   if (id === "investments") return <InvestmentsTile {...shared} />;
   if (id === "miles") return <MilesTile {...shared} />;
   if (id === "taxreliefs") return <TaxTile {...shared} />;
   if (id === "bankfees") return <BankFeesTile fees={fees} onOpen={onOpen} />;
+  if (id === "splits") return <SplitsTile balances={splits} onOpen={onOpen} />;
   return null;
 }
 
@@ -257,6 +269,7 @@ export function BankFeesCard({ fees, rangeEndMonth }) {
         <span data-fig="spent" data-fig-ids={fees.ids.join(" ")} data-fig-name={cardTitle("bankfees")} tabIndex={0} role="button">{areTotalsVisible ? whole(fees.netMinor) : HIDDEN}</span>
         <small>{copy.bankFees.charges(count)}</small>
       </p>
+      <ChangeNoteLine note={feesChange(fees, getCurrentMonthKey(), !areTotalsVisible)} className="bankfees-note" />
       <ul className="bankfees-list" aria-label={cardTitle("bankfees")}>
         {fees.parts.map((part) => (
           <li key={part.kind} className="bankfees-row">
@@ -270,13 +283,45 @@ export function BankFeesCard({ fees, rangeEndMonth }) {
   );
 }
 
+// Splits: the card a Splits tile opens. One row per split group that has been
+// used: its name and who owes whom, in the group's own currency. The amount is
+// an openable figure (data-fig="splits": Open Splits at that group, and Ask
+// "Who owes whom?"), the Splits page's own figure kind.
+export function SplitsCard({ balances }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
+  if (!balances?.length) return null;
+  return (
+    <section className="chart-card splits-balance-card" aria-labelledby="splits-title">
+      <CardHead id="splits" titleId="splits-title" />
+      <ul className="bankfees-list splits-balance-list" aria-label={cardTitle("splits")}>
+        {balances.map((balance) => {
+          const settled = balance.balanceMinor === 0;
+          const tone = settled || balance.owes === "Net balance" ? "" : balance.balanceMinor > 0 ? "money-in" : "money-short";
+          return (
+            <li key={balance.id} className="bankfees-row">
+              <span>{balance.name}{areTotalsVisible ? <small> · {balance.owes}</small> : null}</span>
+              {settled || !areTotalsVisible ? (
+                <b>{areTotalsVisible ? copy.settledUp : HIDDEN}</b>
+              ) : (
+                <b className={tone}>
+                  <span data-fig="splits" data-fig-arg={balance.id} data-fig-name={balance.name} tabIndex={0} role="button">{moneyWithCurrency(Math.abs(balance.balanceMinor), balance.currency)}</span>
+                </b>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /**
  * The sheet (a phone) or centred dialog (a desktop) that opens a tile's whole
  * card: the same component the card uses, with its own tabs, lists and
  * openable figures. Esc, a swipe down and the close button close it.
- * @param {{ id: string, view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: any, fees?: any, rangeEndMonth: string, onClose: () => void }} props
+ * @param {{ id: string, view: any, categories: any[], enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, runBackgroundRefresh?: any, fees?: any, splits?: any, rangeEndMonth: string, onClose: () => void }} props
  */
-export function SummaryTileSheet({ id, view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, fees = undefined, rangeEndMonth, onClose }) {
+export function SummaryTileSheet({ id, view, categories, enabled, fetchRequiredQuery, runBackgroundRefresh = undefined, fees = undefined, splits = undefined, rangeEndMonth, onClose }) {
   const shared = { view, enabled, fetchRequiredQuery };
   return (
     <SheetDialog
@@ -299,6 +344,7 @@ export function SummaryTileSheet({ id, view, categories, enabled, fetchRequiredQ
       {id === "miles" ? <CardRewardsSection {...shared} /> : null}
       {id === "taxreliefs" ? <TaxReliefsCard {...shared} /> : null}
       {id === "bankfees" ? <BankFeesCard fees={fees} rangeEndMonth={rangeEndMonth} /> : null}
+      {id === "splits" ? <SplitsCard balances={splits} /> : null}
       </div>
     </SheetDialog>
   );

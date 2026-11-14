@@ -756,3 +756,18 @@ html[data-money-privacy="hidden"] .money-job .money-job-status {
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
 }
+
+/* The change note after the Spent figure, the same note and wording as under
+   Spending mix's total. */
+.summary-lead-change {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.summary-lead-change b {
+  font-weight: 700;
+}

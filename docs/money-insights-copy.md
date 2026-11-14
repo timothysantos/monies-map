@@ -184,10 +184,28 @@ tested in `tests/summary-tiles-model.test.mjs`):
   With any earlier month not stored, or an earlier total under $100, there is no
   note. The words: `▼ 6% vs the 6 months before` (one month: `vs the month
   before`; partial: `vs the 11 months before (full months only)`).
-- Subscriptions (the card has no last-month total), Miles (no earlier period is
-  read), Bank fees (no earlier year is read) and the lead card (the owner's
-  "vs the same days of last month" needs day-level history the page does not
-  read) carry no note until a card reads one.
+- 2026-11-14: four more cards carry the note, with the same helper
+  (`changeNote`, now in `src/client/change-note.js`) and the same quiet words:
+  - The lead card: the same note as Spending mix's total (`spendChange`, so the
+    same figures, rule and words), after the Spent figure in the Plan and Simple
+    views. Its Spent figure leaves out money moved to Investments or Savings
+    and counts the month in progress; the note compares the range's complete
+    months, as Spending mix does.
+  - Subscriptions and bills: the month's total (the last full month) against
+    the month before, from the answer's `focusBeforeMinor` (one number, the same
+    counted charges). Up is rose, down is mint; a month before under $100 gives
+    no note. Words: `vs the month before`.
+  - Miles and cashback: earned this cycle so far against the same days of the
+    cycle before (`earnedBefore` on each card, so half a cycle is never set
+    against a whole one). More is mint, less is rose. A base under 100 miles
+    (or 100 cents) gives no note, and a mix of miles cards counts miles only.
+    Words: `vs the month before`.
+  - Bank fees: the last full month's fees against the month before it, both in
+    the fee year (no note in January), never the month in progress. Fees that
+    went up are rose. A month before under $10 gives no note. Words: `vs the
+    month before (full months only)`.
+  Each shows on the tile and on the card it opens (Subscriptions and bills'
+  big card on a desktop too); each is left out with money hidden.
 ## Summary and Month (shared)
 
 ### statementGap (To do)

@@ -11,22 +11,22 @@ const ids = (cards) => cards.map((card) => `${card.hidden ? "-" : ""}${card.id}`
 test("the usual order, and back to nothing when nothing changed", () => {
   assert.equal(ids(readSummaryCards(null)), SUMMARY_CARD_IDS.join(","));
   assert.equal(writeSummaryCards(readSummaryCards(null)), null);
-  assert.equal(writeSummaryCards(readSummaryCards("insights,plan,changed,mix,subs,coming,investments,miles,taxreliefs,bankfees,accounts")), null);
+  assert.equal(writeSummaryCards(readSummaryCards("insights,plan,changed,mix,subs,coming,investments,miles,taxreliefs,bankfees,splits,accounts")), null);
 });
 
 test("a stored order and hidden cards read back as stored", () => {
-  assert.equal(ids(readSummaryCards("insights,mix,changed,subs,investments,taxreliefs,plan,-accounts")), "insights,mix,changed,subs,coming,investments,miles,taxreliefs,bankfees,plan,-accounts");
-  assert.equal(writeSummaryCards(readSummaryCards("mix,insights,-changed,-subs,-taxreliefs,investments,plan,accounts")), "mix,insights,-changed,-subs,coming,-taxreliefs,bankfees,investments,miles,plan,accounts");
+  assert.equal(ids(readSummaryCards("insights,mix,changed,subs,investments,taxreliefs,plan,-accounts")), "insights,mix,changed,subs,coming,investments,miles,taxreliefs,bankfees,splits,plan,-accounts");
+  assert.equal(writeSummaryCards(readSummaryCards("mix,insights,-changed,-subs,-taxreliefs,investments,plan,accounts")), "mix,insights,-changed,-subs,coming,-taxreliefs,bankfees,splits,investments,miles,plan,accounts");
 });
 
 test("unknown ids are dropped, a card it does not name goes to its usual place, and Money insights is never hidden", () => {
   // Saved before What changed this month, Subscriptions and bills,
   // Investments over time and Tax reliefs this year existed: each comes back shown, in its usual place.
-  assert.equal(ids(readSummaryCards("insights,mix,plan,-accounts")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,plan,changed,-accounts");
-  assert.equal(ids(readSummaryCards("mix,insights,subs,plan,accounts")), "mix,insights,subs,coming,investments,miles,taxreliefs,bankfees,plan,changed,accounts");
-  assert.equal(ids(readSummaryCards("mix,trips,plan")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,accounts,plan,changed");
-  assert.equal(ids(readSummaryCards("-insights,mix")), "insights,plan,changed,mix,subs,coming,investments,miles,taxreliefs,bankfees,accounts");
-  assert.equal(ids(readSummaryCards("mix,mix,plan")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,accounts,plan,changed");
+  assert.equal(ids(readSummaryCards("insights,mix,plan,-accounts")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,splits,plan,changed,-accounts");
+  assert.equal(ids(readSummaryCards("mix,insights,subs,plan,accounts")), "mix,insights,subs,coming,investments,miles,taxreliefs,bankfees,splits,plan,changed,accounts");
+  assert.equal(ids(readSummaryCards("mix,trips,plan")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,splits,accounts,plan,changed");
+  assert.equal(ids(readSummaryCards("-insights,mix")), "insights,plan,changed,mix,subs,coming,investments,miles,taxreliefs,bankfees,splits,accounts");
+  assert.equal(ids(readSummaryCards("mix,mix,plan")), "insights,mix,subs,coming,investments,miles,taxreliefs,bankfees,splits,accounts,plan,changed");
   for (const bad of ["", "Mix", "mix;plan", "x".repeat(200), 42, "<script>"]) {
     assert.equal(isSummaryCardsValue(bad), false, String(bad));
     assert.equal(ids(readSummaryCards(bad)), SUMMARY_CARD_IDS.join(","));
@@ -35,7 +35,7 @@ test("unknown ids are dropped, a card it does not name goes to its usual place, 
 
 test("moving a card swaps it with its neighbour; the ends do not move", () => {
   const cards = readSummaryCards(null);
-  assert.equal(ids(moveSummaryCard(cards, 3, -1)), "insights,plan,mix,changed,subs,coming,investments,miles,taxreliefs,bankfees,accounts");
+  assert.equal(ids(moveSummaryCard(cards, 3, -1)), "insights,plan,mix,changed,subs,coming,investments,miles,taxreliefs,bankfees,splits,accounts");
   assert.equal(moveSummaryCard(cards, 0, -1), cards);
   assert.equal(moveSummaryCard(cards, cards.length - 1, 1), cards);
 });
@@ -90,7 +90,7 @@ test("a tablet has two columns and a phone one; two thirds and wider take the wh
 });
 
 test("a card draws as its tile where the registry says: always, or only below a desktop; a card with no tile never", () => {
-  for (const id of ["coming", "investments", "miles", "taxreliefs", "bankfees"]) {
+  for (const id of ["coming", "investments", "miles", "taxreliefs", "bankfees", "splits"]) {
     assert.equal(showsAsTile(id, true), true, `${id} on a desktop`);
     assert.equal(showsAsTile(id, false), true, `${id} on a phone`);
   }

@@ -59,6 +59,10 @@ import "./month-plan-rows.css";
 // page is in Plan view; Simple view never loads it. Until it arrives an empty
 // block of the studio's size holds its place, so the page below does not jump.
 const PlanStudio = lazy(() => import("./plan-studio.jsx"));
+// "What changed this month" is Summary's own card, unchanged: its code loads
+// beside the Month page, only for the month in progress (design.md "What
+// changed card"), and its data is read once the page is usable.
+const SummaryChangedSection = lazy(() => import("./summary-changed-section").then((module) => ({ default: module.SummaryChangedSection })));
 function PlanStudioReserve({ children = null }) {
   return (
     <div className="plan-studio-reserve" aria-hidden={children ? undefined : "true"} data-plan-studio-reserve>
@@ -317,6 +321,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     enabled: Boolean(cardsUsable && fetchRequiredQuery && isPaceMonth),
     fetchRequiredQuery: fetchRequiredQuery ?? rejectRead
   });
+  // The card reads the view and scope the way Summary's does.
+  const changedView = useMemo(() => ({ id: view.id, selectedScope: view.monthPage.selectedScope }), [view.id, view.monthPage.selectedScope]);
   const pace = isPaceMonth && repeatingAnswer?.pace?.month === view.monthPage.month && repeatingAnswer.pace.range ? repeatingAnswer.pace : null;
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
@@ -1712,6 +1718,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           tables (the editing work), as on All months it sits above Intent
           vs Outcome. A card's arrow opens Entries for the category in this
           month and scope, like the tables' Actual drilldowns. */}
+      {/* What changed this month: the month in progress only, the Summary
+          card as it is (an empty slot takes no room). */}
+      <div className="summary-card-slot" data-month-card="changed">
+      {isPaceMonth && cardsUsable && fetchRequiredQuery ? (
+        <Suspense fallback={null}>
+          <SummaryChangedSection view={changedView} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+        </Suspense>
+      ) : null}
+      </div>
+
       <div className="summary-card-slot" data-month-card="mix">
       <SpendingMixSection
         className="month-spending-mix"

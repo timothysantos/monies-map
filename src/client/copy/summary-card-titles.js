@@ -31,6 +31,7 @@ export const SUMMARY_CARD_TITLES = {
   miles: { title: "Miles and cashback", subtitle: () => "This month, estimate" },
   taxreliefs: { title: "Tax reliefs", subtitle: ({ year = "" } = {}) => (year ? `For ${year}` : "For this year") },
   bankfees: { title: "Bank fees", subtitle: () => "This year" },
+  splits: { title: "Splits", subtitle: () => "Who owes whom right now" },
   accounts: { title: "Accounts", subtitle: () => "Balances on the latest statements" }
 };
 

@@ -40,6 +40,7 @@ export function buildSubscriptionsModel(answer) {
   const counted = answer.series;
   return {
     focusMonth: answer.focusMonth,
+    focusBeforeMinor: answer.focusBeforeMinor ?? null,
     yearStartMonth: answer.yearStartMonth,
     focusPeriod: `${answer.focusMonth}:${answer.focusMonth}`,
     yearPeriod: `${answer.yearStartMonth}:${answer.focusMonth}`,
