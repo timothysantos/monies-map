@@ -236,3 +236,5 @@ export { SummaryChangedSection } from "./summary-changed-section";
 export { SummaryTile, SummaryTileSheet } from "./summary-tiles";
 // Miles and cashback rides here too, for the same reason.
 export { CardRewardsSection } from "./card-rewards-section";
+// The Month page's wrap-up rides here too, beside What changed.
+export { MonthWrapUpSection } from "./month-wrap-up-section";

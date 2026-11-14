@@ -40,7 +40,9 @@ export const SUMMARY_CARD_TITLES = {
 // these two are the Month page's alone.
 export const MONTH_CARD_TITLES = {
   moneyIn: { title: "Money in", subtitle: ({ month = "" } = {}) => (month ? `By source, ${formatMonthLabel(month)}` : "By source") },
-  monthNote: { title: "Monthly note", subtitle: () => "Why the month looked like this" }
+  monthNote: { title: "Monthly note", subtitle: () => "Why the month looked like this" },
+  // The month wrap-up (design.md "Month wrap-up"): "October: 2 of 6 checks done".
+  wrapUp: { title: "Wrap up", subtitle: ({ month = "", done = 0, total = 0 } = {}) => (month ? `${longMonth(month)}: ${done} of ${total} checks done` : "Checks before a month is closed") }
 };
 
 /** The first and last month of a list of { month }, for a "By month" subtitle. */

@@ -111,9 +111,12 @@ function Row({ row, changed, visible, open, onToggle, barShare }) {
 }
 
 /**
- * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any> }} props
+ * `month`: a month that has ended, opened from the Month wrap-up's "See all"
+ * (the card read up to that month's last day); without it, the month in
+ * progress.
+ * @param {{ view: any, enabled: boolean, fetchRequiredQuery: (options: any) => Promise<any>, month?: string }} props
  */
-export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
+export function SummaryChangedSection({ view, enabled, fetchRequiredQuery, month = "" }) {
   const queryClient = useQueryClient();
   // Summary's cards sit a third of a wide page across, so they use the short form everywhere.
   const phone = useCompactSummaryCard();
@@ -122,8 +125,8 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery }) {
   const [showAll, setShowAll] = useState(false);
   const viewId = view?.id ?? "household";
   const scope = view?.selectedScope;
-  const queryKey = useMemo(() => queryKeys.summaryChanged(viewId, scope), [scope, viewId]);
-  const fetcher = useCallback((options) => requestSummaryChanged(viewId, scope, options), [scope, viewId]);
+  const queryKey = useMemo(() => queryKeys.summaryChanged(viewId, scope, month), [month, scope, viewId]);
+  const fetcher = useCallback((options) => requestSummaryChanged(viewId, scope, { ...options, month }), [month, scope, viewId]);
   const answer = useSummaryCardQuery({ queryClient, queryKey, enabled, fetchRequiredQuery, fetcher, abortMessage: "What changed request aborted." });
   const changed = answer?.changed ?? null;
   // The bars draw once, when the card first scrolls into view.

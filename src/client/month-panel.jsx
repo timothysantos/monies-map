@@ -49,6 +49,7 @@ import { useRepeatingCharges } from "./use-repeating-charges";
 import { useMoneyPrivacy } from "./money-privacy";
 import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
 import { withoutPlanSignals } from "../domain/money-signals/plan-signals";
+import { monthWrapUpIsOpen } from "../domain/month-wrap-up";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
@@ -63,6 +64,9 @@ const PlanStudio = lazy(() => import("./plan-studio.jsx"));
 // beside the Month page, only for the month in progress (design.md "What
 // changed card"), and its data is read once the page is usable.
 const SummaryChangedSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.SummaryChangedSection })));
+// The month wrap-up (design.md "Month wrap-up") rides the same chunk: a month
+// that has ended, or the month in progress in its last days, with entries.
+const MonthWrapUpSection = lazy(() => import("./spending-mix-section").then((module) => ({ default: module.MonthWrapUpSection })));
 function PlanStudioReserve({ children = null }) {
   return (
     <div className="plan-studio-reserve" aria-hidden={children ? undefined : "true"} data-plan-studio-reserve>
@@ -130,6 +134,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [isSavingMonthRow, setIsSavingMonthRow] = useState(false);
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
+  // The month whose "What changed" card the wrap-up's "See all" opened (a
+  // month that has ended; the month in progress shows the card anyway).
+  const [changedSeeAllMonth, setChangedSeeAllMonth] = useState("");
+  const changedSlotRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   // Studio | Tables (plan-mode.js). Studio stays mounted, hidden, once it has
   // been shown, so changes held there survive a look at Tables.
   const [planMode, setPlanMode] = usePlanMode();
@@ -323,6 +331,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   });
   // The card reads the view and scope the way Summary's does.
   const changedView = useMemo(() => ({ id: view.id, selectedScope: view.monthPage.selectedScope }), [view.id, view.monthPage.selectedScope]);
+  // The wrap-up: never for a month with no entries or one still under way.
+  const showWrapUp = Boolean(cardsUsable && fetchRequiredQuery)
+    && (view.monthPage.entries?.length ?? 0) > 0
+    && monthWrapUpIsOpen(view.monthPage.month, checkInClock.today);
+  const showChanged = isPaceMonth || changedSeeAllMonth === view.monthPage.month;
   const pace = isPaceMonth && repeatingAnswer?.pace?.month === view.monthPage.month && repeatingAnswer.pace.range ? repeatingAnswer.pace : null;
   const checkIn = useMemo(() => ({
     memoryKey: checkInMemoryKey("month", view.id),
@@ -1237,16 +1250,58 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
 
     if (entryIds.length) {
       entryIds.forEach((entryId) => next.append("entry_id", entryId));
-    } else if (entryType) {
-      next.set("entry_type", entryType);
-    } else if (categoryName) {
-      next.set("entry_category", categoryName);
+    } else {
+      // The wrap-up's "Left in Other" names both: expenses in Other.
+      if (entryType) {
+        next.set("entry_type", entryType);
+      }
+      if (categoryName) {
+        next.set("entry_category", categoryName);
+      }
     }
 
     navigate({
       pathname: "/entries",
       search: `?${next.toString()}`
     });
+  }
+
+  // The wrap-up's one action per check opens the place that deals with it.
+  function handleWrapUpAction(action) {
+    if (action.kind === "other") {
+      handleOpenEntriesForActual({ categoryName: "Other", entryType: "expense" });
+    } else if (action.kind === "estimates") {
+      handleOpenEntriesForActual({ entryIds: action.ids ?? [] });
+    } else if (action.kind === "imports") {
+      navigate("/imports");
+    } else if (action.kind === "splits") {
+      const next = new URLSearchParams({ view: view.id, month: view.monthPage.month });
+      navigate({ pathname: "/splits", search: `?${next.toString()}` });
+    } else if (action.kind === "plan") {
+      // The plan shows in Plan view; its place is #month-plan (useHashTarget).
+      if (isSimple) {
+        monthLead.setLeadView("plan");
+      }
+      navigate({ search: `?${searchParams.toString()}`, hash: "#month-plan" });
+    } else if (action.kind === "note") {
+      setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" });
+    }
+  }
+
+  // "See all" opens the What changed card for the month: the month in
+  // progress has it on the page already, a month that has ended reads it
+  // now. It is scrolled into view once it has drawn (up to three seconds).
+  function handleSeeAllChanged() {
+    setChangedSeeAllMonth(view.monthPage.month);
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const card = changedSlotRef.current?.firstElementChild;
+      tries += 1;
+      if (card || tries > 30) {
+        window.clearInterval(timer);
+        card?.scrollIntoView({ block: "start" });
+      }
+    }, 100);
   }
 
   function buildIncomeRow(patch = {}) {
@@ -1568,7 +1623,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);
@@ -1712,6 +1767,26 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       />
       </div>
 
+      {/* The month wrap-up: a month that has ended (or this month in its
+          last days), after the read-out and before the cards that explain
+          it. An empty slot takes no room. */}
+      <div className="summary-card-slot" data-month-card="wrapUp">
+      {showWrapUp ? (
+        <Suspense fallback={null}>
+          <MonthWrapUpSection
+            view={changedView}
+            month={view.monthPage.month}
+            planSections={planSections}
+            monthNote={view.monthPage.monthNote ?? ""}
+            enabled={cardsUsable}
+            fetchRequiredQuery={fetchRequiredQuery}
+            onAction={handleWrapUpAction}
+            onSeeAllChanged={handleSeeAllChanged}
+          />
+        </Suspense>
+      ) : null}
+      </div>
+
       {/* The Summary tab's picked month drives Spending Mix: this month's
           spending by category, read from the Month page already loaded. It
           sits after the money insights (the read-out) and before the plan
@@ -1720,10 +1795,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           month and scope, like the tables' Actual drilldowns. */}
       {/* What changed this month: the month in progress only, the Summary
           card as it is (an empty slot takes no room). */}
-      <div className="summary-card-slot" data-month-card="changed">
-      {isPaceMonth && cardsUsable && fetchRequiredQuery ? (
+      <div className="summary-card-slot" data-month-card="changed" ref={changedSlotRef}>
+      {showChanged && cardsUsable && fetchRequiredQuery ? (
         <Suspense fallback={null}>
-          <SummaryChangedSection view={changedView} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} />
+          <SummaryChangedSection view={changedView} enabled={cardsUsable} fetchRequiredQuery={fetchRequiredQuery} month={isPaceMonth ? "" : view.monthPage.month} />
         </Suspense>
       ) : null}
       </div>

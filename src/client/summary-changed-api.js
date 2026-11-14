@@ -3,10 +3,15 @@
 // read-only facts (names, minor amounts, entry ids); the words come from
 // copy/summary-changed-copy.js.
 
-export function summaryChangedEndpoint(viewId, scope) {
+// `month`: a month that has ended (the Month wrap-up's "See all"); without
+// it, the month in progress.
+export function summaryChangedEndpoint(viewId, scope, month = "") {
   const params = new URLSearchParams({ view: viewId || "household" });
   if (scope && viewId && viewId !== "household") {
     params.set("scope", scope);
+  }
+  if (month) {
+    params.set("month", month);
   }
   return `/api/summary-changed?${params.toString()}`;
 }
@@ -56,8 +61,8 @@ export function readSummaryChanged(body) {
 }
 
 // Throws on any failure, so a failed read is never kept as an answer.
-export async function requestSummaryChanged(viewId, scope, { signal = undefined, fetchImpl = fetch } = {}) {
-  const response = await fetchImpl(summaryChangedEndpoint(viewId, scope), { cache: "no-store", signal, headers: { Accept: "application/json" } });
+export async function requestSummaryChanged(viewId, scope, { signal = undefined, fetchImpl = fetch, month = "" } = {}) {
+  const response = await fetchImpl(summaryChangedEndpoint(viewId, scope, month), { cache: "no-store", signal, headers: { Accept: "application/json" } });
   if (!response.ok) {
     throw new Error(`What changed request failed (${response.status}).`);
   }

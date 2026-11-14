@@ -132,6 +132,8 @@ export function buildMonthWrapUp(facts: MonthWrapUpFacts): MonthWrapUpDto | null
   };
 }
 
+const WRAP_UP_RECENT_IMPORTS = 30;
+
 // The month's foreign currency estimates still waiting for their statement
 // (DOMAIN.md "Foreign Currency Estimate"): bounded by the month.
 export const WRAP_UP_ESTIMATES_SQL = `
@@ -206,7 +208,9 @@ export async function buildMonthWrapUpDto(
     loadUsualEntries(db, viewId, scope, month),
     db.prepare(WRAP_UP_ESTIMATES_SQL).bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, end).all<{ id: string }>(),
     loadStatementAccounts(db, viewId),
-    loadImportBatches(db, { includeOverlapDetails: false }),
+    // The latest imports only: the inbox reads them for statements one PDF
+    // shares between accounts, and the newest such statement wins.
+    loadImportBatches(db, { includeOverlapDetails: false, limit: WRAP_UP_RECENT_IMPORTS }),
     loadSummarySplitBalances(db, viewId, personNameById),
     // The sweep reads back from the month's end over its days.
     buildUsuallySharedDto(db, { today: end, days: Math.max(1, Number(end.slice(8, 10)) - 1) })

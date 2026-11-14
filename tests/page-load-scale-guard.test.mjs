@@ -35,6 +35,13 @@ test.after(async () => {
   await template?.dispose();
 });
 
+// Month wrap-up: measured 17 round trips in 4 steps, 108,500 rows, 4.4 MB of rows
+// (most of it the Usually shared sweep's year of history and What changed's 7
+// months, both reads the Splits page and Summary already make), ~330 ms node CPU.
+const MAX_WRAP_STATEMENTS = 24;
+const MAX_WRAP_ROWS = 200_000;
+const MAX_WRAP_BYTES = 8_000_000;
+
 // Rows and bytes a page may read: the fixture's heavy tables hold ~50 MB, so
 // any bound far below that proves they are not read.
 const PAGES = [
@@ -59,6 +66,12 @@ const PAGES = [
   // first screen (measured 6 round trips, 11,155 rows, 1.7 MB of rows, ~45 ms node CPU).
   { name: "summary-changed household", path: "/api/summary-changed?view=household", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
   { name: "summary-changed person", path: "/api/summary-changed?view=person-tim&scope=direct_plus_shared", maxStatements: 12, maxRowsRead: 25_000, maxRowBytes: 3_500_000, maxResponseBytes: 40_000 },
+  // The month wrap-up (2026-11): the view's entries of 7 months (What
+  // changed's read), the month's estimates, the statement accounts grouped in
+  // SQL, the recent imports, the Splits balances grouped in SQL and the
+  // Usually shared sweep over the month; optional, read after the first screen.
+  { name: "month-wrap-up household", path: "/api/month-wrap-up?view=household&month=2026-08", maxStatements: MAX_WRAP_STATEMENTS, maxRowsRead: MAX_WRAP_ROWS, maxRowBytes: MAX_WRAP_BYTES, maxResponseBytes: 20_000 },
+  { name: "month-wrap-up person", path: "/api/month-wrap-up?view=person-tim&scope=direct_plus_shared&month=2026-08", maxStatements: MAX_WRAP_STATEMENTS, maxRowsRead: MAX_WRAP_ROWS, maxRowBytes: MAX_WRAP_BYTES, maxResponseBytes: 20_000 },
   // Miles and cashback (2026-11): the credit card entries of the last four
   // months by date, in one step with the rules and the people.
   { name: "card-rewards household", path: "/api/card-rewards?view=household", maxStatements: 8, maxRowsRead: 20_000, maxRowBytes: 450_000, maxResponseBytes: 12_000 },
@@ -142,6 +155,7 @@ const PAGE_CHAINS = [
   { name: "card-rewards household", path: "/api/card-rewards?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 20_000 },
   { name: "imports-page", path: "/api/imports-page", maxStatements: 15, maxWaves: 4, maxRowsRead: 250_000 },
   { name: "settings-page", path: "/api/settings-page", maxStatements: 21, maxWaves: 2, maxRowsRead: 250_000 },
+  { name: "month-wrap-up person", path: "/api/month-wrap-up?view=person-tim&scope=direct_plus_shared&month=2026-08", maxStatements: MAX_WRAP_STATEMENTS, maxWaves: 5, maxRowsRead: MAX_WRAP_ROWS },
   { name: "ask turn", path: "/api/ask/turn", body: { text: "what did I spend on food", viewId: "household", scope: "direct_plus_shared", month: "2026-08", page: "ask" }, maxStatements: 16, maxWaves: 3, maxRowsRead: 5_000 }
 ];
 

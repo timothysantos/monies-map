@@ -72,7 +72,8 @@ test("the Month page's own cards wear the same head from the same list: short na
     Object.keys(MONTH_CARD_TITLES).map((id) => [id, cardTitle(id), cardSubtitle(id, { month: "2025-10" }), cardSubtitle(id)]),
     [
       ["moneyIn", "Money in", "By source, Oct 2025", "By source"],
-      ["monthNote", "Monthly note", "Why the month looked like this", "Why the month looked like this"]
+      ["monthNote", "Monthly note", "Why the month looked like this", "Why the month looked like this"],
+      ["wrapUp", "Wrap up", "October: 0 of 0 checks done", "Checks before a month is closed"]
     ]
   );
   for (const [id, { title }] of Object.entries(MONTH_CARD_TITLES)) {
@@ -80,6 +81,7 @@ test("the Month page's own cards wear the same head from the same list: short na
     assert.deepEqual(findRetiredNames(title), [], `${id}: "${title}" is a retired name`);
     assert.ok(title.split(" ").slice(1).every((word) => word === word.toLowerCase()), `${id}: "${title}" is not sentence case`);
   }
+  assert.equal(cardSubtitle("wrapUp", { month: "2026-10", done: 2, total: 6 }), "October: 2 of 6 checks done");
   // The Month's Spending mix reads Summary's entry with one month.
   assert.equal(cardSubtitle("mix", { first: "2025-10", last: "2025-10" }), "By category, Oct 2025");
 });

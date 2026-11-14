@@ -1,0 +1,185 @@
+/* The month wrap-up (month-wrap-up-section.jsx; design.md "Month wrap-up").
+   A calm checklist in the What changed card's list look: tokens only, no
+   tint on the rows. A done check is a quiet tick in plain ink; a check left
+   to do is a dashed circle in the accent, with one action. Money tones are
+   text only (owed to you, a debt, over plan); hidden money shows none. */
+
+.wrapup-list,
+.wrapup-changed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.wrapup-changed {
+  margin-bottom: 10px;
+  padding: 10px 14px;
+}
+
+.wrapup-changed-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+
+.wrapup-changed-against {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.wrapup-changed-head .wrapup-action {
+  margin-left: auto;
+}
+
+.wrapup-changed-rows {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wrapup-changed-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 3px 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wrapup-changed-name {
+  font-weight: 600;
+}
+
+.wrapup-changed-move {
+  color: var(--muted);
+}
+
+.wrapup-changed-rows [data-fig] {
+  margin-left: auto;
+}
+
+.wrapup-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 10px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  box-sizing: border-box;
+}
+
+.wrapup-row:last-child {
+  border-bottom: 0;
+}
+
+.wrapup-mark {
+  display: inline-flex;
+  padding-top: 1px;
+}
+
+.wrapup-row.is-done .wrapup-mark {
+  color: var(--muted);
+}
+
+.wrapup-row.is-open .wrapup-mark {
+  color: var(--accent-strong);
+}
+
+.wrapup-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wrapup-label {
+  color: var(--text);
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+
+.wrapup-row.is-done .wrapup-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.wrapup-value,
+.wrapup-lines {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.wrapup-row.is-open .wrapup-value,
+.wrapup-row.is-open .wrapup-lines {
+  color: var(--text);
+}
+
+.wrapup-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wrapup-lines li {
+  padding: 1px 0;
+}
+
+.wrapup-value [data-fig],
+.wrapup-lines [data-fig],
+.wrapup-changed-rows [data-fig] {
+  font-weight: 700;
+}
+
+.wrapup-action {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wrapup-action.is-quiet {
+  min-height: 36px;
+}
+
+.wrapup-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.wrapup-done svg {
+  color: var(--muted);
+}
+
+/* One line: the card is only as tall as the line. */
+.wrapup-card.is-wrapped {
+  padding-block: 12px;
+}
+
+@media (max-width: 760px) {
+  .wrapup-row {
+    padding: 10px 12px;
+  }
+
+  .wrapup-changed {
+    padding: 8px 12px;
+  }
+}

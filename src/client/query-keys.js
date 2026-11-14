@@ -159,8 +159,14 @@ export const queryKeys = {
     return ["tax-reliefs", viewId || "household"];
   },
   // Summary's What changed this month (summary-changed-api.js), per view and scope.
-  summaryChanged(viewId, scope) {
-    return ["summary-changed", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
+  // A month that has ended (the Month wrap-up's "See all") adds its month.
+  summaryChanged(viewId, scope, month = "") {
+    const key = ["summary-changed", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared"];
+    return month ? [...key, month] : key;
+  },
+  // The Month page's wrap-up (month-wrap-up-api.js), per view, scope and month.
+  monthWrapUp(viewId, scope, month) {
+    return ["month-wrap-up", viewId || "household", viewId && viewId !== "household" ? scope || "direct_plus_shared" : "direct_plus_shared", month];
   },
   // Summary's Miles and cashback (card-rewards-api.js), per view.
   cardRewards(viewId) {

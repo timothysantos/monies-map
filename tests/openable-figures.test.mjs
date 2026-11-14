@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, cardRewardSpendFigureMinor, changedFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, cardRewardSpendFigureMinor, changedFigureMinor, monthWrapUpFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
 import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
 import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
@@ -972,4 +972,36 @@ test("Miles and cashback: every spending figure opens exactly its entries and En
     }
   }
   assert.ok(checked >= 6, `checked ${checked} figures`);
+});
+
+// The month wrap-up (money-figures.ts monthWrapUpFigureMinor): what is left
+// in Other, the estimates waiting for their statement and each What changed
+// row open exactly the entries the server named, in every view and scope,
+// and Entries' Spent total is the figure to the cent.
+test("Month wrap-up: Other, estimates and What changed open exactly their entries and Entries' total is the figure", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  const month = addMonths(todayInAppTimeZone().slice(0, 7), -1);
+  await createEntry(api, { date: `${addMonths(month, -1)}-03`, description: "Wrap groceries before", categoryName: "Groceries", amountMinor: 10_000 });
+  await createEntry(api, { date: `${month}-03`, description: "Wrap groceries", categoryName: "Groceries", amountMinor: 60_000 });
+  await createEntry(api, { date: `${month}-04`, description: "Wrap mystery", categoryName: "Other", amountMinor: 4_321 });
+  await createEntry(api, { date: `${month}-05`, description: "Wrap shared mystery", categoryName: "Other", amountMinor: 2_000, ownershipType: "shared" });
+  const estimate = await createEntry(api, { date: `${month}-06`, description: "E-MART Yongsan", categoryName: "Groceries", amountMinor: 3_210 });
+  await db.prepare("UPDATE transactions SET original_currency = 'KRW', original_amount_minor = 3200000 WHERE id = ?").bind(estimate).run();
+  let checked = 0;
+  for (const view of VIEWS) {
+    const { wrapUp } = await get(api, `/api/month-wrap-up?view=${view.viewId}&scope=${view.scope}&month=${month}`);
+    const figures = [
+      [wrapUp.other.ids, wrapUp.other.amountMinor, "Other"],
+      [wrapUp.estimates.ids, wrapUp.estimates.amountMinor, "estimates"],
+      ...(wrapUp.changed?.rows ?? []).filter((row) => row.ids.length).map((row) => [row.ids, row.amountMinor, row.category])
+    ];
+    for (const [ids, amountMinor, name] of figures.filter((figure) => figure[0].length)) {
+      const { model, derived } = await viewEntries(api, accounts, "spent", { search: viewSearch(view, month), period: { startMonth: month, endMonth: month }, ids });
+      assert.equal(shownTotal(model), amountMinor, `${view.viewId}:${view.scope} ${name}`);
+      assert.equal(monthWrapUpFigureMinor(ids, derived.filteredEntries), amountMinor, `${view.viewId}:${view.scope} ${name} (rule)`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked >= 8, `checked ${checked} figures`);
 });
