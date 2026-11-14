@@ -1868,6 +1868,34 @@ openable figure (`changed` in `money-figures.ts`) whose Entries total equals
 it to the cent. Read after the first screen from `GET /api/summary-changed`;
 no AI, no write. It never predicts and never says "safe to spend".
 
+### Month Wrap-up
+
+The Month page's "Wrap up" card (owner go-ahead 2026-11-14, built without a
+mockup; `src/domain/month-wrap-up.ts`, `month-wrap-up-projection.ts`): a
+checklist that helps close a month. Guidance only: nothing records a month
+as closed, nothing is written, no AI, nothing predicted. It shows for a month
+that has ended, or the month in progress in its last 3 days
+(`MONTH_WRAP_UP_CONFIG.lastDaysOfMonth`), never for a future month or a month
+with no entries, and follows the view and scope in force. Every check reads
+an existing projection and adds no money rule of its own:
+- What changed (information, not a check): the 3 biggest rows of the What
+  Changed Card for the month (the whole month against the month before);
+  "See all" opens that card for the month.
+- Left in Other: the month's expenses in Other (no category).
+- Foreign currency estimates: the month's estimates no statement has
+  confirmed (`original_currency` set, still provisional).
+- Statements imported: the Import Inbox's expected statements for the month
+  among the view's active bank and card accounts (left out with none).
+- Splits to settle: what is owed right now (the Splits tile's balances) and
+  the month's entries the Usually Shared rule would put on Splits.
+- Over plan: the category budgets over plan (`budgetLinesOverPlan`, the rule
+  the "category over plan" insight reads; left out with no plan).
+- Monthly note: written or not.
+A done check stays as a tick; with every check done the card is one line,
+"October is wrapped up". Read from `GET /api/month-wrap-up`; the plan and
+the note come from the Month page itself. Its Other and estimates amounts
+are openable figures (`monthWrapUpFigureMinor`).
+
 ### Words Used
 
 Fixed plain explanations of the bank and app words Ask's answers use

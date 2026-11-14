@@ -671,6 +671,9 @@ stays highlighted, and the range at the top stays as it was.
   (planned income minus planned spend; it says **Planned more than you earn** when negative).
   Select it to see what it means, with **Open plan** and **Ask about this**.
 - **Money insights** for the month.
+- **Wrap up** (only for a month that has ended, or in the last 3 days of
+  this month): a short checklist to help you close the month. See
+  [Wrap up a month](#wrap-up-a-month).
 - **Spending mix**: the month's spending by category, the same donut and
   ranked list as on Summary. Select a category to hide or show it in the donut; its
   **›** offers that category's entries for this month. A month with no
@@ -722,6 +725,35 @@ fixing an actual means fixing the entry.
 
 - Plan a month: [Plan a month](#plan-a-month).
 - Start next month from this one: **Actions → Duplicate month**.
+- Close a month: [Wrap up a month](#wrap-up-a-month).
+
+### Wrap up a month
+
+When a month has ended (and in the last 3 days of the current month), Month
+shows a **Wrap up** card after Money insights. It lists what is worth a look
+before you leave the month behind, for the person and scope you are viewing.
+Each line has one button that takes you to the place to sort it out:
+
+- **What changed**: the 3 biggest changes against the month before.
+  **See all** opens the full What changed card for the month.
+- **Left in Other (no category)**: spending that has no category yet.
+  **Open in Entries** lists it.
+- **Foreign currency estimates**: purchases in another currency whose amount
+  the bank has not confirmed yet. **Open in Entries** lists them.
+- **Statements imported**: the bank and card statements for the month that
+  are not brought in yet, by name. **Open Imports** takes you there.
+- **Splits to settle**: who owes whom right now, and any of the month's
+  purchases you usually share that are not on Splits yet. **Open Splits**.
+- **Over plan**: the monthly budgets you went over, and by how much.
+  **Open plan**.
+- **Monthly note**: whether the month's note is written. **Write the note**.
+
+A line with nothing to do keeps a quiet tick, so you can see what is done.
+When every line is done, the card shrinks to one line, for example
+"October is wrapped up". Nothing is saved by the card itself, and a month
+with no entries has no Wrap up. With money hidden it shows counts and names
+only. The month reminder in Ask ("September is ready to close") opens Month
+at this card.
 
 ### On a phone
 

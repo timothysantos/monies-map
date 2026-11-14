@@ -10,6 +10,28 @@ import { monthWrapUpEndpoint, readMonthWrapUp, requestMonthWrapUp } from "../src
 import { buildMonthWrapUpView } from "../src/client/month-wrap-up-model.js";
 import { queryKeys } from "../src/client/query-keys.js";
 import { summaryChangedEndpoint } from "../src/client/summary-changed-api.js";
+import { monthWrapUpCopy } from "../src/client/copy/month-wrap-up-copy.js";
+import { findAppJargon } from "../src/domain/money-signals/tone.ts";
+import { findRetiredNames } from "../src/domain/retired-names.ts";
+
+test("every word on the card is plain: no app jargon and no retired name", () => {
+  const strings = [];
+  const walk = (value) => {
+    if (typeof value === "string") strings.push(value);
+    else if (typeof value === "function") {
+      // Each template with sample words: a list of names, or a count and a name.
+      const sample = value.length === 1 && /names/.test(String(value)) ? [["DBS Account", "UOB One Card"]] : [2, "Baby River"];
+      strings.push(String(value(...sample)));
+    }
+    else if (value && typeof value === "object") Object.values(value).forEach(walk);
+  };
+  walk(monthWrapUpCopy);
+  assert.ok(strings.length >= 25, `${strings.length} strings`);
+  for (const text of strings) {
+    assert.deepEqual(findAppJargon(text), [], text);
+    assert.deepEqual(findRetiredNames(text), [], text);
+  }
+});
 
 const ANSWER = {
   wrapUp: {

@@ -13,6 +13,22 @@ unchanged between Money insights and Spending mix (`data-month-card="changed"`),
 a lazy import that reads its own `/api/summary-changed` once the page is usable.
 Other months leave an empty slot with no height.
 
+## Month wrap-up (2026-11-14)
+
+For a month that has ended (or the month in progress in its last 3 days),
+with entries, Month shows the "Wrap up" card after Money insights
+(`data-month-card="wrapUp"`; design.md "Month wrap-up"). It reads its own
+`GET /api/month-wrap-up?view=&scope=&month=` once the page is usable
+(`useSummaryCardQuery`, `fetchRequiredQuery`, key
+`queryKeys.monthWrapUp`); the plan and the monthly note come from the Month
+page state, so the Month page response is unchanged. Actions: Left in Other
+opens Entries (`entry_category=Other`, `entry_type=expense`), estimates open
+Entries on their ids, statements open Imports, Splits opens `/splits` for
+the month, Over plan switches to Plan if needed and goes to `#month-plan`,
+the note opens the month note dialog. "See all" mounts the What changed card
+for that month (`/api/summary-changed?month=`) and scrolls to it. A month
+with no entries or still under way makes no request.
+
 ## Route Flow
 
 Route entry:

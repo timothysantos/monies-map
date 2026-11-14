@@ -1993,6 +1993,36 @@ words in `copy/summary-changed-copy.js`).
   response is unchanged. Any other month, or nothing to compare, leaves an empty
   slot that takes no room. Proof: `tests/e2e/summary-leftovers.spec.js`.
 
+## Month wrap-up
+
+A Month page card (owner go-ahead 2026-11-14, no mockup; DOMAIN.md "Month
+Wrap-up"; `month-wrap-up-section.jsx`, `month-wrap-up-model.js`,
+`month-wrap-up.css`, words in `copy/month-wrap-up-copy.js`, head in
+`MONTH_CARD_TITLES.wrapUp`).
+
+- Place: in Month's grid after Money insights, before What changed and
+  Spending mix (`data-month-card="wrapUp"`, `id="month-wrap-up"`). An empty
+  slot takes no room. No navigation item, banner or notification; the month
+  checklist reminder in Ask ("Open September") lands on it
+  (`#month-wrap-up`).
+- Loading: rides Spending mix's lazy chunk; `useSummaryCardQuery` reads
+  `GET /api/month-wrap-up?view=&scope=&month=` through `fetchRequiredQuery`
+  once the page is usable, only for a month that can be wrapped up and has
+  entries. A failed read shows nothing.
+- Head: "Wrap up", "October: 3 of 6 checks done". Then a What changed box
+  (the 3 biggest rows: name, "down $450.00", the month's amount as a
+  `spent` figure; "Against September"; "See all" mounts the What changed card
+  for that month and scrolls to it). Then one row per check: a dashed circle
+  in the accent and one action while something is left, a quiet tick in
+  plain ink when done (not hidden). On a phone the action sits under the
+  words (44 px target).
+- All done: one line, a tick and "October is wrapped up".
+- Colours: tokens only; money tones as text (a debt or over plan rose, owed
+  to you mint, the household's "Tim owes Joyce" plain).
+- Hidden money: counts and names only, What changed A to Z, no tone, never
+  who owes whom ("2 to settle").
+- Proof: `tests/e2e/month-wrap-up.spec.js` (390 and 1440).
+
 ## Miles and cashback
 
 A Summary card (owner-approved, 2026-11-10; DOMAIN.md "Card Reward Rule"),

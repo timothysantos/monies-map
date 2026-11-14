@@ -175,8 +175,21 @@
 }
 
 @media (max-width: 760px) {
+  /* On a phone the action sits under the words, so the label keeps the width. */
   .wrapup-row {
-    padding: 10px 12px;
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 10px 12px 4px;
+  }
+
+  .wrapup-row.is-done {
+    padding-bottom: 10px;
+  }
+
+  .wrapup-row .wrapup-action {
+    grid-column: 2;
+    justify-self: start;
+    align-self: start;
+    padding: 0;
   }
 
   .wrapup-changed {
