@@ -549,8 +549,11 @@ test("trip view: Spent and every pill, category and day open the trip view narro
     assert.ok(page.monthPage.entries.every((entry) => entry.tripEventId === tripEvent.id), `${label}: only the trip's entries`);
     // Spent is the Entries Spent rule over the same rows.
     assert.equal(lead.spentMinor, derived.entryTotals.spendMinor, `${label} Spent`);
-    // Its menu: no View entries (it is the list), Ask about this.
-    assert.deepEqual(tripOpen(search, tripEvent, { trip: { list: true } }).items.map((item) => item.action), ["ask"]);
+    // Its menu: no View entries (it is the list), the trip's own page, Ask about this.
+    const listMenu = tripOpen(search, tripEvent, { trip: { list: true, name: tripEvent.name } });
+    assert.deepEqual(listMenu.items.map((item) => item.action), ["trip", "ask"]);
+    assert.equal(listMenu.items[0].label, "Open Seoul trip");
+    assert.equal(listMenu.items[0].location.pathname, `/trips/${tripEvent.id}`);
     // Pills and bars add up.
     assert.equal(lead.beforeMinor + lead.whileAwayMinor, lead.spentMinor, `${label} before + away`);
     assert.equal(lead.byCategory.reduce((sum, row) => sum + row.amountMinor, 0), lead.spentMinor, `${label} categories`);
@@ -583,6 +586,46 @@ test("trip view: Spent and every pill, category and day open the trip view narro
     [`${TIM}/shared`, 59_910],
     ["person-joyce/direct_plus_shared", 59_910 + 3_680]
   ]);
+});
+
+// The trip page (DOMAIN.md "Trip page", money-figures.ts `tripPageFigures`):
+// the household's money whatever view the app is in (data-fig-view
+// "household"). Spent, each day, each category and each person who paid
+// open the trip view in the household view, whose Spent lead (and the
+// Entries totals) are the figure to the cent; each list adds up to Spent.
+test("trip page: Spent, every day, category and payer open the trip view at the figure, to the cent", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const tripEvent = await seedTrip(api);
+  const { accounts } = await get(api, "/api/reference-data");
+  const { tripPage: page } = await get(api, `/api/trip-page?trip=${tripEvent.id}`);
+  assert.equal(page.spentMinor, 253_420);
+  const figures = [
+    { name: "Spent", minor: page.spentMinor },
+    ...page.days.map((row) => ({ name: row.day, minor: row.amountMinor, ids: row.entryIds })),
+    ...page.categories.map((row) => ({ name: row.categoryName, minor: row.amountMinor, trip: { categoryName: row.categoryName } })),
+    ...page.payers.map((row) => ({ name: row.name, minor: row.amountMinor, ids: row.entryIds }))
+  ];
+  for (const list of [page.days, page.categories, page.payers]) {
+    assert.equal(list.reduce((sum, row) => sum + row.amountMinor, 0), page.spentMinor);
+  }
+  // Tim paid the flights, the hotel and the taxi, less the refund; Joyce her dinner.
+  assert.deepEqual(page.payers.map((row) => [row.name, row.amountMinor]), [["Tim", 128_640 + 119_820 + 1_780 - 500], ["Joyce", 3_680]]);
+  for (const pageView of ["household", TIM]) {
+    const search = `?view=${pageView}&month=${MAY}&scope=direct_plus_shared`;
+    for (const figure of figures) {
+      const menu = figureMenu({
+        fig: "trip", arg: tripEvent.id, name: tripEvent.name, ids: figure.ids ?? [], period: null, search,
+        pathname: `/trips/${tripEvent.id}`, view: "household", trip: { ...(figure.trip ?? {}), name: tripEvent.name }
+      });
+      // On its own page the menu never offers to open the page again.
+      assert.ok(!menu.items.some((item) => item.action === "trip"), `${figure.name}: no Open trip on the trip page`);
+      assert.equal(menu.items[0].action, "entries");
+      const opened = await openTripView(api, menu.items[0].location, accounts);
+      assert.equal(opened.page.viewId, "household", `${pageView} ${figure.name}: opens in the household view`);
+      assert.equal(opened.lead.spentMinor, figure.minor, `${pageView} ${figure.name}`);
+      assert.equal(opened.derived.entryTotals.spendMinor, figure.minor, `${pageView} ${figure.name} (Entries totals)`);
+    }
+  }
 });
 
 test("trip view: an unknown trip lists nothing and names no trip; the other filters still narrow it", async (t) => {

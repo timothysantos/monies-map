@@ -18,3 +18,27 @@ export function tripFigureSearch(search, { tripEventId, personId = "", categoryN
   for (const id of entryIds) next.append("entry_id", id);
   return `?${next.toString()}`;
 }
+
+// A trip or event's own page (DOMAIN.md "Trip page"): /trips/<id>, keeping
+// the page's view, month and scope so going back to another tab keeps them.
+export function tripPageLocation(search, tripEventId) {
+  const current = new URLSearchParams(search);
+  const next = new URLSearchParams();
+  for (const key of ["view", "month", "scope"]) {
+    const value = current.get(key);
+    if (value) next.set(key, value);
+  }
+  const query = next.toString();
+  return { pathname: `/trips/${encodeURIComponent(tripEventId)}`, search: query ? `?${query}` : "" };
+}
+
+// The trip id a /trips/<id> path names, or "".
+export function readTripPageId(pathname) {
+  const match = /^\/trips\/([^/]+)\/?$/.exec(pathname ?? "");
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return "";
+  }
+}

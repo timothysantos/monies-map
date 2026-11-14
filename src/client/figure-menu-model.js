@@ -1,7 +1,7 @@
 import { figureCopy as copy } from "./copy/figure-copy";
 import { buildEntriesFilterSearch, ENTRY_FIGURES } from "./entry-filter-params";
 import { formatMonthLabel } from "./formatters";
-import { tripFigureSearch } from "./trip-figure-search";
+import { tripFigureSearch, tripPageLocation } from "./trip-figure-search";
 
 // What an openable figure's menu offers (design.md "Openable figures"), as
 // data, so it is tested without a page: figure-menu.js reads the figure's
@@ -36,7 +36,7 @@ const HIDDEN_QUESTION = { spentOverPlan: "spentVsPlan", spentMore: "spentVsIncom
  * `view` (data-fig-view) opens the figure in that view whatever the page's:
  * Investments over time and Tax reliefs count whole amounts, so their
  * figures open in the household view.
- * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean, view?: string, trip?: { personId?: string, categoryName?: string, group?: string, list?: boolean } }} figure
+ * @param {{ fig: string, arg?: string, name?: string, ids?: string[], plan?: string | null, ask?: string, period: { startMonth: string, endMonth: string } | null, search?: string, pathname?: string, hidden?: boolean, view?: string, trip?: { personId?: string, categoryName?: string, group?: string, list?: boolean, name?: string } }} figure
  */
 export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan = null, ask = "", period, search: pageSearch = "", pathname = "", hidden = false, view = "", trip = {} }) {
   const search = view ? viewSearch(pageSearch, view) : pageSearch;
@@ -51,6 +51,10 @@ export function figureMenu({ fig, arg = "", name: ownName = "", ids = [], plan =
         label: copy.viewEntries,
         location: { pathname: "/entries", search: tripFigureSearch(search, { tripEventId: arg, personId: trip.personId, categoryName: trip.categoryName, entryIds: ids }) }
       });
+    }
+    // The trip's own page (DOMAIN.md "Trip page"), from anywhere but itself.
+    if (!pathname.startsWith("/trips/")) {
+      tripItems.push({ action: "trip", label: copy.openTrip(trip.name || ownName || copy.names.trip), location: tripPageLocation(search, arg) });
     }
     if (trip.group) {
       const current = new URLSearchParams(search);

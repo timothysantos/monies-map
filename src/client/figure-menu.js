@@ -60,7 +60,9 @@ export function readFigure(element) {
       personId: element.getAttribute("data-fig-trip-view") ?? "",
       categoryName: element.getAttribute("data-fig-trip-category") ?? "",
       group: element.getAttribute("data-fig-trip-group") ?? "",
-      list: element.hasAttribute("data-fig-trip-list")
+      list: element.hasAttribute("data-fig-trip-list"),
+      // The trip's own name, for "Open Seoul trip" (data-fig-name may name a slice).
+      name: element.getAttribute("data-fig-trip-name") ?? ""
     },
     search: window.location.search,
     pathname: window.location.pathname,

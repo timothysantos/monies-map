@@ -42,6 +42,8 @@ export const figureCopy = {
   openPlan: "Open plan",
   openMonthPlan: (monthLabel) => `Open ${monthLabel} plan`,
   openSplits: "Open Splits",
+  // A trip or event's own page (DOMAIN.md "Trip page"): "Open Seoul trip".
+  openTrip: (name) => `Open ${name}`,
   openStatement: "Open the statement",
   openStatements: "Open the statements",
   ask: "Ask about this",
