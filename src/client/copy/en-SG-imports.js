@@ -58,9 +58,15 @@ export const importMessages = {
   intakeReady: (count) => `${count} file${count === 1 ? "" : "s"} added to the intake queue.`,
   intakeFailed: "Could not add files to the intake queue.",
   intakeTitle: "File intake queue",
-  intakeDetail: "Files stay in this browser only. Review them one at a time, in the order shown.",
+  intakeDetail: "Files you drop stay in this browser. Review them one at a time, in the order shown.",
   intakeEmptyTitle: "Drop all downloaded bank files together.",
-  intakeEmptyDetail: "Filename format is not required. The app reads parsed content in this browser, suggests the matching checklist item, flags duplicates, and does not store original files.",
+  intakeEmptyDetail: "Filename format is not required. The app reads parsed content in this browser, suggests the matching checklist item, flags duplicates, and does not store files you drop here.",
+  // Files sent to Monies Map from the share sheet (DOMAIN.md "Waiting File").
+  waitingFileArrived: ({ arrivedVia, day }) => `${arrivedVia === "shortcut" ? "Sent from your phone" : "Sent to Monies Map"}${day ? `, ${day}` : ""}`,
+  waitingFilesOpening: (count) => `Opening ${countOf(count, "file")} you sent to Monies Map.`,
+  waitingFileOpenFailed: (fileName) => `Could not open ${fileName}. It is still waiting; open Imports again to try.`,
+  waitingFileRemoveFailed: (fileName) => `Could not remove ${fileName}. Try again.`,
+  waitingFileUnreadable: "This browser could not read it. Remove it, or download it again from your bank.",
   intakeClear: "Clear queue",
   intakeSummary: ({ total, ready, ambiguous, unexpected, duplicate }) => [
     countOf(total, "file"),

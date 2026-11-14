@@ -126,6 +126,8 @@ export function describeIntakeSource(item) {
 // confirmed statement then decides which activity rows are already on it),
 // older months first, duplicates last. A file skipped for now ("Skip for
 // now", `skipOrder`) goes after every file not skipped, in skip order.
+// Files that tie on all of that go by name, then content, so the order
+// never depends on the order the files arrived in.
 export function orderIntakeQueue(items) {
   const rank = (item) => [
     item.duplicate ? 1 : 0,
@@ -136,7 +138,12 @@ export function orderIntakeQueue(items) {
   return [...items].sort((left, right) => {
     const [leftDuplicate, leftSkip, leftKind, leftDate] = rank(left);
     const [rightDuplicate, rightSkip, rightKind, rightDate] = rank(right);
-    return leftDuplicate - rightDuplicate || leftSkip - rightSkip || leftKind - rightKind || leftDate.localeCompare(rightDate);
+    return leftDuplicate - rightDuplicate
+      || leftSkip - rightSkip
+      || leftKind - rightKind
+      || leftDate.localeCompare(rightDate)
+      || String(left.fileName ?? "").localeCompare(String(right.fileName ?? ""))
+      || String(left.fingerprint ?? "").localeCompare(String(right.fingerprint ?? ""));
   });
 }
 

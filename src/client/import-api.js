@@ -181,6 +181,7 @@ export function commitImportBatch({
   wrongCardDuplicates = [],
   reviewedRows,
   rows,
+  waitingFileId,
   diagnosticContext
 }) {
   return postJson(
@@ -208,7 +209,9 @@ export function commitImportBatch({
       rows: rows.map((row) => ({
         ...row,
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
-      }))
+      })),
+      // A file sent to Monies Map leaves the store with this commit.
+      ...(waitingFileId ? { waitingFileId } : {})
     },
     "Import commit failed.",
     diagnosticContext

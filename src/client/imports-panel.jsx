@@ -8,6 +8,8 @@ import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
 import { EmptyState } from "./ui-states";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
+import { fetchWaitingFile, removeWaitingFile } from "./waiting-files-api";
+import { selectWaitingFilesToPull } from "./waiting-files-model";
 import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
 import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
@@ -696,12 +698,56 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
-  function handleRemoveIntakeItem(itemId) {
+  async function handleRemoveIntakeItem(itemId) {
+    // A file sent to Monies Map is deleted from the store first; it stays
+    // in the queue when that fails.
+    const waitingFile = intakeQueue.find((item) => item.id === itemId)?.waitingFile;
+    if (waitingFile) {
+      const removed = await removeWaitingFile(waitingFile.id);
+      if (!removed.ok) {
+        setUploadStatus({ tone: "error", message: importMessages.waitingFileRemoveFailed(waitingFile.fileName) });
+        return;
+      }
+    }
     setIntakeQueue((current) => current.filter((item) => item.id !== itemId));
     if (itemId === activeIntakeItemId) {
       setActiveIntakeItemId(null);
     }
   }
+
+  // Files sent to Monies Map join the intake queue when Imports opens (and
+  // when a refresh lists new ones), each read in this browser like a
+  // dropped file. Each is pulled once per visit, one file at a time.
+  const pulledWaitingFileIdsRef = useRef(new Set());
+  const waitingFilesKey = (safeImportsPage.waitingFiles ?? []).map((file) => file.id).join(",");
+  useEffect(() => {
+    const toPull = selectWaitingFilesToPull(safeImportsPage.waitingFiles, pulledWaitingFileIdsRef.current);
+    if (!toPull.length) {
+      return;
+    }
+    for (const waitingFile of toPull) {
+      pulledWaitingFileIdsRef.current.add(waitingFile.id);
+    }
+    void (async () => {
+      const waitingByFile = new Map();
+      const files = [];
+      for (const waitingFile of toPull) {
+        try {
+          const file = await fetchWaitingFile(waitingFile);
+          waitingByFile.set(file, waitingFile);
+          files.push(file);
+        } catch {
+          // Still waiting on the server: the next visit tries again.
+          pulledWaitingFileIdsRef.current.delete(waitingFile.id);
+          setUploadStatus({ tone: "error", message: importMessages.waitingFileOpenFailed(waitingFile.fileName) });
+        }
+      }
+      if (files.length) {
+        await processImportFiles(files, { waitingByFile });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the list of waiting files changes; processImportFiles is this render's
+  }, [waitingFilesKey]);
 
   function handleClearIntakeQueue() {
     setIntakeQueue([]);
@@ -852,15 +898,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       .finally(() => setIsSubmitting(false));
   }
 
-  async function processImportFiles(files) {
+  // Several files join the intake queue; one dropped on its own opens
+  // straight away. Files sent to Monies Map always join the queue
+  // (`waitingByFile` names each one's waiting file).
+  async function processImportFiles(files, { waitingByFile = undefined } = {}) {
     startBatchIfIdle();
-    if (files.length === 1) {
+    if (files.length === 1 && !waitingByFile) {
       await processImportFile(files[0]);
       return;
     }
 
     setPreviewError("");
-    setUploadStatus({ tone: "active", message: importMessages.intakeParsing(files.length) });
+    setUploadStatus({
+      tone: "active",
+      message: waitingByFile ? importMessages.waitingFilesOpening(files.length) : importMessages.intakeParsing(files.length)
+    });
     setIsParsingStatement(true);
     const nextItems = [];
     const skippedFiles = [];
@@ -876,10 +928,22 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             skippedFiles.push(file);
             continue;
           }
+          // A sent file this browser cannot read still gets its row, so it
+          // can be removed; the others carry on.
+          const unreadableWaitingFile = waitingByFile?.get(file);
+          if (unreadableWaitingFile) {
+            nextItems.push({
+              ...buildIntakeQueueItem({ id: `waiting:${unreadableWaitingFile.id}`, fileName: file.name, parsed: null, sourceType: "csv", csvText: "", inbox: null }),
+              waitingFile: unreadableWaitingFile,
+              unreadable: true
+            });
+            continue;
+          }
           throw error;
         }
+        const waitingFile = waitingByFile?.get(file);
         const item = buildIntakeQueueItem({
-          id: `${Date.now()}-${nextItems.length}-${file.name}`,
+          id: waitingFile ? `waiting:${waitingFile.id}` : `${Date.now()}-${nextItems.length}-${file.name}`,
           fileName: file.name,
           parsed: parsedImport.parsed,
           sourceType: parsedImport.sourceType,
@@ -887,6 +951,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           inbox: safeImportsPage.importInbox,
           existingFingerprints
         });
+        if (waitingFile) {
+          item.waitingFile = waitingFile;
+        }
         existingFingerprints.add(item.fingerprint);
         nextItems.push(item);
       }
@@ -1425,6 +1492,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         wrongCardDuplicates,
         reviewedRows: previewRows,
         rows: rowsToCommit,
+        waitingFileId: intakeQueue.find((item) => item.id === activeIntakeItemId)?.waitingFile?.id,
         diagnosticContext: {
           source: "import_commit",
           action: `Commit import: ${committedSourceLabel || DEFAULT_SOURCE_LABEL} (${rowsToCommit.length} rows, ${statementImportMeta.sourceType})`,

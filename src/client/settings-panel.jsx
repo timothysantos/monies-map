@@ -44,6 +44,7 @@ import { useClaudeCreditStatus } from "./claude-credit-status";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsColoursSection } from "./settings-colours-section";
 import { SettingsAskRemembersSection } from "./settings-ask-remembers-section";
+import { SettingsFileIntakeSection } from "./settings-file-intake-section";
 import { SettingsCardRewardsSection } from "./settings-card-rewards-section";
 import { SettingsLeadViewSection } from "./settings-lead-view-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
@@ -163,6 +164,7 @@ export function SettingsPanel({
     people: false,
     accounts: false,
     shortcutApi: false,
+    fileIntake: false,
     askAi: false,
     askRemembers: false,
     cardRewards: false,
@@ -1402,6 +1404,13 @@ export function SettingsPanel({
           onForeignCurrencyAccountChange={handleForeignCurrencyAccountChange}
           onToggle={() => toggleSettingsSection("shortcutApi")}
           onSave={handleSaveShortcutSettings}
+        />
+      </GuardedSettingsSection>
+
+      <GuardedSettingsSection>
+        <SettingsFileIntakeSection
+          isOpen={settingsSectionsOpen.fileIntake}
+          onToggle={() => toggleSettingsSection("fileIntake")}
         />
       </GuardedSettingsSection>
 

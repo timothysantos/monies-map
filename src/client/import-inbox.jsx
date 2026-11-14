@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, Clock3, FileText, Landmark, ListChecks } from "lucide-react";
 
 import { describeIntakeCoverage, describeIntakeSource, orderIntakeQueue } from "./import-intake-model";
+import { describeWaitingFileArrival } from "./waiting-files-model";
 import { buildInboxChecklistProgress, groupInboxFilesByOwner } from "./import-inbox-model";
 import { getPersonColourVars } from "./person-colour";
 import { ImportAskFirst } from "./import-batch-bar";
@@ -207,7 +208,7 @@ export function ImportIntakeQueueSection({
           <div className="import-intake-list">
             {orderIntakeQueue(items).map((item, index) => {
               const coverage = describeIntakeCoverage(item, items);
-              const isNext = index === 0 && !item.duplicate && item.id !== activeItemId;
+              const isNext = index === 0 && !item.duplicate && !item.unreadable && item.id !== activeItemId;
               return (
               <div key={item.id} className={`import-intake-row is-${item.matchStatus}${item.duplicate ? " is-duplicate" : ""}${item.id === activeItemId ? " is-active" : ""}`}>
                 <div className="import-intake-main">
@@ -220,7 +221,8 @@ export function ImportIntakeQueueSection({
                     cardCount: item.checkpointCount,
                     rowCount: item.rowCount
                   })}</span>
-                  <span>{item.id === activeItemId ? importMessages.intakeInReview : isNext ? importMessages.intakeReviewFirst : getIntakeStatusLabel(item)}</span>
+                  {item.waitingFile ? <span className="import-intake-arrival">{describeWaitingFileArrival(item.waitingFile)}</span> : null}
+                  <span>{item.id === activeItemId ? importMessages.intakeInReview : isNext && !item.unreadable ? importMessages.intakeReviewFirst : getIntakeStatusLabel(item)}</span>
                   {coverage ? <span className="import-intake-coverage">{importMessages.intakeCoverage(coverage)}</span> : null}
                 </div>
                 <div className="import-intake-actions">
@@ -235,7 +237,7 @@ export function ImportIntakeQueueSection({
                         type="button"
                         className={isNext ? "import-commit-button" : "subtle-action"}
                         onClick={onClick}
-                        disabled={item.duplicate || item.id === activeItemId}
+                        disabled={item.duplicate || item.unreadable || item.id === activeItemId}
                       >
                         {importMessages.intakeLoad}
                       </button>
@@ -269,6 +271,9 @@ function describeIntakeSourceLabel(item) {
 }
 
 function getIntakeStatusLabel(item) {
+  if (item.unreadable) {
+    return importMessages.waitingFileUnreadable;
+  }
   if (item.duplicate) {
     return importMessages.intakeDuplicate;
   }
