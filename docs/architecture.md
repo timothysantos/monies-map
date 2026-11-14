@@ -266,7 +266,11 @@ design.md, "Summary Tab Month Choice".
 - imports owns browser-only intake state for selected/dropped bank files. It may
   keep parsed rows, checkpoints, and generic CSV text while the page is alive,
   but it must not persist original PDFs, CSVs, XLS files, OCR images, or raw
-  bank files
+  bank files. The one exception is a waiting file (DOMAIN.md "Waiting
+  File"): a file the person sent from the share sheet is stored server-side,
+  as opaque bytes in D1 (`waiting_files`, `waiting_file_chunks`), until its
+  import commits, it is removed, or 30 days pass; Imports pulls it into the
+  same browser-only intake queue, so review and commit are unchanged
 - derived view state should come from selectors or pure helpers, not effect
   chains
 - the app shell should import only its route-neutral controls and the small
@@ -633,7 +637,14 @@ for a new entry at a shop mostly paid on another card
 
 Production serves that route through the `monies-map-shortcuts` Worker. It
 shares the production D1 database but has no static assets and returns `404` for
-every path except `/api/shortcuts/entries/create`. This keeps the main
+every path except `/api/shortcuts/entries/create` and
+`/api/shortcuts/files/send` (POST only each). The second is "Send to Monies
+Map" (DOMAIN.md "Waiting File"): a share-sheet Shortcut posts bank files with
+its own key (never the Apple Pay key); the files wait in D1 until Imports
+pulls them into the browser-only intake queue, and leave the store when their
+import commits, when removed, or after 30 days. Reading a file back, Remove and
+the key routes stay behind Access (`src/server/waiting-files-route.ts`,
+`docs/audits/waiting-files.md`). This keeps the main
 `monies-map` Worker behind Cloudflare Access while allowing iOS Shortcuts to
 reach the app-owned token boundary without an interactive Access session.
 

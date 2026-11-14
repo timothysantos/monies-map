@@ -103,6 +103,9 @@ a doc here in the same change.
   audit.
 - [`import-inbox-task-list.md`](import-inbox-task-list.md): import inbox goals
   and remaining task.
+- [`audits/waiting-files.md`](audits/waiting-files.md): "Send to Monies Map":
+  what is stored for files sent from the share sheet, where and for how long,
+  cost, write boundary and the endpoint's security review.
 - [`audits/locked-statements.md`](audits/locked-statements.md): password-protected
   statement PDFs: flow, memory-only password rules, threat model, fixtures,
   bank password rules from the intake research, before and after screenshots.

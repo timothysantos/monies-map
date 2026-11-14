@@ -582,7 +582,9 @@ An AI response is a bounded draft, explanation, or ranking over deterministic
 evidence already selected by the app. The existing editor or review action is
 the only way to persist a change. Keep request payloads redacted and bounded;
 do not persist prompts, model responses, original bank files, receipt or
-raw OCR images, or embeddings. Each AI change needs a no-AI test and a failure-path test in
+raw OCR images, or embeddings. (The one stored original bank file is a
+waiting file the person sent themselves, DOMAIN.md "Waiting File"; it is
+never sent to AI.) Each AI change needs a no-AI test and a failure-path test in
 addition to the normal behavior test. Money insights use computed wording
 only: the headline is the signal's bold fact and its think line exactly as
 written, and no page sends a wording request (the
@@ -905,6 +907,16 @@ A persistence command is all-or-nothing:
   batch. No month refresh markers: no entry changes
   (`tests/atomic-writes-card-rewards.test.mjs`). The table is additive and every
   read tolerates it missing (the presets are used)
+- waiting files (`src/domain/app-repository-waiting-files.ts`,
+  `app-repository-file-intake-key.ts`, DOMAIN.md "Waiting File"): keeping
+  files (each file's row, every byte chunk and one audit event per file,
+  plus the day's count), Remove, the 30-day sweep and a new Shortcut key each
+  read and check first and write in one batch. The import commit deletes its
+  waiting file in the commit's own batch through
+  `waiting-file-statements.ts` (shared statements, so neither command module
+  imports the other). No month refresh markers of their own
+  (`tests/atomic-writes-waiting-files.test.mjs`). The tables are additive and
+  every read tolerates them missing (no files; the send path refuses)
 - trips and events (`src/domain/app-repository-trip-events.ts`, DOMAIN.md
   "Trip or Event"): save, set entries (at most 200, written as two
   `json_each` statements whatever the count, so no statement binds more than

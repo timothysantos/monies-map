@@ -176,7 +176,10 @@ Imports owns:
   not depend on local filename conventions, and split cleanup remains a separate
   post-bank-files lane. Multi-file intake is browser-only: it may keep parsed
   rows, checkpoints, and generic CSV text in transient UI state, but it must not
-  persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
+  persist original PDFs, CSVs, XLS files, OCR images, or raw bank files. The
+  one exception is a waiting file (below): the person sent it to the app
+  from the share sheet, the server keeps its bytes until its import commits,
+  it is removed or 30 days pass, and the intake itself stays browser-only
 - investment statements (an iFAST "Wrap" PDF, `parserKey` `ifast_wrap_pdf`, or
   a StashAway "Statement of Account" PDF, `parserKey` `stashaway_pdf`):
   read by the same browser pipeline as a bank PDF, but its checkpoint carries
@@ -289,6 +292,44 @@ Imports owns:
   `docs/audits/wrong-card-apple-pay-duplicate.md`,
   `tests/e2e/wrong-card-apple-pay-duplicate.spec.js`.
 
+## Waiting Files
+
+"Send to Monies Map" (DOMAIN.md "Waiting File"; security review:
+`docs/audits/waiting-files.md`). A share-sheet Shortcut on the owner's phone
+or Mac posts bank files to `POST /api/shortcuts/files/send` with its own key.
+The server checks each file by its first bytes, hashes it, and keeps it in D1
+(`waiting_files`, `waiting_file_chunks`) without reading it.
+
+- data: `GET /api/imports-page` carries `waitingFiles` (id, file name, kind,
+  size, `arrivedVia`, `receivedAt`), never bytes. Each file's bytes come from
+  `GET /api/waiting-files/file?id=` (behind Access), one file at a time.
+- state: on opening Imports, and whenever a refresh lists a new one, every
+  waiting file not yet pulled this visit (`selectWaitingFilesToPull`, by name
+  then id) is fetched, wrapped in a `File` and sent through the same
+  multi-file intake as a drop (`processImportFiles(files, { waitingByFile })`;
+  even one file joins the queue rather than opening). Each queue item keeps
+  its `waitingFile`. A file that cannot be fetched stays waiting and the
+  status line says so; a file the browser cannot read gets a row with
+  Remove and no Review.
+- order: the intake queue orders files as for a drop (statements before
+  activity, older months first), then by name and content, so the order in
+  which files arrived, in one share or several, never matters
+  (`tests/waiting-files-order.test.mjs`).
+- the queue row adds "Sent from your phone, 12 Nov"
+  (`describeWaitingFileArrival`). **Remove** deletes the stored file first
+  (`POST /api/waiting-files/remove`) and keeps the row when that fails.
+  **Clear queue** only clears the queue; the files wait for the next visit.
+- commit: the commit request carries `waitingFileId`; the route reads the
+  file first and `commitImportBatch` deletes it (row, chunks, audit line) in
+  the commit's own batch. A commit of a file already imported
+  (`created: false`) deletes the waiting copy after. Rollback does not bring
+  a file back.
+- a locked PDF stays locked in the store; reading it asks for its password
+  on the device (Locked Statements, below), as for a drop.
+- with the tables missing, no key or a failing read, Imports works as before:
+  `waitingFiles` is `[]` and the send path answers a plain refusal.
+- driven in `tests/e2e/send-files-to-monies-map.spec.js`.
+
 ## Locked Statements
 
 A PDF that needs a password is detected in its first read (`openPdfDocument`
@@ -313,8 +354,8 @@ on a phone):
   single file gets the error-toned status "{file} is locked, so it was
   skipped."
 - no request, storage or URL carries the password; the AI statement fallback
-  never runs for a locked file; the original file is still never uploaded or
-  stored. Details and the threat model: `docs/audits/locked-statements.md`.
+  never runs for a locked file; a dropped file is still never uploaded or
+  stored (a waiting file is stored as it was sent, still locked). Details and the threat model: `docs/audits/locked-statements.md`.
 
 ## Audit Status
 

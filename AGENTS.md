@@ -440,6 +440,19 @@ Details and the reasons are in `docs/code-spec.md` and
   aggregate allowance state needed for cost control, never prompts, responses,
   images, files, or embeddings unless a separately reviewed design explicitly
   changes that rule.
+- Original bank files are never stored, with one reviewed exception (owner
+  decision, 2026-11-14; DOMAIN.md "Waiting File",
+  `docs/audits/waiting-files.md`): a file the person sends from the share
+  sheet to `POST /api/shortcuts/files/send` is kept as opaque bytes in D1
+  (`waiting_files`, `waiting_file_chunks`) until its import commits (deleted
+  in the commit's batch), it is removed, or 30 days pass. The server checks
+  only its first bytes: never parse, render, log or send it to AI there; the
+  browser reads it at review like a dropped file, and nothing is imported
+  without the person's commit. Files dropped in Imports stay browser-only.
+  The path is Access-exempt for POST only, with its own key (never the Apple
+  Pay key), limited-body caps and the limits in
+  `src/domain/waiting-files-config.ts`; every read and delete is scoped to
+  the household.
 - Read every `src/server` request body through `src/server/limited-body.ts`
   (`readJsonObject`, `readFormBody`): it counts bytes as they arrive, so a
   chunked upload with no Content-Length is cut off at the limit (413).

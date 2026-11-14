@@ -385,6 +385,18 @@ reader drafts the same card and the same trip answer (`mode: "rules"`,
 `tests/ask-trip-events.test.mjs`). Missing trip tables: no trips line, and
 a trip message gets a plain note.
 
+## Waiting files audit note (2026-11-14, branch `send-files-intake`)
+
+"Send to Monies Map" adds a second Access-exempt path,
+`POST /api/shortcuts/files/send`, for bank files sent from the share sheet.
+No AI is involved: the bytes are never parsed, logged or sent to a model.
+Exemption scope (POST, that path only, and the Shortcut Worker answers only
+its two public paths), its own constant-time key, limited-body caps (25 MiB
+a request, 10 MiB a file), type checks by first bytes, file-name
+sanitising, household scoping, the 30-day sweep, and refused zip and HTML
+files are reviewed with their tests in `docs/audits/waiting-files.md`. The
+mailbox way in is paused, so there is no spoofed-mail surface yet.
+
 ## Controls checked and found sound
 
 | Area | Evidence |

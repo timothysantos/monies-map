@@ -861,8 +861,56 @@ Relationships:
 Rules:
 - do not require filename conventions
 - do not persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
+  the person drops or selects in Imports; the one stored original is a
+  `waiting file` the person sent to the app themselves (below)
 - multi-file intake may keep parsed rows, checkpoints, and generic CSV text in
   browser memory only until cleared, reloaded, or loaded into review
+
+### Waiting File
+
+A bank file (a statement PDF or a CSV, TSV or XLS activity export) the
+household sent to Monies Map from the Share button on a phone or Mac, with
+the "Send to Monies Map" Shortcut, kept until Imports opens it for the normal
+review. In the app it reads "Sent from your phone, 12 Nov". It is not an
+import: nothing is parsed, imported, certified or matched until the person
+reviews and commits it in Imports, exactly like a dropped file.
+
+Storage:
+- `waiting_files` (one row: sanitised file name, kind, content type, size,
+  SHA-256, how it arrived (`arrived_via`, `shortcut` today; plain text so a
+  later way in such as a mailbox needs no migration), sender label, status,
+  received and expiry times) and `waiting_file_chunks` (the original bytes,
+  in BLOB chunks of at most 512 KiB), both in the household's D1 database;
+  `waiting_file_daily_counts` holds only a per-day count for the daily limit
+- the bytes are stored exactly as sent, so a locked PDF stays locked; its
+  password is typed on the device at review (see `Locked Statement`) and is
+  never sent or stored
+- deleted for good, row and bytes, when its import commits (in the commit's
+  own batch), when the person selects **Remove**, or 30 days after it
+  arrived, whichever comes first (`src/domain/waiting-files-config.ts`)
+- the key the Shortcut sends is the `file_intake` row of `app_settings`
+  (else the Worker secret `FILE_INTAKE_KEY`); it is not the Apple Pay
+  Shortcut's key
+
+Relationships:
+- belongs to one `household`; every read and delete is scoped to it
+- becomes one `import batch` when the person commits it, and is deleted then
+
+Rules:
+- the server never parses, renders, logs or sends the bytes to AI; it reads
+  only the first bytes to tell the kind of file, and the browser reads the
+  file at review like a dropped one
+- accepted only through the one public send path (POST, its own key,
+  limited-body, 10 MiB a file, 25 MiB a request, 10 files a request, 40 a
+  day, 40 waiting); zip and `.xlsx`, images, web pages and anything that is
+  not a PDF, CSV, TSV or XLS by its bytes is refused
+- the same bytes (SHA-256) sent again while waiting are kept once ("Already
+  received"); a file imported before is recognised by the import's own
+  duplicate checks at review
+- order never matters: Imports pulls every waiting file into the intake
+  queue, which reviews statements before activity, older months first, and
+  ties by name
+- see `docs/audits/waiting-files.md`
 
 ### Locked Statement
 
