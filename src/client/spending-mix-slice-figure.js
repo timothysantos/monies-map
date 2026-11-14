@@ -12,7 +12,9 @@ import { paletteColour } from "./palette-colour";
 // resting mouse (a quarter of a second) opens the menu beside the pointer,
 // so passing over slices on the way to the menu does not. Hidden money:
 // shares only.
-export function useSliceFigure({ shareTotal, hidden, sliceFacts }) {
+// `figureAttrs` (the trip page) names a slice's figure another way: its
+// attributes replace the category figure's data-fig and data-fig-arg.
+export function useSliceFigure({ shareTotal, hidden, sliceFacts, figureAttrs = undefined }) {
   const hoverTimer = useRef(0);
   return useMemo(() => {
     const facts = (payload) => {
@@ -47,11 +49,12 @@ export function useSliceFigure({ shareTotal, hidden, sliceFacts }) {
           "data-fig-colour": paletteColour(payload?.color),
           "data-fig-note": lines.join("\n"),
           "data-fig-plan": hasPlan ? "" : undefined,
+          ...(figureAttrs ? figureAttrs(payload) : {}),
           onPointerEnter: hoverOpen,
           onPointerLeave: hoverLeave
         }
       };
     };
     return { facts, hoverOpen, hoverLeave, figureProps };
-  }, [hidden, shareTotal, sliceFacts]);
+  }, [figureAttrs, hidden, shareTotal, sliceFacts]);
 }

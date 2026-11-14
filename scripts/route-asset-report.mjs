@@ -13,6 +13,7 @@ const ROUTE_ENTRIES = {
   settings: "settings-panel.jsx",
   faq: "faq-panel.jsx",
   check: "check-panel.jsx",
+  trip: "trip-panel.jsx",
   ask: "ask-panel.jsx"
 };
 

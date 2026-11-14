@@ -129,6 +129,7 @@ const AskPanel = lazy(() => loadRouteModule("ask").then((module) => ({ default: 
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const MobileContextSheet = lazy(() => import("./mobile-context-sheet.jsx"));
 const CheckPanel = lazy(() => loadRouteModule("check").then((module) => ({ default: module.CheckPanel })));
+const TripPanel = lazy(() => loadRouteModule("trip").then((module) => ({ default: module.TripPanel })));
 const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
@@ -150,7 +151,8 @@ const LoginRegistrationDialog = lazy(() => import("./login-registration-dialog.j
 // receipt buttons. The phone bar reads Summary, Entries, Splits, Ask.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary, routeIds: ["summary", "month"], primary: true },
-  { id: "entries", path: "/entries", label: messages.tabs.entries, primary: true },
+  // A trip or event's page (/trips/<id>) belongs under Entries, where trips are listed.
+  { id: "entries", path: "/entries", label: messages.tabs.entries, routeIds: ["entries", "trip"], primary: true },
   { id: "splits", path: "/splits", label: messages.tabs.splits, primary: true },
   { id: "ask", path: "/ask", label: messages.tabs.ask, icon: "ask", phoneOnly: true, primary: true },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
@@ -1944,7 +1946,7 @@ export function App() {
   // the active request; a previous page kept on screen never does.
   const routeDataReady = selectedTabId === "summary"
     ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
-    : selectedTabId === "faq" || selectedTabId === "ask" || selectedTabId === "check" || Boolean(currentRoutePageData);
+    : selectedTabId === "faq" || selectedTabId === "ask" || selectedTabId === "check" || selectedTabId === "trip" || Boolean(currentRoutePageData);
   const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
   const requiredWorkCount = useRequiredWorkCount(requiredWork);
   const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
@@ -2050,7 +2052,7 @@ export function App() {
   const isSplitsTab = renderedTabId === "splits";
   // Imports, Settings and FAQ do not depend on a period, so the header keeps
   // the period control in place but greyed out and disabled there.
-  const routeUsesPeriod = !["imports", "settings", "faq", "ask", "check"].includes(renderedTabId);
+  const routeUsesPeriod = !["imports", "settings", "faq", "ask", "check", "trip"].includes(renderedTabId);
   const isPeriodPassive = isSplitsTab || !routeUsesPeriod;
   // A page load error names the page the person asked for.
   const selectedPageLabel = routePageLabels[selectedTabId] ?? "";
@@ -2288,6 +2290,16 @@ export function App() {
           categories={categories}
           onEntryMutation={broadcastEntryMutation}
           onSplitMutation={broadcastSplitMutation}
+        />
+      );
+    }
+
+    if (renderedTabId === "trip") {
+      return (
+        <TripPanel
+          fetchRequiredQuery={fetchRequiredQuery}
+          categories={categories}
+          onCategoryAppearanceChange={handleCategoryAppearanceChange}
         />
       );
     }

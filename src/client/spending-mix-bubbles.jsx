@@ -53,13 +53,13 @@ function moveBetweenSlices(event) {
 }
 
 /**
- * @param {{ chartData: any[], shareTotalMinor?: number, sliceFacts?: any, poster?: boolean, onShowAll?: () => void }} props
+ * @param {{ chartData: any[], shareTotalMinor?: number, sliceFacts?: any, poster?: boolean, onShowAll?: () => void, figureAttrs?: (payload: any) => Record<string, string> }} props
  */
-export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sliceFacts = undefined, poster = false, onShowAll = undefined }) {
+export default function SpendingMixBubbles({ chartData, shareTotalMinor = 0, sliceFacts = undefined, poster = false, onShowAll = undefined, figureAttrs = undefined }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const hidden = !areTotalsVisible;
   const shareTotal = shareTotalMinor || chartData.reduce((sum, item) => sum + item.valueMinor, 0);
-  const { figureProps } = useSliceFigure({ shareTotal, hidden, sliceFacts });
+  const { figureProps } = useSliceFigure({ shareTotal, hidden, sliceFacts, figureAttrs });
   const { ref, motion } = useFirstViewMotion({ attribute: "donutMotion", playMs: 1400 });
   const [selectedKey, setSelectedKey] = useState("");
   const geometry = useMemo(() => buildDonutBubbles(chartData, { shareTotalMinor }), [chartData, shareTotalMinor]);

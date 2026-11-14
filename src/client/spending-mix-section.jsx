@@ -68,7 +68,10 @@ function writeListShown(shown) {
 }
 
 /**
- * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, spendChange?: any, spendChangePending?: boolean, className?: string }} props
+ * `title`, `subtitle` and `figureAttrs` let another page reuse the card (the
+ * trip page, DOMAIN.md "Trip page"): its own head, and each category's figure
+ * named its way (a trip figure instead of a month's category).
+ * @param {{ donutData: any[], categories: any[], onCategoryAppearanceChange: any, period?: string, sliceFacts?: (item: any, hidden: boolean) => ({ lines: string[], hasPlan: boolean } | null), dashboard?: boolean, spendChange?: any, spendChangePending?: boolean, className?: string, title?: string, subtitle?: string, figureAttrs?: (item: any) => Record<string, string> }} props
  */
 export function SpendingMixSection({
   donutData,
@@ -79,7 +82,10 @@ export function SpendingMixSection({
   dashboard = false,
   spendChange = undefined,
   spendChangePending = false,
-  className = ""
+  className = "",
+  title = "",
+  subtitle = "",
+  figureAttrs = undefined
 }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const changeNote = useMemo(() => buildSpendChangeNote(spendChange, { hidden: !areTotalsVisible }), [spendChange, areTotalsVisible]);
@@ -124,7 +130,7 @@ export function SpendingMixSection({
   return (
     <section className={["chart-card", "spending-mix-card", dashboard ? "is-dashboard" : "", className].filter(Boolean).join(" ")} data-fig-period={period}>
       {/* Summary's and Month's cards wear the shared head: "By category" and the range, or the one month. */}
-      <CardHead id="mix" className="spending-mix-head is-spaced" context={{ first: period.split(":")[0], last: period.split(":")[1] }} action={listToggle} />
+      <CardHead id="mix" className="spending-mix-head is-spaced" context={{ first: period.split(":")[0], last: period.split(":")[1] }} action={listToggle} title={title} subtitle={subtitle} />
 
       {donutData.length ? (
         <div className={`summary-mix ${listShown ? "" : "is-poster"}`}>
@@ -149,6 +155,7 @@ export function SpendingMixSection({
                 sliceFacts={sliceFacts}
                 poster={!listShown}
                 onShowAll={listShown ? () => setListExpanded(true) : undefined}
+                figureAttrs={figureAttrs}
               />
             </Suspense>
             {hiddenCount ? (
@@ -199,6 +206,7 @@ export function SpendingMixSection({
                       data-fig="category"
                       data-fig-arg={categoryName}
                       data-fig-colour={paletteColour(getCategoryTheme(categories, item, index).color)}
+                      {...(figureAttrs ? figureAttrs(item) : {})}
                     >
                       <ChevronRight size={18} />
                     </button>

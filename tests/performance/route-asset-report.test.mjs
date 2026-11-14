@@ -20,6 +20,7 @@ function manifestFixture() {
     "src/client/settings-panel.jsx": { file: "assets/settings.js" },
     "src/client/faq-panel.jsx": { file: "assets/faq.js" },
     "src/client/check-panel.jsx": { file: "assets/check.js" },
+    "src/client/trip-panel.jsx": { file: "assets/trip.js" },
     "src/client/ask-panel.jsx": { file: "assets/ask.js" }
   };
 }
@@ -81,7 +82,7 @@ test("embedded metadata escapes script terminators and replaces prior copies on 
   assert.equal((twice.match(/id="monies-warmup-costs"/g) ?? []).length, 1);
   assert.match(twice, /\\u003c\/script>/);
   assert.throws(() => replaceWarmupCostsBlock("<body></body>", metadata), /missing <\/head>/);
-  const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check"].map((name) => [name, {
+  const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check", "trip"].map((name) => [name, {
     estimatedGzipBytes: 1,
     chunks: [{ file: `assets/${name}.js`, estimatedGzipBytes: 1 }]
   }]));
@@ -89,7 +90,7 @@ test("embedded metadata escapes script terminators and replaces prior copies on 
 });
 
 test("malformed, absent, and incomplete embedded cost metadata stays unknown", () => {
-  const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check"].map((name) => [name, {
+  const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check", "trip"].map((name) => [name, {
     estimatedGzipBytes: 10,
     chunks: [{ file: `assets/${name}.js`, estimatedGzipBytes: 10 }]
   }]));

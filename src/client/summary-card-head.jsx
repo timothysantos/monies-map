@@ -9,13 +9,15 @@ export { cardSubtitle, cardTitle, monthsContext };
 // title from the shared list, one quiet subtitle line under it, and an optional
 // action at the top right (Show all, a chip, a figure). Styled once in
 // summary-body.css, so the title and subtitle look the same on every card.
-/** @param {{ id: string, context?: Record<string, any>, titleId?: string, action?: any, className?: string }} props */
-export function CardHead({ id, context = {}, titleId = undefined, action = null, className = "" }) {
+// A page outside Summary that reuses a card (the trip page's Spending mix)
+// names it itself with `title` and `subtitle`.
+/** @param {{ id: string, context?: Record<string, any>, titleId?: string, action?: any, className?: string, title?: string, subtitle?: string }} props */
+export function CardHead({ id, context = {}, titleId = undefined, action = null, className = "", title = "", subtitle = "" }) {
   return (
     <div className={`summary-card-head ${className}`.trim()}>
       <div className="summary-card-heading">
-        <h3 id={titleId} className="summary-card-title">{cardTitle(id)}</h3>
-        <p className="summary-card-sub">{cardSubtitle(id, context)}</p>
+        <h3 id={titleId} className="summary-card-title">{title || cardTitle(id)}</h3>
+        <p className="summary-card-sub">{subtitle || cardSubtitle(id, context)}</p>
       </div>
       {action}
     </div>

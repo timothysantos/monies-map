@@ -98,6 +98,11 @@ export function getSelectedTabId(pathname) {
     return "ask";
   }
 
+  // A trip or event's own page (/trips/<id>; DOMAIN.md "Trip page").
+  if (pathname.startsWith("/trips/")) {
+    return "trip";
+  }
+
   return "summary";
 }
 
@@ -157,8 +162,8 @@ export function buildEntriesPageParams({ viewId, month }) {
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
   // Shape the route-page response into the minimal view object the UI needs.
-  // FAQ, Ask and Check my books have no page request: their view is the shell's person.
-  if (tabId === "faq" || tabId === "ask" || tabId === "check") {
+  // FAQ, Ask, Check my books and a trip page have no page request: their view is the shell's person.
+  if (tabId === "faq" || tabId === "ask" || tabId === "check" || tabId === "trip") {
     const fallbackLabel = selectedViewId === "household"
       ? "Household"
       : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
