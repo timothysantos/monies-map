@@ -9,6 +9,7 @@ import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import { loadBankFeesYear } from "./summary-bank-fees";
 import { buildSpendChange } from "../summary-spend-change";
+import { loadSummarySplitBalances } from "./summary-split-balances";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
@@ -27,14 +28,16 @@ export async function buildSummaryPageDto(
   const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
-  const [summaryMonths, summaryEntries, investmentAccountIds, plannedSummaryMonthsByView, bankFeesYear] = await Promise.all([
+  const [summaryMonths, summaryEntries, investmentAccountIds, plannedSummaryMonthsByView, bankFeesYear, splitBalances] = await Promise.all([
     loadRepairedSummaryMonths(db, viewId),
     // Summary shows totals and charts, never an entry's text.
     loadEntriesForMonths(db, summaryRangeMonths, { figuresOnly: true }),
     loadInvestmentAccountIds(db),
     loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths),
     // Bank fees this year (Money insights), for the range's last month.
-    loadBankFeesYear(db, viewId, effectiveScopeForView(viewId, selectedScope), summaryRangeMonths.at(-1) ?? effectiveSelectedMonth)
+    loadBankFeesYear(db, viewId, effectiveScopeForView(viewId, selectedScope), summaryRangeMonths.at(-1) ?? effectiveSelectedMonth),
+    // Each split group's open balance, for the Splits tile.
+    loadSummarySplitBalances(db, viewId, personNameById)
   ]);
   // A person view counts only that person's entries in the scope, each at
   // their own amount, the same rule as the stored person month totals.
@@ -76,7 +79,8 @@ export async function buildSummaryPageDto(
     summaryPage: {
       ...summaryPage,
       ...(bankFeesYear && (bankFeesYear.parts.length || bankFeesYear.refundedParts.length) ? { bankFeesYear } : {}),
-      ...(spendChange ? { spendChange } : {})
+      ...(spendChange ? { spendChange } : {}),
+      ...(splitBalances.length ? { splitBalances } : {})
     }
   };
 }

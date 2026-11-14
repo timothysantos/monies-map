@@ -308,24 +308,34 @@ function formatSplitBalanceSummary(balanceMinor: number, currency: string, viewI
   if (balanceMinor === 0) {
     return "Settled up";
   }
+  return `${splitBalanceWords(balanceMinor, viewId, personNameById)} ${formatCurrencyMinor(Math.abs(balanceMinor), currency)}`;
+}
 
-  const abs = formatCurrencyMinor(Math.abs(balanceMinor), currency);
+/**
+ * Who owes whom, without the amount: "Serene owes you", "You owe Serene",
+ * "Net balance" (the household has no direction). The Splits page's group
+ * balance and Summary's Splits tile both read it, so the wording is one.
+ */
+export function splitBalanceWords(balanceMinor: number, viewId: string, personNameById: Record<string, string>) {
+  if (balanceMinor === 0) {
+    return "Settled up";
+  }
   if (viewId === "household") {
-    return `Net balance ${abs}`;
+    return "Net balance";
   }
 
   const [primaryPersonId, partnerPersonId] = getOrderedPersonIds(personNameById);
   const primaryName = personNameById[primaryPersonId] ?? "Primary";
   const secondaryName = personNameById[partnerPersonId] ?? "Partner";
   if (viewId === primaryPersonId) {
-    return balanceMinor > 0 ? `${secondaryName} owes you ${abs}` : `You owe ${secondaryName} ${abs}`;
+    return balanceMinor > 0 ? `${secondaryName} owes you` : `You owe ${secondaryName}`;
   }
 
   if (viewId === partnerPersonId) {
-    return balanceMinor > 0 ? `${primaryName} owes you ${abs}` : `You owe ${primaryName} ${abs}`;
+    return balanceMinor > 0 ? `${primaryName} owes you` : `You owe ${primaryName}`;
   }
 
-  return balanceMinor > 0 ? `${secondaryName} owes ${primaryName} ${abs}` : `${primaryName} owes ${secondaryName} ${abs}`;
+  return balanceMinor > 0 ? `${secondaryName} owes ${primaryName}` : `${primaryName} owes ${secondaryName}`;
 }
 
 function getOrderedPersonIds(personNameById: Record<string, string>) {

@@ -1300,6 +1300,17 @@ export interface SummarySpendChangeDto {
   partial: boolean;
 }
 
+// One split group's open balance for the viewer (pages/summary-split-balances.ts),
+// the figure the Splits page shows on the group's tile; `owes` is its words
+// ("Serene owes you"), the amount comes from `balanceMinor` in `currency`.
+export interface SummarySplitBalanceDto {
+  id: string;
+  name: string;
+  currency: string;
+  balanceMinor: number;
+  owes: string;
+}
+
 export interface SummaryPageDto {
   metricCards: MetricCardDto[];
   availableMonths: string[];
@@ -1323,6 +1334,9 @@ export interface SummaryPageDto {
   // for the "fees this year" Money insights line; left out with no fee.
   bankFeesYear?: import("../domain/bank-fees-year").BankFeesYear;
   spendChange?: SummarySpendChangeDto;
+  // Each split group's open balance for the Splits tile, largest first; left
+  // out when no group has been used.
+  splitBalances?: SummarySplitBalanceDto[];
   notes: string[];
 }
 
