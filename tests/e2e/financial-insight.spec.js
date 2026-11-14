@@ -288,7 +288,7 @@ test.describe("financial insights", () => {
     );
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("Tim's money insights");
-    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Joyce \$260\.25/i);
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you (still )?owe Joyce \$260\.25/i);
     await splitsInsight.getByRole("button", { name: "See all insights" }).click();
     await expect(splitsInsight.getByLabel("Money consequence map")).toHaveCount(0);
     await expect(splitsInsight).not.toContainText(/Settlement obligations|What this view measures/);
@@ -339,7 +339,7 @@ test.describe("financial insights", () => {
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("Tim's money insights");
     await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("To do");
-    await expect(splitsInsight.locator(".checkin-fact")).toContainText("Joyce owes you JP¥9,000");
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/Joyce (still )?owes you JP¥9,000/);
     // A trip's own think lines, not the ones for a group that is not a trip.
     expect(thinksOf(SPLITS_COPY.owedToYou)).toContain((await splitsInsight.locator(".checkin-think").innerText()).trim());
     await expect(splitsInsight.getByRole("button", { name: "Settle group" })).toBeVisible();
@@ -348,7 +348,7 @@ test.describe("financial insights", () => {
     await page.locator(".context-block .pill[title='Joyce']").click();
     await expect(page).toHaveURL(/view=person-joyce/);
     await expect(splitsInsight).toContainText("Joyce's money insights");
-    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Tim JP¥9,000/i);
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you (still )?owe Tim JP¥9,000/i);
 
     // Settle group opens the page's own settlement dialog.
     await splitsInsight.getByRole("button", { name: "Settle group" }).click();

@@ -24,7 +24,7 @@ function recordPanelRequests(page) {
 
 async function injectWarmupCosts(page, entriesBytes = 1_000) {
   await page.addInitScript((bytes) => {
-    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"].map((id) => [id, {
+    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check", "trip"].map((id) => [id, {
       entry: `${id}-panel.jsx`,
       estimatedGzipBytes: id === "entries" ? bytes : 1_000,
       chunks: [{ file: `assets/${id}-panel.js`, estimatedGzipBytes: id === "entries" ? bytes : 1_000 }]
@@ -92,7 +92,15 @@ test.describe("route warmup on mobile", () => {
     const requests = recordPanelRequests(page);
     await page.goto("/summary?view=household&month=2026-05");
     await waitUsable(page);
-    await page.getByRole("button", { name: /^Edit [^ ]/ }).first().click();
+    // Summary's later cards mount as they scroll into view on a phone, and
+    // the first "Edit" button on the page is now Edit cards, so reach the
+    // Spending mix's category button by scrolling.
+    const categoryButton = page.locator(".category-icon-button").first();
+    await expect(async () => {
+      await page.mouse.wheel(0, 3_000);
+      await expect(categoryButton).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await categoryButton.click();
     await expect(page.getByText("Edit category")).toBeVisible();
     await page.waitForTimeout(5_000);
     expect(requests).toEqual(["summary"]);

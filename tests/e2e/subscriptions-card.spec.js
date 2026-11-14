@@ -95,7 +95,9 @@ test.describe("Subscriptions and bills", () => {
     const card = await openSummary(page);
     await card.getByRole("tab", { name: "Coming up" }).click();
     await expect(card.getByRole("tab", { name: "Coming up" })).toHaveAttribute("aria-selected", "true");
-    const netflix = card.locator('[data-coming="NETFLIX COM|monthly"]');
+    // On the 14th itself (Netflix's usual day) the window holds today's and
+    // the next month's charge: the first row is the nearest one.
+    const netflix = card.locator('[data-coming="NETFLIX COM|monthly"]').first();
     await expect(netflix).toContainText(/Usually around 14 [A-Z][a-z]{2}/);
     await expect(netflix).toContainText("$19.98");
     await expect(netflix).toContainText("last one");

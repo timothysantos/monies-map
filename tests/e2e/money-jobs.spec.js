@@ -114,6 +114,9 @@ test.describe("phone", () => {
   });
 
   test("Month lead: invested is its own part, the jobs fold to one line, and each row says done, short or over", async ({ page }) => {
+    // The dev server sends each module as its own request; the default
+    // resource-timing buffer (250) fills before the lazy chunk is read below.
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(2_000));
     await revealMoney(page);
     const lead = await openLead(page, MONTH_URL, ".month-lead");
     const figures = await monthFigures(page);

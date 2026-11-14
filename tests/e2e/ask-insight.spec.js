@@ -69,6 +69,8 @@ test.describe("Ask about this on a phone", () => {
     await expect(page.locator(".financial-insight").getByRole("button", { name: /^Ask about this/ })).toHaveCount(0);
 
     // A press alone (the start of holding to select text) opens nothing; the click does.
+    // Mid-screen, clear of the floating View and scope bar at the foot of a phone.
+    await line.evaluate((node) => node.scrollIntoView({ block: "center", behavior: "instant" }));
     const box = await line.boundingBox();
     await page.mouse.move(box.x + 20, box.y + box.height / 2);
     await page.mouse.down();
