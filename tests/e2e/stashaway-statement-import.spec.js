@@ -74,6 +74,13 @@ async function importMonth(page, testInfo, month, expectedWorth) {
   await expect(page.locator(".import-done-card")).toBeVisible({ timeout: 60_000 });
 }
 
+// The Accounts card starts at 3 rows with Show all (Summary, 11 Nov 2026).
+async function showAllAccounts(page) {
+  await expect(page.locator(".summary-wallet-row").first()).toBeVisible({ timeout: 60_000 });
+  const showAll = page.getByRole("button", { name: /^Show all \d+/ });
+  if (await showAll.count()) await showAll.click();
+}
+
 for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "phone", width: 390, height: 844 }]) {
   test(`${device.label}: two months saved in turn, Summary shows the newest closing balance as a statement figure, and hidden money hides it`, async ({ page }, testInfo) => {
     test.setTimeout(240_000);
@@ -81,6 +88,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
     await showMoney(page);
     await seedHousehold(page);
     await page.goto("/summary?view=household");
+    await showAllAccounts(page);
     const before = page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT });
     await expect(before).toBeVisible({ timeout: 60_000 });
     await expect(before.locator(".summary-wallet-health")).not.toContainText("Worth");
@@ -88,6 +96,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
 
     await importMonth(page, testInfo, "aug", "Alex Sample Holder StashAway was worth $15,706.59 on 31 Aug 2026, from the statement");
     await page.goto("/summary?view=household");
+    await showAllAccounts(page);
     await expect(page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT }).locator(".summary-wallet-health")).toHaveText("$15,706.59 on 31 Aug 2026, as the statement says", { timeout: 60_000 });
 
     const card = await openStatement(page, testInfo, "sep");
@@ -104,6 +113,7 @@ for (const device of [{ label: "desktop", width: 1280, height: 800 }, { label: "
     await expect(page.locator(".import-done-card")).toBeVisible({ timeout: 60_000 });
 
     await page.goto("/summary?view=household");
+    await showAllAccounts(page);
     const row = page.locator(".summary-wallet-row").filter({ hasText: ACCOUNT });
     await expect(row.locator(".summary-wallet-health")).toHaveText("$15,357.71 on 30 Sep 2026, as the statement says", { timeout: 60_000 });
     await shot(page, `after-summary-${device.label}`);

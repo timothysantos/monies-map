@@ -46,7 +46,7 @@ async function openUsable(page, path, recorder) {
 
 async function injectWarmupCosts(page) {
   await page.addInitScript(() => {
-    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq"].map((id) => [id, {
+    const routes = Object.fromEntries(["summary", "month", "entries", "splits", "ask", "imports", "settings", "faq", "check", "trip"].map((id) => [id, {
       entry: `${id}-panel.jsx`, estimatedGzipBytes: 1_000, chunks: [{ file: `assets/${id}-panel.js`, estimatedGzipBytes: 1_000 }]
     }]));
     document.addEventListener("DOMContentLoaded", () => {
@@ -205,7 +205,7 @@ test.describe("optional data warmup on mobile", () => {
     await injectWarmupCosts(page);
     await setConnection(page, null);
     // Every required read of the Summary page takes over 500 ms.
-    await page.route(/\/api\/(app-shell|reference-data|summary-page|summary-account-pills)(\?|$)/, async (route) => {
+    await page.route(/\/api\/(app-shell|reference-data|summary-page|summary-account-pills|repeating-charges|investments-over-time|card-rewards|tax-reliefs)(\?|$)/, async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 700));
       await route.continue().catch(() => {});
     });
