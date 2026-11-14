@@ -175,6 +175,17 @@ import {
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
+import { WAITING_FILES_INTAKE_PATH } from "./domain/waiting-files-config";
+import {
+  findWaitingFile,
+  handleWaitingFilesIntake,
+  handleWaitingFilesRoute,
+  isWaitingFilesPath
+} from "./server/waiting-files-route";
+import { settleWaitingFileAfterImport } from "./domain/app-repository-waiting-files";
+
+// The Shortcut Worker's public paths (POST only, outside Access).
+const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, WAITING_FILES_INTAKE_PATH] as const;
 
 // A refused write returns its message. One refused by the settlement lock is
 // a 409 that names the settlement (a simplification's checkpointId or a group
@@ -198,6 +209,9 @@ export interface Env {
   SHORTCUT_APP_ORIGIN?: string;
   SHORTCUT_INGEST_TOKEN?: string;
   SHORTCUT_PUBLIC_ENDPOINT?: string;
+  // The "Send to Monies Map" Shortcut's key until one is made in Settings
+  // (src/domain/app-repository-file-intake-key.ts). A Worker secret.
+  FILE_INTAKE_KEY?: string;
   // "true" keeps foreign-currency conversion to the saved rate (tests).
   FX_RATES_OFFLINE?: string;
   AI_ASSIST_ENABLED?: string;
@@ -244,11 +258,11 @@ export default {
     const url = new URL(request.url);
     const requestStartedAt = Date.now();
 
-    if (!isShortcutGatewayRequestAllowed(env.SHORTCUT_API_ONLY, url.pathname, SHORTCUT_ENDPOINT_PATH)) {
+    if (!isShortcutGatewayRequestAllowed(env.SHORTCUT_API_ONLY, url.pathname, SHORTCUT_PUBLIC_PATHS)) {
       return new Response(null, { status: 404 });
     }
 
-    if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_ENDPOINT_PATH)) {
+    if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_PUBLIC_PATHS)) {
       return json({ ok: false, error: "Shortcut direct-create endpoint only accepts POST." }, 405, { Allow: "POST" });
     }
 
@@ -1485,6 +1499,19 @@ export default {
       }
     }
 
+    // "Send to Monies Map": files from the share sheet wait for Imports
+    // (src/server/waiting-files-route.ts).
+    if (url.pathname === WAITING_FILES_INTAKE_PATH && request.method === "POST") {
+      return handleWaitingFilesIntake(request, env);
+    }
+
+    if (isWaitingFilesPath(url.pathname)) {
+      const waitingFilesResponse = await handleWaitingFilesRoute(request, env, url);
+      if (waitingFilesResponse) {
+        return waitingFilesResponse;
+      }
+    }
+
     if (url.pathname === "/api/shortcuts/entries/create" && request.method === "POST") {
       const shortcutAuth = await authenticateShortcutRequest(request, env, "entries:create");
       if (!shortcutAuth.ok) {
@@ -2655,6 +2682,9 @@ export default {
         reopenedEstimates?: { transactionId: string; importId: string }[];
         wrongCardDuplicates?: { transactionId: string; twinKind: string; twinId: string }[];
         reviewedRows?: ImportPreviewRowDto[];
+        // The waiting file this import was read from (DOMAIN.md "Waiting
+        // File"): it leaves the store in the commit's own batch.
+        waitingFileId?: string;
       }>();
 
       if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length && !body.wrongCardDuplicates?.length)) {
@@ -2662,7 +2692,13 @@ export default {
       }
 
       try {
+        // Read before the commit so the commit only names a file that is
+        // there (a missing store or file just means none).
+        const waitingFile = typeof body.waitingFileId === "string" && body.waitingFileId.length <= 80
+          ? await findWaitingFile(env.DB, body.waitingFileId)
+          : null;
         const committed = await commitImportBatch(env.DB, {
+            waitingFile: waitingFile ?? undefined,
             sourceLabel: body.sourceLabel,
             sourceType: body.sourceType ?? "csv",
             parserKey: body.parserKey ?? "generic_csv",
@@ -2692,6 +2728,11 @@ export default {
         if (committed.created) {
           await applyRememberedTransferPurposesForImport(env.DB, committed.importId).catch((error) => {
             console.error("Remembered transfer purposes failed", error);
+          });
+        } else if (waitingFile) {
+          // The same file was committed before: its waiting copy goes now.
+          await settleWaitingFileAfterImport(env.DB, waitingFile, committed.importId).catch((error) => {
+            console.error("Waiting file settle failed", error instanceof Error ? error.name : "unknown");
           });
         }
         return json({ ok: true, ...committed });

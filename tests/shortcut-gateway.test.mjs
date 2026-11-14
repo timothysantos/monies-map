@@ -33,6 +33,17 @@ test("shortcut-only gateway rejects every route except the direct-create endpoin
   assert.equal(isShortcutGatewayRequestAllowed(undefined, "/api/settings-page", SHORTCUT_ENDPOINT_PATH), true);
 });
 
+test("the Shortcut Worker opens exactly the two public paths, each POST only", () => {
+  const publicPaths = [SHORTCUT_ENDPOINT_PATH, "/api/shortcuts/files/send"];
+  assert.equal(isShortcutGatewayRequestAllowed("true", "/api/shortcuts/files/send", publicPaths), true);
+  assert.equal(isShortcutGatewayRequestAllowed("true", SHORTCUT_ENDPOINT_PATH, publicPaths), true);
+  assert.equal(isShortcutGatewayRequestAllowed("true", "/api/waiting-files/file", publicPaths), false);
+  assert.equal(isShortcutGatewayRequestAllowed("true", "/api/shortcuts/files/send/", publicPaths), false);
+  assert.equal(isShortcutCreateRequestAllowed("/api/shortcuts/files/send", "POST", publicPaths), true);
+  assert.equal(isShortcutCreateRequestAllowed("/api/shortcuts/files/send", "GET", publicPaths), false);
+  assert.equal(isShortcutCreateRequestAllowed("/api/shortcuts/files/send", "PUT", publicPaths), false);
+});
+
 test("direct-create endpoint only accepts POST before route orchestration", () => {
   assert.equal(isShortcutCreateRequestAllowed(SHORTCUT_ENDPOINT_PATH, "POST", SHORTCUT_ENDPOINT_PATH), true);
   assert.equal(isShortcutCreateRequestAllowed(SHORTCUT_ENDPOINT_PATH, "GET", SHORTCUT_ENDPOINT_PATH), false);

@@ -27,6 +27,8 @@ import {
   normalizeStatementDate
 } from "./app-repository-helpers";
 import { buildAuditEventStatement } from "./app-repository-audit";
+import { buildWaitingFileImportedStatements } from "./waiting-file-statements";
+import type { WaitingFileKind } from "./waiting-files";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
 import { loadClosedStatementPeriods, resolveActivityPostDate } from "./closed-statement-periods";
@@ -459,6 +461,9 @@ export async function commitImportBatch(
     wrongCardDuplicates?: WrongCardRemovalRequest[];
     reviewedRows?: ImportPreviewRowDto[];
     note?: string;
+    // The waiting file the rows were read from (DOMAIN.md "Waiting File"),
+    // already read by the caller: it is deleted in this commit's batch.
+    waitingFile?: { id: string; fileKind: WaitingFileKind };
   }
 ) {
   const importId = await buildImportCommitId(input);
@@ -1095,6 +1100,11 @@ export async function commitImportBatch(
   }));
   for (const statement of buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)) {
     write(statement);
+  }
+  if (input.waitingFile) {
+    for (const statement of buildWaitingFileImportedStatements(db, input.waitingFile, importId)) {
+      write(statement);
+    }
   }
 
   await commitImportStatements(db, importId, commitStatements);

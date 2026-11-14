@@ -1359,6 +1359,19 @@ export interface ImportsPageDto {
   importInbox?: ImportInboxDto;
   rollbackPolicy: string;
   pendingSplitMatchCount?: number;
+  // Files sent to Monies Map that wait for review (DOMAIN.md "Waiting
+  // File"): names and arrival only; the browser fetches each file's bytes.
+  waitingFiles?: WaitingFileDto[];
+}
+
+export interface WaitingFileDto {
+  id: string;
+  fileName: string;
+  fileKind: "pdf" | "csv" | "tsv" | "xls";
+  sizeBytes: number;
+  // "shortcut" today; plain text so another way in can be added.
+  arrivedVia: string;
+  receivedAt: string;
 }
 
 export interface ImportInboxDto {

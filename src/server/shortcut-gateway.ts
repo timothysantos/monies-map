@@ -1,17 +1,22 @@
+// The Shortcut Worker (SHORTCUT_API_ONLY) answers only its public paths:
+// the Apple Pay entry endpoint and the "Send to Monies Map" file endpoint.
 export function isShortcutGatewayRequestAllowed(
   shortcutApiOnly: string | undefined,
   pathname: string,
-  shortcutEndpointPath: string
+  publicPaths: string | readonly string[]
 ) {
-  return shortcutApiOnly !== "true" || pathname === shortcutEndpointPath;
+  const paths = typeof publicPaths === "string" ? [publicPaths] : publicPaths;
+  return shortcutApiOnly !== "true" || paths.includes(pathname);
 }
 
+// Each public path takes POST only.
 export function isShortcutCreateRequestAllowed(
   pathname: string,
   method: string,
-  shortcutEndpointPath: string
+  publicPaths: string | readonly string[]
 ) {
-  return pathname !== shortcutEndpointPath || method === "POST";
+  const paths = typeof publicPaths === "string" ? [publicPaths] : publicPaths;
+  return !paths.includes(pathname) || method === "POST";
 }
 
 export function buildShortcutAppUrl(
