@@ -124,6 +124,10 @@ a doc here in the same change.
   timings.
 - [`audits/velocity-rule.md`](audits/velocity-rule.md): the velocity
   rule's "under $5" test against a repetition test, on real bank files.
+- [`audits/likely-shared-signals.md`](audits/likely-shared-signals.md): a
+  "likely shared" Splits suggestion for shops never seen before, measured on
+  real entries (category, card, trip, same day, amount); none reached 85%
+  precision, so nothing was built.
 - [`audits/wrong-card-apple-pay-duplicate.md`](audits/wrong-card-apple-pay-duplicate.md):
   Apple Pay entries on the wrong card: confidence rules, false-positive
   analysis, measured reads and the real case.
