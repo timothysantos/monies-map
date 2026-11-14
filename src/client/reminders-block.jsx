@@ -29,7 +29,7 @@ const ICONS = { card: CreditCard, file: FileText, people: Users, repeat: Repeat,
  * @param {{
  *   queryClient: any, view: { id: string }, enabled: boolean, placement: string,
  *   fetchRequiredQuery: (options: any) => Promise<any>,
- *   onOpen: (target: { pathname: string, extra: Record<string, string> }) => void
+ *   onOpen: (target: { pathname: string, extra: Record<string, string>, hash?: string }) => void
  * }} props
  */
 export function RemindersBlock({ queryClient, view, enabled, placement, fetchRequiredQuery, onOpen }) {

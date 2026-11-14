@@ -93,7 +93,9 @@ export function reminderTarget(reminder, row = null) {
       if (row === "statements") return { pathname: "/imports", extra: {} };
       if (row === "other") return { pathname: "/entries", extra: { month: reminder.month, entry_category: "Other" } };
       if (row === "splits") return { pathname: "/splits", extra: {} };
-      return { pathname: "/month", extra: { month: reminder.month } };
+      // "Open September" lands on the Month page's wrap-up card (design.md
+      // "Month wrap-up"); the note row opens the month as before.
+      return row ? { pathname: "/month", extra: { month: reminder.month } } : { pathname: "/month", extra: { month: reminder.month }, hash: "#month-wrap-up" };
     default:
       return { pathname: "/summary", extra: {} };
   }

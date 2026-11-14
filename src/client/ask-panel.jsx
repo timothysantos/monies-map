@@ -1652,7 +1652,7 @@ function AskConversation({
 
   const params = useMemo(() => buildContextParams(searchParams, view.id, selectedMonth, selectedScope), [searchParams, selectedMonth, selectedScope, view.id]);
 
-  function goTo(pathname, extra = {}, base = params, state = undefined) {
+  function goTo(pathname, extra = {}, base = params, state = undefined, hash = "") {
     const next = new URLSearchParams(base);
     for (const [key, value] of Object.entries(extra)) {
       if (value === undefined || value === null || value === "") {
@@ -1661,7 +1661,7 @@ function AskConversation({
         next.set(key, value);
       }
     }
-    navigate({ pathname, search: `?${next.toString()}` }, state ? { state } : undefined);
+    navigate({ pathname, search: `?${next.toString()}`, ...(hash ? { hash } : {}) }, state ? { state } : undefined);
   }
 
   // Back to the page the + or the receipt button opened Ask from, exactly
@@ -2166,7 +2166,7 @@ function AskConversation({
             enabled={creditStatusEnabled}
             placement={placement}
             fetchRequiredQuery={fetchRequiredQuery}
-            onOpen={(target) => goTo(target.pathname, target.extra)}
+            onOpen={(target) => goTo(target.pathname, target.extra, params, undefined, target.hash)}
           />
         ) : null}
         {!isAddMode && !isShortcut ? (

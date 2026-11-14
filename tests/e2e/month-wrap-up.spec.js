@@ -105,7 +105,7 @@ for (const size of [{ width: 390, height: 844, name: "phone" }, { width: 1440, h
   });
 }
 
-test("the monthly note's action opens the note dialog", async ({ page }) => {
+test("the monthly note's action opens the note dialog, and saving the note ticks its check", async ({ page }) => {
   await reseedDemo(page);
   await postJson(page, "/api/month-note/update", { month: OCTOBER, personScope: "person-tim", note: "" });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -179,4 +179,12 @@ test("no wrap-up for the month in progress before its last days, or for a month 
   if (today.getUTCDate() <= lastDay - 3) {
     expect(body.wrapUp).toBeNull();
   }
+});
+
+test("the month checklist reminder's link (#month-wrap-up) lands on the card", async ({ page }) => {
+  await reseedDemo(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, `${monthUrl(OCTOBER)}#month-wrap-up`);
+  await expect(card(page)).toBeVisible({ timeout: 30_000 });
+  await expect(card(page)).toBeInViewport();
 });

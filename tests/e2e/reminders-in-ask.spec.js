@@ -198,7 +198,8 @@ test.describe("reminders in Ask on a phone @webkit", () => {
     await expect(page).toHaveURL(/\/splits/);
     await openAsk(page);
     await card(page, "September is ready to close").getByRole("button", { name: "Open September" }).click();
-    await expect(page).toHaveURL(/\/month\?.*month=2026-09/);
+    // It lands on the Month page's wrap-up card (design.md "Month wrap-up").
+    await expect(page).toHaveURL(/\/month\?.*month=2026-09.*#month-wrap-up$/);
   });
 
   test("a finished checklist shows one 'all in' line, once, only after it was shown open", async ({ page }) => {

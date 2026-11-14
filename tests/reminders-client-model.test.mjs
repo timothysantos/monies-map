@@ -234,7 +234,9 @@ test("each card opens the page that settles it, and a checklist row its own", ()
   assert.deepEqual(reminderTarget(statement()), { pathname: "/imports", extra: {} });
   assert.deepEqual(reminderTarget(settleUp()), { pathname: "/splits", extra: {} });
   assert.deepEqual(reminderTarget(price()), { pathname: "/entries", extra: { entry_search: "Spotify" } });
-  assert.deepEqual(reminderTarget(monthClose()), { pathname: "/month", extra: { month: "2026-09" } });
+  // The month checklist opens the Month page at its wrap-up card; its note row opens the month.
+  assert.deepEqual(reminderTarget(monthClose()), { pathname: "/month", extra: { month: "2026-09" }, hash: "#month-wrap-up" });
+  assert.deepEqual(reminderTarget(monthClose(), "note"), { pathname: "/month", extra: { month: "2026-09" } });
 });
 
 test("a choice folds the card into one line for the visit, and Undo brings it back", () => {
