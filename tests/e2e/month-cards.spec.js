@@ -25,7 +25,8 @@ async function open(page, url, { lead = "plan", money = true } = {}) {
 }
 
 // Title and subtitle of every Month card, with their computed look.
-const readMonthHeads = (page) => page.locator("[data-month-card]").evaluateAll((cards) => cards.map((card) => {
+// A card slot with nothing in it (What changed outside the month in progress) has no head.
+const readMonthHeads = (page) => page.locator("[data-month-card]:not(:empty)").evaluateAll((cards) => cards.map((card) => {
   const title = card.querySelector(".summary-card-title");
   const sub = card.querySelector(".summary-card-sub");
   const t = title && getComputedStyle(title);

@@ -183,6 +183,9 @@
 
 .summary-tile-rows {
   display: grid;
+  /* One column that may be narrower than its longest row, so a long group or
+     card name is cut with an ellipsis instead of pushing past the tile. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   min-height: 0;
 }

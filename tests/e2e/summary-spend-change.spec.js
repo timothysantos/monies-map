@@ -40,7 +40,9 @@ test.describe("Spending Mix change note", () => {
     expect(change.previousMinor).toBeGreaterThanOrEqual(10_000);
     const percent = Math.round((Math.abs(change.currentMinor - change.previousMinor) / change.previousMinor) * 100);
     await open(page, start, end);
-    const note = page.locator("[data-change-note]");
+    const note = page.locator(".summary-mix-note[data-change-note]");
+    // The lead card carries the same note, in the same words.
+    const leadNote = page.locator(".summary-lead-change[data-change-note]");
     if (percent === 0) {
       await expect(note).toHaveCount(0);
       return;
@@ -50,6 +52,8 @@ test.describe("Spending Mix change note", () => {
     await expect(note).toHaveText(`${up ? "▲" : "▼"} ${percent}% ${words}${change.partial ? " (full months only)" : ""}`);
     // Spending up is rose, spending down is mint.
     await expect(note.locator("b")).toHaveClass(up ? /money-short/ : /money-in/);
+    await expect(leadNote).toHaveText(await note.innerText());
+    await expect(leadNote.locator("b")).toHaveClass(up ? /money-short/ : /money-in/);
   });
 
   test("the earliest months have nothing before them: no comparison and no note", async ({ page }) => {
