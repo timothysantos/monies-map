@@ -1,4 +1,6 @@
-import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+// No ChevronUp: importing it here splits the first screen's copy into a
+// shared chunk (check:bundle); an open day turns its ChevronDown instead.
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -144,7 +146,7 @@ function DayByDay({ page, days, onToggleDay, open, hidden }) {
                     <span className="trip-row-fill" style={{ width: barWidth(row.amountMinor, maxMinor) }} />
                   </span>
                   <span className="trip-row-amount"><PrivateMoney>{money(row.amountMinor)}</PrivateMoney></span>
-                  {isOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                  <ChevronDown size={16} aria-hidden="true" className="trip-row-turn" />
                 </button>
                 <button
                   type="button"

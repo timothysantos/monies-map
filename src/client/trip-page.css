@@ -148,6 +148,10 @@
   color: var(--muted);
 }
 
+.trip-row-main[aria-expanded="true"] .trip-row-turn {
+  transform: rotate(180deg);
+}
+
 .trip-row-label {
   overflow: hidden;
   font-size: 0.9rem;
