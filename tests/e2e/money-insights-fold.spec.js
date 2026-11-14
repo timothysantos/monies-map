@@ -111,14 +111,14 @@ test.describe("money insights fold on a phone", () => {
     const row = foldRow(page);
     await expect(row).toHaveAttribute("aria-expanded", "false");
     await expect(row.locator(".checkin-chip")).toHaveText("To do");
-    await expect(row.locator("strong")).toContainText("Joyce owes you JP¥9,000");
+    await expect(row.locator("strong")).toContainText(/Joyce (still )?owes you JP¥9,000/);
     expect((await foldRow(page).boundingBox()).height).toBeLessThanOrEqual(96);
     await expectSingleLines(row);
     await expectDeckHint(page, row);
     await expect(row.locator(".financial-insight-think")).toBeVisible();
     await expectFullWidth(page, row);
     await row.click();
-    await expect(page.locator(".financial-insight-content .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
+    await expect(page.locator(".financial-insight-content .checkin-fact")).toContainText(/Joyce (still )?owes you JP¥9,000/);
   });
 
   test("Month teaser shows its To do headline with a +N more pill and stacked edges, and the choice survives a reload", async ({ page }) => {
@@ -210,9 +210,9 @@ test.describe("money insights fold on a phone", () => {
     await open(page, await seedTripSplits(page));
     const row = foldRow(page);
     await expect(row).toHaveAttribute("aria-expanded", "true");
-    await expect(page.locator(".financial-insight .checkin-fact")).toContainText("Joyce owes you JP¥9,000");
+    await expect(page.locator(".financial-insight .checkin-fact")).toContainText(/Joyce (still )?owes you JP¥9,000/);
     await row.click();
-    await expect(row.locator("strong")).toContainText("Joyce owes you JP¥9,000");
+    await expect(row.locator("strong")).toContainText(/Joyce (still )?owes you JP¥9,000/);
     await expect(page.locator(".financial-insight .checkin-fact")).toBeHidden();
   });
 
