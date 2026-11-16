@@ -150,26 +150,28 @@ let flushing = null;
  */
 export function flushCashQueue({ fetchImpl = fetch, storage = deviceStorage(), onSaved = (_entry) => {} } = {}) {
   if (flushing) return flushing;
-  flushing = (async () => {
+  const round = async () => {
     let sent = 0;
-    try {
-      for (const item of readCashQueue(storage)) {
-        if (item.error) continue;
-        const result = await sendCashEntry(item.body, { fetchImpl });
-        if (result.kind === "waiting") break;
-        if (result.kind === "saved") {
-          removeWaitingCash(item.requestId, storage);
-          sent += 1;
-          onSaved(result.entry);
-        } else {
-          keepWaitingCash({ ...item, error: result.error }, storage);
-        }
+    for (const item of readCashQueue(storage)) {
+      if (item.error) continue;
+      const result = await sendCashEntry(item.body, { fetchImpl });
+      if (result.kind === "waiting") break;
+      if (result.kind === "saved") {
+        removeWaitingCash(item.requestId, storage);
+        sent += 1;
+        onSaved(result.entry);
+      } else {
+        keepWaitingCash({ ...item, error: result.error }, storage);
       }
-    } finally {
-      flushing = null;
     }
     return sent;
-  })();
+  };
+  // Cleared after the round settles (a microtask later), never before it is
+  // stored: an empty list finishes at once, and a clear inside the round
+  // would run before this assignment and leave a finished round in place.
+  flushing = round().finally(() => {
+    flushing = null;
+  });
   return flushing;
 }
 

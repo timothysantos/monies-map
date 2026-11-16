@@ -142,10 +142,14 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     return () => controller.abort();
   }, [open, personId, sentCount]);
 
+  // The page's refresh, read through a ref so the waiting-list effect below
+  // runs once per opening, not on every render of the page around it.
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
   const reportSent = useCallback((entry) => {
     setSentCount((count) => count + 1);
-    onChanged(String(entry?.date ?? today).slice(0, 7));
-  }, [onChanged, today]);
+    onChangedRef.current(String(entry?.date ?? today).slice(0, 7));
+  }, [today]);
 
   // Waiting payments: shown here, sent when the connection returns and when
   // the pad opens.

@@ -114,6 +114,15 @@ test("two flushes at once are one round, so nothing is sent twice at the same ti
   assert.equal(second, 1);
 });
 
+test("a flush of an empty list does not block the next one", async () => {
+  const storage = memoryStorage();
+  assert.equal(await flushCashQueue({ fetchImpl: reply(200, {}), storage }), 0);
+  keepWaitingCash({ requestId: body.requestId, body, label, queuedAt: "t1" }, storage);
+  const sent = await flushCashQueue({ fetchImpl: reply(200, { ok: true, entry: { entryId: "txn-1", date: "2026-11-17" } }), storage });
+  assert.equal(sent, 1);
+  assert.deepEqual(readCashQueue(storage), []);
+});
+
 test("money hidden: Again chips and saved lines show names only", () => {
   const chip = { description: "Coffee", amountMinor: 3_500_000, currency: "IDR" };
   assert.equal(againChipLabel(chip, true), "Coffee 35,000");
