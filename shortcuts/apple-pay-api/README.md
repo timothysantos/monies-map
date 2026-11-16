@@ -6,7 +6,7 @@ independent of the project owner's personal Shortcuts library and iCloud.
 ## Files
 
 - `monies-map-apple-pay-api.plist` is the reviewable, secret-free source.
-- `releases/monies-map-apple-pay-api-2026-11-10-v7.shortcut` is the exact
+- `releases/monies-map-apple-pay-api-2026-11-17-v8.shortcut` is the exact
   Apple-signed release for anyone to import.
 - `../../public/shortcuts/monies-map-apple-pay-api.shortcut` is a byte-identical
   public copy served by the app.
@@ -80,14 +80,63 @@ reader accepts a dot as the thousands mark (`Rp150.000`, `IDR 150.000`,
 group needs a Rupiah sign, and `19.82`, `150.00` and `SGD 12.345` read as
 before. Installed copies do not update themselves: reinstall and choose Replace.
 
+## A held tap (v8, `held`)
+
+From v8 (`apple-pay-api-2026-11-17-v8`, 69 actions) a blank amount is not a
+question in the middle of paying. The server keeps it as a waiting tap
+(DOMAIN.md "Waiting Tap") and answers 202:
+
+```json
+{ "ok": true, "held": true, "requestId": "apple-pay-…", "merchant": "Periplus Bali", "accountName": "UOB One", "notice": "Periplus Bali noted. Waiting for the amount.", "openUrl": "https://…/entries?waiting_tap=tap-…" }
+```
+
+The Shortcut reads `held` first. When it is there it shows `notice` as a
+silent notification and ends; the person finishes the payment at a calm
+moment on the card at the top of Entries (or Ask's reminder). Only when the
+reply also carries `askAfterSeconds` (off by default; the server's
+`WAITING_TAP_ASK_AFTER_SECONDS` or `ASK_AFTER_SECONDS` in
+`src/domain/waiting-taps-config.ts` turns it on, no reinstall) does the
+Shortcut wait that long, replace `entries/create` with `taps/status` in its
+connection URL, post `{ requestId }` there, and, if the answer has `ask`, show
+Ask for Input (Text): "How much was MERCHANT? Paid on CARD. The amount didn't
+come through. Type it in SGD, or add the currency, like IDR 150000." The
+answer is posted with the same `requestId` and completes the tap; Cancel
+leaves it waiting. Any other status answer shows its `notice` (for example
+"Saved Periplus Bali • SGD 22.94 • UOB One" when a second tap finished it).
+Without `held` the Shortcut runs exactly as v7 (including v7's `needsAmount`
+question, which only happens if the server's table is missing).
+
+What is verified and what is not:
+
+- Verified (tests against a local Worker and D1,
+  `tests/shortcut-v8-paths.test.mjs`): the source's branches and keys, and
+  each path the actions take: held and ended; held, then finished by a
+  second run before the status read; held, asked after the wait, answered;
+  held, asked, Cancel. The signed file was produced with
+  `shortcuts sign --mode anyone`.
+- Not verified: anything on a real two-tap terminal (none in Singapore asks
+  an SG card which currency to pay in). Unknown: whether the Wallet
+  automation runs again for the second tap at all (the owner's Bali trip: 4
+  of 4 did not, with v6, which ended at once), and whether a run that is
+  still open (a Wait or Ask for Input) stops the next one. That is why the
+  default never waits. Not tested on a device: the Wait action reading its
+  seconds from the reply, and the status URL built by Replace Text (both only
+  run when `askAfterSeconds` is turned on).
+- The device test that would settle it: on a terminal that asks the
+  currency, tap, choose, tap again a few seconds apart; then compare Wallet's
+  card history (one payment or two) with the Shortcuts app's automation run
+  log (one run or two, and whether the second had an amount), and check the
+  tap's `second_run_seconds` in `waiting_taps`.
+
 ## Release Procedure
 
 1. Change the secret-free plist source and keep its setup Text action blank.
 2. Confirm the Shortcut still accepts a Dictionary through the explicit
    `Shortcut Input` binding, containing `value`,
    `merchant`, and `name`; posts `amount`, `description`, `date`, `name`,
-   `requestId`, and `clientVersion`; and handles `openUrl`, `accountName`,
-   `needsAmount`, and `error` from the response.
+   `requestId`, and `clientVersion`; and handles `held`, `notice`,
+   `askAfterSeconds`, `openUrl`, `accountName`, `needsAmount`, and `error`
+   from the response, and `ask` and `notice` from the tap status read.
 3. Stage the plist under a temporary filename ending in `.shortcut`. Apple's
    CLI rejects the same unsigned contents when the input filename ends in
    `.plist`.

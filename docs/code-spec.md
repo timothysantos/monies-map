@@ -917,6 +917,17 @@ A persistence command is all-or-nothing:
   imports the other). No month refresh markers of their own
   (`tests/atomic-writes-waiting-files.test.mjs`). The tables are additive and
   every read tolerates them missing (no files; the send path refuses)
+- waiting taps (`src/domain/app-repository-waiting-taps.ts`,
+  `waiting-tap-statements.ts`, DOMAIN.md "Waiting Tap"): holding a tap, a
+  second blank run, Not a payment and the week's put-away each write the row
+  and one audit event in one batch. Completing a tap is part of the entry
+  create's own batch (`createEntryRecord`'s `withEntry` callback), and an
+  import clears or a rollback reopens taps in the commit's or rollback's
+  batch, through the shared statement builders so no command module imports
+  another (`tests/atomic-writes-waiting-taps.test.mjs`). The table is additive
+  and every read tolerates it missing (the Shortcut keeps `needsAmount`).
+  The Entries page reads 9 statements since this (one more, in the same
+  wave; `tests/page-load-scale-guard.test.mjs`)
 - trips and events (`src/domain/app-repository-trip-events.ts`, DOMAIN.md
   "Trip or Event"): save, set entries (at most 200, written as two
   `json_each` statements whatever the count, so no statement binds more than

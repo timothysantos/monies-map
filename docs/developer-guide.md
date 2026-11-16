@@ -1103,6 +1103,56 @@ into the `TapRequestId` variable so both posts share it. Older installed
 copies keep working unchanged but cannot ask; there is no outdated-copy
 warning, so the owner reinstalls (Replace) once on each phone.
 
+Since release v8 (`apple-pay-api-2026-11-17-v8`, 2026-11-17) a blank amount
+is a **waiting tap** (DOMAIN.md "Waiting Tap"; audit
+`docs/audits/waiting-taps.md`). The route lives in
+`src/server/shortcut-entry-route.ts` (`saveShortcutEntry`, one save path for
+the Shortcut and the app):
+
+- v8 and later (`canHoldTap`, by `clientVersion`) with a request id: the
+  endpoint keeps a row in `waiting_taps` (idempotent on the request id) and
+  answers **202** `{ ok: true, held: true, requestId, merchant, accountName,
+  notice, openUrl }`. The Shortcut shows `notice` as a silent notification
+  and ends. v7 and older, no version, no request id, or the table missing:
+  the `needsAmount` 400 above, exactly.
+- `askAfterSeconds` is in the reply only when configured
+  (`ASK_AFTER_SECONDS` in `src/domain/waiting-taps-config.ts`, default
+  `null`, or the Worker var `WAITING_TAP_ASK_AFTER_SECONDS`, `off` for
+  never). Then v8 waits, posts `{ requestId }` to
+  `POST /api/shortcuts/taps/status` (same key; the Shortcut builds the URL by
+  replacing `entries/create` with `taps/status` in its connection URL) and
+  asks only if the answer has `ask: true`; otherwise it shows the answer's
+  `notice`. The answer to the question posts the same body with the same
+  request id; Cancel leaves the tap waiting.
+- An amount-bearing post completes a waiting tap in the entry's own batch
+  (`createEntryRecord`'s `withEntry`, `buildWaitingTapCompletedStatements`):
+  the same request id (the Shortcut's answer), or (a backstop) a second run
+  of the same person on the same card within `SECOND_TAP_WINDOW_SECONDS`
+  (600) with merchants that agree; `second_run_seconds` records it. A
+  request id whose tap a second run already finished returns that entry.
+- Entries' card posts `POST /api/waiting-taps/complete { tapId, amount,
+  currency }` and `POST /api/waiting-taps/remove { tapId }` (behind Access
+  and the cross-site guard). Complete runs `saveShortcutEntry` with the tap's
+  request id, so category guess, habits, trips, the foreign-currency
+  estimate and the "Done for you" safe set match any Apple Pay entry.
+- Completion seam: `saveShortcutEntry(..., { source, tap, completedBy })`
+  with `completed_by` one of `second_tap`, `shortcut_answer`, `app`, and
+  `bank_alert` reserved for a later automation that supplies the amount
+  (for example an iOS Notification-trigger or bank email alert). Not built.
+- Imports clear a waiting tap in the commit's batch
+  (`buildImportWaitingTapClearStatements`): the bank's row on the tap's card
+  (or the person's card for other currencies) within 7 days and the same
+  shop (`matchMerchants` strong or the `AMAZE*` prefix rule), or a certified
+  statement covering the day on every card it could be on without such a
+  row. Rollback puts it back (`cleared_by_import_id`).
+- After `WAITING_TAP_EXPIRE_DAYS` (7) a tap leaves the card and reminders
+  (status `expired`, audit line), swept when Entries or reminders read it.
+- Browser tests save a foreign amount with an offline Worker by reseeding
+  with `POST /api/demo/reseed?fx_rate=IDR:14025` (test environment only).
+
+Applying the table: `npm run db:migrate:remote` and `npm run db:migrate:demo`
+(additive `CREATE TABLE IF NOT EXISTS`; every reader tolerates it missing).
+
 Account, category, ownership, and owner are resolved from the Settings defaults.
 Advanced custom shortcuts can add any optional API fields documented above.
 

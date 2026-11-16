@@ -3090,16 +3090,31 @@ Before you import, the matched row says what will change, for example
 11.66". After the import, the Done card counts any entries the bank no
 longer lists that were removed.
 
-Some shops abroad ask which currency to pay in. When you pick one, the amount
-sometimes doesn't reach the Shortcut, and tapping your phone again doesn't run
-it again. The Shortcut then asks **How much was it?**, naming the shop and the
-card. Type the amount in the card's currency (for example 22.94), or add the
-currency (IDR 150000 or Rp150.000), then select **Done**. It is saved like any
-other Apple Pay purchase, and the bank's figure replaces it when you import
-the statement. **Cancel** saves nothing. To get this question, install the
-Shortcut again once on each iPhone (**Settings → Apple Pay shortcut →
-Install Apple Shortcut**, then **Replace**); until then a purchase whose
-amount doesn't come through is simply not saved.
+Some shops abroad ask which currency to pay in. **Choose the local currency
+when asked: it is usually cheaper** (paying in Singapore dollars there lets
+the shop pick the exchange rate). When you pick one and tap again, the amount
+sometimes doesn't reach the Shortcut. You then see a quiet notification such
+as "Periplus Bali noted. Waiting for the amount." and can carry on paying:
+nothing pops up at the till.
+
+The payment waits as one line at the top of **Entries**, for example
+"Periplus Bali, today 14:02, UOB One. The amount didn't come through.", and
+Ask lists it under its reminders. Type the amount (the number pad opens),
+choose what you paid in (your card's currency first; on a trip, the trip's
+currency, or the one you last paid in abroad), then select **Save**. It is saved like any other Apple Pay
+purchase, in your card's currency with what you paid kept in its note, and
+the bank's figure replaces it when you import the statement. If it wasn't a
+payment (a declined tap, a transit gate or a card check also look like
+this), select **Not a payment** and nothing is saved.
+
+You often don't need to do anything: if your second tap does reach the
+Shortcut with the amount, it finishes the payment by itself; and when you
+import the card's activity or statement, the bank's row for it takes its
+place. A statement that covers that day without it means it was not a
+payment, and the line goes away. A line nobody finishes leaves after a week.
+To get this, install the Shortcut again once on each iPhone (**Settings →
+Apple Pay shortcut → Install Apple Shortcut**, then **Replace**); an older
+copy still asks **How much was it?** straight away.
 
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
 to your first card in **Default account**. On the **Other currencies go to**

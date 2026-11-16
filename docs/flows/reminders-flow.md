@@ -120,6 +120,13 @@ pushed, nothing stored on the server.
   mode, or when the read fails; nothing moves on screen when the answer is
   empty.
 - Later and Got it are for this device only, and say so.
+- A payment waiting for its amount (`waiting_tap`, DOMAIN.md "Waiting Tap")
+  comes first: "Periplus Bali: the amount didn't come through", "Paid today
+  14:02 on UOB One. Add the amount, or say it wasn't a payment.", **Add the
+  amount** (opens Entries with `waiting_tap=<id>`) and Later with days only
+  (no "not for this one": a payment is never skipped for good). It goes when
+  the tap is finished, removed, cleared by an import or put away after 7
+  days.
 
 ## Persisted / Query Contract
 

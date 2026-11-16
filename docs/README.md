@@ -103,6 +103,9 @@ a doc here in the same change.
   audit.
 - [`import-inbox-task-list.md`](import-inbox-task-list.md): import inbox goals
   and remaining task.
+- [`audits/waiting-taps.md`](audits/waiting-taps.md): an Apple Pay payment
+  with no amount (Shortcut v8): research, rules and config values, privacy,
+  cost, write boundary, and what a device test would settle.
 - [`audits/waiting-files.md`](audits/waiting-files.md): "Send to Monies Map":
   what is stored for files sent from the share sheet, where and for how long,
   cost, write boundary and the endpoint's security review.

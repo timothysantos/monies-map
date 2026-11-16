@@ -3870,6 +3870,36 @@ opens the standard list sheet (`split-list-sheet`, swipe down, Close at the
 bottom bar). No new control style: money is plain ink, the pastel mint notice
 and the Splits terracotta button are the existing tokens.
 
+## Waiting tap card
+
+An Apple Pay payment that reached the app without its amount (DOMAIN.md
+"Waiting Tap") is one line to finish at the top of Entries, above the lead
+figures, oldest first; not on the trip view.
+
+- One card per tap (`waiting-tap-card.jsx`, a lazy chunk with its own
+  `waiting-tap-card.css`; the Entries page DTO carries `waitingTaps` only when
+  one waits, so the first screen and the empty case grow by nothing). Card
+  tokens (`--card`, `--card-border`, `--card-shadow`), the person's colour on
+  the left edge (`getPersonColourVars`, passed in by Entries so the chunk adds
+  no shared module), a clock icon in `--person-ink`.
+- The line: "MERCHANT, today 14:02, CARD. The amount didn't come through."
+  ("yesterday" or "Sun 15 Nov" for older days).
+- Fields: an amount box (`inputmode="decimal"`, the number pad), the
+  currency as 44 px pills (the card's own first and pressed; a trip's
+  currency on that day, or the person's last currency abroad when they have
+  a card for other currencies), and **Save** in the accent fill. On a phone
+  Save takes its own row. **Not a payment** is a quiet underlined text
+  button under it. Errors are one rose line (`role="alert"`), never a browser
+  alert.
+- Money hidden: no placeholder figure; nothing on the card is an amount.
+- After Save or Not a payment the card becomes one status line ("Saved
+  Periplus Bali." / "Removed Periplus Bali. Nothing was saved.") for the
+  rest of the visit; the list, month and Summary refresh in the background.
+- Opened with `?waiting_tap=<id>` (the Shortcut's `openUrl`, Ask's reminder
+  "Add the amount") the card scrolls into view with its amount box focused.
+- Saving runs the Apple Pay Shortcut's own save (`saveShortcutEntry`), so
+  nothing on the card decides a category, card or rate.
+
 ## Trips and events on Entries
 
 A trip or event (DOMAIN.md "Trip or Event") shows and is chosen on Entries

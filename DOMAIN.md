@@ -866,6 +866,48 @@ Rules:
 - multi-file intake may keep parsed rows, checkpoints, and generic CSV text in
   browser memory only until cleared, reloaded, or loaded into review
 
+### Waiting Tap
+
+An Apple Pay Shortcut run that arrived with the merchant and card but no
+amount, kept until the amount comes. Overseas terminals that ask which
+currency to pay in are the known cause; a declined tap, a transit gate or a
+card check can look the same. In the app it reads "Periplus Bali, today
+14:02, UOB One. The amount didn't come through." at the top of Entries, and
+as an Ask reminder. It is not an entry: entries refuse an amount of 0.
+
+Storage:
+- `waiting_taps` (additive; every reader tolerates it missing): person,
+  card (`account_id`), the person's card for other currencies
+  (`other_currency_account_id`), merchant and Wallet card name as sent, day,
+  received time, the Shortcut's request id (unique per household), client
+  version, status, who completed it (`completed_by`), the entry it became,
+  the import that cleared it, and `second_run_*` (whether and how many
+  seconds later a second Shortcut run for it arrived)
+- status: `waiting`, `completed`, `not_a_payment`, `bank_row`,
+  `statement_no_match`, `expired`; rows stay after they are resolved
+
+Relationships:
+- belongs to one `household` and one `person`; becomes one `transaction`
+  when completed (in the entry's own batch)
+
+Rules (`src/domain/waiting-taps.ts`, timings in `waiting-taps-config.ts`):
+- only Shortcut v8 and later get one; older copies keep `needsAmount`
+- the Shortcut ends at once with a quiet notification; it asks inside the
+  run only when the server sends `askAfterSeconds` (default: never)
+- completed by the amount from the person (Entries' card, or the Shortcut's
+  own question with the same request id), or as a backstop by a second run
+  of the same person on the same card within 10 minutes with merchants that
+  agree; completion takes one path whatever the source (`completed_by`:
+  `second_tap`, `shortcut_answer`, `app`; `bank_alert` reserved for a later
+  automation), so it behaves as any Apple Pay entry
+- cleared by an import's bank row for it (same card or the card for other
+  currencies, within 7 days, same shop), or by a certified statement that
+  covers its day on every card it could be on without such a row; a rollback
+  of that import makes it wait again
+- **Not a payment** removes it; after 7 days unfinished it is put away
+  (`expired`) with an audit line
+- no AI anywhere
+
 ### Waiting File
 
 A bank file (a statement PDF or a CSV, TSV or XLS activity export) the

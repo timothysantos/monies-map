@@ -211,6 +211,18 @@ Entries mutations may also refresh:
 depending on the kind of change and whether the row change affects ledger
 evidence.
 
+### Waiting taps
+
+`GET /api/entries-page` adds `waitingTaps` (DOMAIN.md "Waiting Tap";
+`src/domain/waiting-taps-projection.ts`) only when an Apple Pay tap is
+waiting for its amount in the view (household: everyone's; a person: their
+own). One read in the same wave as the entries; a tap past 7 days is put away
+on that read. The lazy `WaitingTapCards` posts `/api/waiting-taps/complete`
+or `/api/waiting-taps/remove`; on success Entries invalidates the tap's month
+(entries, month, summary) and refreshes the page through
+`runBackgroundRefresh`. `?waiting_tap=<id>` focuses that card. Not shown on
+the trip view (`entry_trip`).
+
 ## Trip page
 
 A trip or event's own page (DOMAIN.md "Trip page", design.md "Trip page")

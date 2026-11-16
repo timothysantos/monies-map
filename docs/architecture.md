@@ -637,8 +637,13 @@ for a new entry at a shop mostly paid on another card
 
 Production serves that route through the `monies-map-shortcuts` Worker. It
 shares the production D1 database but has no static assets and returns `404` for
-every path except `/api/shortcuts/entries/create` and
-`/api/shortcuts/files/send` (POST only each). The second is "Send to Monies
+every path except `/api/shortcuts/entries/create`,
+`/api/shortcuts/taps/status` and `/api/shortcuts/files/send` (POST only
+each). A blank Apple Pay amount from Shortcut v8 is held as a waiting tap
+(DOMAIN.md "Waiting Tap", `src/server/shortcut-entry-route.ts`): the Shortcut
+ends quietly and the person finishes the payment on Entries' card, which runs
+the same save; a second run, the Shortcut's own question (only when the
+server sends a delay) or an import can complete or clear it. The second is "Send to Monies
 Map" (DOMAIN.md "Waiting File"): a share-sheet Shortcut posts bank files with
 its own key (never the Apple Pay key); the files wait in D1 until Imports
 pulls them into the browser-only intake queue, and leave the store when their
