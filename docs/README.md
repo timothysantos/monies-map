@@ -92,6 +92,9 @@ a doc here in the same change.
   Ledger check-up: sections, groups, "This is fine", hidden money).
 - [`flows/reminders-flow.md`](flows/reminders-flow.md): Reminders in Ask (the
   cards at the top of Ask, Later on this device, the Ask tab's dot).
+- [`flows/cash-entry-flow.md`](flows/cash-entry-flow.md): the cash pad and the
+  Log cash Shortcut (amount-only cash payments, waiting to send, before and
+  after tap counts).
 
 ## Audits and evidence
 
@@ -106,6 +109,11 @@ a doc here in the same change.
 - [`audits/waiting-taps.md`](audits/waiting-taps.md): an Apple Pay payment
   with no amount (Shortcut v8): research, rules and config values, privacy,
   cost, write boundary, and what a device test would settle.
+- [`audits/cash-entry-route.md`](audits/cash-entry-route.md): the cash entry
+  routes and the Log cash Shortcut (identity, limits, writes, privacy).
+- [`proposals/cash-count-whats-left.md`](proposals/cash-count-whats-left.md):
+  proposal only, "Count what's left" (type the cash that is left; the app
+  books the difference).
 - [`audits/waiting-files.md`](audits/waiting-files.md): "Send to Monies Map":
   what is stored for files sent from the share sheet, where and for how long,
   cost, write boundary and the endpoint's security review.

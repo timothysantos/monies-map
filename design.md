@@ -690,6 +690,44 @@ when the tab reloaded (it comes back as a draft) sends the same
 made (`createEntryRecord` returns it, `created: false`, with its linked
 split).
 
+## Cash Pad
+
+The fastest way to log a cash payment (DOMAIN.md "Cash Entry";
+`docs/flows/cash-entry-flow.md`). No new floating control: the Entries +
+opens Ask's new entry card as before, and the first chip of an empty card
+is **Cash** (`ask-chips.js`, `actions.cash`). It opens `cash-pad-sheet.jsx`,
+a lazy chunk with its own `cash-pad.css`, from `ask-panel.jsx`.
+
+- Phone: a sheet over the whole screen (above the floating bars at 80/81,
+  below the category list at 90/91 it can open). From the top: the title
+  and close; one quiet line, everything already decided ("Tim's cash · IDR
+  · Today · Tim"), a 44 px button that opens the change panel (wallet,
+  currency, day, who paid, as chips); the amount, large, with the
+  currency's sign; the Again chips; then, anchored at the bottom under the
+  thumb, a 3x4 pad (keys at least 56 px, 60 px on a normal phone) and a
+  60 px Save across the width. A zero-decimal currency's pad has "000"
+  where the decimal key is.
+- Wide screen: the same sheet as a centred 420 px dialog; the keyboard's
+  digits, Backspace, "." and Enter work.
+- After Save: the pad gives way to the saved line on a mint wash
+  ("Saved: Cash, Rp 35,000"; the name only while money is hidden), the
+  chips (up to 3 categories in the guess order, More categories for the
+  one shared category list, Shared, Add a note), and Undo, Done and Add
+  another (filled) at the bottom. A chip that saved turns mint with a tick
+  and stays in place.
+- Waiting to send: a butter panel above the pad lists payments kept on the
+  device, each with Remove, and Send now. Messages and errors are one line
+  above it (errors on rose).
+- Colours only from the tokens: `--page`, `--card`, `--chip`, the accent for
+  Save, mint for done, butter for waiting, rose for an error; the scrim is
+  the only raw colour.
+- Data: the defaults come from `GET /api/cash-entries/defaults` each time the
+  pad opens (and after a send); the last ones read are kept per person on
+  the device (no amounts) so the pad opens with no signal. Saves and
+  follow-ups go through their commands and then `onEntryMutation`, so the
+  pages refresh through their owners; the pad keeps no copy of server data
+  beyond what it shows.
+
 ## From Ask Chip
 
 `entries-ask-chip.jsx`, on Entries while `from_ask=1` and a list filter are

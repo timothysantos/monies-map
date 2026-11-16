@@ -1429,6 +1429,9 @@ Ask does not own:
 
 - The + and receipt buttons open the card; the old forms stay reachable
   (`+ Add entry`, `+ Add expense`, Edit in form).
+- An empty new entry card's first chip is **Cash**: it opens the cash pad
+  (`docs/flows/cash-entry-flow.md`), which saves through its own command
+  and leaves the card as it was.
 - Save stays disabled until the card has an amount, what it was (not for a
   transfer), a valid date, a wallet, a category and an owner, and a split
   group when Splits is on and more than one group can take it.

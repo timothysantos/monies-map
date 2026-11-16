@@ -1284,6 +1284,51 @@ to Home?" **Half each in Home** turns Splits on for the new entry (it is
 saved when you tap **Save**); **Not this time** puts the question away. It
 only looks at your own past entries and never guesses from one purchase.
 
+### Pay cash in a hurry
+
+For cash, there is a quicker way than typing. Tap **+** on Entries, then
+**Cash**, the first suggestion under the new entry. A number pad opens at
+the bottom of the screen, where your thumb is:
+
+1. Type what you paid, for example 3, 5, 000 for 35,000 rupiah.
+2. Tap **Save**.
+
+That is the whole entry. Everything else is already chosen and shown in
+one line at the top, for example "Tim's cash · IDR · Today · Tim": your
+cash wallet (from Settings, Payment ways), the money of the trip you are on
+today (or the money you last paid cash in this week, or your wallet's own),
+today, and you. Tap that line if one of them is wrong. For money with no
+cents, such as rupiah, yen, won and dong, the pad has a **000** key and no
+decimal point.
+
+![The cash pad in rupiah: Ethan's cash, IDR, Today, Ethan, with 35,000 typed](/faq/guide/phone/thumbs/phone-cash-pad.webp)
+
+After **Save** you see what was saved, with **Undo**. You can stop there,
+or tidy it with one tap: a category, **More categories** for the full list,
+**Shared** to put it on Splits the way you usually share, or **Add a note**.
+**Add another** keeps the pad open for the next payment.
+
+![Saved: Cash, Rp 35,000, with category suggestions, Shared, Add a note, Undo and Add another](/faq/guide/phone/thumbs/phone-cash-saved.webp)
+
+Paid for the same thing before on this trip? It shows under **Again** (for
+example "Coffee 35,000"): one tap fills in the amount, the category and
+the note, then tap **Save**. When you hide money totals, these show the
+name only.
+
+Money in another currency is saved in your wallet's currency at the day's
+rate, and the amount you paid is kept in the note ("Paid IDR 35,000 cash.
+Saved as about SGD 2.80 ...").
+
+No signal? If the app is already open, a payment you save is kept on your
+phone under **Waiting to send** and sends itself when the connection is
+back (or when you open the app again, or tap **Send now**). It is never
+saved twice. Tap **Remove** if you did not mean it. The app itself needs
+a connection to open the first time.
+
+If you have not chosen a cash wallet yet, the pad asks which wallet the
+cash came from, cash wallets first. Choose one in Settings, Payment ways,
+and it won't ask again.
+
 ### Find entries by asking
 
 Type what you are looking for, the way you would say it:
@@ -3150,6 +3195,27 @@ of it. If it leaks, choose that person, generate a new key under **More
 shortcut settings** and reinstall on their phone; the old key stops working at
 once and nobody else's phone is affected. If you used an older "Register Apple Pay transaction" Shortcut,
 remove it so one purchase cannot create two entries.
+
+### Log cash without opening the app
+
+A second Shortcut, **Log cash**, saves a cash payment from the Lock Screen,
+the Action Button, Back Tap, or by saying "Log cash" to Siri. It asks one
+thing, how much, with the number pad, and saves it the same way the cash
+pad does: to your cash wallet, in the money of the trip you are on today,
+for today. A notification says what was saved, for example "Saved: Cash,
+Rp 35,000 cash". Tidy it later in the app.
+
+1. Open **Settings → Apple Pay shortcut** on your iPhone (and choose the
+   person on **Who is this phone for?** if there are two of you).
+2. Select **Install Log cash shortcut**. The app copies your private
+   connection and opens the Shortcut.
+3. Select **Add Shortcut** and paste the connection when Apple asks.
+4. Add it where your thumb is: the Lock Screen (as a Shortcut button), the
+   Action Button, or Settings → Accessibility → Touch → Back Tap.
+
+It uses the same private connection as the Apple Pay shortcut, so stopping a
+phone stops both. Choose a cash wallet in **Settings → Payment ways** first:
+without one, the notification says so and nothing is saved.
 
 ### Was this on that card?
 

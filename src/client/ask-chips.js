@@ -6,7 +6,7 @@
 // - Add mode: "‹ Entries" (or Splits, Ask) first, back to where the person
 //   came from (on the phone's Ask page, where the header has its own back
 //   link, only while the card is untouched); then a pending question's answers, or what fits the card:
-//   Scan receipt, Paste, Transfer, Income on an empty expense; Split with
+//   Cash (the cash pad), Scan receipt, Paste, Transfer, Income on an empty expense; Split with
 //   <partner>, Add a note, Different card once it has content; Swap
 //   direction for a transfer; Edit in form last, to the Entries composer or
 //   the Splits expense dialog.

@@ -1080,6 +1080,35 @@ const SHOTS = [
       await page.request.post("/api/settings/file-intake/new-key");
       await openSettingsSection(page, "Send files to Monies Map");
     }
+  },
+  {
+    // The cash pad (DOMAIN.md "Cash Entry"): Ethan's cash wallet, a trip in
+    // rupiah on today, an amount typed, then the chips after Save. The
+    // guide's Worker cannot fetch rates, so the save carries the test rate.
+    // Last, because it adds an account, a trip and an entry.
+    name: "phone-cash-pad", device: "phone", reseed: true, also: ["phone-cash-saved"],
+    run: async (page, capture) => {
+      const wallet = await (await page.request.post("/api/accounts/create", { data: { name: "Ethan's cash", institution: "Cash", kind: "cash", currency: "SGD", ownerPersonId: "person-ethan" } })).json();
+      await page.request.post("/api/settings/payment-ways/save", { data: { personId: "person-ethan", bankTransferAccountId: "", cashAccountId: wallet.accountId } });
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Singapore", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const shift = (days) => {
+        const date = new Date(`${today}T00:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
+      };
+      await page.request.post("/api/trip-events/save", { data: { name: "Lombok trip", startDate: shift(-2), endDate: shift(5), currency: "IDR" } });
+      await page.route("**/api/cash-entries/create", (route) => route.continue({ headers: { ...route.request().headers(), "x-cash-test-rate": "SGD/IDR=12500" } }));
+      await open(page, `/ask?view=person-ethan&mode=add&from=entries`);
+      await page.getByRole("button", { name: "Cash", exact: true }).click();
+      const pad = page.getByRole("dialog", { name: "Cash" });
+      await pad.locator(".cash-pad-line").filter({ hasText: "IDR" }).waitFor();
+      for (const name of ["3", "5", "Three zeros"]) await pad.getByRole("button", { name, exact: true }).click();
+      await page.waitForTimeout(400);
+      await capture("phone-cash-pad");
+      await pad.getByRole("button", { name: "Save", exact: true }).click();
+      await pad.locator(".cash-pad-saved-line").waitFor();
+      await page.waitForTimeout(400);
+    }
   }
 ];
 

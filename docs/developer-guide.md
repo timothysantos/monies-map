@@ -1064,6 +1064,39 @@ Deploying changes the file offered to future installations; existing devices
 keep their local copy until the user installs the new version and chooses
 Replace.
 
+### How do cash entries and the Log cash Shortcut work?
+
+DOMAIN.md "Cash Entry" has the rules; `docs/flows/cash-entry-flow.md` the
+flow; `docs/audits/cash-entry-route.md` the security notes.
+
+- Routes (`src/server/cash-entry-route.ts`): `GET /api/cash-entries/defaults?person=<id>`
+  (what the pad opens with), `POST /api/cash-entries/create` (the pad's Save;
+  body `{ requestId, personId, amountMinor, currency?, date?, accountId?,
+  description?, categoryName?, note? }`), and the Shortcut Worker's third
+  public path `POST /api/shortcuts/cash/create?shortcut_token=<key>` (body
+  `{ amount?, text?, requestId?, clientVersion? }`, answers
+  `{ ok, entryId, created, notification }`). All bodies go through
+  `limited-body.ts` (8 KiB).
+- One command, `createCashEntry` (`src/domain/app-repository-cash-entries.ts`),
+  decides the fields and saves through `createEntryRecord` with the external
+  reference `cash:<requestId>`; a repeated id returns the saved entry
+  without recomputing it.
+- The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by Ask's
+  **Cash** chip. Waiting payments live in `src/client/cash-queue.js`
+  (device storage key `monies.cashWaiting.v1`); `App.jsx` loads that file
+  only when the key exists, once the screen is usable, and on `online`.
+- Zero-decimal currencies are one list, `ZERO_DECIMAL_CURRENCIES` in
+  `src/domain/cash-entry.ts`.
+- The test Worker cannot fetch rates (`FX_RATES_OFFLINE`), so browser tests
+  send `x-cash-test-rate: SGD/IDR=12500` on the create request; the route
+  honours it only when `APP_ENVIRONMENT` is `test` and rates are offline.
+- The Log cash Shortcut is released like the Apple Pay one from
+  `shortcuts/log-cash/` (README there): readable source, signed release,
+  byte-identical `public/shortcuts/monies-map-log-cash.shortcut`, manifest
+  checked by `tests/shortcut-artifact.test.mjs`. Settings' **Install Log cash
+  shortcut** copies the person's Apple Pay connection with the path changed
+  to `/api/shortcuts/cash/create`.
+
 ### What does the installed direct-create shortcut contain?
 
 The verified shortcut has no empty key rows and no embedded account secret. Its

@@ -1326,6 +1326,69 @@ Rules:
   a demo reseed clears it, because it names the people and accounts the
   reseed replaces. The Shortcut settings in the same table stay.
 
+### Cash Entry
+
+A cash payment logged with just an amount (owner brief, 2026-11-17): from
+the cash pad (Entries +, then **Cash** on Ask's new entry card) or the
+"Log cash" Shortcut. It is an ordinary expense entry on the person's cash
+wallet; only how its fields are chosen is new. Everything is decided
+before the person types, so Save works with an amount alone.
+
+Canonical terms:
+- `cash entry`: the expense the cash command saves (external reference
+  `cash:<request id>`; not an Added by source, so it shows like a hand-made
+  entry)
+- `cash pad`: the in-app number pad (design.md "Cash pad")
+- `Log cash`: the second Apple-signed Shortcut (`shortcuts/log-cash/`)
+- `waiting to send`: a cash payment kept on the device because its Save
+  could not reach the server; it is not an entry until the server confirms
+- `Again chip`: one of up to 4 recent cash payments to repeat
+
+Code:
+- `src/domain/cash-entry.ts` (pure: currency choice, zero-decimal list,
+  pad keys, the Shortcut's words, Again chips, wording)
+- `src/domain/app-repository-cash-entries.ts` (`loadCashEntryDefaults`,
+  `createCashEntry`, which saves through `createEntryRecord`)
+- `src/server/cash-entry-route.ts`: `GET /api/cash-entries/defaults`,
+  `POST /api/cash-entries/create`, `POST /api/shortcuts/cash/create`
+- `src/client/cash-pad-sheet.jsx`, `cash-pad-model.js`, `cash-queue.js`
+
+Rules:
+- Wallet: the person's cash wallet (Payment Way). None: nothing is saved;
+  the pad asks which wallet, offering the person's own and joint active
+  accounts, cash first (the Payment Way rule "cash is never recorded on a
+  card"), and remembers the choice on that device only. The Shortcut says
+  where to set one.
+- Currency: the trip or event on today that has a currency (dated, not put
+  away; with two, the one that started last), else the currency of the
+  person's last cash payment in the last 7 days, else the wallet's own.
+- Zero-decimal currencies (one list, `ZERO_DECIMAL_CURRENCIES`: IDR, JPY,
+  KRW, VND and the ISO zero-decimal codes): the pad has "000" and no
+  decimal key, and an amount with cents is refused. Minor units stay x100
+  everywhere (35,000 rupiah is 3,500,000).
+- Day: today (the pad may say Yesterday). Person: the view's person, else
+  the last person used on this device, else the household's first; the
+  Shortcut's key always decides its person.
+- Description "Cash" unless an Again chip or the Shortcut's words give one;
+  category from the Category Guess for that description, else Other. Ask's
+  safe set then runs as for an Apple Pay entry (its category was the
+  rules', not the person's) unless an Again chip chose it.
+- Foreign cash is saved like a Foreign Currency Estimate: the wallet's
+  currency at the day's rate, `original_amount_minor` and
+  `original_currency` kept, and the note "Paid IDR 35,000 cash. Saved as
+  about SGD 2.80 at 1 SGD = 12,500 IDR (17 Nov 2026)." No rate (none saved
+  in the last 14 days and the sources down): nothing is saved (HTTP 503,
+  the existing behaviour); the pad keeps it waiting and sends it later, at
+  the rate of the day it is sent.
+- One request id per Save: a retry with the same id returns the entry
+  already saved and never recomputes it, even if the rate or the habits
+  changed. One person's id never answers for another.
+- Trips: a cash entry is offered the trip's dashed chip like an Apple Pay
+  entry; nothing puts it on a trip by itself.
+- Again chips: this trip's (or the last 7 days') cash payments by this
+  person, newest first, each shop and amount once, at most 4; a plain
+  "Cash" in Other is left out. Money hidden: names only.
+
 ### Transaction Date & Reconciliation
 The system uses an event-first date model so planning and split workflows do
 not drift when the bank clears later:

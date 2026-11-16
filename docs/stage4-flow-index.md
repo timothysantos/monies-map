@@ -24,6 +24,8 @@ auditing. This is a navigation index, not a mega-doc.
   Ledger check-up page)
 - [`docs/flows/reminders-flow.md`](./flows/reminders-flow.md) (Reminders in
   Ask: the cards at the top of Ask and the Ask tab's dot)
+- [`docs/flows/cash-entry-flow.md`](./flows/cash-entry-flow.md) (the cash pad
+  from Ask's new entry card and the Log cash Shortcut)
 
 ## Audit Rule
 
