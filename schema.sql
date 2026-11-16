@@ -999,3 +999,47 @@ CREATE TABLE IF NOT EXISTS waiting_file_daily_counts (
   received_count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (household_id, day)
 );
+
+-- Waiting taps (DOMAIN.md "Waiting Tap"): an Apple Pay Shortcut run that
+-- arrived with the merchant and card but no amount (an overseas terminal
+-- that asks which currency to pay in). It is not an entry: entries refuse
+-- an amount of 0. The row waits until a second Shortcut run with the amount
+-- completes it (in the same batch as the entry), the person types the amount
+-- (Shortcut or Entries), says it was not a payment, or an import clears it.
+-- Rows stay after they are resolved so the Shortcut can ask for a tap's
+-- status and so second_run_* records whether the second tap ever ran.
+-- request_id is the Shortcut's own id for the tap (idempotent). Additive:
+-- every reader tolerates the table missing (the Shortcut then keeps the
+-- older needsAmount answer).
+CREATE TABLE IF NOT EXISTS waiting_taps (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  -- The person's card for other currencies when the tap's own card is not
+  -- it: an amount typed in another currency goes there, and its bank row can
+  -- clear the tap.
+  other_currency_account_id TEXT NOT NULL DEFAULT '',
+  merchant TEXT NOT NULL DEFAULT '' CHECK (length(merchant) <= 500),
+  wallet_name TEXT NOT NULL DEFAULT '' CHECK (length(wallet_name) <= 200),
+  tap_date TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  client_version TEXT NOT NULL DEFAULT '' CHECK (length(client_version) <= 80),
+  status TEXT NOT NULL DEFAULT 'waiting'
+    CHECK (status IN ('waiting', 'completed', 'not_a_payment', 'bank_row', 'statement_no_match', 'expired')),
+  completed_by TEXT CHECK (completed_by IS NULL OR completed_by IN ('second_tap', 'shortcut_answer', 'app', 'bank_alert')),
+  entry_id TEXT,
+  -- The import whose bank row or statement cleared it: rolling that import
+  -- back puts the tap back to waiting.
+  cleared_by_import_id TEXT,
+  resolved_at TEXT,
+  second_run_at TEXT,
+  second_run_seconds INTEGER,
+  second_run_had_amount INTEGER,
+  UNIQUE (household_id, request_id),
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_waiting_taps_household_status
+  ON waiting_taps (household_id, status, received_at);

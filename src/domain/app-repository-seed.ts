@@ -342,6 +342,8 @@ export async function clearDemoData(db: D1Database) {
     db.prepare("DELETE FROM waiting_files"),
     db.prepare("DELETE FROM waiting_file_daily_counts")
   ]).catch(() => undefined);
+  // Apple Pay taps waiting for their amount (additive, so maybe missing).
+  await db.prepare("DELETE FROM waiting_taps").run().catch(() => undefined);
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_activity_history",
