@@ -377,6 +377,23 @@ export interface TransferPurposeDto {
   ledgerCategoryName?: string;
 }
 
+// An Apple Pay tap waiting for its amount (DOMAIN.md "Waiting Tap"): what the
+// Shortcut sent (merchant, day, card) and the currencies to offer, the card's
+// own first. Never an amount: there is none yet.
+export interface WaitingTapDto {
+  id: string;
+  merchant: string;
+  date: string;
+  // The household's clock time the tap arrived, "HH:MM".
+  time: string;
+  accountId: string;
+  accountName: string;
+  currency: string;
+  personId: string;
+  personName: string;
+  otherCurrencies: string[];
+}
+
 export interface EntriesPageDto {
   viewId: string;
   label: string;
@@ -397,6 +414,9 @@ export interface EntriesPageDto {
   // The trips and events the listed entries are on, for their chips: only
   // those, and left out when none is (DOMAIN.md "Trip or Event").
   tripEvents?: Record<string, { name: string; iconKey: string }>;
+  // Apple Pay taps that came with no amount (DOMAIN.md "Waiting Tap"), for
+  // the card at the top; left out when none is waiting.
+  waitingTaps?: WaitingTapDto[];
   // The trip view (the request's `trip`): the trip (null when it is not
   // found), or with `all` the whole list; the first and last day of its
   // entries when it has any.
@@ -2138,7 +2158,7 @@ export interface TransferOptionDto {
 // rule says is worth a look today, as keys, kinds, dates and minor amounts
 // only. The words come from a fixed template file on the client. Read-only
 // and deterministic; no AI decides anything (docs/flows/reminders-flow.md).
-export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close" | "tax_relief";
+export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close" | "tax_relief" | "waiting_tap";
 
 interface ReminderBaseDto {
   // Stable per occurrence (kind, subject, occurrence): snoozing and "seen"
@@ -2231,7 +2251,19 @@ export interface TaxReliefReminderDto extends ReminderBaseDto {
   items: Array<{ personId: string; personName: string; relief: "srs" | "cpf_self" | "cpf_family"; roomMinor: number }>;
 }
 
+// An Apple Pay tap waiting for its amount (DOMAIN.md "Waiting Tap"); it opens
+// the card at the top of Entries.
+export interface WaitingTapReminderDto extends ReminderBaseDto {
+  kind: "waiting_tap";
+  tapId: string;
+  merchant: string;
+  date: string;
+  time: string;
+  accountName: string;
+}
+
 export type ReminderDto =
+  | WaitingTapReminderDto
   | CardBillReminderDto
   | StatementMissingReminderDto
   | SplitsWaitingReminderDto

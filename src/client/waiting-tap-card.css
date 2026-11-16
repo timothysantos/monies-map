@@ -1,0 +1,166 @@
+/* The waiting tap card at the top of Entries (waiting-tap-card.jsx; design.md
+   "Waiting tap card"). Ships with its lazy chunk. Tokens only: the card
+   surface, the person's own colour on the left edge (as an Entries row), the
+   accent for Save, the rose ink for an error. */
+.waiting-taps {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.waiting-tap-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 10px 16px;
+  border: 1px solid var(--card-border);
+  border-left: 4px solid var(--person-colour, var(--line));
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+}
+
+.waiting-tap-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.waiting-tap-line svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--person-ink, var(--muted));
+}
+
+.waiting-tap-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.waiting-tap-amount {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.waiting-tap-amount input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-tap-amount input[aria-invalid="true"] {
+  border-color: var(--negative);
+}
+
+.waiting-tap-currencies {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.waiting-tap-currency,
+.waiting-tap-currency-only {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.waiting-tap-currency-only {
+  display: inline-flex;
+  align-items: center;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.waiting-tap-currency {
+  cursor: pointer;
+}
+
+.waiting-tap-currency.is-active {
+  border-color: color-mix(in srgb, var(--accent-strong) 60%, var(--paper));
+  background: rgb(var(--accent-strong-rgb) / 0.12);
+  color: var(--accent-strong);
+}
+
+.waiting-tap-save {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent-strong);
+  color: var(--on-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.waiting-tap-save:disabled,
+.waiting-tap-remove:disabled,
+.waiting-tap-currency:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.waiting-tap-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.waiting-tap-error {
+  margin: 0;
+  color: var(--negative);
+  font-size: 0.88rem;
+}
+
+.waiting-tap-remove {
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.waiting-tap-done {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 4px solid var(--person-colour, var(--line));
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 767px) {
+  .waiting-tap-save {
+    flex: 1 1 100%;
+  }
+}

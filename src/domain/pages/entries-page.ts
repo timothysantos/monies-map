@@ -18,6 +18,7 @@ import {
   resolvePageViewId
 } from "../route-context";
 import { resolvePageLabel } from "../page-labels";
+import { loadWaitingTapsForView } from "../waiting-taps-projection";
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 // The longest period Entries lists at once (MAX_ENTRY_RANGE_MONTHS in
@@ -70,12 +71,14 @@ export async function buildEntriesPageDto(
   // together.
   const [rangeStart] = getMonthBounds(rangeMonths[0] ?? effectiveSelectedMonth);
   const [, rangeEnd] = getMonthBounds(rangeMonths.at(-1) ?? effectiveSelectedMonth);
-  const [monthEntries, splitGroups, trips] = await Promise.all([
+  const [monthEntries, splitGroups, trips, waitingTaps] = await Promise.all([
     rangeMonths.length
       ? loadEntriesForMonths(db, rangeMonths, { withTime: true })
       : loadEntries(db, effectiveSelectedMonth, { withTime: true }),
     loadSplitGroups(db),
-    loadTripEventRowFacts(db, rangeStart, rangeEnd, todayInAppTimeZone())
+    loadTripEventRowFacts(db, rangeStart, rangeEnd, todayInAppTimeZone()),
+    // Apple Pay taps waiting for their amount: the card at the top.
+    loadWaitingTapsForView(db, resolvePageViewId(selectedViewId, household.people))
   ]);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewId = resolvePageViewId(selectedViewId, household.people);
@@ -99,7 +102,8 @@ export async function buildEntriesPageDto(
       scopes: buildPersonScopes(viewId),
       entries: withTripEvents(adjustEntriesForList(monthEntries, viewId), trips.links, trips.suggestions)
     },
-    ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {})
+    ...(Object.keys(trips.chips).length ? { tripEvents: trips.chips } : {}),
+    ...(waitingTaps.length ? { waitingTaps } : {})
   };
 }
 

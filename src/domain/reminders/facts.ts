@@ -97,6 +97,9 @@ export interface ReminderInputs {
   // The year's tax relief facts, read only in December (the one month its
   // reminder can show). Absent: no tax relief reminder.
   taxRelief?: TaxReliefsYear;
+  // Apple Pay taps waiting for their amount in this view (DOMAIN.md
+  // "Waiting Tap"), oldest first. Absent: none.
+  waitingTaps?: Array<{ id: string; merchant: string; date: string; time: string; accountName: string; personId: string }>;
 }
 
 // A person view reads the accounts that person owns plus joint ones; the

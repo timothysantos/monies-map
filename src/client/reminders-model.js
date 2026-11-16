@@ -40,6 +40,9 @@ export function laterChoices(reminder, today) {
     { id: "next-week", label: copy.laterSheet.nextWeek, date: nextMondayAfter(today) }
   ].map((choice) => ({ ...choice, dateText: reminderDate(choice.date) }));
   switch (reminder.kind) {
+    // A payment is never skipped for good: only later.
+    case "waiting_tap":
+      return { days, skips: [], note: copy.waitingTap.laterNote };
     case "card_bill":
       return { days, skips: [copy.cardBill.skip, copy.cardBill.elsewhere], note: copy.cardBill.laterNote };
     case "statement_missing":
@@ -57,6 +60,7 @@ export function laterChoices(reminder, today) {
 
 function laterTitleFor(reminder) {
   switch (reminder.kind) {
+    case "waiting_tap": return copy.waitingTap.laterTitle(reminder.merchant);
     case "card_bill": return copy.cardBill.laterTitle(reminder.accountName);
     case "statement_missing": return copy.statement.laterTitle(reminder.accountName, reminderMonthName(reminder.statementMonth));
     case "splits_waiting": return reminder.direction === "between" ? copy.splits.laterTitleHousehold : copy.splits.laterTitle(otherName(reminder));
@@ -79,6 +83,9 @@ function moneyText(minor, currency, { hidden, formatMoney }) {
 // filters to put on it. The view, month and scope come from the Ask page.
 export function reminderTarget(reminder, row = null) {
   switch (reminder.kind) {
+    // The card at the top of Entries, with this tap's amount field ready.
+    case "waiting_tap":
+      return { pathname: "/entries", extra: { waiting_tap: reminder.tapId } };
     case "card_bill":
       return { pathname: "/entries", extra: { entry_wallet: reminder.accountId } };
     case "statement_missing":
@@ -143,6 +150,16 @@ function buildCard(reminder, options) {
   const { today, hidden, formatMoney } = options;
   const base = { key: reminder.key, kind: reminder.kind, hidden, target: reminderTarget(reminder), later: laterChoices(reminder, today), laterTitle: laterTitleFor(reminder), amountText: "", amountTone: "neutral" };
   switch (reminder.kind) {
+    case "waiting_tap":
+      return {
+        ...base,
+        icon: "card",
+        tone: "butter",
+        title: copy.waitingTap.title(reminder.merchant),
+        sentence: copy.waitingTap.sentence({ dayText: reminder.date === today ? "today" : reminderDate(reminder.date), time: reminder.time, accountName: reminder.accountName }),
+        primaryLabel: copy.waitingTap.open,
+        quiet: "later"
+      };
     case "card_bill": {
       const overdue = reminder.daysUntilDue < 0;
       return {

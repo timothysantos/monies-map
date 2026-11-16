@@ -75,6 +75,15 @@ export const remindersCopy = {
     laterNote: "This only hides it on this device. It goes away by itself once the payment shows in your records."
   },
 
+  // An Apple Pay payment that reached the app without its amount.
+  waitingTap: {
+    title: (merchant) => `${merchant}: the amount didn't come through`,
+    sentence: ({ dayText, time, accountName }) => `Paid ${[dayText, time].filter(Boolean).join(" ")}${accountName ? ` on ${accountName}` : ""}. Add the amount, or say it wasn't a payment.`,
+    open: "Add the amount",
+    laterTitle: (merchant) => `${merchant}, amount missing`,
+    laterNote: "This only hides it on this device. It goes away once the amount is added, it is marked not a payment, or the bank's statement brings it in."
+  },
+
   statement: {
     title: (name, monthName) => `${name}'s ${monthName} statement should be out`,
     sentence: (daysSinceExpected, expectedText, monthName) => (

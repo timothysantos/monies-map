@@ -23,7 +23,9 @@ import {
 import { EntryTransferTools } from "./entry-editor";
 import { EntryEditCard, EntrySplitsRow, EntryTransferMatchRow } from "./entry-edit-card";
 import { BottomActions, DetailRow } from "./ui/lead-support-detail";
-import { TotalsVisibilityToggle } from "./money-privacy";
+import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
+import { todayInAppTimeZone } from "./app-dates";
+import { getPersonColourVars } from "./person-colour";
 import { formatShortMonth } from "./copy/ask-copy";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams, readEntriesRangeStart } from "./entry-filter-params";
@@ -113,6 +115,9 @@ const TripEventsEmptyActions = lazy(() => import("./entries-trip-events").then((
 // Picking many rows: the floating bar is its own lazy chunk, fetched when
 // picking starts.
 const EntriesPickBar = lazy(() => import("./entries-pick-bar").then((module) => ({ default: module.EntriesPickBar })));
+// Apple Pay taps waiting for their amount (DOMAIN.md "Waiting Tap"): only
+// fetched when one is waiting.
+const WaitingTapCards = lazy(() => import("./waiting-tap-card").then((module) => ({ default: module.WaitingTapCards })));
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -1144,6 +1149,21 @@ export function EntriesPanel({
     });
     void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
   }, [onBroadcastSplitMutation, refreshEntriesPage, runBackgroundRefresh, selectedMonth, stopPicking]);
+  // A waiting tap saved (a new Apple Pay entry, maybe in another month) or
+  // removed: the list, the month and the Summary read it again.
+  const { areTotalsVisible } = useMoneyPrivacy();
+  const waitingTaps = entriesPage.waitingTaps ?? [];
+  const focusTapId = searchParams.get("waiting_tap") ?? "";
+  const [waitingTapDoneLines, setWaitingTapDoneLines] = useState([]);
+  const handleWaitingTapSaved = useCallback((tap, text) => {
+    setWaitingTapDoneLines((lines) => [...lines, { key: tap.id, text, personName: tap.personName }]);
+    onInvalidateEntryMutation?.({ month: tap.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [onInvalidateEntryMutation, refreshEntriesPage, runBackgroundRefresh]);
+  const handleWaitingTapRemoved = useCallback((tap, text) => {
+    setWaitingTapDoneLines((lines) => [...lines, { key: tap.id, text, personName: tap.personName }]);
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [refreshEntriesPage, runBackgroundRefresh]);
   const handlePickedCategoryChanged = useCallback(({ changes, categoryName, confirmedCount }) => {
     stopPicking();
     const invalidate = () => onInvalidateEntryMutation?.({ month: selectedMonth, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
@@ -1558,6 +1578,20 @@ export function EntriesPanel({
         />
       ) : (
         <>
+          {(waitingTaps.length || waitingTapDoneLines.length) && !tripViewId ? (
+            <Suspense fallback={null}>
+              <WaitingTapCards
+                taps={waitingTaps}
+                doneLines={waitingTapDoneLines}
+                today={todayInAppTimeZone()}
+                moneyHidden={!areTotalsVisible}
+                focusTapId={focusTapId}
+                personStyle={getPersonColourVars}
+                onSaved={handleWaitingTapSaved}
+                onRemoved={handleWaitingTapRemoved}
+              />
+            </Suspense>
+          ) : null}
           {tripViewId ? (
             <Suspense fallback={<div className="trip-lead" aria-busy="true" />}>
               <TripEventLead

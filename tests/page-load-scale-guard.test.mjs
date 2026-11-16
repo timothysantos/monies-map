@@ -55,7 +55,10 @@ const PAGES = [
   // display columns now.
   { name: "summary-page", path: "/api/summary-page?view=household&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 16, maxRowsRead: 45_000, maxRowBytes: 3_500_000, maxResponseBytes: 12_000 },
   { name: "month-page", path: "/api/month-page?view=household&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxRowsRead: 30_000, maxRowBytes: 2_200_000, maxResponseBytes: 240_000 },
-  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 8, maxRowsRead: 10_000, maxRowBytes: 450_000, maxResponseBytes: 240_000 },
+  // Entries +1 (2026-11-17): the waiting taps read (an Apple Pay payment
+  // with no amount, DOMAIN.md "Waiting Tap"), in the same wave as the
+  // entries; it reads no rows while nothing waits.
+  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 9, maxRowsRead: 10_000, maxRowBytes: 450_000, maxResponseBytes: 240_000 },
   // Subscriptions and bills (2026-11): 26 months of expenses grouped in SQL
   // by description and month, read in one step (measured 4 round trips,
   // 40,200 rows, 612 kB of rows, ~40 ms node CPU for either view).
@@ -147,7 +150,7 @@ const PAGE_CHAINS = [
   { name: "summary-page person", path: "/api/summary-page?view=person-tim&month=2026-08&scope=direct_plus_shared&summary_start=2025-09&summary_end=2026-08", maxStatements: 17, maxWaves: 3, maxRowsRead: 45_000 },
   { name: "summary-account-pills", path: "/api/summary-account-pills?view=household", maxStatements: 11, maxWaves: 2, maxRowsRead: 100_000 },
   { name: "month-page", path: "/api/month-page?view=person-tim&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxWaves: 3, maxRowsRead: 30_000 },
-  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 8, maxWaves: 3, maxRowsRead: 10_000 },
+  { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 9, maxWaves: 3, maxRowsRead: 10_000 },
   { name: "splits-page", path: "/api/splits-page?view=person-tim&month=2026-08", maxStatements: 24, maxWaves: 5, maxRowsRead: 70_000 },
   { name: "reminders", path: "/api/reminders?view=household", maxStatements: 15, maxWaves: 4, maxRowsRead: 40_000 },
   { name: "repeating-charges household", path: "/api/repeating-charges?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 80_000 },
@@ -317,7 +320,7 @@ test("trip suggestions and the Entries page's dashed chip read a bounded chain o
     // group's rows: about 12,300 rows today. A whole-table read would be 70k+.
     ["trip suggestions", "/api/trip-events/suggestions?tripEventId=trip-busy", { statements: 3, waves: 2, rows: 16_000 }],
     ["trip search", "/api/trip-events/search?tripEventId=trip-busy&q=shop", { statements: 2, waves: 2, rows: 12_000 }],
-    ["entries-page with a trip on today", `/api/entries-page?view=household&month=${today.slice(0, 7)}`, { statements: 8, waves: 3, rows: 10_000 }]
+    ["entries-page with a trip on today", `/api/entries-page?view=household&month=${today.slice(0, 7)}`, { statements: 9, waves: 3, rows: 10_000 }]
   ];
   for (const [name, path, max] of checks) {
     const call = async () => {

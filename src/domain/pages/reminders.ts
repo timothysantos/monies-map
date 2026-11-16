@@ -15,6 +15,7 @@ import { resolvePageViewId } from "../route-context";
 import { buildSplitsPage } from "../splits-projection";
 import { loadTaxReliefsYear } from "./tax-reliefs";
 import type { RemindersDto } from "../../types/dto";
+import { loadWaitingTapsForView } from "../waiting-taps-projection";
 
 // The read-only reminders projection for one view (GET /api/reminders,
 // DOMAIN.md "Reminder"). It reads existing tables only (statement
@@ -33,7 +34,7 @@ export async function buildRemindersDto(
   // the month close only for the people and the accounts.
   const peopleRead = loadPeople(db);
   const accountsRead = loadReminderAccounts(db);
-  const [people, accounts, cardPayments, charges, splits, monthClose, choices, taxRelief] = await Promise.all([
+  const [people, accounts, cardPayments, charges, splits, monthClose, choices, taxRelief, waitingTaps] = await Promise.all([
     peopleRead,
     accountsRead,
     loadCardPayments(db, today),
@@ -49,13 +50,16 @@ export async function buildRemindersDto(
     // price change reminder for that payee.
     loadRepeatingChoices(db),
     // Tax relief room is a December reminder: no read in any other month.
-    today.slice(5, 7) === "12" ? loadTaxReliefsYear(db, today).then((loaded) => loaded.reliefs) : Promise.resolve(undefined)
+    today.slice(5, 7) === "12" ? loadTaxReliefsYear(db, today).then((loaded) => loaded.reliefs) : Promise.resolve(undefined),
+    // Apple Pay taps waiting for their amount (none when the table is missing).
+    peopleRead.then((list) => loadWaitingTapsForView(db, resolvePageViewId(selectedViewId, list)))
   ]);
   const viewId = resolvePageViewId(selectedViewId, people);
   const inputs: ReminderInputs = {
     today, viewId, people: people, accounts, cardPayments, charges, splits, monthClose,
     notRepeatingPayeeKeys: [...notRepeatingPayeeKeys(choices)],
-    taxRelief
+    taxRelief,
+    waitingTaps
   };
   return { viewId, today, reminders: buildReminders(inputs).slice(0, REMINDERS_MAX) };
 }
