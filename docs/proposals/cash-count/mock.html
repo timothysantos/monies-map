@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Count what's left: mock</title>
+<!-- A static mock for docs/proposals/cash-count-whats-left.md, drawn with
+     the cash pad's shapes and the app's light palette. Not app code. -->
+<style>
+  :root { --page: #ebe4d8; --card: #fbf8f2; --chip: #f1ebe0; --border: #ded5c6; --text: #3b2a20; --muted: #7a6a5c; --accent: #b0643a; --mint: #e3ead2; --mint-ink: #4c5a2c; --butter: #f2e6c4; --butter-ink: #6b4f12; --sky: #dfe8ea; --sky-ink: #2f5560; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #d8d0c3; font-family: "Open Sans", system-ui, sans-serif; color: var(--text); display: flex; gap: 24px; padding: 24px; }
+  .phone { width: 390px; height: 844px; background: var(--page); border-radius: 28px; padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; box-shadow: 0 6px 24px rgb(0 0 0 / 0.18); }
+  h1 { margin: 6px 0 0; font-size: 1.5rem; }
+  .line { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; color: var(--muted); font-size: 0.92rem; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--chip); border-radius: 999px; padding: 4px; gap: 4px; }
+  .seg span { text-align: center; padding: 10px 0; border-radius: 999px; font-weight: 600; color: var(--muted); }
+  .seg .on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+  .amount { text-align: center; font-size: 3rem; font-weight: 700; padding: 6px 0; }
+  .amount small { font-size: 1.5rem; color: var(--muted); margin-right: 6px; }
+  .facts { background: var(--sky); color: var(--sky-ink); border-radius: 16px; padding: 12px 14px; font-size: 0.95rem; line-height: 1.5; }
+  .facts b { font-weight: 700; }
+  .spacer { flex: 1; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key { background: var(--card); border: 1px solid var(--border); border-radius: 12px; height: 60px; display: grid; place-items: center; font-size: 1.6rem; font-weight: 600; }
+  .save { background: var(--accent); color: #fff; border-radius: 12px; height: 60px; display: grid; place-items: center; font-size: 1.15rem; font-weight: 700; }
+  .saved { background: var(--mint); color: var(--mint-ink); border-radius: 16px; padding: 12px 14px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--chip); border: 1px solid var(--border); border-radius: 999px; padding: 11px 16px; }
+  .note { color: var(--muted); font-size: 0.9rem; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 8px; }
+  .row3 span { background: var(--chip); border-radius: 12px; height: 60px; display: grid; place-items: center; font-weight: 700; }
+  .row3 span.primary { background: var(--accent); color: #fff; }
+  .caption { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+</style>
+</head>
+<body>
+  <section class="phone" id="took-out">
+    <div class="caption">1 · Money you took out or changed</div>
+    <h1>Cash</h1>
+    <div class="line">Tim's cash · IDR · Today · Tim</div>
+    <div class="seg"><span>Paid</span><span class="on">Took out</span><span>What's left</span></div>
+    <div class="amount"><small>Rp</small>1,000,000</div>
+    <div class="facts">From <b>UOB One</b> at the ATM. When the bank's statement comes in, its dollar amount sets the rate.</div>
+    <div class="spacer"></div>
+    <div class="grid">
+      <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+      <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+      <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+      <div class="key">000</div><div class="key">0</div><div class="key">⌫</div>
+    </div>
+    <div class="save">Save</div>
+  </section>
+
+  <section class="phone" id="count">
+    <div class="caption">2 · Count what's left</div>
+    <h1>Cash</h1>
+    <div class="line">Tim's cash · IDR · Today · Tim</div>
+    <div class="seg"><span>Paid</span><span>Took out</span><span class="on">What's left</span></div>
+    <div class="facts">Since Saturday: <b>Rp 1,000,000</b> taken out, <b>Rp 535,000</b> written down as paid. That leaves about <b>Rp 465,000</b>.</div>
+    <div class="amount"><small>Rp</small>200,000</div>
+    <div class="note" style="text-align:center">How much rupiah is in your wallet now?</div>
+    <div class="spacer"></div>
+    <div class="grid">
+      <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+      <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+      <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+      <div class="key">000</div><div class="key">0</div><div class="key">⌫</div>
+    </div>
+    <div class="save">Save</div>
+  </section>
+
+  <section class="phone" id="booked">
+    <div class="caption">3 · The difference, as one entry</div>
+    <h1>Cash</h1>
+    <div class="line">Tim's cash · IDR · Today · Tim</div>
+    <div class="spacer"></div>
+    <div class="saved">✓ Saved: Cash spent, not written down, Rp 265,000</div>
+    <div class="note">About $21.20 at the rate you took it out. On Bali trip.</div>
+    <div class="chips">
+      <span class="chip">Food &amp; Drinks</span><span class="chip">Transport</span><span class="chip">More categories</span><span class="chip">Shared</span><span class="chip">Add a note</span>
+    </div>
+    <div class="row3"><span>Undo</span><span>Done</span><span class="primary">Add another</span></div>
+  </section>
+</body>
+</html>
