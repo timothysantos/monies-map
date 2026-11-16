@@ -79,9 +79,15 @@ export function describeForeignAmount(input: {
   originalCurrency: string;
   accountCurrency: string;
   conversion: ForeignAmountConversion;
+  // Cash (a cash entry): no card will settle it later, so no card line.
+  cash?: boolean;
 }) {
   const rate = new Intl.NumberFormat("en-SG", { maximumFractionDigits: input.conversion.quotePerBase >= 100 ? 0 : 4 }).format(input.conversion.quotePerBase);
-  return `Paid ${formatForeignAmount(input.originalAmountMinor, input.originalCurrency)}. Saved as about ${formatForeignAmount(input.conversion.amountMinor, input.accountCurrency, 2)} at 1 ${input.accountCurrency} = ${rate} ${input.originalCurrency} (${formatRateDate(input.conversion.rateDate)}). Your card's ${input.accountCurrency} amount may differ.`;
+  const saved = `Saved as about ${formatForeignAmount(input.conversion.amountMinor, input.accountCurrency, 2)} at 1 ${input.accountCurrency} = ${rate} ${input.originalCurrency} (${formatRateDate(input.conversion.rateDate)}).`;
+  if (input.cash) {
+    return `Paid ${formatForeignAmount(input.originalAmountMinor, input.originalCurrency)} cash. ${saved}`;
+  }
+  return `Paid ${formatForeignAmount(input.originalAmountMinor, input.originalCurrency)}. ${saved} Your card's ${input.accountCurrency} amount may differ.`;
 }
 
 // "IDR 159,000": whole units when the amount has no cents.

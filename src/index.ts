@@ -149,6 +149,7 @@ import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntr
 import { aiVisitorKey } from "./domain/ai-assistance";
 import { handleViewerPreferencesRoute, isViewerPreferencesPath } from "./server/viewer-preferences-route";
 import { handleTripEventsRoute, isTripEventsPath } from "./server/trip-events-route";
+import { handleCashEntryRoute, handleShortcutCashRoute, isCashEntryPath, SHORTCUT_CASH_PATH } from "./server/cash-entry-route";
 import { handleUsuallySharedRoute, isUsuallySharedPath } from "./server/usually-shared-route";
 import { followSplitGroupTripEvent } from "./domain/app-repository-trip-events";
 import { isCrossSiteWrite } from "./server/cross-site-guard";
@@ -175,7 +176,7 @@ import {
 } from "./server/shortcut-entry-route";
 
 // The Shortcut Worker's public paths (POST only, outside Access).
-const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH, WAITING_FILES_INTAKE_PATH] as const;
+const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH, WAITING_FILES_INTAKE_PATH, SHORTCUT_CASH_PATH] as const;
 
 // A refused write returns its message. One refused by the settlement lock is
 // a 409 that names the settlement (a simplification's checkpointId or a group
@@ -725,6 +726,12 @@ export default {
         return apiPageResponse("Trip page day", request, url, async () => ({ ok: true, tripDay: await buildTripPageDayDto(env.DB, tripId, day) }), timing);
       }
       return apiPageResponse("Trip page", request, url, async () => ({ ok: true, tripPage: await buildTripPageDto(env.DB, tripId) }), timing);
+    }
+
+    // Cash entries: the cash pad's defaults and Save
+    // (src/server/cash-entry-route.ts).
+    if (isCashEntryPath(url.pathname)) {
+      return (await handleCashEntryRoute(request, env, url)) ?? new Response(null, { status: 404 });
     }
 
     // Trips and events (src/server/trip-events-route.ts).
@@ -1527,6 +1534,19 @@ export default {
       if (waitingFilesResponse) {
         return waitingFilesResponse;
       }
+    }
+
+    // The "Log cash" Shortcut: the Shortcut key names the person
+    // (src/server/cash-entry-route.ts).
+    if (url.pathname === SHORTCUT_CASH_PATH && request.method === "POST") {
+      const shortcutAuth = await authenticateShortcutRequest(request, env, "cash:create");
+      if (!shortcutAuth.ok) {
+        return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
+      }
+      return handleShortcutCashRoute(request, env, {
+        personId: shortcutAuth.connection.personId,
+        personName: shortcutAuth.connection.personName
+      });
     }
 
     if (url.pathname === "/api/shortcuts/entries/create" && request.method === "POST") {

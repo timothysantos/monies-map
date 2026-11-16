@@ -870,7 +870,9 @@ export async function loadTripEventRowFacts(
           SELECT transactions.id, transactions.account_id, transactions.transaction_date, transactions.original_currency
           FROM transactions
           WHERE transactions.household_id = ?
-            AND transactions.external_reference LIKE 'shortcut:_%'
+            -- The Apple Pay Shortcut's entries and cash entries (the cash
+            -- pad and the "Log cash" Shortcut).
+            AND (transactions.external_reference LIKE 'shortcut:_%' OR transactions.external_reference LIKE 'cash:_%')
             -- One lower bound: the earliest active trip's first day, or an
             -- empty range when no trip is on (most page loads).
             AND transactions.transaction_date >= COALESCE((SELECT MIN(start_date) FROM active), '9999-12-31')
