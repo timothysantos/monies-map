@@ -337,3 +337,19 @@ test("the Shortcut Worker answers the Log cash path and still hides the in-app c
   assert.equal((await call(`/api/cash-entries/defaults?person=${TIM}`)).status, 404);
   assert.equal((await call("/api/cash-entries/create", { method: "POST", body: "{}" })).status, 404);
 });
+
+test("the browser tests' rate header works only on a test Worker that cannot fetch rates", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  await addCashWallet(api);
+  const send = (vars) => worker.fetch(new Request("http://127.0.0.1/api/cash-entries/create", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-cash-test-rate": "SGD/KRW=1000" },
+    body: JSON.stringify({ requestId: crypto.randomUUID(), personId: TIM, amountMinor: 5_000_000, currency: "KRW" })
+  }), { DB: db, ...template.config.vars, ...vars });
+
+  const production = await send({ APP_ENVIRONMENT: "production" });
+  assert.equal(production.status, 503, "a production Worker ignores the header");
+  const tests = await send({});
+  assert.equal(tests.status, 200);
+  assert.equal((await tests.json()).entry.amountMinor, 5_000);
+});

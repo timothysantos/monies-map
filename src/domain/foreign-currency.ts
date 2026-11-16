@@ -131,6 +131,18 @@ function formatRateDate(rateDate: string) {
   return shortMonthText(new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${rateDate}T00:00:00Z`)));
 }
 
+// Browser tests only (a test Worker with FX_RATES_OFFLINE): saves one
+// rate as if it had just been fetched, so a foreign cash save can run.
+export async function saveFxRateForTests(db: D1Database, input: { base: string; quote: string; quotePerBase: number; now?: number }) {
+  if (!(input.quotePerBase > 0) || !/^[A-Z]{3}$/.test(input.base) || !/^[A-Z]{3}$/.test(input.quote)) return;
+  await ensureFxRatesTable(db);
+  const fetchedAt = new Date(input.now ?? Date.now()).toISOString();
+  await db
+    .prepare("INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, quote_per_base, rate_date, source, fetched_at) VALUES (?, ?, ?, ?, 'frankfurter', ?)")
+    .bind(input.base, input.quote, input.quotePerBase, fetchedAt.slice(0, 10), fetchedAt)
+    .run();
+}
+
 async function ensureFxRatesTable(db: D1Database) {
   await db
     .prepare(`

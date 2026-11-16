@@ -24,6 +24,7 @@ import {
   type CashEntrySaved
 } from "../domain/app-repository-cash-entries";
 import { describeSavedCash, readCashRequestId, readCashSpokenText, isValidCashAmountMinor } from "../domain/cash-entry";
+import { saveFxRateForTests } from "../domain/foreign-currency";
 import { applyHabitsToNewEntry } from "./ask-auto-apply";
 import { json } from "./json";
 import { readJsonObject, RequestBodyTooLargeError } from "./limited-body";
@@ -38,6 +39,19 @@ const MAX_BODY_BYTES = 8 * 1024;
 interface CashRouteEnv {
   DB: D1Database;
   FX_RATES_OFFLINE?: string;
+  APP_ENVIRONMENT?: string;
+}
+
+// Browser tests only: a test Worker cannot fetch rates (FX_RATES_OFFLINE),
+// so a test may send "x-cash-test-rate: SGD/IDR=12350" to save one first.
+const TEST_RATE_HEADER = "x-cash-test-rate";
+
+async function applyTestRate(request: Request, env: CashRouteEnv) {
+  const header = env.APP_ENVIRONMENT === "test" && env.FX_RATES_OFFLINE === "true" ? request.headers.get(TEST_RATE_HEADER) : null;
+  const match = header?.match(/^([A-Z]{3})\/([A-Z]{3})=(\d+(?:\.\d+)?)$/);
+  if (match) {
+    await saveFxRateForTests(env.DB, { base: match[1], quote: match[2], quotePerBase: Number(match[3]) });
+  }
 }
 
 export function isCashEntryPath(pathname: string) {
@@ -97,6 +111,7 @@ export async function handleCashEntryRoute(request: Request, env: CashRouteEnv, 
       return json({ ok: false, field: "request", error: "Missing or invalid requestId." }, 400);
     }
     const categoryName = text(body.categoryName);
+    await applyTestRate(request, env);
     const saved = await createCashEntry(env.DB, {
       requestId,
       personId: text(body.personId),
