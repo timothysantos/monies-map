@@ -140,3 +140,13 @@ async function ensureFxRatesTable(db: D1Database) {
     `)
     .run();
 }
+
+// Browser tests only (the test Worker is offline): one saved SGD rate, as if
+// fetched just now. Called from the test environment's demo reseed.
+export async function saveTestFxRate(db: D1Database, quote: string, quotePerBase: number, now = new Date()) {
+  await ensureFxRatesTable(db);
+  await db
+    .prepare("INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, quote_per_base, rate_date, source, fetched_at) VALUES ('SGD', ?, ?, ?, 'frankfurter', ?)")
+    .bind(quote, quotePerBase, now.toISOString().slice(0, 10), now.toISOString())
+    .run();
+}

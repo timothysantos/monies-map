@@ -133,6 +133,7 @@ import {
   type ShortcutConnectionRecord
 } from "./domain/app-repository-shortcuts";
 import { parseShortcutCreateBody } from "./domain/shortcut-entry-contract";
+import { saveTestFxRate } from "./domain/foreign-currency";
 import { entryTimeFieldError, validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
@@ -876,6 +877,13 @@ export default {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
       const demo = await resetAppData(() => reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH, env.DEMO_DATASET));
+      // Browser tests only: the test Worker never fetches rates
+      // (FX_RATES_OFFLINE), so a test that saves a foreign amount asks for
+      // one saved rate, e.g. ?fx_rate=IDR:14025 (1 SGD in that currency).
+      const testRate = env.APP_ENVIRONMENT === "test" ? /^([A-Z]{3}):(\d+(?:\.\d+)?)$/.exec(url.searchParams.get("fx_rate") ?? "") : null;
+      if (testRate) {
+        await saveTestFxRate(env.DB, testRate[1], Number(testRate[2]));
+      }
       return json({ ok: true, demo });
     }
 

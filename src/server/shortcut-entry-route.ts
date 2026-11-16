@@ -388,6 +388,12 @@ export async function saveShortcutEntry(
         completedHeldTap: true,
         ...(held.secondRunSeconds !== undefined ? { heldTapSeconds: held.secondRunSeconds } : {})
       } : {}),
+      // What Shortcut v8 shows after the person typed a held tap's amount.
+      notice: waitingTapNotices.saved(
+        shortcutDescription,
+        foreign ? formatForeignAmount(foreign.originalAmountMinor, foreign.originalCurrency) : formatForeignAmount(savedAmountMinor, account.currency),
+        account.name
+      ),
       openUrl
     });
   } catch (error) {
