@@ -15,6 +15,9 @@ import type { AccountDto, ShortcutConnectionDto, ShortcutSettingsDto } from "../
 
 export { buildDefaultShortcutAccountPriorityIds };
 export const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
+// The Shortcut asks whether a tap it held (DOMAIN.md "Waiting Tap") is still
+// waiting; same key, POST only.
+export const SHORTCUT_TAP_STATUS_PATH = "/api/shortcuts/taps/status";
 
 export interface ShortcutAccountSelection {
   id: string;

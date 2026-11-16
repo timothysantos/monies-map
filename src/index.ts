@@ -46,8 +46,6 @@ import { enterEmptyState, reseedDemoSettings, showcaseRefreshesItself } from "./
 import {
   archiveAccountRecord,
   loadTransferMatchCandidates,
-  loadCategoryMatchRules,
-  matchCategoryRule,
   recordAppErrorDiagnostic,
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
@@ -92,7 +90,6 @@ import {
 } from "./domain/app-repository";
 import { commitImportBatch, rollbackImportBatch } from "./domain/app-repository-import-commit";
 import { buildStatementCompareDiagnosis, type StatementCompareSection } from "./domain/statement-compare-projection";
-import { convertForeignAmount, describeForeignAmount, formatForeignAmount, FxRateUnavailableError } from "./domain/foreign-currency";
 import { applyStatementCorrections, StatementCorrectionRefusedError, undoStatementCorrections, type StatementCorrectionDto } from "./domain/app-repository-statement-corrections";
 import {
   applyMonthPlanChanges,
@@ -129,27 +126,13 @@ import { reopenSplitBatchRecord } from "./domain/app-repository-splits";
 import { savePaymentWay } from "./domain/app-repository-payment-ways";
 import {
   loadShortcutConnectionRecords,
-  resolveShortcutAccountSelection,
   revokeShortcutConnection,
   saveShortcutSettings,
   SHORTCUT_ENDPOINT_PATH,
+  SHORTCUT_TAP_STATUS_PATH,
   type ShortcutConnectionRecord
 } from "./domain/app-repository-shortcuts";
-import {
-  hasOversizedShortcutDescription,
-  isShortcutEntryType,
-  isShortcutOwnershipType,
-  isShortcutTransferDirection,
-  isShortcutAmountMissing,
-  normalizeShortcutAmount,
-  normalizeShortcutCurrency,
-  normalizeShortcutDate,
-  normalizeShortcutDescription,
-  normalizeShortcutNote,
-  normalizeShortcutRequestId,
-  parseShortcutCreateBody,
-  SHORTCUT_NOTE_MAX_LENGTH
-} from "./domain/shortcut-entry-contract";
+import { parseShortcutCreateBody } from "./domain/shortcut-entry-contract";
 import { entryTimeFieldError, validateEntryCreateFields } from "./domain/entry-create-validation";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
@@ -171,7 +154,6 @@ import { isCrossSiteWrite } from "./server/cross-site-guard";
 import { readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./server/limited-body";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
-  buildShortcutEntryOpenUrl,
   findShortcutConnectionByKey,
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
@@ -184,9 +166,15 @@ import {
   isWaitingFilesPath
 } from "./server/waiting-files-route";
 import { settleWaitingFileAfterImport } from "./domain/app-repository-waiting-files";
+import {
+  handleShortcutTapStatus,
+  handleWaitingTapAppRoute,
+  isWaitingTapAppPath,
+  saveShortcutEntry
+} from "./server/shortcut-entry-route";
 
 // The Shortcut Worker's public paths (POST only, outside Access).
-const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, WAITING_FILES_INTAKE_PATH] as const;
+const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH, WAITING_FILES_INTAKE_PATH] as const;
 
 // A refused write returns its message. One refused by the settlement lock is
 // a 409 that names the settlement (a simplification's checkpointId or a group
@@ -210,6 +198,9 @@ export interface Env {
   SHORTCUT_APP_ORIGIN?: string;
   SHORTCUT_INGEST_TOKEN?: string;
   SHORTCUT_PUBLIC_ENDPOINT?: string;
+  // Seconds the Apple Pay Shortcut waits before asking for a held tap's
+  // amount (src/domain/waiting-taps-config.ts); unset: never asks.
+  WAITING_TAP_ASK_AFTER_SECONDS?: string;
   // The "Send to Monies Map" Shortcut's key until one is made in Settings
   // (src/domain/app-repository-file-intake-key.ts). A Worker secret.
   FILE_INTAKE_KEY?: string;
@@ -1546,188 +1537,25 @@ export default {
       if (!parsedBody.ok) {
         return json({ ok: false, error: parsedBody.error }, 400);
       }
-      const body = parsedBody.body;
+      // The save, and the waiting tap for a blank amount
+      // (src/server/shortcut-entry-route.ts).
+      return saveShortcutEntry(env, request, shortcutAuth.connection, parsedBody.body, { source: "shortcut" });
+    }
 
-      // The key said whose phone this is: their default params, card order
-      // and card for other currencies apply, and the entry is theirs.
-      const connection = shortcutAuth.connection;
-      const bodyWithDefaults = applyShortcutCreateDefaults(body, connection.stored.defaultParams);
-      const amount = normalizeShortcutAmount(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
-      const shortcutDate = normalizeShortcutDate(bodyWithDefaults.date);
-      const explicitCurrency = normalizeShortcutCurrency(bodyWithDefaults.currency);
-      const requestId = normalizeShortcutRequestId(bodyWithDefaults.requestId);
-      const entryType = bodyWithDefaults.entryType ?? "expense";
-      const ownershipType = bodyWithDefaults.ownershipType ?? "direct";
-      let account;
-      try {
-        account = await resolveShortcutAccountSelection(env.DB, connection, {
-          accountId: bodyWithDefaults.accountId,
-          accountName: bodyWithDefaults.accountName,
-          walletName: bodyWithDefaults.name,
-          amountCurrency: explicitCurrency ?? amount?.currency
-        });
-      } catch (error) {
-        return json({ ok: false, error: describeError(error) }, 400);
+    // The Shortcut asks whether a tap it held is still waiting.
+    if (url.pathname === SHORTCUT_TAP_STATUS_PATH && request.method === "POST") {
+      const shortcutAuth = await authenticateShortcutRequest(request, env, "taps:status");
+      if (!shortcutAuth.ok) {
+        return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
       }
-      const descriptionValues = [
-        bodyWithDefaults.description,
-        bodyWithDefaults.merchant,
-        account?.resolution === "wallet_name" ? undefined : bodyWithDefaults.name
-      ];
-      const shortcutDescription = normalizeShortcutDescription(...descriptionValues);
-      const note = normalizeShortcutNote(bodyWithDefaults.note);
-      const amountCurrency = explicitCurrency ?? amount?.currency;
-      const invalidFields = [
-        !shortcutDate ? "date" : undefined,
-        !shortcutDescription ? "description" : undefined,
-        !account ? "account" : undefined,
-        !amount ? "amount" : undefined,
-        bodyWithDefaults.currency && !explicitCurrency ? "currency" : undefined,
-        explicitCurrency && amount?.currency && explicitCurrency !== amount.currency ? "currency" : undefined,
-        !isShortcutEntryType(entryType) ? "entryType" : undefined,
-        bodyWithDefaults.transferDirection != null && !isShortcutTransferDirection(bodyWithDefaults.transferDirection) ? "transferDirection" : undefined,
-        !isShortcutOwnershipType(ownershipType) ? "ownershipType" : undefined,
-        bodyWithDefaults.requestId != null && !requestId ? "requestId" : undefined,
-        bodyWithDefaults.note != null && bodyWithDefaults.note.trim().length > SHORTCUT_NOTE_MAX_LENGTH ? "note" : undefined,
-        bodyWithDefaults.splitBasisPoints != null && (
-          !Number.isInteger(bodyWithDefaults.splitBasisPoints)
-          || bodyWithDefaults.splitBasisPoints < 0
-          || bodyWithDefaults.splitBasisPoints > 10_000
-        ) ? "splitBasisPoints" : undefined
-      ].filter((field): field is string => Boolean(field));
-      if (
-        invalidFields.length
-        || !shortcutDate
-        || !shortcutDescription
-        || !account
-        || !amount
-        || !isShortcutEntryType(entryType)
-        || !isShortcutOwnershipType(ownershipType)
-      ) {
-        // Only the amount is missing (a terminal asking which currency to pay
-        // in): say so, with what the Shortcut's prompt names, so it can ask
-        // the person and post the same request again. Nothing is saved.
-        if (
-          invalidFields.length === 1
-          && invalidFields[0] === "amount"
-          && account
-          && isShortcutAmountMissing(bodyWithDefaults.amountMinor, bodyWithDefaults.amount)
-        ) {
-          return json({
-            ok: false,
-            needsAmount: true,
-            merchant: shortcutDescription,
-            accountName: account.name,
-            error: "Missing or invalid shortcut fields: amount."
-          }, 400);
-        }
-        return json({
-          ok: false,
-          error: hasOversizedShortcutDescription(...descriptionValues)
-            ? "Shortcut description must be 500 characters or fewer. Nothing was saved."
-            : `Missing or invalid shortcut fields: ${invalidFields.join(", ")}.`
-        }, 400);
-      }
-      if (requestId && ownershipType !== "direct") {
-        return json({
-          ok: false,
-          error: "Shortcut requestId is only supported for direct ownership entries. Nothing was saved."
-        }, 400);
-      }
+      return handleShortcutTapStatus(env, request, shortcutAuth.connection);
+    }
 
-      // A Wallet amount in another currency (an Amaze card abroad) is saved
-      // in the account's currency at the day's rate, the original kept.
-      let foreign: { amountMinor: number; originalAmountMinor: number; originalCurrency: string; note: string } | undefined;
-      if (amountCurrency && amountCurrency !== account.currency) {
-        try {
-          const conversion = await convertForeignAmount(env.DB, {
-            amountMinor: amount.amountMinor,
-            fromCurrency: amountCurrency,
-            toCurrency: account.currency,
-            offline: env.FX_RATES_OFFLINE === "true"
-          });
-          foreign = {
-            amountMinor: conversion.amountMinor,
-            originalAmountMinor: amount.amountMinor,
-            originalCurrency: amountCurrency,
-            note: describeForeignAmount({ originalAmountMinor: amount.amountMinor, originalCurrency: amountCurrency, accountCurrency: account.currency, conversion })
-          };
-        } catch (error) {
-          if (error instanceof FxRateUnavailableError) {
-            return json({ ok: false, error: error.message }, 503);
-          }
-          throw error;
-        }
-      }
-      const savedAmountMinor = foreign?.amountMinor ?? amount.amountMinor;
-
-      try {
-        const categoryName = bodyWithDefaults.categoryName
-          ?? matchCategoryRule(shortcutDescription, await loadCategoryMatchRules(env.DB))
-          ?? "Other";
-        const created = await createEntryRecord(env.DB, {
-          date: shortcutDate,
-          description: shortcutDescription,
-          accountId: account.id,
-          categoryName,
-          amountMinor: savedAmountMinor,
-          originalAmountMinor: foreign?.originalAmountMinor,
-          originalCurrency: foreign?.originalCurrency,
-          entryType,
-          transferDirection: bodyWithDefaults.transferDirection,
-          ownershipType,
-          // Always the key's person, whatever the request or the default
-          // params name: one person's key cannot save an entry as another's.
-          ownerName: connection.personName,
-          offsetsCategory: bodyWithDefaults.offsetsCategory,
-          note: [foreign?.note, note].filter(Boolean).join("\n") || undefined,
-          splitBasisPoints: bodyWithDefaults.splitBasisPoints,
-          externalReference: requestId ? `shortcut:${requestId}` : undefined
-        });
-        // A new Apple Pay entry: Ask handles what its habits allow (its
-        // category is the rules' default, not the person's choice). Best
-        // effort, never part of the save.
-        if (created.created && entryType === "expense") {
-          await applyHabitsToNewEntry(env.DB, created.entryId, { applePay: true });
-        }
-        if (created.created && entryType === "transfer") {
-          await applyRememberedTransferPurposes(env.DB, [created.entryId]).catch((error) => {
-            console.error("Remembered transfer purposes failed", error);
-          });
-        }
-        const openUrl = buildShortcutEntryOpenUrl(request, {
-          entryId: created.entryId,
-          date: shortcutDate,
-          viewId: bodyWithDefaults.view,
-          accountId: account.id
-        }, env.SHORTCUT_APP_ORIGIN);
-
-        return json({
-          ok: true,
-          entryId: created.entryId,
-          created: created.created,
-          date: shortcutDate,
-          // The Singapore clock time saved with a new entry dated today.
-          ...("time" in created && created.time ? { time: created.time } : {}),
-          description: shortcutDescription,
-          amountMinor: savedAmountMinor,
-          currency: account.currency,
-          ...(foreign ? { originalAmount: formatForeignAmount(foreign.originalAmountMinor, foreign.originalCurrency) } : {}),
-          accountId: account.id,
-          accountName: account.name,
-          accountResolution: account.resolution,
-          openUrl
-        });
-      } catch (error) {
-        const message = describeError(error);
-        if (message.includes("request ID was already used")) {
-          return json({ ok: false, error: message }, 409);
-        }
-        if (/^(Amount|Unknown|Missing)/.test(message)) {
-          return json({ ok: false, error: message }, 400);
-        }
-        console.error("Shortcut entry create failed", error);
-        return json({ ok: false, error: "Monies Map could not save this shortcut entry." }, 500);
+    // Entries' waiting tap card: the amount, or Not a payment.
+    if (isWaitingTapAppPath(url.pathname)) {
+      const waitingTapResponse = await handleWaitingTapAppRoute(request, env, url);
+      if (waitingTapResponse) {
+        return waitingTapResponse;
       }
     }
 
@@ -2906,85 +2734,6 @@ async function cleanupExpiredShortcutNonces(db: D1Database) {
     `)
     .bind(`-${SHORTCUT_NONCE_RETENTION_HOURS} hours`)
     .run();
-}
-
-function applyShortcutCreateDefaults<
-  T extends {
-    date?: string;
-    description?: string;
-    accountId?: string;
-    accountName?: string;
-    categoryName?: string;
-    amountMinor?: number;
-    amount?: number | string;
-    entryType?: "expense" | "income" | "transfer";
-    transferDirection?: "in" | "out";
-    ownershipType?: "direct" | "shared";
-    ownerName?: string;
-    offsetsCategory?: boolean;
-    note?: string;
-    splitBasisPoints?: number;
-    view?: string;
-  }
->(body: T, defaultParams = ""): T {
-  const params = parseShortcutDefaultParams(defaultParams);
-  const shared = parseShortcutBoolean(params.get("shared"));
-  return {
-    ...body,
-    date: body.date ?? params.get("date") ?? undefined,
-    description: body.description ?? params.get("description") ?? params.get("merchant") ?? undefined,
-    accountId: body.accountId ?? params.get("account_id") ?? params.get("accountId") ?? undefined,
-    accountName: body.accountName ?? params.get("account") ?? params.get("accountName") ?? undefined,
-    categoryName: body.categoryName ?? params.get("categoryName") ?? params.get("category") ?? undefined,
-    amount: body.amount ?? params.get("amount") ?? undefined,
-    entryType: body.entryType ?? parseShortcutEntryType(params.get("entryType")) ?? "expense",
-    transferDirection: body.transferDirection ?? parseShortcutTransferDirection(params.get("transferDirection")),
-    ownershipType: body.ownershipType ?? parseShortcutOwnershipType(params.get("ownershipType")) ?? (shared === true ? "shared" : undefined),
-    ownerName: body.ownerName ?? params.get("ownerName") ?? params.get("owner") ?? undefined,
-    offsetsCategory: body.offsetsCategory ?? parseShortcutBoolean(params.get("offsetsCategory")),
-    note: body.note ?? params.get("note") ?? undefined,
-    splitBasisPoints: body.splitBasisPoints ?? parseShortcutNumber(params.get("splitBasisPoints")),
-    view: body.view ?? params.get("view") ?? undefined
-  };
-}
-
-function parseShortcutDefaultParams(defaultParams = "") {
-  const trimmed = defaultParams.trim().replace(/^\?/, "");
-  return new URLSearchParams(trimmed);
-}
-
-function parseShortcutBoolean(value?: string | null) {
-  if (value == null) {
-    return undefined;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "shared"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "direct"].includes(normalized)) {
-    return false;
-  }
-  return undefined;
-}
-
-function parseShortcutNumber(value?: string | null) {
-  if (value == null || !value.trim()) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function parseShortcutEntryType(value?: string | null): "expense" | "income" | "transfer" | undefined {
-  return value === "expense" || value === "income" || value === "transfer" ? value : undefined;
-}
-
-function parseShortcutTransferDirection(value?: string | null): "in" | "out" | undefined {
-  return value === "in" || value === "out" ? value : undefined;
-}
-
-function parseShortcutOwnershipType(value?: string | null): "direct" | "shared" | undefined {
-  return value === "direct" || value === "shared" ? value : undefined;
 }
 
 type RequestTiming = { requestStartedAt: number; initMs: number; initCold: boolean };

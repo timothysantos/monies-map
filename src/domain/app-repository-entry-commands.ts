@@ -876,7 +876,11 @@ export async function createEntryRecord(
     originalCurrency?: string;
     // Local "HH:MM". Left out: now, when the entry is dated today. null: none.
     time?: string | null;
-  }
+  },
+  // Writes that belong to this entry's creation and must land with it or not
+  // at all (a waiting tap the entry completes, waiting-tap-statements.ts).
+  // Not run when the reference already saved an entry.
+  withEntry?: (entryId: string) => D1PreparedStatement[]
 ) {
   assertPositiveAmount(input.amountMinor);
   const entryTime = input.time === undefined ? defaultEntryTime(input.date) : parseEntryTime(input.time);
@@ -991,6 +995,7 @@ export async function createEntryRecord(
         action: "entry_created",
         detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${accountName}.`
       }),
+      ...(withEntry?.(entryId) ?? []),
       ...buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)
     ]);
   } catch (error) {
