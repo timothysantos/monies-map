@@ -587,6 +587,40 @@ test.describe("settings reference data", () => {
     await popup.close();
   });
 
+  test("Log cash install copies the same key on the cash route and opens its signed artifact", async ({ page }) => {
+    const apiKey = `mm_playwright_cash_${Date.now()}`;
+    const shortcutPath = "/shortcuts/monies-map-log-cash.shortcut";
+    const manifest = JSON.parse(await readFile("shortcuts/log-cash/manifest.json", "utf8"));
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async (value) => window.sessionStorage.setItem("playwright-shortcut-clipboard", value) }
+      });
+    });
+    const artifactResponse = await page.request.get(shortcutPath);
+    expect(artifactResponse.ok()).toBeTruthy();
+    expect((await artifactResponse.body()).byteLength).toBe(manifest.signedReleaseSize);
+    await page.context().route(`**${shortcutPath}`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Log cash</title>" }));
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await expect(page.getByText(/Log cash saves a cash payment from the Lock Screen/)).toBeVisible();
+    await page.getByText("More shortcut settings", { exact: true }).click();
+    await page.getByLabel("Private connection key", { exact: true }).fill(apiKey);
+    const saveResponse = page.waitForResponse((response) => response.url().includes("/api/settings/shortcuts/save") && response.ok());
+    const popupPromise = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Install Log cash shortcut" }).click();
+    await saveResponse;
+    const popup = await popupPromise;
+    await popup.waitForURL(new URL(shortcutPath, page.url()).toString());
+
+    const copied = new URL(await page.evaluate(() => window.sessionStorage.getItem("playwright-shortcut-clipboard")));
+    expect(copied.origin).toBe("https://monies-map-shortcuts.test");
+    expect(copied.pathname).toBe("/api/shortcuts/cash/create");
+    expect(copied.searchParams.get("shortcut_token")).toBe(apiKey);
+    await popup.close();
+  });
+
   test("edit person submits from Enter in the name field", async ({ page }) => {
     const before = await loadAppShell(page);
     const targetPerson = before.household.people[0];

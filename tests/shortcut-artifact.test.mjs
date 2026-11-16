@@ -76,3 +76,37 @@ test("app install path and committed shortcut release stay aligned", async () =>
   assert.equal(browserTest.includes(manifest.installPath), true);
 });
 
+test("committed Log cash shortcut release is secret-free, matches its manifest and posts to the cash route", async () => {
+  const root = path.join(repoRoot, "shortcuts/log-cash");
+  const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
+  const source = await readFile(path.join(root, manifest.sourceFile));
+  const signedRelease = await readFile(path.join(root, manifest.signedReleaseFile));
+  const publicRelease = await readFile(path.join(root, manifest.publicFile));
+  const sourceText = source.toString("utf8");
+
+  assert.equal(sha256(source), manifest.sourceSha256);
+  assert.equal(sha256(signedRelease), manifest.signedReleaseSha256);
+  assert.equal(signedRelease.byteLength, manifest.signedReleaseSize);
+  assert.equal(sha256(publicRelease), manifest.signedReleaseSha256);
+  assert.equal(manifest.appleSigningStatus, "APPROVED");
+  assert.equal(signedRelease.subarray(0, 4).toString("latin1"), "AEA1", "an Apple-signed archive");
+  assert.equal(manifest.endpointPath, "/api/shortcuts/cash/create");
+  assert.equal((sourceText.match(/<string>is\.workflow\.actions\.[^<]+<\/string>/g) ?? []).length, manifest.actionCount);
+  assert.match(sourceText, /<key>WFHTTPMethod<\/key>\s*<string>POST<\/string>/);
+  // The number pad, with words as text handed to it.
+  assert.match(sourceText, /<key>WFInputType<\/key>\s*<string>Number<\/string>/);
+  assert.match(sourceText, /<string>How much cash\?<\/string>/);
+  for (const key of ["text", "requestId", "clientVersion", "notification", "error"]) {
+    assert.match(sourceText, new RegExp(`<string>${key}</string>`));
+  }
+  assert.match(sourceText, /<string>cash-￼<\/string>/);
+  assert.match(sourceText, new RegExp(`<string>${manifest.clientVersion}</string>`));
+  assert.match(sourceText, /<key>ActionIndex<\/key>\s*<integer>0<\/integer>/);
+  assert.match(sourceText, /<key>WFTextActionText<\/key>\s*<string><\/string>/);
+  for (const forbidden of [/shortcut_token\s*=/i, /X-Monies-Shortcut-Token/i, /Authorization/i, /Bearer\s+/i, /monies-map-shortcuts\.[^<\s]+/i]) {
+    assert.doesNotMatch(sourceText, forbidden);
+    assert.equal(forbidden.test(signedRelease.toString("latin1")), false);
+  }
+  const settingsSection = await readFile(path.join(repoRoot, "src/client/settings-sections.jsx"), "utf8");
+  assert.equal(settingsSection.includes(manifest.installPath), true);
+});

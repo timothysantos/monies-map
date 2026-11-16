@@ -1138,10 +1138,13 @@ export function SettingsPanel({
     setShortcutSettingsStatus("");
   }
 
-  async function handleInstallShortcut() {
+  // kind "log_cash": the Log cash Shortcut, the same key and connection, its
+  // own route on the same Shortcut host (DOMAIN.md "Cash Entry").
+  async function handleInstallShortcut(kind = "apple_pay") {
     const apiKey = shortcutSettingsDraft.apiKey.trim() || createShortcutApiKey();
     const nextDraft = { ...shortcutSettingsDraft, apiKey };
-    const connectionUrl = new URL(safeSettingsPage.shortcutSettings.endpointPath, window.location.origin);
+    const applePayUrl = new URL(safeSettingsPage.shortcutSettings.endpointPath, window.location.origin);
+    const connectionUrl = kind === "log_cash" ? new URL("/api/shortcuts/cash/create", applePayUrl) : applePayUrl;
     connectionUrl.searchParams.set("shortcut_token", apiKey);
 
     setShortcutSettingsDraft(nextDraft);

@@ -1,0 +1,20 @@
+{
+  "name": "Monies Map Log cash",
+  "releaseDate": "2026-11-17",
+  "distribution": "self_hosted_apple_signed_file",
+  "installPath": "/shortcuts/monies-map-log-cash.shortcut",
+  "appleSigningStatus": "APPROVED",
+  "sourceFile": "monies-map-log-cash.plist",
+  "sourceSha256": "df077f9703f81d02cff94981dc28cf29de72f8c60efa958717707b881de37048",
+  "signedReleaseFile": "releases/monies-map-log-cash-2026-11-17-v1.shortcut",
+  "signedReleaseSha256": "a7829a6b8e18bbe8d8c4cd5df743760fd0e432c781bac0e5bc7dc90707da91df",
+  "signedReleaseSize": 23341,
+  "publicFile": "../../public/shortcuts/monies-map-log-cash.shortcut",
+  "endpointPath": "/api/shortcuts/cash/create",
+  "clientVersion": "log-cash-2026-11-17-v1",
+  "actionCount": 18,
+  "setupQuestion": {
+    "actionIndex": 0,
+    "parameterKey": "WFTextActionText"
+  }
+}

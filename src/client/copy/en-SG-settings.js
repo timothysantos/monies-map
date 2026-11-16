@@ -273,6 +273,10 @@ export const settingsMessages = {
   shortcutRevokeDetail: (name) => `${name}'s phone will stop saving purchases until you install the shortcut on it again. Nobody else's phone is affected.`,
   shortcutRevokeConfirm: "Stop saving",
   shortcutRevoked: (name) => `${name}'s phone has stopped. Install the shortcut again to turn it back on.`,
+  // The second Shortcut, "Log cash" (DOMAIN.md "Cash Entry"): the same key.
+  logCashInstall: "Install Log cash shortcut",
+  logCashInstallFor: (name) => `Install Log cash shortcut for ${name}`,
+  logCashHint: "Log cash saves a cash payment from the Lock Screen, the Action Button, Back Tap or by voice: type the amount and it is saved to your cash wallet.",
   shortcutInstalling: "Preparing Apple Shortcut...",
   shortcutPreparingInstall: "Saving the private connection...",
   shortcutConnectionCopied: "Private connection copied. Paste it when Apple asks.",

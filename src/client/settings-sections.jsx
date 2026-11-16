@@ -25,6 +25,8 @@ import { paletteColour } from "./palette-colour";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 const APPLE_PAY_SHORTCUT_URL = "/shortcuts/monies-map-apple-pay-api.shortcut";
+// The second Shortcut (shortcuts/log-cash): the same key, its own route.
+const LOG_CASH_SHORTCUT_URL = "/shortcuts/monies-map-log-cash.shortcut";
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -123,15 +125,15 @@ export function SettingsShortcutApiSection({
   ];
   const foreignCurrencyAccount = draft.foreignCurrencyAccountId ? accountsById.get(draft.foreignCurrencyAccountId) : null;
 
-  async function handleInstallShortcut() {
-    const shortcutUrl = new URL(APPLE_PAY_SHORTCUT_URL, window.location.origin).toString();
+  async function handleInstallShortcut(kind = "apple_pay") {
+    const shortcutUrl = new URL(kind === "log_cash" ? LOG_CASH_SHORTCUT_URL : APPLE_PAY_SHORTCUT_URL, window.location.origin).toString();
     const installWindow = window.open("about:blank", "_blank");
     if (installWindow) {
       installWindow.opener = null;
     }
     setIsInstalling(true);
     try {
-      await onInstallShortcut();
+      await onInstallShortcut(kind);
       if (installWindow) {
         installWindow.location.replace(shortcutUrl);
       } else {
@@ -350,6 +352,16 @@ export function SettingsShortcutApiSection({
         {isInstalling
           ? settingsMessages.shortcutInstalling
           : hasSeveralPhones ? settingsMessages.shortcutInstallFor(phoneName) : settingsMessages.shortcutInstall}
+      </button>
+      <p className="settings-hint">{settingsMessages.logCashHint}</p>
+      <button
+        type="button"
+        className="subtle-action settings-shortcut-install-button"
+        disabled={isSubmitting || isInstalling}
+        onClick={() => void handleInstallShortcut("log_cash")}
+      >
+        <ExternalLink size={16} aria-hidden="true" />
+        {hasSeveralPhones ? settingsMessages.logCashInstallFor(phoneName) : settingsMessages.logCashInstall}
       </button>
       {isRevokeOpen ? (
         <SheetDialog
