@@ -119,7 +119,8 @@ test("an amount-only save in the trip's currency is one entry at the day's rate,
     accountCurrency: "SGD",
     paidAmountMinor: 3_500_000,
     paidCurrency: "IDR",
-    note: null
+    note: null,
+    storedNote: "Paid IDR 35,000 cash. Saved as about SGD 2.50 at 1 SGD = 14,025 IDR (2 Oct 2026)."
   });
   assert.deepEqual(await rows(db, `
     SELECT transactions.account_id, transactions.transaction_date, transactions.description, transactions.amount_minor, transactions.currency,

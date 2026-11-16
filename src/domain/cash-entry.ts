@@ -307,6 +307,8 @@ export function buildCashAgainChips(rows: readonly CashAgainSource[]): CashAgain
   const sorted = [...rows].sort((left, right) => right.date.localeCompare(left.date));
   for (const row of sorted) {
     if (!row.description || !(row.amountMinor > 0)) continue;
+    // A plain "Cash" in Other says nothing worth repeating.
+    if (row.description === CASH_DEFAULT_DESCRIPTION && (!row.categoryName || row.categoryName === "Other")) continue;
     const key = `${row.description.toLowerCase()}|${row.amountMinor}|${row.currency}`;
     if (seen.has(key)) continue;
     seen.add(key);

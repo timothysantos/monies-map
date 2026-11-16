@@ -1,0 +1,386 @@
+/* The cash pad (design.md "Cash pad"). Lazy: ships with cash-pad-sheet.jsx.
+   Phone: a sheet over the whole screen, the keys and Save at the bottom
+   under the thumb, each key at least 56px tall. Wide screen: a centred
+   dialog of the same shape. Above the floating bars (80/81), below the
+   category list it can open (90/91). */
+
+.cash-pad-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 88;
+  background: rgb(0 0 0 / 0.32);
+}
+
+.cash-pad {
+  position: fixed;
+  z-index: 89;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 100dvh;
+  min-height: min(100dvh, 620px);
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--page);
+  color: var(--text);
+  border-radius: var(--sheet-radius, 20px) var(--sheet-radius, 20px) 0 0;
+  box-shadow: var(--shadow-pop);
+  outline: none;
+  overflow: hidden;
+}
+
+@media (min-width: 761px) {
+  .cash-pad {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    width: min(420px, calc(100vw - 32px));
+    min-height: 0;
+    max-height: calc(100dvh - 48px);
+    transform: translate(-50%, -50%);
+    border-radius: var(--sheet-radius, 20px);
+    padding-bottom: 16px;
+  }
+}
+
+.cash-pad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cash-pad-title {
+  margin: 0;
+  font-size: var(--type-title, 1.35rem);
+}
+
+.cash-pad-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* The quiet line: everything already decided, one tap to change. */
+.cash-pad-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-control, 12px);
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--type-small, 0.92rem);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cash-pad-line span + span::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--muted);
+}
+
+.cash-pad-line .cash-pad-line-ask {
+  color: var(--pastel-rose-ink);
+  font-weight: 600;
+}
+
+.cash-pad-line svg {
+  margin-left: auto;
+}
+
+.cash-pad-change {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-group, 16px);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  max-height: 46dvh;
+  overflow-y: auto;
+}
+
+.cash-pad-change-done {
+  justify-self: end;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: var(--on-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cash-pad-choice-row {
+  display: grid;
+  gap: 6px;
+}
+
+.cash-pad-eyebrow {
+  margin: 0;
+  color: var(--eyebrow);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cash-pad-middle {
+  display: grid;
+  align-content: end;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.cash-pad-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.cash-pad-amount-sign {
+  color: var(--muted);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.cash-pad-amount-figure {
+  font-size: clamp(2.6rem, 13vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cash-pad-amount-figure.is-empty {
+  color: var(--muted);
+}
+
+.cash-pad-again-chosen {
+  margin: -6px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.cash-pad-again {
+  display: grid;
+  gap: 6px;
+}
+
+.cash-pad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cash-pad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cash-pad-chip.is-on {
+  border-color: var(--accent-strong);
+  background: rgb(var(--accent-strong-rgb) / 0.14);
+  font-weight: 600;
+}
+
+.cash-pad-chip.is-done {
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+  border-color: var(--pastel-mint-line);
+  cursor: default;
+}
+
+.cash-pad-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cash-pad-saved {
+  display: grid;
+  gap: 12px;
+}
+
+.cash-pad-saved-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-group, 16px);
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-ink);
+  font-weight: 600;
+}
+
+.cash-pad-note {
+  display: flex;
+  gap: 8px;
+}
+
+.cash-pad-note-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-control, 12px);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.cash-pad-message,
+.cash-pad-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-small, 0.92rem);
+}
+
+.cash-pad-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-control, 12px);
+  background: var(--pastel-rose);
+  color: var(--pastel-rose-ink);
+}
+
+.cash-pad-waiting {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-group, 16px);
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.cash-pad-waiting ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cash-pad-waiting li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cash-pad-waiting-error {
+  display: block;
+}
+
+.cash-pad-link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.cash-pad-keys {
+  display: grid;
+  gap: 10px;
+}
+
+.cash-pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cash-pad-key {
+  display: grid;
+  place-items: center;
+  min-height: 60px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-control, 12px);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cash-pad-key:active {
+  background: var(--chip);
+}
+
+.cash-pad-save,
+.cash-pad-secondary {
+  min-height: 60px;
+  border: 0;
+  border-radius: var(--radius-control, 12px);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cash-pad-save {
+  background: var(--accent-strong);
+  color: var(--on-strong);
+}
+
+.cash-pad-save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cash-pad-secondary {
+  background: var(--chip);
+  color: var(--text);
+}
+
+.cash-pad-after-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.6fr;
+  gap: 8px;
+}
+
+@media (max-height: 640px) {
+  .cash-pad-key {
+    min-height: 56px;
+  }
+}

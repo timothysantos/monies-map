@@ -27,10 +27,23 @@ test("chat mode with no card offers Scan receipt, Paste, Add entry, Add expense"
 
 test("add mode: back to Entries first, then the empty card's chips, Edit in form last", () => {
   const result = buildAskChips({ intent: add, card: createAskCard(context), context, actions });
-  assert.deepEqual(labels(result), ["‹ Entries", "Scan receipt", "Paste", "Transfer", "Income", "Edit in form"]);
+  assert.deepEqual(labels(result), ["‹ Entries", "Cash", "Scan receipt", "Paste", "Transfer", "Income", "Edit in form"]);
   assert.equal(result.items[0].back, true);
   assert.equal(result.prompt, "");
   assert.deepEqual(labels(buildAskChips({ intent: { ...add, from: "splits", mode: "expense" }, card: createAskCard(context), context, actions }))[0], "‹ Splits");
+});
+
+test("Cash opens the cash pad, only where the page offers it", () => {
+  let opened = "";
+  const base = Object.fromEntries(["scanReceipt", "paste", "variant", "editInForm", "back"].map((name) => [name, () => {}]));
+  const withCash = buildAskChips({ intent: add, card: createAskCard(context), context, actions: { ...base, cash: () => { opened = "cash"; } } });
+  withCash.items.find((item) => item.key === "cash").onClick();
+  assert.equal(opened, "cash");
+  const withoutCash = buildAskChips({ intent: add, card: createAskCard(context), context, actions: base });
+  assert.equal(withoutCash.items.some((item) => item.key === "cash"), false);
+  // A card with something on it has no Cash chip: the pad starts empty.
+  const started = setCardField(createAskCard(context), { amountInput: "4.20" }, context);
+  assert.equal(labels(buildAskChips({ intent: add, card: started, context, actions })).includes("Cash"), false);
 });
 
 test("with the header's back link (the phone's Ask page), the chip row keeps ‹ Entries only while the card is untouched", () => {

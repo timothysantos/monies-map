@@ -255,6 +255,11 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     items.push({ key: "note", label: askCopy.chips.addNote, onClick: actions.addNote });
     items.push({ key: "wallet", label: askCopy.chips.differentWallet, onClick: actions.differentWallet });
   } else if (isCardEmpty(card)) {
+    // Cash opens the cash pad (design.md "Cash pad"): first, so it shows
+    // without scrolling the row.
+    if (actions.cash) {
+      items.push({ key: "cash", label: askCopy.chips.cash, onClick: actions.cash });
+    }
     items.push({ key: "scan", label: askCopy.chips.scanReceipt, onClick: actions.scanReceipt });
     items.push({ key: "paste", label: askCopy.chips.paste, onClick: actions.paste });
     items.push({ key: "transfer", label: askCopy.chips.transfer, onClick: () => actions.variant("transfer") });

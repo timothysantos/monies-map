@@ -80,6 +80,8 @@ export const askCopy = {
   ofPlan: (amount) => `of ${amount} plan`,
   chipsLabel: "Suggestions",
   chips: {
+    // Opens the cash pad (cash-pad-copy.js has the pad's own words).
+    cash: "Cash",
     scanReceipt: "Scan receipt",
     paste: "Paste",
     addEntry: "Add entry",

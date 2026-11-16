@@ -293,7 +293,10 @@ export interface CashEntrySaved {
   // What the person paid, in the currency they paid in.
   paidAmountMinor: number;
   paidCurrency: string;
+  // The note the person wrote, and the whole note as saved (with the line
+  // a foreign amount adds), so a note added after Save keeps that line.
   note: string | null;
+  storedNote: string | null;
 }
 
 async function loadSavedCashEntry(db: D1Database, reference: string): Promise<CashEntrySaved | null> {
@@ -330,7 +333,8 @@ async function loadSavedCashEntry(db: D1Database, reference: string): Promise<Ca
     accountCurrency: row.currency,
     paidAmountMinor: Number(row.original_amount_minor ?? row.amount_minor),
     paidCurrency: String(row.original_currency ?? row.currency).toUpperCase(),
-    note: personNote(row.note)
+    note: personNote(row.note),
+    storedNote: row.note
   };
 }
 
@@ -426,6 +430,7 @@ export async function createCashEntry(
     });
   }
 
+  const storedNote = [foreignNote, note].filter(Boolean).join("\n") || null;
   try {
     const created = await createEntryRecord(db, {
       date,
@@ -438,7 +443,7 @@ export async function createCashEntry(
       entryType: "expense",
       ownershipType: "direct",
       ownerName: defaults.personName,
-      note: [foreignNote, note].filter(Boolean).join("\n") || undefined,
+      note: storedNote ?? undefined,
       externalReference: reference
     });
     return {
@@ -455,7 +460,8 @@ export async function createCashEntry(
       accountCurrency: wallet.currency,
       paidAmountMinor: input.amountMinor,
       paidCurrency: currency,
-      note: note || null
+      note: note || null,
+      storedNote
     };
   } catch (error) {
     // Two copies of one request at once: the other one saved it.

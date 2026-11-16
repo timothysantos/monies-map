@@ -6,6 +6,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal, flushSync } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
+import { deviceStorage } from "./device-storage";
 import {
   ChevronLeft,
   ChevronRight,
@@ -2388,6 +2389,22 @@ export function App() {
     broadcastSplitMutation(payload);
     void handleRemoteSplitMutation(payload);
   }, [broadcastSplitMutation, handleRemoteSplitMutation]);
+  // Cash payments waiting on this device (cash-queue.js) send once the
+  // screen is usable and whenever the connection returns. The queue's code
+  // loads only when something is waiting; the key is CASH_QUEUE_KEY.
+  const cashAppUsable = routeWork.usable;
+  useEffect(() => {
+    if (!cashAppUsable) return undefined;
+    const flushWaitingCash = () => {
+      if (!deviceStorage()?.getItem("monies.cashWaiting.v1")) return;
+      void import("./cash-queue.js").then((queue) => queue.flushCashQueue({
+        onSaved: (entry) => onAskDockEntryMutation({ month: String(entry.date).slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true })
+      }));
+    };
+    flushWaitingCash();
+    window.addEventListener("online", flushWaitingCash);
+    return () => window.removeEventListener("online", flushWaitingCash);
+  }, [cashAppUsable, onAskDockEntryMutation]);
   const renderAskDockConversation = useCallback(({ layout, canExpand, intent, visit }) => (
     <RouteWorkProvider registry={routeWorkRegistry} routeKey={null}>
       <AskPanel
