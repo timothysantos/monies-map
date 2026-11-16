@@ -1,17 +1,17 @@
 {
   "name": "Monies Map Apple Pay API",
-  "releaseDate": "2026-11-10",
+  "releaseDate": "2026-11-17",
   "distribution": "self_hosted_apple_signed_file",
   "installPath": "/shortcuts/monies-map-apple-pay-api.shortcut",
   "supersededIcloudShareUrl": "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11",
   "appleSigningStatus": "APPROVED",
   "sourceFile": "monies-map-apple-pay-api.plist",
-  "sourceSha256": "cb789edea98a2a8a93381b9ec80d31adb1c8772f7ef41e8b6785f823aea20bb7",
-  "signedReleaseFile": "releases/monies-map-apple-pay-api-2026-11-10-v7.shortcut",
-  "signedReleaseSha256": "d8015512f31d5b1dcba8746f40271cf5ed072328c4edf6ea1393a19107ab0d7f",
-  "signedReleaseSize": 25939,
+  "sourceSha256": "cb80d8111fe3f2ac4c8131cb48ec95127deb6d88c618a4444fa692bd33932bd1",
+  "signedReleaseFile": "releases/monies-map-apple-pay-api-2026-11-17-v8.shortcut",
+  "signedReleaseSha256": "32348e44d7eb3a4eaf62ca0bed18117e45f6f9b10484fbc0a46726b9174546cf",
+  "signedReleaseSize": 28156,
   "publicFile": "../../public/shortcuts/monies-map-apple-pay-api.shortcut",
-  "actionCount": 38,
+  "actionCount": 69,
   "setupQuestion": {
     "actionIndex": 5,
     "parameterKey": "WFTextActionText"
