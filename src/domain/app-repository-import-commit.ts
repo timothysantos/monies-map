@@ -28,6 +28,8 @@ import {
 } from "./app-repository-helpers";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { buildWaitingFileImportedStatements } from "./waiting-file-statements";
+import { buildImportWaitingTapClearStatements, buildWaitingTapRollbackStatements, fallbackStatementStart } from "./waiting-tap-statements";
+import { getPreviewRowDateContext } from "./statement-row-matching";
 import type { WaitingFileKind } from "./waiting-files";
 import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
@@ -1106,6 +1108,40 @@ export async function commitImportBatch(
       write(statement);
     }
   }
+  // Apple Pay taps that came with no amount (DOMAIN.md "Waiting Tap"): the
+  // bank's row for one, or a certified statement covering its day without
+  // one, clears it in this batch.
+  const clearRows = new Map<string, ImportPreviewRowDto>();
+  for (const row of [...input.rows, ...(input.statementControlRows ?? [])]) {
+    clearRows.set(`${row.rowId}:${row.rowIndex}`, row);
+  }
+  for (const statement of await buildImportWaitingTapClearStatements(db, {
+    importId,
+    rows: [...clearRows.values()].flatMap((row) => {
+      const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
+      if (!account || row.entryType !== "expense") {
+        return [];
+      }
+      const dates = getPreviewRowDateContext(row);
+      return [{ accountId: account.id, dates: [...new Set([dates.eventDate, dates.postedDate])], description: row.description }];
+    }),
+    certifiedStatements: isOfficialStatementImport
+      ? (input.statementReconciliations ?? []).flatMap((reconciliation) => {
+          const account = resolveImportAccount(accountsById, accountRowsByName, reconciliation.accountId, reconciliation.accountName);
+          const endDate = normalizeStatementDate(reconciliation.statementEndDate) ?? getMonthEndDate(reconciliation.checkpointMonth);
+          if (!account || reconciliation.status !== "matched" || reconciliation.deltaMinor !== 0) {
+            return [];
+          }
+          return [{
+            accountId: account.id,
+            startDate: normalizeStatementDate(reconciliation.statementStartDate) ?? fallbackStatementStart(endDate),
+            endDate
+          }];
+        })
+      : []
+  })) {
+    write(statement);
+  }
 
   await commitImportStatements(db, importId, commitStatements);
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
@@ -1620,6 +1656,8 @@ export async function rollbackImportBatch(
     ...promotedRestore.statements,
     ...linkedSplitStatements,
     ...chainBreakStatements,
+    // Taps waiting for their amount that this import cleared wait again.
+    ...await buildWaitingTapRollbackStatements(db, input.importId),
     ...await buildImportBatchCleanupStatements(db, input.importId),
     db
       .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
