@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, Delete, X } from "lucide-react";
+import { Check, Delete, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -12,6 +12,7 @@ import {
 } from "../domain/cash-entry";
 import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
 import {
+  deviceStorage,
   flushCashQueue,
   keepWaitingCash,
   newCashRequestId,
@@ -26,7 +27,6 @@ import {
 import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, savedWhat } from "./cash-pad-model";
 import { CategoryPickerHost } from "./category-picker-host";
 import { cashPadCopy as copy } from "./copy/cash-pad-copy";
-import { deviceStorage } from "./device-storage";
 import { useMoneyPrivacy } from "./money-privacy";
 import { todayInAppTimeZone } from "./app-dates";
 import "./cash-pad.css";
@@ -355,7 +355,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             {line.map((part, index) => (
               <span key={`${index}-${part}`} className={!wallet && index === 0 ? "cash-pad-line-ask" : undefined}>{part}</span>
             ))}
-            <ChevronDown size={16} aria-hidden="true" />
+            <span className="cash-pad-line-caret" aria-hidden="true" />
           </button>
 
           {changeOpen ? (

@@ -98,8 +98,17 @@
   font-weight: 600;
 }
 
-.cash-pad-line svg {
+.cash-pad-line .cash-pad-line-caret {
+  width: 8px;
+  height: 8px;
   margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.cash-pad-line .cash-pad-line-caret::before {
+  content: none;
 }
 
 .cash-pad-change {

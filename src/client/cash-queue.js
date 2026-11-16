@@ -14,7 +14,18 @@
 // Loaded with the cash pad, and by App.jsx only when this device has
 // something waiting (it reads CASH_QUEUE_KEY directly, without this file).
 
-import { deviceStorage } from "./device-storage";
+// This device's storage, or null when the browser blocks it (the same
+// guard as device-storage.js, kept here so this lazy file does not split
+// that one out of the first screen's chunks).
+/** @returns {Storage | null} */
+export function deviceStorage() {
+  try {
+    const host = typeof window !== "undefined" && window ? window : globalThis;
+    return host.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export const CASH_QUEUE_KEY = "monies.cashWaiting.v1";
 export const CASH_CREATE_ENDPOINT = "/api/cash-entries/create";

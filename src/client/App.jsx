@@ -6,7 +6,6 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal, flushSync } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import { deviceStorage } from "./device-storage";
 import {
   ChevronLeft,
   ChevronRight,
@@ -2396,7 +2395,13 @@ export function App() {
   useEffect(() => {
     if (!cashAppUsable) return undefined;
     const flushWaitingCash = () => {
-      if (!deviceStorage()?.getItem("monies.cashWaiting.v1")) return;
+      let waiting = null;
+      try {
+        waiting = window.localStorage.getItem("monies.cashWaiting.v1");
+      } catch {
+        // Storage blocked: nothing can be waiting on this device.
+      }
+      if (!waiting) return;
       void import("./cash-queue.js").then((queue) => queue.flushCashQueue({
         onSaved: (entry) => onAskDockEntryMutation({ month: String(entry.date).slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true })
       }));
