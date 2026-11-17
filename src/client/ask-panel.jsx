@@ -592,7 +592,7 @@ function AskConversation({
 
   const updateCard = useCallback((patch) => setCard((current) => (current ? setCardField(current, patch, context) : current)), [context, setCard]);
   const changeVariant = useCallback((variant) => setCard((current) => (current ? setCardVariant(current, variant, context) : current)), [context, setCard]);
-  const changeShare = useCallback((share) => setCard((current) => (current ? setShare(current, share) : current)), [setCard]);
+  const changeShare = useCallback((share) => setCard((current) => (current ? setShare(current, share, context) : current)), [context, setCard]);
 
   // A new card for a new message once the last one is saved.
   // The card a message or receipt fills (a new one once the last is saved).
@@ -805,7 +805,7 @@ function AskConversation({
     if (reply.kind === "entry_draft") {
       let next = applyEntryDraft(workingCard(), reply.draft, context);
       if (reply.share?.on) {
-        next = setShare(next, { on: true, splitGroupId: reply.share.groupId });
+        next = setShare(next, { on: true, splitGroupId: reply.share.groupId }, context);
       }
       setCard(next);
       sayEstimate(next);
@@ -818,8 +818,9 @@ function AskConversation({
       if (Object.keys(fields).length) {
         next = setCardField(next, fields, context);
       }
-      if (reply.share?.on) {
-        next = setShare(next, { on: true, splitGroupId: reply.share.groupId });
+      // "Not shared, just mine": Splits goes off (Ask audit B6).
+      if (reply.share) {
+        next = setShare(next, reply.share.on ? { on: true, splitGroupId: reply.share.groupId } : { on: false, splitGroupId: "" }, context);
       }
       setCard(next);
     } else if (reply.kind === "split_proposal") {
@@ -1603,7 +1604,7 @@ function AskConversation({
       const otherSideId = sending.variant === "transfer" && transferMatch && transferMatch.selectedId !== NO_OTHER_SIDE ? transferMatch.selectedId : "";
       const link = otherSideId ? await linkSavedTransfer(transferLinkBody(sending, result.entryId, otherSideId)) : null;
       setCard((current) => {
-        const saved = markCardSaved(current, { ...result, splitGroupId: createDraft.splitGroupId });
+        const saved = markCardSaved(current, { ...result, splitGroupId: createDraft.splitGroupId, habits: createDraft.habits });
         return { ...saved, saved: { ...saved.saved, splitGroupName: groupName, ...(link?.ok ? { transferLinkedEntryId: otherSideId } : {}) } };
       });
       const month = createDraft.date.slice(0, 7);

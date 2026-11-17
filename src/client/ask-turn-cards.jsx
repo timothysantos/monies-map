@@ -99,6 +99,23 @@ export function AskSettlementDraftCard({ item, busy = false, settled = false, on
         amountCaption={formatDay(settlement.date)}
       />
       {unsure ? <p className="ask-plan-warning">{copy.settlement.unsure}</p> : null}
+      {/* What is owed in that group before and after (Ask audit B9): a payment more or less than that shows it. */}
+      {Number.isInteger(settlement.owedBeforeMinor) && Number.isInteger(settlement.owedAfterMinor) && !saved ? (
+        <DetailRows label={copy.settlement.label}>
+          <DetailRow
+            readOnly
+            data-settlement-owed=""
+            label={copy.settlement.balance}
+            value={(
+              <span className="ask-plan-change">
+                <span className="ask-plan-before ask-change-before">{owedText(settlement, settlement.owedBeforeMinor)}</span>
+                <span aria-hidden="true">→</span>
+                <span className="ask-change-after">{owedText(settlement, settlement.owedAfterMinor)}</span>
+              </span>
+            )}
+          />
+        </DetailRows>
+      ) : null}
       {saved || unsure ? (
         <DetailRows label={copy.settlement.label}>
           <DetailRow label={copy.settlement.openSplits} state="action" onClick={onOpen} disabled={busy} />
@@ -115,6 +132,21 @@ export function AskSettlementDraftCard({ item, busy = false, settled = false, on
         />
       )}
     </section>
+  );
+}
+
+// "Serene owes Ethan $48.00", "Ethan owes Serene $2.00", "Settled up":
+// positive is what the payer owes the one paid back.
+function owedText(settlement, owedMinor) {
+  if (!owedMinor) return copy.settlement.settledUp;
+  const [debtor, creditor] = owedMinor > 0
+    ? [settlement.fromPersonName, settlement.toPersonName]
+    : [settlement.toPersonName, settlement.fromPersonName];
+  return (
+    <>
+      {`${copy.settlement.owes(debtor, creditor)} `}
+      <PrivateMoney className="money-neutral">{moneyWithCurrency(Math.abs(owedMinor), settlement.currency)}</PrivateMoney>
+    </>
   );
 }
 

@@ -299,7 +299,11 @@ export const askCopy = {
       saved: "Recorded on Splits.",
       discarded: "Not recorded.",
       unsure: "This may have been recorded before the page closed. Check Splits before recording it again.",
-      openSplits: "Open Splits"
+      openSplits: "Open Splits",
+      // What is owed in that group before and after the payment.
+      balance: "Owed",
+      owes: (debtor, creditor) => `${debtor} owes ${creditor}`,
+      settledUp: "Settled up"
     },
     // A change to saved data Ask drafted (ask-turn-cards.jsx AskChangeCard):
     // what changes, before and after; nothing is saved until its button.

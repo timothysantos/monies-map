@@ -19,6 +19,10 @@ import { limitsCopy } from "./copy/limits-copy";
 // be sent again safely: the route returns the entry it already made
 // (created: false) with the split linked to it, so a repeat never adds a
 // second entry or a second split.
+//
+// A Shared expense is created with its split in the same batch, in the
+// draft's split group (Ask audit B1): the route answers with that split
+// (linkedSplitExpenseId), and then nothing is added to Splits a second time.
 export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {}) {
   // Past the route's text caps the create would be refused: say so in plain
   // words without sending it.
@@ -43,7 +47,7 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
   let splitAddError = "";
   let splitExpenseId = null;
   let splitExpenseMonth = null;
-  if (data.created === false && data.linkedSplitExpenseId) {
+  if (data.linkedSplitExpenseId) {
     splitExpenseId = data.linkedSplitExpenseId;
     splitExpenseMonth = data.linkedSplitExpenseMonth ?? null;
   } else if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
@@ -74,8 +78,20 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
 // The body /api/entries/create reads for a new entry, as createEntryFromDraft
 // sends it (an Ask card waiting to send keeps exactly this).
 export function buildCreateEntryBody(entryDraft) {
-  const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits?.[0] : undefined;
-  return buildPersistedEntryPayload(entryDraft, primarySplit);
+  const shared = entryDraft.ownershipType === "shared";
+  const primarySplit = shared ? entryDraft.splits?.[0] : undefined;
+  return {
+    ...buildPersistedEntryPayload(entryDraft, primarySplit),
+    // A Shared expense's split: its group and, when a share was stated as
+    // an amount, the first person's exact share.
+    ...(shared && entryDraft.entryType === "expense" ? {
+      splitGroupId: entryDraft.splitGroupId && entryDraft.splitGroupId !== "split-group-none" ? entryDraft.splitGroupId : null,
+      ...(Number.isInteger(entryDraft.splitAmountMinor) ? { splitAmountMinor: entryDraft.splitAmountMinor } : {})
+    } : {}),
+    // Which choices were the person's own (Ask), so only those count as
+    // habits.
+    ...(entryDraft.habits ? { habits: entryDraft.habits } : {})
+  };
 }
 
 export function buildPersistedEntryPayload(entry, primarySplit) {

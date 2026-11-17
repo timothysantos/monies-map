@@ -423,6 +423,7 @@ function readPatch(patch) {
   }
   if (isMinor(patch.amountMinor) && patch.amountMinor > 0) next.amountMinor = patch.amountMinor;
   if (Number.isInteger(patch.splitBasisPoints) && patch.splitBasisPoints >= 0 && patch.splitBasisPoints <= 10_000) next.splitBasisPoints = patch.splitBasisPoints;
+  if (isMinor(patch.splitAmountMinor) && patch.splitAmountMinor >= 0) next.splitAmountMinor = patch.splitAmountMinor;
   return next;
 }
 

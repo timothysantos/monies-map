@@ -10,6 +10,7 @@ import {
   applyEntryDraft,
   applyReceiptRead,
   buildCardCreateDraft,
+  cardShares,
   cardFromSavedEntry,
   createAskCard,
   getTransferEnds,
@@ -25,6 +26,7 @@ import {
   validateCard
 } from "../src/client/ask-card-model.js";
 import { readEntryDraftResponse } from "../src/client/ask-api.js";
+import { buildCreateEntryBody } from "../src/client/entry-create-request.js";
 
 const context = {
   today: "2026-09-29",
@@ -311,7 +313,7 @@ test("save: saving -> saved keeps the entry ids; a failure goes back to a draft 
   // card's bank state chip reads "Ask · provisional").
   assert.deepEqual(saved.saved, {
     entryId: "txn-1", addedBy: "ask", bankCertificationStatus: "manual_provisional", time: "14:32",
-    splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", splitAddError: ""
+    splitExpenseId: "split-1", splitExpenseMonth: "2026-09", splitGroupId: "group-dinners", splitAddError: "", habits: null
   });
   // No time came back (an entry for another day): the saved card has none.
   assert.equal(markCardSaved(saving, { entryId: "txn-2" }).saved.time, null);
@@ -323,7 +325,7 @@ test("save: saving -> saved keeps the entry ids; a failure goes back to a draft 
   assert.equal(undone.fields.amountMinor, 420);
 });
 
-test("the create draft is the composer's: direct owner, the share switch as Add to Splits", () => {
+test("the Splits switch on is one shared save: Ethan paid, his share and Serene's, in the chosen group (Ask audit B1)", () => {
   let card = setCardField(createAskCard(context), { amountInput: "38.60", description: "Tiong Bahru Bakery", note: "flat whites" }, context);
   card = setShare(card, { on: true, splitGroupId: "group-dinners" });
   const posted = buildCardCreateDraft(card, context, { splitGroups: [{ id: "split-group-none", name: "Non-group" }, { id: "group-dinners", name: "Dinners out" }] });
@@ -338,15 +340,26 @@ test("the create draft is the composer's: direct owner, the share switch as Add 
     totalAmountMinor: 3860,
     entryType: "expense",
     transferDirection: undefined,
-    ownershipType: "direct",
+    ownershipType: "shared",
     ownerName: "Ethan",
     note: "flat whites",
-    splits: [],
+    splits: [
+      { personId: "person-ethan", personName: "Ethan", ratioBasisPoints: 5000, amountMinor: 1930 },
+      { personId: "person-serene", personName: "Serene", ratioBasisPoints: 5000, amountMinor: 1930 }
+    ],
     addToSplits: true,
     splitGroupId: "group-dinners",
+    // Other is no one's choice, so it counts as no habit; the split does.
+    habits: { category: false, split: true },
     // The card's stable client id, so a repeat save makes one entry.
     externalReference: `ask:${card.clientId}`
   });
+  // The body the create route reads carries the group with the shares.
+  const body = buildCreateEntryBody(posted);
+  assert.deepEqual([body.ownershipType, body.ownerName, body.splitBasisPoints, body.splitGroupId], ["shared", "Ethan", 5000, "group-dinners"]);
+  // Switched off, it is Ethan's alone and nothing goes on Splits.
+  const off = buildCardCreateDraft(setShare(card, { on: false }, context), context, { splitGroups: [] });
+  assert.deepEqual([off.ownershipType, off.ownerName, off.addToSplits, off.splits], ["direct", "Ethan", false, []]);
 });
 
 test("a shared owner posts a shared entry with the split share", () => {

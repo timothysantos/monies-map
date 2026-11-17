@@ -177,19 +177,19 @@ test("a refused save comes back as an error and never links a split", async () =
   assert.equal((await saveCardEntry({ entryType: "expense", ownershipType: "direct" }, { fetchImpl: offline.impl })).ok, false);
 });
 
-test("undo deletes the split the save created first, then the entry; a split failure stops it", async () => {
-  const both = fakeFetch([{ status: 200, body: { ok: true } }, { status: 200, body: { ok: true } }]);
-  assert.equal((await undoSavedEntry({ entryId: "txn-1", splitExpenseId: "split-1" }, { fetchImpl: both.impl })).ok, true);
-  assert.deepEqual(both.calls.map((call) => [call.url, call.body]), [
-    ["/api/splits/expenses/delete", { splitExpenseId: "split-1" }],
-    ["/api/entries/delete", { entryId: "txn-1" }]
+test("undo is one delete that takes the entry and the split its save made together, and the habits it counted (Ask audit B2, B13)", async () => {
+  const one = fakeFetch([{ status: 200, body: { ok: true, splitRemoved: true } }]);
+  assert.equal((await undoSavedEntry({ entryId: "txn-1", splitExpenseId: "split-1", habits: { category: true, split: true } }, { fetchImpl: one.impl })).ok, true);
+  assert.deepEqual(one.calls.map((call) => [call.url, call.body]), [
+    ["/api/entries/delete", { entryId: "txn-1", withLinkedSplit: true, habits: { category: true, split: true } }]
   ]);
-  const blocked = fakeFetch([{ status: 409, body: { ok: false, error: "This split is settled." } }]);
+  // A refusal (a settled split) keeps both, in the one command, and says why.
+  const blocked = fakeFetch([{ status: 400, body: { ok: false, error: "This split is settled." } }]);
   assert.deepEqual(await undoSavedEntry({ entryId: "txn-1", splitExpenseId: "split-1" }, { fetchImpl: blocked.impl }), { ok: false, error: "This split is settled." });
-  assert.equal(blocked.calls.length, 1, "the entry stays when its split could not go");
+  assert.equal(blocked.calls.length, 1);
   const entryOnly = fakeFetch([{ status: 200, body: { ok: true } }]);
   await undoSavedEntry({ entryId: "txn-2", splitExpenseId: null }, { fetchImpl: entryOnly.impl });
-  assert.deepEqual(entryOnly.calls.map((call) => call.url), ["/api/entries/delete"]);
+  assert.deepEqual(entryOnly.calls.map((call) => [call.url, call.body]), [["/api/entries/delete", { entryId: "txn-2", withLinkedSplit: true }]]);
 });
 
 test("the saved card's follow-ups use the existing category and split routes", async () => {

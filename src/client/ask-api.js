@@ -76,7 +76,8 @@ const DRAFT_FIELD_NAMES = [
   "transferDirection",
   "ownershipType",
   "ownerName",
-  "splitBasisPoints"
+  "splitBasisPoints",
+  "splitAmountMinor"
 ];
 
 function isFieldValue(value) {
@@ -304,16 +305,16 @@ async function postJson(path, body, fallbackError, fetchImpl) {
   }
 }
 
-// Undo after a save: the existing delete routes. A split the save created
-// goes first, so no split is left pointing at nothing.
-export async function undoSavedEntry({ entryId, splitExpenseId }, { fetchImpl = fetch } = {}) {
-  if (splitExpenseId) {
-    const split = await postJson("/api/splits/expenses/delete", { splitExpenseId }, "The split could not be removed.", fetchImpl);
-    if (!split.ok) {
-      return split;
-    }
-  }
-  return postJson("/api/entries/delete", { entryId }, "The entry could not be removed.", fetchImpl);
+// Undo after a save: one delete that removes the entry and the split the
+// save made together (Ask audit B2), so nobody is left owing for it, and
+// takes back the habit confirmations that save counted (B13).
+// (`splitExpenseId` is not needed: the server finds the entry's split itself.)
+export function undoSavedEntry({ entryId, habits = null, splitExpenseId: _splitExpenseId = null }, { fetchImpl = fetch } = {}) {
+  return postJson("/api/entries/delete", {
+    entryId,
+    withLinkedSplit: true,
+    ...(habits ? { habits: { category: habits.category === true, split: habits.split === true } } : {})
+  }, "The entry could not be removed.", fetchImpl);
 }
 
 // Only the card changes (the person's "Yes" to the card suggestion).

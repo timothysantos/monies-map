@@ -20,8 +20,13 @@
 // created entry once the create route accepted it.
 //
 // Ask saves direct entries only (one owner) or shared ones with a split
-// share; sharing with the other person on Splits is the `share` switch,
-// which becomes the composer's existing "Add to Splits" step.
+// share; sharing with the other person on Splits is the `share` switch.
+// What the card shows is what is saved (Ask audit B3): an expense is on
+// Splits exactly when the switch is on, owner Shared always turns it on,
+// and switching it off gives the entry one owner again. An expense on
+// Splits is saved as one shared entry with its split, in its group, in one
+// command (B1); the card lists each person's share before Save
+// (cardShares).
 
 import { formatEditableMinorInput, parseDraftMoneyInput } from "./formatters";
 
@@ -105,6 +110,8 @@ export function createAskCard(context, { mode = "add", splitGroupId = "" } = {})
       categoryName: defaultCategoryForVariant("expense", context),
       ownerName: pickDefaultOwner(context),
       splitBasisPoints: 5000,
+      // The first person's exact share when it was stated in money, else null.
+      splitAmountMinor: null,
       transferDirection: undefined,
       transferAccountId: "",
       transferAccountName: "",
@@ -159,19 +166,38 @@ export function setCardField(card, patch, context) {
     delete filled[fieldKeyOf(key)];
   }
   const answered = new Set(Object.keys(patch).map(fieldKeyOf));
+  const changesAmount = ["amountInput", "amountMinor"].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+  // A stated share in money holds only for the amount it was stated on.
+  if ((changesAmount || Object.prototype.hasOwnProperty.call(patch, "splitBasisPoints")) && !Object.prototype.hasOwnProperty.call(patch, "splitAmountMinor")) {
+    fields.splitAmountMinor = null;
+  }
+  // The amount in the card's currency for a figure paid in another one
+  // ("That was JPY 2,400. What did it cost…?"): what was paid is kept with
+  // it, as on an estimate (Ask audit B7). It stays while the amount is
+  // corrected; a different wallet drops it.
+  const foreignQuestion = card.questions.find((question) => question.reason === "foreign_currency" && question.foreignAmount);
+  const paidElsewhere = card.foreign?.answered ? card.foreign : null;
+  const answeredForeign = changesAmount && fields.amountMinor > 0 && !Object.prototype.hasOwnProperty.call(patch, "accountId")
+    ? (foreignQuestion
+      ? { amountMinor: foreignQuestion.foreignAmount.amountMinor, currency: foreignQuestion.foreignAmount.currency, estimateMinor: fields.amountMinor, note: "", answered: true }
+      : paidElsewhere ? { ...paidElsewhere, estimateMinor: fields.amountMinor } : null)
+    : null;
   // A new amount or wallet is no longer the estimate of what was paid.
-  const staleEstimate = card.foreign && ["amountInput", "amountMinor", "accountId"].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+  const staleEstimate = !answeredForeign && card.foreign && ["amountInput", "amountMinor", "accountId"].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
   if (staleEstimate) {
     fields = dropEstimateNote(fields, card.foreign);
   }
   return {
     ...card,
     ...(staleEstimate ? { foreign: null } : {}),
+    ...(answeredForeign ? { foreign: answeredForeign } : {}),
+    // Owner Shared is on Splits: the switch shows it (Ask audit B3).
+    ...(patch.ownerName === SHARED_OWNER && card.variant === "expense" ? { share: { on: true, splitGroupId: card.share.splitGroupId ?? "" } } : {}),
     fields,
     filled,
     touched: true,
     saveError: "",
-    questions: card.questions.filter((question) => !answered.has(question.field))
+    questions: card.questions.filter((question) => !answered.has(question.field) && !(answeredForeign && question === foreignQuestion))
   };
 }
 
@@ -246,18 +272,30 @@ export function chooseTransferMatch(card, transferMatchId) {
   return card?.status === "draft" && card.variant === "transfer" ? { ...card, transferMatchId } : card;
 }
 
-export function setShare(card, { on, splitGroupId }) {
+// Switching Splits off on a Shared card gives it one owner again: whoever
+// owns the wallet, else the person whose view is open (Ask audit B3), so
+// the card never says Shared while nothing goes on Splits.
+export function setShare(card, { on, splitGroupId }, context = {}) {
   if (card.status !== "draft" || card.variant !== "expense") {
     return card;
   }
+  const leavesShared = !on && card.fields.ownerName === SHARED_OWNER;
   return {
     ...card,
     touched: true,
+    ...(leavesShared ? { fields: { ...card.fields, ownerName: soleOwnerFor(card, context) } } : {}),
     share: {
       on: Boolean(on),
       splitGroupId: on ? (splitGroupId ?? card.share.splitGroupId ?? "") : ""
     }
   };
+}
+
+function soleOwnerFor(card, context) {
+  const people = context.people ?? [];
+  const account = findAccount(context.accounts ?? [], card.fields.accountId);
+  const walletOwner = account?.ownerPersonId && !account.isJoint ? people.find((person) => person.id === account.ownerPersonId)?.name : "";
+  return walletOwner || pickDefaultOwner(context) || "";
 }
 
 // The split suggestion's two answers (ask-split-suggestion.js). Choosing it
@@ -390,9 +428,16 @@ export function applyEntryDraft(card, draft, context) {
     // an estimate; a plain amount replaces any earlier estimate.
     Object.assign(fields, dropEstimateNote(fields, foreign));
     const estimate = draft.foreignAmount?.estimate;
+    // The card-currency amount for a figure the card asked about ("That
+    // was JPY 2,400…"): what was paid stays with it (Ask audit B7).
+    const askedForeign = !draft.foreignAmount
+      ? next.questions.find((question) => question.reason === "foreign_currency" && question.foreignAmount)?.foreignAmount ?? (next.foreign?.answered ? next.foreign : null)
+      : null;
     foreign = estimate && estimate.amountMinor === fields.amountMinor
       ? { amountMinor: draft.foreignAmount.amountMinor, currency: draft.foreignAmount.currency, estimateMinor: estimate.amountMinor, note: estimate.note }
-      : null;
+      : askedForeign
+        ? { amountMinor: askedForeign.amountMinor, currency: askedForeign.currency, estimateMinor: fields.amountMinor, note: "", answered: true }
+        : null;
     if (foreign) {
       fields.note = [fields.note, foreign.note].filter(Boolean).join("\n");
     }
@@ -406,7 +451,19 @@ export function applyEntryDraft(card, draft, context) {
   }
   if (counts("splitBasisPoints")) {
     fields.splitBasisPoints = Number(valueOf("splitBasisPoints"));
+    fields.splitAmountMinor = has("splitAmountMinor") ? Math.round(Number(valueOf("splitAmountMinor"))) : null;
     mark("splitBasisPoints");
+  } else if (counts("amountMinor")) {
+    fields.splitAmountMinor = null;
+  }
+  // A payment word the household has no wallet for ("kopi 2.40 cash" with
+  // no cash wallet): the wallet is asked in place, never a card filled in
+  // silently (Ask audit B8).
+  const walletAsked = (draft.questions ?? []).some((question) => question.field === "accountId");
+  if (!counts("accountId") && walletAsked && !isFollowUp) {
+    fields.accountId = "";
+    fields.accountName = "";
+    delete filled.accountId;
   }
   if (next.variant === "transfer") {
     if (counts("transferDirection")) {
@@ -425,11 +482,16 @@ export function applyEntryDraft(card, draft, context) {
     filled.variant = draft.fields.entryType.source;
   }
 
+  // Owner Shared is on Splits: the switch shows it (Ask audit B3).
+  const share = fields.ownerName === SHARED_OWNER && next.variant === "expense" && !next.share.on
+    ? { on: true, splitGroupId: next.share.splitGroupId ?? "" }
+    : next.share;
   return {
     ...next,
     foreign,
     fields,
     filled,
+    share,
     origin: next.origin ?? "message",
     touched: true,
     saveError: "",
@@ -556,7 +618,9 @@ export function validateCard(card, { splitGroups = [] } = {}) {
   if (!fields.accountId) missing.push("accountId");
   if (card.variant === "transfer" && fields.transferAccountId && fields.transferAccountId === fields.accountId) missing.push("transferAccountId");
   if (card.variant !== "transfer" && !fields.categoryName) missing.push("categoryName");
-  if (!fields.ownerName) missing.push("ownerName");
+  // A Shared expense with Splits off would save a split the card does not
+  // show: it needs one owner first (setShare gives it one).
+  if (!fields.ownerName || (card.variant === "expense" && fields.ownerName === SHARED_OWNER && !card.share.on)) missing.push("ownerName");
   if (card.variant === "expense" && card.share.on && splitGroups.length && !resolveShareGroupId(card, splitGroups)) missing.push("splitGroup");
   return { canSave: card.status === "draft" && missing.length === 0, missing };
 }
@@ -575,16 +639,22 @@ export function describeTransfer(card) {
 // posts: exactly the composer's fields.
 export function buildCardCreateDraft(card, context, { splitGroups = [] } = {}) {
   const { fields } = card;
-  const isShared = fields.ownerName === SHARED_OWNER;
+  // An expense is on Splits exactly when the switch is on: saved as one
+  // Shared entry with its split, in its group, in one command. The payer is
+  // the owner the card names, else (owner Shared) the wallet's owner.
+  const onSplits = card.variant === "expense" && card.share.on;
+  const isShared = onSplits || (card.variant !== "expense" && fields.ownerName === SHARED_OWNER);
   const people = context.people ?? [];
   const description = fields.description.trim() || (card.variant === "transfer" ? describeTransfer(card) : "");
   const splitGroupId = resolveShareGroupId(card, splitGroups);
+  const shares = onSplits ? cardShares(card, context) : [];
   const splits = isShared
     ? people.slice(0, 2).map((person, index) => {
         const ratio = index === 0 ? fields.splitBasisPoints : 10000 - fields.splitBasisPoints;
-        return { personId: person.id, personName: person.name, ratioBasisPoints: ratio, amountMinor: Math.floor((fields.amountMinor * ratio) / 10000) };
+        return { personId: person.id, personName: person.name, ratioBasisPoints: ratio, amountMinor: shares[index]?.amountMinor ?? Math.floor((fields.amountMinor * ratio) / 10000) };
       })
     : [];
+  const exactShare = onSplits && Number.isInteger(fields.splitAmountMinor) && fields.splitAmountMinor <= fields.amountMinor ? fields.splitAmountMinor : null;
   return {
     date: fields.date,
     postDate: fields.postDate || null,
@@ -597,17 +667,48 @@ export function buildCardCreateDraft(card, context, { splitGroups = [] } = {}) {
     entryType: card.variant,
     transferDirection: card.variant === "transfer" ? (fields.transferDirection ?? "out") : undefined,
     ownershipType: isShared ? "shared" : "direct",
-    ownerName: isShared ? undefined : fields.ownerName,
+    ownerName: fields.ownerName && fields.ownerName !== SHARED_OWNER ? fields.ownerName : undefined,
     note: fields.note ?? "",
     // The estimate keeps what was paid: only while the amount is still it.
     ...(card.foreign && card.foreign.estimateMinor === fields.amountMinor
       ? { originalAmountMinor: card.foreign.amountMinor, originalCurrency: card.foreign.currency }
       : {}),
     splits,
-    addToSplits: card.variant === "expense" && card.share.on && Boolean(splitGroupId || !splitGroups.length),
+    ...(exactShare !== null ? { splitAmountMinor: exactShare } : {}),
+    addToSplits: onSplits && Boolean(splitGroupId || !splitGroups.length),
     splitGroupId,
+    // Only the person's own choices count as habits (Ask audit B13): a
+    // category they picked or named, and the split they saved.
+    habits: { category: categoryIsTheirs(card), split: onSplits },
     externalReference: card.clientId ? `ask:${card.clientId}` : undefined
   };
+}
+
+// Whether the card's category is the person's own: picked on the card (a
+// picked row has no source) or named in their words. One the household's
+// rules, a habit, AI or a receipt filled in is not.
+function categoryIsTheirs(card) {
+  const source = card.filled?.categoryName;
+  return card.variant === "expense" && (!source || source === "sentence") && !isDefaultCategory(card.fields.categoryName);
+}
+
+// Each person's share on Splits as the card will save it, in household
+// order: a share stated in money exactly, else the first person's basis
+// points, the second has the rest (the server's rule, to the cent). The
+// payer is the card's owner, or the wallet's owner on a Shared card.
+export function cardShares(card, context) {
+  const people = (context.people ?? []).slice(0, 2);
+  const total = Math.max(0, Number(card.fields.amountMinor) || 0);
+  if (people.length < 2 || !(total > 0)) {
+    return [];
+  }
+  const basis = Math.max(0, Math.min(10000, Number(card.fields.splitBasisPoints) || 0));
+  const exact = Number.isInteger(card.fields.splitAmountMinor) && card.fields.splitAmountMinor <= total ? card.fields.splitAmountMinor : null;
+  const first = exact ?? Math.floor((total * basis) / 10000);
+  return [
+    { personName: people[0].name, amountMinor: first },
+    { personName: people[1].name, amountMinor: total - first }
+  ];
 }
 
 // A card kept from before client ids gets one here, before it is sent.
@@ -635,7 +736,9 @@ export function markCardSaved(card, result) {
       splitExpenseId: result.splitExpenseId ?? null,
       splitExpenseMonth: result.splitExpenseMonth ?? null,
       splitGroupId: result.splitGroupId ?? card.share.splitGroupId ?? "",
-      splitAddError: result.splitAddError ?? ""
+      splitAddError: result.splitAddError ?? "",
+      // What the save counted as habits, for Undo to take back.
+      habits: result.habits ?? null
     }
   };
 }

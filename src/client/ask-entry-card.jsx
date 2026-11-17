@@ -1,7 +1,7 @@
 import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Nfc, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { describeTransfer, getTransferEnds, isCardEmpty, orderWalletsForCard, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
+import { cardShares, describeTransfer, getTransferEnds, isCardEmpty, orderWalletsForCard, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate, formatCardDateTime } from "./copy/ask-copy";
 import { entryAmountTone } from "../domain/money-tone";
 import { bankStateChipLabel } from "./entry-source";
@@ -444,6 +444,7 @@ export function AskCardRows({
   const resolvedGroupId = resolveShareGroupId(card, shareGroups);
   const resolvedGroup = shareGroups.find((group) => group.id === resolvedGroupId);
   const showShare = card.variant === "expense" && (context.people ?? []).length > 1;
+  const shares = cardShares(card, context);
   const switchId = useId();
 
   const dateRow = (
@@ -600,6 +601,20 @@ export function AskCardRows({
             options={[{ value: "", label: askCopy.card.chooseGroup }, ...shareGroups.map((group) => ({ value: group.id, label: group.name }))]}
             onValueChange={(splitGroupId) => onShareChange({ on: true, splitGroupId })}
           />
+        </DetailRows>
+      ) : null}
+      {/* Each person's share, as Save will write it (Ask audit B4): the Add to Splits card's own rows. */}
+      {showShare && card.share.on && shares.length ? (
+        <DetailRows className="ask-rows-share ask-rows-shares" label={askCopy.turn.split.label}>
+          {shares.map((share) => (
+            <DetailRow
+              key={share.personName}
+              readOnly
+              data-card-share={share.personName}
+              label={askCopy.turn.split.share(share.personName)}
+              value={<PrivateMoney className="money-neutral">{moneyWithCurrency(share.amountMinor, currencyOf(context, card.fields.accountId))}</PrivateMoney>}
+            />
+          ))}
         </DetailRows>
       ) : null}
     </div>
