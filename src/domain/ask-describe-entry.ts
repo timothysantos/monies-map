@@ -91,7 +91,7 @@ export const DESCRIBE_COPY = {
 
 // The prompt's line for this action.
 export function describeDescribeAction() {
-  return "- describe_entry: a few words about a quick payment (in focus, or named by its amount: \"the 85,000 was ramen\"). describe.words: what it was, as written, without the sharing words; describe.category only if named; describe.shared_with as written; split.shares only stated shares; describe.amount only if they named it by amount.";
+  return "- describe_entry: what a quick payment was. describe.words (no sharing words), category, shared_with, amount: only as said.";
 }
 
 // Words the person wrote, tidied: "dinner ramen" → "Dinner ramen". "" when

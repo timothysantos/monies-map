@@ -340,7 +340,7 @@ export async function loadUndescribedQuickEntries(
         AND transactions.external_reference LIKE 'cash:%'
         AND transactions.description IN (?, ?)
         ${people.length ? `AND transactions.owner_person_id IN (${people.map(() => "?").join(", ")})` : ""}
-      ORDER BY transactions.transaction_date DESC, transactions.created_at DESC, transactions.id DESC
+      ORDER BY transactions.transaction_date DESC, transactions.created_at DESC, transactions.rowid DESC
       LIMIT ${QUICK_WORDS_LIST_LIMIT * 4}
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, since, today, CASH_DEFAULT_DESCRIPTION, CARD_DEFAULT_DESCRIPTION, ...people)
