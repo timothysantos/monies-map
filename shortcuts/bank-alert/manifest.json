@@ -1,0 +1,19 @@
+{
+  "name": "Bank alert to Monies Map",
+  "releaseDate": "2026-11-17",
+  "distribution": "self_hosted_apple_signed_file",
+  "installPath": "/shortcuts/monies-map-bank-alert.shortcut",
+  "appleSigningStatus": "APPROVED",
+  "clientVersion": "bank-alert-2026-11-17-v1",
+  "sourceFile": "monies-map-bank-alert.plist",
+  "sourceSha256": "773821728a93fd7385262bc572c964e3178b3de586989a9dd7a33d2afaa6a9d3",
+  "signedReleaseFile": "releases/monies-map-bank-alert-2026-11-17-v1.shortcut",
+  "signedReleaseSha256": "5b5e372584544b17d6218a9efc1fb0a1de014c127d936b22b27fa05792e228de",
+  "signedReleaseSize": 22821,
+  "publicFile": "../../public/shortcuts/monies-map-bank-alert.shortcut",
+  "actionCount": 3,
+  "setupQuestion": {
+    "actionIndex": 0,
+    "parameterKey": "WFTextActionText"
+  }
+}
