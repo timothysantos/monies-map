@@ -85,9 +85,16 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       await expect(row).toContainText("Food & Drinks · Add to splits half each with Joyce, as you usually do");
       await expect(page.locator("[data-ask-done-inline]")).toHaveCount(0);
       await shot(page, `suggestion-row-${name}`);
+      // The suggested step is the filled first chip with its words, in thumb
+      // reach; the category and Splits chips it answers wait (Ask audit A12).
+      const chips = page.getByRole("group", { name: "Suggestions" }).getByRole("button");
+      await expect(chips).toHaveText(["Do this", "Not this time", "Open this entry"]);
+      await expect(chips.first()).toHaveClass(/is-primary/);
+      await expect(page.locator(".ask-chip.is-primary")).toHaveCount(1);
+      await expect(row.getByRole("button")).toHaveCount(0);
 
-      // The tick runs the existing commands.
-      await row.getByRole("button", { name: "Do this" }).click();
+      // "Do this" runs the existing commands.
+      await chips.first().click();
       await expect(row).toHaveCount(0);
       await expect.poll(() => entryOnSplits(page, first)).toEqual({ onSplits: true, category: "Food & Drinks" });
 
@@ -140,7 +147,7 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       const row = page.locator("[data-ask-habit-suggestion]");
       await expect(row).toBeVisible();
       await expect(page.locator("[data-ask-done-list]")).toHaveCount(0);
-      await row.getByRole("button", { name: "Not this time" }).click();
+      await page.getByRole("group", { name: "Suggestions" }).getByRole("button", { name: "Not this time" }).click();
       await expect(row).toHaveCount(0);
       // Nothing changed, and the habit starts again from nothing.
       expect(await entryOnSplits(page, entryId)).toEqual({ onSplits: false, category: "Other" });

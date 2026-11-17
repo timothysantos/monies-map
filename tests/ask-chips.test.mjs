@@ -154,6 +154,45 @@ test("a Shortcut-saved entry in Other asks for a category, then offers Splits", 
   assert.deepEqual(suggestCategories([], context.categories), ["Food & Drinks", "Shopping", "Transport"]);
 });
 
+// Ask audit A12: the habit's suggestion was a small bare tick in mid-screen
+// while "Open this entry" was the filled chip, beside category and group
+// chips that did the same thing.
+test("a habit's suggestion leads the saved card's chips: Do this (filled), Not this time, Open this entry", () => {
+  const ready = setCardField(createAskCard(context), { amountInput: "6.90", description: "KOUFU" }, context);
+  const saved = markCardSaved(ready, { entryId: "txn-apple" });
+  const shortcut = { mode: "chat", from: "shortcut", savedEntryId: "txn-apple", splitGroupId: "" };
+  const habitSuggestion = { text: "Food & Drinks · Add to splits half each with Joyce, as you usually do", category: { categoryName: "Food & Drinks" } };
+  const splitGroups = [{ id: "split-group-none", name: "Non-group expenses" }, { id: "group-home", name: "Home" }];
+  const result = buildAskChips({ intent: shortcut, card: saved, context, splitGroups, entries: [], habitSuggestion, actions });
+  assert.deepEqual(labels(result), ["Do this", "Not this time", "Open this entry"]);
+  assert.deepEqual(result.items.map((item) => Boolean(item.primary)), [true, false, false]);
+  assert.equal(result.prompt, "");
+  assert.equal(result.items[0].onClick(), "applyHabit");
+  assert.equal(result.items[1].onClick(), "dismissHabit");
+  // While it is being done, both wait.
+  assert.deepEqual(buildAskChips({ intent: shortcut, card: saved, context, splitGroups, habitSuggestion, habitBusy: true, actions }).items.slice(0, 2).map((item) => item.disabled), [true, true]);
+  // A card saved in Ask keeps its Undo after the suggestion.
+  assert.deepEqual(labels(buildAskChips({ intent: chat, card: saved, context, splitGroups, habitSuggestion, actions })), ["Do this", "Not this time", "Open this entry", "Undo"]);
+  // Without a suggestion the category question and the group chips are back.
+  const plain = buildAskChips({ intent: shortcut, card: saved, context, splitGroups, entries: [], actions });
+  assert.equal(plain.prompt, "It landed in Other. Which category fits?");
+  assert.equal(labels(plain).includes("Do this"), false);
+});
+
+// Ask audit A25: a card saved from the Ask tab offered a filled "Back to
+// Entries", a page the person never came from.
+test("after a save from the Ask tab, Open this entry is the filled chip and there is no Back to Entries", () => {
+  const ready = setCardField(createAskCard(context), { amountInput: "5", description: "Kopi" }, context);
+  const saved = markCardSaved(ready, { entryId: "txn-1" });
+  for (const intent of [chat, { ...add, from: "ask" }]) {
+    const result = buildAskChips({ intent, card: saved, context, actions });
+    assert.deepEqual(labels(result), ["Open this entry", "Undo"]);
+    assert.equal(result.items[0].primary, true);
+  }
+  // From Entries' + the way back stays first and filled.
+  assert.equal(buildAskChips({ intent: add, card: saved, context, actions }).items[0].label, "Back to Entries");
+});
+
 test("Ask has its own route; its params never leak into other tabs", () => {
   assert.equal(getSelectedTabId("/ask"), "ask");
   assert.equal(getSelectedTabId("/asks"), "summary");

@@ -12,10 +12,12 @@
 //   <partner>, Add a note, Different card once it has content; Swap
 //   direction for a transfer; Edit in form last, to the Entries composer or
 //   the Splits expense dialog.
-// - Saved: the main way on first and filled (Back to Entries or Splits),
-//   Open this entry, Open on Splits when it was shared, Undo. A card the
-//   Apple Pay Shortcut saved offers Open this entry, then a category
-//   question when it landed in Other, and Splits.
+// - Saved: the main way on first and filled (Back to Entries or Splits, for
+//   a card the + opened there; else Open this entry), Open this entry, Open
+//   on Splits when it was shared, Undo. A card the Apple Pay Shortcut saved
+//   offers Open this entry, then a category question when it landed in
+//   Other, and Splits. A habit's suggestion comes before all of these:
+//   Do this (filled), Not this time, Open this entry.
 // - A split suggestion (ask-split-suggestion.js), when the person usually
 //   splits entries like this one: one question, "You usually split this
 //   with <name>. Add it to <group>?", with "Split 50/50 in <group>" (filled)
@@ -30,6 +32,7 @@
 import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { askHabitsCopy } from "./copy/ask-habits-copy";
 import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
 import { isZeroDecimalCurrency } from "../domain/cash-entry";
 import { isMoneyPrivacyHidden, moneyWithCurrency } from "./formatters";
@@ -159,10 +162,38 @@ function cardSuggestionChips(card, cardSuggestion, actions) {
   };
 }
 
-function savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, actions }) {
+// What the household's habits suggest for a saved entry (ask-habits-ui.jsx
+// shows the sentence under the card): "Do this" is the one filled chip and
+// comes first, "Not this time" next, and the category and Splits chips it
+// would answer wait until it is answered (Ask audit A12).
+function habitChips({ habitSuggestion, actions, busy }) {
+  if (!habitSuggestion) {
+    return null;
+  }
+  return /** @type {AskChip[]} */ ([
+    { key: "habit-apply", label: askHabitsCopy.suggestion.apply, primary: true, disabled: busy, onClick: actions.applyHabit },
+    { key: "habit-dismiss", label: askHabitsCopy.suggestion.dismiss, disabled: busy, onClick: actions.dismissHabit }
+  ]);
+}
+
+// The saved card's chips. The filled "Back to Entries" or "Back to Splits"
+// is for a card the + opened there; from the Ask tab itself, Open this
+// entry is the filled one (Ask audit A25).
+function savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, habitSuggestion = null, habitBusy = false, actions }) {
   /** @type {AskChip[]} */
   const items = [];
   let prompt = "";
+  const habit = habitChips({ habitSuggestion, actions, busy: habitBusy });
+  if (habit) {
+    items.push(...habit, { key: "open-entry", label: askCopy.chips.openEntry, onClick: actions.openEntry });
+    if (card.saved?.splitExpenseId) {
+      items.push({ key: "open-splits", label: askCopy.chips.openOnSplits, onClick: actions.openOnSplits });
+    }
+    if (!intent.savedEntryId && !card.saved?.transferLinkedEntryId) {
+      items.push({ key: "undo", label: askCopy.chips.undo, onClick: actions.undo });
+    }
+    return { items, prompt };
+  }
   if (intent.savedEntryId) {
     items.push({ key: "open-entry", label: askCopy.chips.openEntry, primary: true, onClick: actions.openEntry });
     // One question at a time: the card first, since the rest follow it.
@@ -204,10 +235,10 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   }
   if (intent.from === "splits") {
     items.push({ key: "back-splits", label: askCopy.chips.backTo(askCopy.backLabels.splits), primary: true, onClick: actions.backToSplits });
-  } else {
+  } else if (intent.mode !== "chat" && intent.from !== "ask") {
     items.push({ key: "back-entries", label: askCopy.chips.backTo(askCopy.backLabels.entries), primary: true, onClick: actions.backToEntries });
   }
-  items.push({ key: "open-entry", label: askCopy.chips.openEntry, onClick: actions.openEntry });
+  items.push({ key: "open-entry", label: askCopy.chips.openEntry, primary: !items.length || undefined, onClick: actions.openEntry });
   if (card.saved?.splitExpenseId) {
     items.push({ key: "open-splits", label: askCopy.chips.openOnSplits, onClick: actions.openOnSplits });
   }
@@ -219,7 +250,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, headerBack = false, justPaidFirst = false, actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, headerBack = false, justPaidFirst = false, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -236,7 +267,7 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     };
   }
   if (card.status === "saved") {
-    return savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, actions });
+    return savedChips({ intent, card, context, splitGroups, entries, splitSuggestion, cardSuggestion, habitSuggestion, habitBusy, actions });
   }
 
   /** @type {AskChip[]} */
@@ -371,9 +402,9 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, justPaidFirst = false, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, justPaidFirst = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, headerBack, justPaidFirst, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, habitSuggestion, habitBusy, headerBack, justPaidFirst, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }

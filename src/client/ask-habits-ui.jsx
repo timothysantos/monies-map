@@ -21,21 +21,26 @@ export function formatDoneWhen(isoTime, now = new Date()) {
 // The one quiet suggestion under an entry's card: what its habits say, with
 // a tick to do it and a cross for "not this time". It never moves anything
 // by itself and never asks twice.
-export function AskSuggestionRow({ suggestion, busy, error, onApply, onDismiss }) {
+// While the card's chip row carries "Do this" (filled, first) and "Not this
+// time", the row shows only the sentence; the tick and cross come back when
+// the row is the only place to answer it (something newer owns the chips).
+export function AskSuggestionRow({ suggestion, busy, error, onApply, onDismiss, inChips = false }) {
   if (!suggestion) {
     return null;
   }
   return (
     <div className="ask-habit-row" role="group" aria-label={copy.suggestion.group} data-ask-habit-suggestion>
       <p className="ask-habit-text">{suggestion.text}</p>
-      <div className="ask-habit-actions">
-        <button type="button" className="ask-habit-button is-apply" aria-label={copy.suggestion.apply} title={copy.suggestion.apply} disabled={busy === "apply"} onClick={onApply}>
-          <Check size={18} aria-hidden="true" />
-        </button>
-        <button type="button" className="ask-habit-button" aria-label={copy.suggestion.dismiss} title={copy.suggestion.dismiss} disabled={busy === "apply"} onClick={onDismiss}>
-          <X size={18} aria-hidden="true" />
-        </button>
-      </div>
+      {inChips ? null : (
+        <div className="ask-habit-actions">
+          <button type="button" className="ask-habit-button is-apply" aria-label={copy.suggestion.apply} title={copy.suggestion.apply} disabled={busy === "apply"} onClick={onApply}>
+            <Check size={18} aria-hidden="true" />
+          </button>
+          <button type="button" className="ask-habit-button" aria-label={copy.suggestion.dismiss} title={copy.suggestion.dismiss} disabled={busy === "apply"} onClick={onDismiss}>
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {error ? <p className="ask-habit-error" role="alert">{error}</p> : null}
     </div>
   );
