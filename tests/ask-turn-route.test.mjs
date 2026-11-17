@@ -143,9 +143,9 @@ test("each action comes back checked against the demo household", async (t) => {
       }
     },
     {
-      text: "Joyce paid me back 30",
-      model: { action: "draft_settlement", settlement: { from: "Joyce", to: "Tim", amount: "30" } },
-      check: (reply) => assert.deepEqual(reply.settlement, { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 3_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" })
+      text: "Joyce paid me back 30, no group",
+      model: { action: "draft_settlement", settlement: { from: "Joyce", to: "Tim", amount: "30", group: "no group" } },
+      check: (reply) => { const { owedBeforeMinor, owedAfterMinor, ...draft } = reply.settlement; assert.deepEqual(draft, { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 3_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" }); assert.equal(owedAfterMinor, owedBeforeMinor - 3_000); }
     },
     {
       text: "where did my money go in may 2026",

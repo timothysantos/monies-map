@@ -7,6 +7,7 @@
 
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadCategoryMatchRules } from "./app-repository-category-match-rules";
+import { loadCategoryHabitMap } from "./app-repository-ask-habits";
 import { loadPaymentWays } from "./app-repository-payment-ways";
 import { loadShortcutAccountReferences, loadShortcutSettings } from "./app-repository-shortcuts";
 import type { EntryDraftContext } from "./entry-draft";
@@ -43,7 +44,7 @@ export async function loadEntryDraftContext(
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ id: string; display_name: string }>()
     .then((people) => people.results.map((person) => ({ id: person.id, name: person.display_name })));
-  const [accounts, settings, categoryMatchRules, householdPeople, categories, paymentWays] = await Promise.all([
+  const [accounts, settings, categoryMatchRules, householdPeople, categories, paymentWays, categoryHabits] = await Promise.all([
     accountsRead,
     settingsRead,
     loadCategoryMatchRules(db),
@@ -56,7 +57,8 @@ export async function loadEntryDraftContext(
       accounts: accountList,
       people,
       priorityIds: shortcutSettings.defaultAccountPriorityIds
-    })))
+    }))),
+    loadCategoryHabitMap(db, input.today)
   ]);
   // "I", "me" and "my": the person asking, else the person being viewed.
   const viewerName = householdPeople.find((person) => person.id === input.askerPersonId)?.name
@@ -70,6 +72,7 @@ export async function loadEntryDraftContext(
     defaultAccountPriorityIds: settings.defaultAccountPriorityIds,
     foreignCurrencyAccountId: settings.foreignCurrencyAccountId || undefined,
     paymentWays,
+    categoryHabits,
     ...(viewerName ? { viewerName } : {})
   };
 }

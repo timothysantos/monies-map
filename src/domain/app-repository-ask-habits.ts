@@ -15,10 +15,12 @@ import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { ensureAppSettingsTable } from "./app-settings-table";
 import {
   ASK_CATCH_ALL_CATEGORIES,
+  ASK_HABIT_POLICY,
   ASK_HANDLES_SAFE_SETTING_KEY,
   askHabitId,
   canonicalHabitValue,
   habitAliasKey,
+  habitConfidence,
   habitMerchantKey,
   type AskAliasHabitValue,
   type AskCategoryHabitValue,
@@ -83,6 +85,34 @@ export async function loadAskHabits(db: D1Database): Promise<{ available: boolea
     return { available: true, habits: result.results.map(toHabit).filter((habit): habit is AskHabit => habit !== null) };
   } catch {
     return { available: false, habits: [] };
+  }
+}
+
+// Each shop's habitual category the person has confirmed enough to suggest
+// (habitConfidence high or suggest), by shop key, for drafting a new entry
+// (entry-draft.ts puts it before the household's rules; Ask audit B13).
+// Empty when the table is missing.
+export async function loadCategoryHabitMap(db: D1Database, today: string): Promise<Record<string, string>> {
+  try {
+    const result = await db
+      .prepare(`
+        SELECT kind, key, value_json, times_confirmed, times_overridden, last_used, source
+        FROM ask_habits
+        WHERE household_id = ? AND kind = 'category' AND times_confirmed >= ?
+        ORDER BY last_used DESC, key
+        LIMIT ${MAX_HABITS}
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ASK_HABIT_POLICY.suggestConfirmations)
+      .all<HabitRow>();
+    const map: Record<string, string> = {};
+    for (const habit of result.results.map(toHabit)) {
+      if (habit && habitConfidence(habit, today) !== "none") {
+        map[habit.key] = (habit.value as AskCategoryHabitValue).categoryName;
+      }
+    }
+    return map;
+  } catch {
+    return {};
   }
 }
 

@@ -1659,6 +1659,9 @@ export interface EntryDraftDto {
     ownershipType: EntryDraftFieldDto<"direct" | "shared">;
     ownerName?: EntryDraftFieldDto<string>;
     splitBasisPoints?: EntryDraftFieldDto<number>;
+    // The first person's share as the person stated it in money ("her share
+    // is 30" on 80 is 50.00), so it is saved to the cent.
+    splitAmountMinor?: EntryDraftFieldDto<number>;
   };
   // An amount in another currency than the account's (IDR 159,000 on an SGD
   // card): kept as typed. With a rate, `estimate` is the account-currency

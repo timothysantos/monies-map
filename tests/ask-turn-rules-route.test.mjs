@@ -63,33 +63,43 @@ const draftFocus = (fields = {}) => ({
 test("AI off: \"Joyce paid me back $30\" is a settle-up payment draft, never an expense, and Record payment saves it", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const before = await dumpDatabase(db);
-  const payload = await turn(db, { text: "Joyce paid me back $30" });
-  assert.equal(payload.mode, "rules");
-  assert.equal(payload.action, "draft_settlement");
-  assert.deepEqual(payload.reply, {
-    kind: "settlement_draft",
-    settlement: { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 3_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" }
+  // The demo has something owed with no group and in Baby River: which one
+  // is asked, each chip the whole payment again (Ask audit B9).
+  const asked = await turn(db, { text: "Joyce paid me back $30" });
+  assert.equal(asked.mode, "rules");
+  assert.deepEqual(asked.reply, {
+    kind: "clarify",
+    question: "Which split group should it go in?",
+    options: ["Joyce paid Tim back $30, no group", "Joyce paid Tim back $30 in Baby River"]
   });
-  // The turn wrote nothing and spent no allowance.
+  const payload = await turn(db, { text: asked.reply.options[0] });
+  assert.equal(payload.action, "draft_settlement");
+  assert.equal(payload.reply.kind, "settlement_draft");
+  const { owedBeforeMinor, owedAfterMinor, ...draft } = payload.reply.settlement;
+  assert.deepEqual(draft, { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 3_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" });
+  assert.equal(owedAfterMinor, owedBeforeMinor - 3_000);
+  // The turns wrote nothing and spent no allowance.
   assertSameDatabase(await dumpDatabase(db), before);
 
   const { settlement } = payload.reply;
   const saved = await api("/api/splits/settlements/create", { groupId: null, date: settlement.date, fromPersonName: settlement.fromPersonName, toPersonName: settlement.toPersonName, amountMinor: settlement.amountMinor, currency: settlement.currency });
   assert.equal(saved.status, 200, JSON.stringify(saved.payload));
+  // The card's figures are the ones the payment wrote.
+  assert.deepEqual([saved.payload.owedBeforeMinor, saved.payload.owedAfterMinor], [owedBeforeMinor, owedAfterMinor]);
   // No expense was recorded for it.
   assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE amount_minor = 3000 AND description LIKE '%paid%'"), []);
 });
 
 test("AI off: who paid whom, the amount, and the two whole sentences when neither side is known", async (t) => {
   const { db } = await openSeededDatabase(t, template);
-  const tim = await turn(db, { text: "I paid Joyce back 20" });
+  const tim = await turn(db, { text: "I paid Joyce back 20, no group" });
   assert.deepEqual([tim.reply.settlement.fromPersonName, tim.reply.settlement.toPersonName, tim.reply.settlement.amountMinor], ["Tim", "Joyce", 2_000]);
   const noAmount = await turn(db, { text: "Joyce paid me back" });
   assert.deepEqual(noAmount.reply, { kind: "clarify", question: "How much was paid back? To settle everything that's owed, use Settle up on Splits.", options: ["Open Splits"] });
   // The household view with no login: "me" is nobody the app knows.
   const household = await turn(db, { text: "paid back 15", viewId: "household" });
   assert.deepEqual(household.reply, { kind: "clarify", question: "Who paid whom back?", options: ["Joyce paid Tim back $15", "Tim paid Joyce back $15"] });
-  const chip = await turn(db, { text: "Joyce paid Tim back $15", viewId: "household" });
+  const chip = await turn(db, { text: "Joyce paid Tim back $15 in Baby River", viewId: "household" });
   assert.deepEqual([chip.reply.settlement.fromPersonName, chip.reply.settlement.toPersonName, chip.reply.settlement.amountMinor], ["Joyce", "Tim", 1_500]);
 });
 
@@ -175,7 +185,7 @@ test("AI off, a card being filled: \"it's Joyce's\" sets its owner and \"split w
 test("AI on: a model that drafts an expense from \"Joyce paid me back $30\" is refused, repaired once, then answered with the payment draft", async (t) => {
   const { db } = await openSeededDatabase(t, template);
   const ai = stubAi({ action: "draft_entry", entry: { type: "expense", description: "Joyce paid me back", amount: "30" } });
-  const payload = await turn(db, { text: "Joyce paid me back $30" }, { ai });
+  const payload = await turn(db, { text: "Joyce paid me back $30, no group" }, { ai });
   assert.equal(payload.mode, "ai");
   assert.equal(payload.repaired, false);
   assert.equal(ai.calls.length, 2);

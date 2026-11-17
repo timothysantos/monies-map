@@ -21,8 +21,8 @@
 
 import { readCommandIntent } from "./ask-rules-intent";
 import { amountsIn, readDayWord } from "./ask-turn-names";
-import { readSharesByRules } from "./ask-turn-shares";
-import { askerId, findCategory, findGroup, findPerson, type AskTurnAction, type AskTurnContext, type AskTurnReply } from "./ask-turn";
+import { hasShareClause, readSharesByRules, withoutShareClauses } from "./ask-turn-shares";
+import { askerId, findCategory, findGroup, findPerson, saysNotShared, type AskTurnAction, type AskTurnContext, type AskTurnReply } from "./ask-turn";
 
 export const RULES_COPY = {
   cannotReadChange: "I couldn't read that change, so nothing changed. Tap Open this entry to change it yourself.",
@@ -62,8 +62,8 @@ export function readTurnRules(context: AskTurnContext): AskRulesReading {
 export function mayBeRulesTurn(text: string, focusKind: string | null): boolean {
   if (readCommandIntent(text)) return true;
   if ((focusKind === "saved_entry" || focusKind === "entry_list") && (changeTail(text) !== null || noteText(text) !== null)) return true;
-  if (focusKind === "draft" && (ownerWord(text) !== null || splitWords(text))) return true;
-  return BULK.test(text) || (splitWords(text) && amountsIn(text).size > 0);
+  if (focusKind === "draft" && (ownerWord(text) !== null || splitWords(text) || saysNotShared(text))) return true;
+  return BULK.test(text) || (splitWords(text) && amountsIn(withoutShareClauses(text)).size > 0);
 }
 
 function readCommand(intent: NonNullable<ReturnType<typeof readCommandIntent>>, text: string, context: AskTurnContext): AskRulesReading {
@@ -104,6 +104,10 @@ function readPaidBack(text: string, context: AskTurnContext): AskRulesReading {
   };
   const fromWord = known(from);
   const toWord = known(to);
+  // "… in Home & Bills", "…, no group": the group said (Ask audit B9; the
+  // question back's chips say it this way).
+  const groupName = [...context.groups].sort((left, right) => right.name.length - left.name.length)
+    .find((group) => lower.includes(group.name.toLowerCase()))?.name ?? (/\bno group\b/.test(lower) ? "no group" : null);
   // Neither side known: ask with the two whole sentences, so a tap reads as
   // the answer without AI.
   const [first, second] = context.people;
@@ -111,7 +115,7 @@ function readPaidBack(text: string, context: AskTurnContext): AskRulesReading {
     const money = `$${amount.replace(/\.00$/, "")}`;
     return { reply: { kind: "clarify", question: RULES_COPY.whoPaidBack, options: [RULES_COPY.paidBack(second.name, first.name, money), RULES_COPY.paidBack(first.name, second.name, money)] } };
   }
-  return act("draft_settlement", { settlement: { from: fromWord, to: toWord, amount } });
+  return act("draft_settlement", { settlement: { from: fromWord, to: toWord, amount, ...(groupName ? { group: groupName } : {}) } });
 }
 
 // The household's people a part of the message names ("me" and "I" too).
@@ -184,11 +188,21 @@ function ownerWord(text: string): string | null {
   return match ? match[1] : null;
 }
 
+// "split", "half", "50/50", "share it with", and a share stated with its
+// figure ("her share is 30"; Ask audit B4). "not shared" is not.
 function splitWords(text: string): boolean {
-  return /\b(?:split(?:ting)?|halves|half|go(?:ing)? dutch)\b|\b50\s*\/\s*50\b|\bshare(?:d)?\s+(?:it\s+)?with\b/i.test(text) && !/\bsplit group\b/i.test(text);
+  if (saysNotShared(text)) return false;
+  return (/\b(?:split(?:ting)?|halves|half|go(?:ing)? dutch)\b|\b50\s*\/\s*50\b|\bshare(?:d)?\s+(?:it\s+)?with\b/i.test(text) || hasShareClause(text)) && !/\bsplit group\b/i.test(text);
 }
 
 function readDraftChange(text: string, context: AskTurnContext): AskRulesReading {
+  // "not shared, just mine. it was S$21.80": the viewer's own, Splits off,
+  // and the amount if one is said (Ask audit B6, B11). Read before any
+  // other reader, so "S$" or "just" never becomes a wallet or a name.
+  if (saysNotShared(text)) {
+    const amounts = [...amountsIn(text)];
+    return act("edit_draft", { entry: { owner: "me", ...(amounts.length === 1 ? { amount: (amounts[0] / 100).toFixed(2) } : {}) } });
+  }
   if (splitWords(text)) {
     const shares = readSharesByRules(text, context.people.slice(0, 2), askerId(context))?.shares ?? [];
     return act("edit_draft", { entry: {}, split: { payer: null, group: null, shares } });
@@ -204,7 +218,7 @@ function readDraftChange(text: string, context: AskTurnContext): AskRulesReading
 // "dinner $80 split with Serene", "taxi 30 half with serene": a new shared
 // expense with Splits on (the model's draft_split_expense).
 function readSplitExpense(text: string, context: AskTurnContext): AskRulesReading {
-  if (!splitWords(text) || amountsIn(text).size === 0 || /\?\s*$/.test(text)) return null;
+  if (!splitWords(text) || amountsIn(withoutShareClauses(text)).size === 0 || /\?\s*$/.test(text)) return null;
   const shares = readSharesByRules(text, context.people.slice(0, 2), askerId(context))?.shares ?? [];
   return act("draft_split_expense", { entry: {}, split: { payer: null, group: null, shares } });
 }

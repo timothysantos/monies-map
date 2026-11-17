@@ -14,6 +14,7 @@
 // people. Whatever is left is the description.
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
+import { habitMerchantKey } from "./ask-habits";
 import { categoryFromEverydayWords } from "./category-keywords";
 import { selectShortcutAccount } from "./app-repository-shortcuts";
 import { isBankTransferAccount, isCashWalletAccount, paymentWayAccountId, type PaymentWayKind } from "./payment-ways";
@@ -54,6 +55,9 @@ export interface EntryDraftContext {
   paymentWays?: PaymentWayDto[];
   // The person whose view is open, for "mine" and "I paid".
   viewerName?: string;
+  // Each shop's habitual category the person confirmed (loadCategoryHabitMap),
+  // by habitMerchantKey: it comes before the household's rules (Ask audit B13).
+  categoryHabits?: Record<string, string>;
 }
 
 // What the optional AI gap-filler may add, already validated. It is used only
@@ -305,8 +309,15 @@ export function parseEntrySentence(
     ? matchCategoryRule(description.value, context.categoryMatchRules)
     : undefined;
   const knownCategory = (name: string) => !context.categoryNames.length || context.categoryNames.includes(name);
+  // The person's own habit for this shop (they filed it there again and
+  // again) comes first: a rule or a word list never overrides it.
+  const habitCategory = description && !isTransfer && entryType.value === "expense"
+    ? context.categoryHabits?.[habitMerchantKey(description.value)]
+    : undefined;
   if (isTransfer) {
     categoryName = { value: "Transfer", source: entryType.source };
+  } else if (habitCategory && habitCategory !== "Transfer" && knownCategory(habitCategory)) {
+    categoryName = { value: habitCategory, source: "rule" };
   } else if (ruleCategory && ruleCategory !== "Transfer" && knownCategory(ruleCategory)) {
     categoryName = { value: ruleCategory, source: "rule" };
   } else if (description && entryType.value === "expense" && categoryFromEverydayWords(description.value, context.categoryNames)) {

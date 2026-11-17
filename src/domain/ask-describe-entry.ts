@@ -103,8 +103,49 @@ function groundedWords(value: unknown, ground: Ground): string | null {
   return wordsOf(text).every((word) => ground.words.has(word)) ? tidyCashDescription(scrubName(text)) || null : null;
 }
 
+// The answer to Ask's own "What was it?" after "the 12.80 was…": this
+// message is the words for that payment (Ask audit B12), read with the
+// amount and the person from the message that asked, so it can never
+// become a second entry. Null for anything else.
+export function describeAnswerAction(context: AskTurnContext): AskTurnAction | null {
+  const history = context.history ?? [];
+  const last = history.at(-1);
+  if (!last || last.role !== "app" || last.text.trim() !== DESCRIBE_COPY.whatWasIt) return null;
+  const asked = [...history].reverse().find((message) => message.role === "user")?.text ?? "";
+  const before = readDescribeRules(asked, { ...context, text: asked, history: [] }, { byAmount: true });
+  if (!before?.describe?.amount && context.focus?.kind !== "saved_entry") return null;
+  const now = readDescribeRules(context.text, { ...context, history: [] });
+  if (!now?.describe?.words && !now?.describe?.category) return null;
+  return {
+    ...now,
+    split: now.split ?? before?.split ?? null,
+    describe: {
+      ...now.describe,
+      amount: before?.describe?.amount ?? null,
+      shared_with: now.describe.shared_with ?? before?.describe?.shared_with ?? null
+    }
+  };
+}
+
 export function validateDescribeEntry(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
-  const raw = action.describe ?? {};
+  // The model's words, else the person's own: "the 12.80 was ramen with
+  // serene" is "ramen", shared with Serene, even when the model left the
+  // words or the person out (Ask audit B12). Only that "the <amount> was …"
+  // form is read this way; any other message keeps the model's reading.
+  const ruled = context.focus?.kind === "saved_entry" ? null : readDescribeRules(context.text, context, { byAmount: true })?.describe ?? null;
+  const given = action.describe ?? {};
+  const modelWords = groundedWords(given.words, ground);
+  const raw = {
+    ...given,
+    words: modelWords ? given.words : ruled?.words ?? given.words,
+    shared_with: given.shared_with ?? ruled?.shared_with ?? null,
+    category: given.category ?? ruled?.category ?? null,
+    amount: given.amount ?? ruled?.amount ?? null
+  };
+  if (!action.split && ruled && raw.shared_with && !given.shared_with) {
+    const shares = readSharesByRules(context.text, context.people.slice(0, 2), askerId(context))?.shares ?? [];
+    if (shares.length) action = { ...action, split: { payer: null, group: null, shares } };
+  }
   const focus = context.focus?.kind === "saved_entry" ? context.focus.entry : null;
   let amountMinor: number | null = null;
   if (!focus) {

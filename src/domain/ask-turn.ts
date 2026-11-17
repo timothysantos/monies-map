@@ -39,7 +39,7 @@ import {
   readMonthWord,
   readShareValue
 } from "./ask-turn-names";
-import { interpretShareNumber, readShareMentions, readSharesByRules } from "./ask-turn-shares";
+import { hasShareClause, interpretShareNumber, readShareMentions, readSharesByRules, withoutShareClauses } from "./ask-turn-shares";
 import {
   describePhase2Actions,
   validateBlocked,
@@ -57,7 +57,7 @@ import {
   type AskResolveRequest
 } from "./ask-turn-actions";
 import { describeUsuallySharedAction, validateUsuallyShared } from "./ask-usually-shared";
-import { describeDescribeAction, validateDescribeEntry } from "./ask-describe-entry";
+import { describeAnswerAction, describeDescribeAction, validateDescribeEntry } from "./ask-describe-entry";
 import { readCommandIntent } from "./ask-rules-intent";
 import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripPage, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
@@ -424,6 +424,8 @@ export interface AskTurnDraftPatch {
   // A person's name, or "Shared" for a shared expense.
   ownerName?: string;
   splitBasisPoints?: number;
+  // The first person's exact share when it was stated in money.
+  splitAmountMinor?: number;
 }
 
 export interface AskSplitProposal {
@@ -451,6 +453,10 @@ export interface AskSettlementDraft {
   date: string;
   groupId: string | null;
   groupName: string;
+  // What the payer owes the one paid back in that group before and after
+  // this payment (negative: owed the other way), as the app reads it.
+  owedBeforeMinor?: number;
+  owedAfterMinor?: number;
 }
 
 export interface AskTurnFilter {
@@ -887,7 +893,8 @@ function sourceAi<T>(value: T): EntryDraftFieldDto<T> {
 // is left to the card (its missing list and questions) and said as an
 // assumption with one-tap alternatives; it is never a question back, because
 // the person sees the draft and fixes the one field.
-function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, ground: Ground, shared: boolean): AskTurnReply {
+function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, ground: Ground, sharedAsked: boolean): AskTurnReply {
+  let shared = sharedAsked;
   // "Serene paid me back $50", "delete the Koufu lunch", "open splits": never
   // a new entry, whatever the model chose. The repair turn is told which
   // action fits; the route falls back to the rules' reading of it.
@@ -895,8 +902,20 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   if (notEntry) {
     return askBack({ code: "not_an_entry", field: "action", valid: [NOT_ENTRY_ACTION[notEntry.kind]] }, COPY.sayAgain);
   }
+  // The answer to Ask's own "What was it?" about a quick payment is those
+  // words for that payment, never a second entry (Ask audit B12).
+  const describing = describeAnswerAction(context);
+  if (describing) {
+    return validateDescribeEntry(describing, context, buildGround(context));
+  }
+  // Splits only when the person's own words share it ("split", "half",
+  // "with Serene", "her share is 30"), whatever the model chose (B6).
+  if (shared && !mentionsSharing(context.text, context)) {
+    shared = false;
+  }
   const raw = action.entry ?? {};
-  const base = parseEntrySentence(context.text, context.entry);
+  // A share stated with its figure is not the entry's amount (B4).
+  const base = parseEntrySentence(shared ? withoutShareClauses(context.text) : context.text, context.entry);
   const fields: EntryDraftDto["fields"] = { ...base.fields };
   const set = new Set<EntryDraftField | "categoryName" | "entryType">();
   const assumptions: AskAssumption[] = [];
@@ -946,7 +965,9 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     const namedByPerson = typeof category === "string" && category !== "unknown" && context.text.toLowerCase().includes(category.toLowerCase());
     const modelUseful = typeof category === "string" && category !== "unknown" && !/^other\b/i.test(category);
     if (typeof category === "string" && category !== "unknown" && (namedByPerson || (!byRule && modelUseful))) {
-      fields.categoryName = sourceAi(category);
+      // A category the person named is theirs (a habit counts it); the
+      // model's own pick is not.
+      fields.categoryName = namedByPerson ? { value: category, source: "sentence" } : sourceAi(category);
       set.add("categoryName");
     }
     if (/^other\b/i.test(fields.categoryName.value) && fields.categoryName.source !== "sentence") {
@@ -995,6 +1016,8 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     assumptions.push(...(shares.assumptions ?? []));
     fields.ownershipType = sourceAi("shared");
     fields.splitBasisPoints = sourceAi(shares.firstBasisPoints);
+    // A share stated in money is saved to the cent.
+    if (shares.firstAmountMinor !== undefined) fields.splitAmountMinor = sourceAi(shares.firstAmountMinor);
     set.add("splitBasisPoints");
     const group = findGroup(split.group, context);
     if (group === "unknown") return groupQuestion(context, String(split.group));
@@ -1029,6 +1052,37 @@ const NOT_ENTRY_ACTION: Record<NonNullable<ReturnType<typeof readCommandIntent>>
   owes: "answer_question",
   open_page: "open_page"
 };
+
+// Whether the person's own words share an expense: "split", "half", "share",
+// "50/50", "go dutch", "with Serene", "for Serene", "Serene's share", "all
+// Serene's" (names and nicknames the household uses). "ramen 2400 yen" does
+// not, so it is never drafted onto Splits (Ask audit B6).
+export function mentionsSharing(text: string, context: Pick<AskTurnContext, "people" | "nicknames">): boolean {
+  const lower = String(text ?? "").toLowerCase();
+  if (saysNotShared(lower)) return false;
+  if (/\b(?:split|splits|splitting|share|shared|sharing|half|halves|halve|evenly|equally|go(?:ing)? dutch)\b/.test(lower) || hasShareClause(lower) || [...lower.matchAll(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/g)].some((ratio) => Number(ratio[1]) + Number(ratio[2]) === 100)) return true;
+  const names = [
+    ...context.people.map((person) => person.name.toLowerCase()),
+    ...(context.nicknames ?? []).map((nickname) => nickname.alias.toLowerCase())
+  ].filter(Boolean);
+  return names.some((name) => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(String.raw`\b(?:with|for|w\/|and|&)\s+${escaped}\b|\b${escaped}(?:'s|’s)?\s+(?:owes?|pays?|covers?)\b|\ball\s+${escaped}\b`, "u").test(lower);
+  });
+}
+
+// "not shared", "just mine", "only me", "no split": the person says it is
+// one person's, so nothing goes on Splits.
+export function saysNotShared(text: string): boolean {
+  return /\b(?:not|isn'?t|wasn'?t|no|don'?t|dont)\s+(?:be\s+)?(?:shared|split|splitting|sharing)\b|\b(?:just|only|all)\s+(?:mine|me|my own)\b|\bnot\s+on\s+splits\b/i.test(String(text ?? ""));
+}
+
+// "it's mine", "it's Serene's", "mine", "Serene's": whose it is, not who
+// paid ("Serene paid" keeps a shared card shared).
+export function saysWhoseItIs(text: string): boolean {
+  const lower = String(text ?? "").toLowerCase().replace(/[.!]+$/, "").trim();
+  return !/\bpaid\b/.test(lower) && /(?:^|\b(?:it'?s|its|it is|it was|that'?s|this is|make it)\s+)(?:mine|my own|[\p{L}]+(?:'s|’s|s'))(?:\s+one)?$/u.test(lower);
+}
 
 // Attach the assumptions a reply carries, when there are any.
 export function withAssumptions(reply: AskTurnReply, assumptions: readonly AskAssumption[]): AskTurnReply {
@@ -1131,9 +1185,18 @@ function validateDraftPatch(action: AskTurnAction, context: AskTurnContext, grou
     assumptions.push(...(shares.assumptions ?? []));
     patch.ownerName = "Shared";
     patch.splitBasisPoints = shares.firstBasisPoints;
+    if (shares.firstAmountMinor !== undefined) patch.splitAmountMinor = shares.firstAmountMinor;
     const group = findGroup(action.split.group, context);
     if (group === "unknown") return groupQuestion(context, String(action.split.group));
     share = { on: true, groupId: group?.id ?? "" };
+  } else if (context.focus?.kind === "draft" && (saysNotShared(context.text) || (patch.ownerName && patch.ownerName !== "Shared" && saysWhoseItIs(context.text)))) {
+    // "not shared, just mine", "it's mine", "it's Serene's": one owner, and
+    // Splits off (Ask audit B6). The words decide, not the model.
+    if (!patch.ownerName || patch.ownerName === "Shared") {
+      const viewer = currentPerson(context);
+      if (viewer) patch.ownerName = viewer.name;
+    }
+    if (context.focus.draft.shareOn || context.focus.draft.ownerName === "Shared") share = { on: false, groupId: "" };
   }
   if (!Object.keys(patch).length && !share) {
     return issues[0] ?? askBack({ code: "nothing_to_change", field: "entry" }, COPY.whatToChange);
@@ -1336,6 +1399,13 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
 }
 
 function validateSettlement(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
+  // "S owes me 20" says what is owed; it is never a payment one tap from
+  // Record payment (Ask audit B5). The repair turn is told the action that
+  // fits, and the route falls back to the rules' who-owes-whom answer.
+  const notPayment = readCommandIntent(context.text);
+  if (notPayment?.kind === "owes") {
+    return askBack({ code: "not_an_entry", field: "action", valid: [NOT_ENTRY_ACTION[notPayment.kind]] }, COPY.sayAgain);
+  }
   const raw = action.settlement ?? {};
   let from = findPerson(raw.from, context);
   let to = findPerson(raw.to, context);
@@ -1352,18 +1422,30 @@ function validateSettlement(action: AskTurnAction, context: AskTurnContext, grou
   }
   const date = readDate(raw.date, context);
   if (!date.ok) return askBack({ code: "date_invalid", field: "settlement.date" }, COPY.dateQuestion, [COPY.chips.today, COPY.chips.yesterday]);
-  const group = findGroup(raw.group, context) ?? (context.focus?.kind === "split_group" ? context.focus.group : null);
-  if (group === "unknown") return groupQuestion(context, String(raw.group));
+  const named = findGroup(raw.group, context);
+  if (named === "unknown") return groupQuestion(context, String(raw.group));
+  const group = named ?? (context.focus?.kind === "split_group" ? context.focus.group : null);
+  // "no group" said is a choice; nothing said is not.
+  const saidNoGroup = !named && typeof raw.group === "string" && raw.group.trim() !== "";
+  // The route reads what is owed in each group before the card is drafted
+  // (ask-turn-resolve.ts): the group with an open balance is the one, two or
+  // more are asked, and the card shows the balance before and after (B9).
   return {
-    kind: "settlement_draft",
-    settlement: {
-      fromPersonName: from.name,
-      toPersonName: to.name,
-      amountMinor: amount.minor,
-      currency: group?.currency ?? "SGD",
-      date: date.date ?? context.today,
-      groupId: group?.id ?? null,
-      groupName: group?.name ?? ""
+    kind: "resolve",
+    request: {
+      type: "settlement",
+      settlement: {
+        fromPersonName: from.name,
+        toPersonName: to.name,
+        amountMinor: amount.minor,
+        currency: group?.currency ?? "SGD",
+        date: date.date ?? context.today,
+        groupId: group?.id ?? null,
+        groupName: group?.name ?? ""
+      },
+      fromPersonId: from.id,
+      toPersonId: to.id,
+      groupChosen: Boolean(group) || saidNoGroup
     }
   };
 }

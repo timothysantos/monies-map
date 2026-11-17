@@ -361,6 +361,71 @@ test("draft_split_expense: a shared expense with the payer and Joyce's share, on
   assert.equal(reply.draft.createBody.ownerName, "Tim");
 });
 
+test("B4: 'her share is 30' is Joyce's 30 of an 80 dinner, kept to the cent, and never the entry's amount", () => {
+  const text = "dinner 80 at jumbo split with joyce, her share is 30";
+  // The model's reading and the rules' reading give the same card.
+  for (const split of [{ shares: [{ person: "Joyce", value: "30" }] }, { shares: [] }]) {
+    const reply = validateAskTurnAction(act("draft_split_expense", { entry: { amount: "80", description: "dinner at jumbo" }, split }), makeContext({ text }));
+    assert.equal(reply.kind, "entry_draft", JSON.stringify(reply));
+    assert.equal(reply.draft.fields.amountMinor.value, 8_000);
+    assert.equal(reply.draft.fields.splitBasisPoints.value, 6_250);
+    assert.equal(reply.draft.fields.splitAmountMinor.value, 5_000);
+    assert.equal(reply.draft.questions.some((question) => question.field === "amountMinor"), false);
+  }
+  // Negative: a share above the total is refused, never trimmed.
+  const over = validateAskTurnAction(act("draft_split_expense", { entry: { amount: "80" }, split: { shares: [{ person: "Joyce", value: "$90" }] } }), makeContext({ text: "dinner 80 split with joyce, her share is $90" }));
+  assert.equal(over.kind, "clarify");
+});
+
+test("B6: Splits only when the words share it; 'not shared, just mine' and 'it's mine' turn it off", () => {
+  // The model drafted a split the message never asked for: a plain expense.
+  const ramen = validateAskTurnAction(act("draft_split_expense", { entry: { description: "ramen", date: "yesterday" }, split: { shares: [] } }), makeContext({ text: "ramen 2400 yen yesterday" }));
+  assert.equal(ramen.kind, "entry_draft");
+  assert.equal(ramen.share, null);
+  assert.equal(ramen.draft.fields.ownershipType.value, "direct");
+  assert.equal((ramen.assumptions ?? []).some((line) => /split it evenly/.test(line.text)), false);
+  // Words that do share it keep it.
+  for (const text of ["grab 18 for joyce", "taxi 30 half with joyce", "dinner 80 split 70/30", "lunch 12 with joyce"]) {
+    const reply = validateAskTurnAction(act("draft_split_expense", { entry: {}, split: { shares: [] } }), makeContext({ text }));
+    assert.deepEqual(reply.share?.on, true, text);
+  }
+  const draft = { variant: "expense", description: "Ramen", date: TODAY, accountName: "Citi Rewards 4417", categoryName: "Food & Drinks", ownerName: "Shared", amountMinor: 2_180, shareOn: true, splitGroupName: "" };
+  const notShared = validateAskTurnAction(act("edit_draft", { entry: {} }), makeContext({ focus: { kind: "draft", draft }, text: "not shared, just mine. it was S$21.80" }));
+  assert.deepEqual(notShared, { kind: "draft_patch", patch: { ownerName: "Tim" }, share: { on: false, groupId: "" } });
+  const mine = validateAskTurnAction(act("edit_draft", { entry: { owner: "me" } }), makeContext({ focus: { kind: "draft", draft }, text: "it's mine" }));
+  assert.deepEqual(mine.share, { on: false, groupId: "" });
+  // Negative: "Joyce paid" is who paid, so the card stays shared.
+  const paid = validateAskTurnAction(act("edit_draft", { entry: { owner: "Joyce" } }), makeContext({ focus: { kind: "draft", draft }, text: "Joyce paid" }));
+  assert.equal(paid.share, null);
+});
+
+test("B12: the answer to 'What was it?' after 'the 12.80 was…' describes that payment, never a second entry", () => {
+  const history = [
+    { role: "user", text: "the 12.80 was ramen with joyce" },
+    { role: "app", text: "What was it? A few words are enough, like: dinner ramen." }
+  ];
+  const reply = validateAskTurnAction(act("draft_entry", { entry: { description: "dinner ramen", amount: "12.80" } }), makeContext({ text: "dinner ramen", history }));
+  assert.equal(reply.kind, "resolve", JSON.stringify(reply));
+  assert.deepEqual([reply.request.type, reply.request.amountMinor, reply.request.words, reply.request.sharedWith?.name], ["describe_entry", 1_280, "Dinner ramen", "Joyce"]);
+  // The model left the words out: the person's own are used.
+  const direct = validateAskTurnAction(act("describe_entry", { describe: { words: null, shared_with: null, amount: "12.80" } }), makeContext({ text: "the 12.80 was ramen with joyce" }));
+  assert.deepEqual([direct.kind, direct.request.words, direct.request.sharedWith?.name], ["resolve", "Ramen", "Joyce"]);
+  // Negative: a new entry with no such question before it stays a new entry.
+  assert.equal(validateAskTurnAction(act("draft_entry", { entry: { description: "dinner ramen", amount: "12.80" } }), makeContext({ text: "dinner ramen 12.80" })).kind, "entry_draft");
+});
+
+test("B13: a shop's habit comes before the household's rules and the everyday words in a new draft", () => {
+  const base = makeContext({ text: "koufu lunch 6" });
+  const withHabit = { ...base, entry: { ...base.entry, categoryHabits: { "koufu lunch": "Groceries" } } };
+  const reply = validateAskTurnAction(act("draft_entry", { entry: { description: "koufu lunch", amount: "6", category: "Food & Drinks" } }), withHabit);
+  assert.equal(reply.draft.fields.categoryName.value, "Groceries");
+  // The person naming a category still wins, and is theirs.
+  const named = validateAskTurnAction(act("draft_entry", { entry: { description: "koufu lunch", amount: "6", category: "Food & Drinks" } }), { ...withHabit, text: "koufu lunch 6 food & drinks" });
+  assert.deepEqual([named.draft.fields.categoryName.value, named.draft.fields.categoryName.source], ["Food & Drinks", "sentence"]);
+  // Negative: no habit, the everyday words as before.
+  assert.equal(validateAskTurnAction(act("draft_entry", { entry: { description: "koufu lunch", amount: "6" } }), base).draft.fields.categoryName.value, "Food & Drinks");
+});
+
 test("edit_draft: only the named fields change on the card being filled; on a saved card it is an edit of that entry", () => {
   const draft = { variant: "expense", description: "Lunch", date: TODAY, accountName: "Citi Rewards 4417", categoryName: "Other", ownerName: "Tim", amountMinor: 1_200, shareOn: false, splitGroupName: "" };
   const reply = validateAskTurnAction(act("edit_draft", { entry: { amount: "15", category: "food & drinks" } }), makeContext({ focus: { kind: "draft", draft }, text: "make it $15, food" }));
@@ -420,10 +485,22 @@ test("the everyday words reach the household's own category names ('Transport' f
 
 test("draft_settlement: who paid whom and the written amount; one person both ways or no amount is asked", () => {
   const context = makeContext({ text: "Joyce paid me back $80 today" });
+  // The route reads what is owed in each group before the card (B9).
   assert.deepEqual(validateAskTurnAction(act("draft_settlement", { settlement: { from: "Joyce", to: "me", amount: "80" } }), context), {
-    kind: "settlement_draft",
-    settlement: { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 8_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" }
+    kind: "resolve",
+    request: {
+      type: "settlement",
+      settlement: { fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 8_000, currency: "SGD", date: TODAY, groupId: null, groupName: "" },
+      fromPersonId: "person-joyce",
+      toPersonId: "person-tim",
+      groupChosen: false
+    }
   });
+  // "no group" said is a choice.
+  assert.equal(validateAskTurnAction(act("draft_settlement", { settlement: { from: "Joyce", to: "me", amount: "80", group: "no group" } }), makeContext({ text: "Joyce paid me back $80, no group" })).request.groupChosen, true);
+  // B5: a balance is never a payment, whatever the model chose.
+  const owes = validateAskTurnAction(act("draft_settlement", { settlement: { from: "Joyce", to: "me", amount: "20" } }), makeContext({ text: "J owes me 20" }));
+  assert.deepEqual([owes.kind, owes.error?.code, owes.error?.valid], ["clarify", "not_an_entry", ["answer_question"]]);
   assert.equal(validateAskTurnAction(act("draft_settlement", { settlement: { from: "Tim", to: "me", amount: "80" } }), context).kind, "clarify");
   assert.equal(validateAskTurnAction(act("draft_settlement", { settlement: { from: "Joyce", to: "Tim", amount: null } }), makeContext({ text: "settle up with joyce" })).kind, "clarify");
 });

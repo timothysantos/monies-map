@@ -1262,6 +1262,9 @@ export default {
         note?: string;
         splitBasisPoints?: number;
         time?: unknown;
+        // Ask's change card set a new category the person asked for: a
+        // habit confirmation (Ask audit B13).
+        learnCategory?: unknown;
       }>();
 
       if (!body.entryId || !body.date || !body.description || (!body.accountId && !body.accountName) || !body.categoryName || !body.ownershipType) {
@@ -1273,7 +1276,13 @@ export default {
       }
 
       try {
-        return json({
+        const learnCategory = body.learnCategory === true && body.entryType === "expense";
+        const entryId = body.entryId;
+        const categoryName = body.categoryName;
+        const learned = (result: object) => (learnCategory
+          ? learnCategoryHabitForEntry(env.DB, { entryId, categoryName, source: "ask" }).then(() => result)
+          : Promise.resolve(result));
+        return json(await learned({
           ok: true,
           ...(await updateEntryRecord(env.DB, {
             entryId: body.entryId,
@@ -1293,7 +1302,7 @@ export default {
             splitBasisPoints: body.splitBasisPoints,
             time: body.time as string | null | undefined
           }))
-        });
+        }));
       } catch (error) {
         return splitWriteErrorResponse(error, "Failed to update entry");
       }
@@ -1338,23 +1347,29 @@ export default {
         categoryName?: string;
         changes?: Array<{ entryId?: unknown; fromCategoryName?: unknown; categoryName?: unknown }>;
         confirmedCount?: unknown;
+        learn?: unknown;
       }>();
 
       // Many entries at once (Ask's bulk recategorise and its Undo).
       if (Array.isArray(body.changes)) {
         const text = (value: unknown) => (typeof value === "string" ? value : "");
         try {
-          return json({
-            ok: true,
-            ...(await updateEntryCategoriesRecord(env.DB, {
-              changes: body.changes.map((change) => ({
-                entryId: text(change?.entryId),
-                fromCategoryName: text(change?.fromCategoryName),
-                categoryName: text(change?.categoryName)
-              })),
-              confirmedCount: typeof body.confirmedCount === "number" ? body.confirmedCount : undefined
-            }))
+          const updated = await updateEntryCategoriesRecord(env.DB, {
+            changes: body.changes.map((change) => ({
+              entryId: text(change?.entryId),
+              fromCategoryName: text(change?.fromCategoryName),
+              categoryName: text(change?.categoryName)
+            })),
+            confirmedCount: typeof body.confirmedCount === "number" ? body.confirmedCount : undefined
           });
+          // Ask's change card for one entry, saved by the person ("make it
+          // food"): their own choice, so a habit confirmation, or an
+          // override of the old habit (Ask audit B13). Best effort.
+          const [only] = body.changes;
+          if (body.learn === true && body.changes.length === 1 && text(only?.entryId) && text(only?.categoryName)) {
+            await learnCategoryHabitForEntry(env.DB, { entryId: text(only.entryId), categoryName: text(only.categoryName), source: "ask" });
+          }
+          return json({ ok: true, ...updated });
         } catch (error) {
           return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry categories" }, 400);
         }

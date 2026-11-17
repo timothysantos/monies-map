@@ -49,6 +49,7 @@ import {
   type AskTurnBlocked,
   type AskTurnContext,
   type AskTurnFocusEntry,
+  type AskSettlementDraft,
   type AskTurnGroup,
   type AskTurnReply,
   type Ground
@@ -250,7 +251,63 @@ export type AskResolveRequest =
   | { type: "plan_link"; line: string; month: string; words: string }
   | AskTripEventRequest
   | AskUsuallySharedRequest
-  | AskDescribeRequest;
+  | AskDescribeRequest
+  | AskSettlementRequest;
+
+// "Serene paid me back $50": the payment, before the route has read what is
+// owed. `groupChosen`: the person named a group (or "no group"), or the
+// page is on one.
+export interface AskSettlementRequest {
+  type: "settlement";
+  settlement: AskSettlementDraft;
+  fromPersonId: string;
+  toPersonId: string;
+  groupChosen: boolean;
+}
+
+// What the payer owes the one paid back, per group (loadOpenSplitOwed):
+// positive, the payer owes; negative, the other way.
+export interface AskOwedLine {
+  groupId: string | null;
+  groupName: string;
+  currency: string;
+  owedMinor: number;
+}
+
+const HOME_CURRENCY = "SGD";
+
+// The payment card (Ask audit B9). With no group said: the one group where
+// these two have something open is the one; two or more are asked, each
+// chip the whole payment again with its group, so a tap reads the same
+// with AI off. The card carries what is owed in that group before and
+// after, so a payment that is more or less than what is owed shows it (the
+// command closes the group only at zero).
+export function buildSettlementDraft(request: AskSettlementRequest, owed: AskOwedLine[] | null, context: AskTurnContext): AskTurnReply {
+  const { settlement } = request;
+  let chosen = settlement;
+  if (!request.groupChosen && owed) {
+    const open = owed.filter((line) => line.owedMinor !== 0 && line.currency === HOME_CURRENCY);
+    if (open.length > 1) {
+      const money = `$${(settlement.amountMinor / 100).toFixed(2).replace(/\.00$/, "")}`;
+      const paid = `${settlement.fromPersonName} paid ${settlement.toPersonName} back ${money}`;
+      return {
+        kind: "clarify",
+        question: COPY.groupQuestion,
+        options: open.slice(0, 4).map((line) => (line.groupId ? `${paid} in ${line.groupName}` : `${paid}, no group`))
+      };
+    }
+    if (open.length === 1) {
+      const [line] = open;
+      chosen = { ...settlement, groupId: line.groupId, groupName: line.groupId ? line.groupName : "", currency: line.currency };
+    }
+  }
+  if (!owed || context.people.length < 2) return { kind: "settlement_draft", settlement: chosen };
+  const before = owed.find((line) => (line.groupId ?? null) === (chosen.groupId ?? null))?.owedMinor ?? 0;
+  return {
+    kind: "settlement_draft",
+    settlement: { ...chosen, owedBeforeMinor: before, owedAfterMinor: before - chosen.amountMinor }
+  };
+}
 
 const PREVIEW_ROWS = 8;
 const MAX_MATCHES = 6;
@@ -373,7 +430,8 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
     rows,
     entries: [entryRow(entry)],
     count: 1,
-    save: [{ path: "/api/entries/update", body: body(next) }],
+    // A new category the person asked for counts as their habit (B13).
+    save: [{ path: "/api/entries/update", body: { ...body(next), ...(next.categoryName !== entry.categoryName ? { learnCategory: true } : {}) } }],
     undo: [{ path: "/api/entries/update", body: body(previous) }],
     month: months[0],
     refresh: ["entries", "month", "summary", ...(entry.linkedToSplits ? ["splits" as const] : [])]
@@ -427,7 +485,7 @@ export function validateRecategorise(action: AskTurnAction, context: AskTurnCont
     rows: [{ field: "category", before: entry.categoryName, after: category }],
     entries: [entryRow(entry)],
     count: 1,
-    save: [{ path: "/api/entries/update-category", body: { changes: one } }],
+    save: [{ path: "/api/entries/update-category", body: { changes: one, learn: true } }],
     undo: [{ path: "/api/entries/update-category", body: { changes: reverse(one) } }],
     month: entry.date.slice(0, 7),
     refresh: ["entries", "month", "summary"]
@@ -759,7 +817,34 @@ function wordsRule(words: string, categoryName = ""): CategoryMatchRuleDto {
 
 function matchesWords(entry: Pick<AskEntryCandidate, "description" | "originalDescription">, words: string) {
   const rule = wordsRule(words, "match");
-  return [entry.originalDescription, entry.description].some((text) => Boolean(text) && matchCategoryRule(String(text), [rule]) === "match");
+  return [entry.originalDescription, entry.description].some((text) => Boolean(text) && matchCategoryRule(String(text), [rule]) === "match")
+    && !isOtherMerchant(entry, words);
+}
+
+// A bank line whose shop is a longer name that starts with the person's
+// word is another shop: "Grab" rides never sweep in "GRAB*GRABFOOD" meals
+// or "GRABPAY" top-ups (Ask audit B10). A code with digits ("Grab*
+// A-9UH7853GW7TAAV") is not a name.
+function isOtherMerchant(entry: Pick<AskEntryCandidate, "description" | "originalDescription">, words: string) {
+  const said = wordsOf(words).filter((word) => /^\p{L}{3,}$/u.test(word));
+  if (!said.length) return false;
+  const tokens = [entry.originalDescription, entry.description]
+    .flatMap((text) => String(text ?? "").toLowerCase().split(/[^\p{L}\p{N}]+/u))
+    .filter((token) => /^\p{L}+$/u.test(token));
+  return said.some((word) => tokens.some((token) => token !== word && token.startsWith(word) && token.length >= word.length + 3));
+}
+
+// The shop names a bulk change moves, most entries first: "GRAB*TRIP,
+// Grab* A-9UH… and 2 more", so a name that does not belong shows before Save.
+function matchedNames(entries: AskEntryCandidate[]) {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const name = entry.description.replace(/\s+/g, " ").trim();
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const names = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])).map(([name]) => name);
+  const shown = names.slice(0, 3).join(", ");
+  return names.length > 3 ? `${shown} and ${names.length - 3} more` : shown;
 }
 
 export function buildBulkRecategorise(
@@ -784,19 +869,26 @@ export function buildBulkRecategorise(
   const categoryId = context.categories?.find((category) => category.name === request.categoryName)?.id ?? "";
   // A rule is offered only when no active rule already files these words
   // into that category.
+  const sweepsOtherShop = candidates.some((entry) => isOtherMerchant(entry, request.words));
   const covered = context.entry.categoryMatchRules.some((rule) => rule.isActive && rule.categoryName === request.categoryName && moving.some((entry) => matchCategoryRule(entry.description, [rule]) === request.categoryName));
   const from = [...new Set(moving.map((entry) => entry.categoryName))];
   return change({
     type: "recategorise_bulk",
     title: request.words,
-    rows: [{ field: "category", before: from.length === 1 ? from[0] : "", after: request.categoryName }],
+    rows: [
+      { field: "category", before: from.length === 1 ? from[0] : "", after: request.categoryName },
+      // The names it matched, so a shop that does not belong shows (B10).
+      { field: "description", before: "", after: matchedNames(moving) }
+    ],
     entries: moving.slice(0, PREVIEW_ROWS).map((entry) => ({ entryId: entry.entryId, date: entry.date, description: entry.description, amountMinor: entry.amountMinor, currency: entry.currency, categoryName: entry.categoryName })),
     count: moving.length,
     confirmCount: moving.length > BULK_RECATEGORISE_CONFIRM_ABOVE ? moving.length : null,
     save: [{ path: "/api/entries/update-category", body: { changes } }],
     // Undo is the person's own tap, so it carries its count as confirmed.
     undo: [{ path: "/api/entries/update-category", body: { changes: reverse(changes), ...(changes.length > BULK_RECATEGORISE_CONFIRM_ABOVE ? { confirmedCount: changes.length } : {}) } }],
-    rule: categoryId && !covered ? { pattern: request.words.toUpperCase(), categoryId, categoryName: request.categoryName } : null,
+    // A rule on the words would also file the other shop (GRABFOOD) next
+    // time, so none is offered then.
+    rule: categoryId && !covered && !sweepsOtherShop ? { pattern: request.words.toUpperCase(), categoryId, categoryName: request.categoryName } : null,
     month: moving[0].date.slice(0, 7),
     refresh: ["entries", "month", "summary"]
   });

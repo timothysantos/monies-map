@@ -11,6 +11,7 @@ import {
   buildMatches,
   buildMonthNote,
   buildPlanLink,
+  buildSettlementDraft,
   buildSimplify,
   buildTransferLink,
   type AskEntryCandidate,
@@ -34,6 +35,7 @@ import { loadMonthPlanRowsForDraft } from "./app-repository-months";
 import {
   loadSplitExpenses,
   loadSplitGroups,
+  loadOpenSplitOwed,
   loadSplitMatchCandidates,
   loadSplitSettlementCheckpoints,
   loadSplitSettlements,
@@ -71,6 +73,12 @@ export async function resolveAskTurnRequest(db: D1Database, request: AskResolveR
       return buildTripEventChange(request, await loadTripCandidates(db, request.source), context.tripEvents ?? [], context);
     case "describe_entry":
       return buildDescribeChange(request, await loadDescribeFacts(db, request, context), context);
+    case "settlement":
+      return buildSettlementDraft(
+        request,
+        await loadOpenSplitOwed(db, { debtorId: request.fromPersonId, creditorId: request.toPersonId }).catch(() => null),
+        context
+      );
     default:
       return { kind: "note", text: "Ask can't do that one yet. Try the page it lives on." };
   }

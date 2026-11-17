@@ -161,7 +161,7 @@ test("negative: no entry in focus, an amount the person never wrote, a stranger,
 test("recategorise one: the entry in focus moves category through the category command; Undo moves it back", () => {
   const reply = turn("recategorise", { recategorise: { category: "Taxi" } }, { focus: saved(), text: "make it taxi" });
   assert.equal(reply.change.type, "recategorise");
-  assert.deepEqual(reply.change.save, [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Food & Drinks", categoryName: "Taxi" }] } }]);
+  assert.deepEqual(reply.change.save, [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Food & Drinks", categoryName: "Taxi" }], learn: true } }]);
   assert.deepEqual(reply.change.undo, [{ path: "/api/entries/update-category", body: { changes: [{ entryId: "txn-1", fromCategoryName: "Taxi", categoryName: "Food & Drinks" }] } }]);
   assert.equal(turn("recategorise", { recategorise: { category: "Food & Drinks" } }, { focus: saved(), text: "food" }).kind, "note");
   assert.equal(turn("recategorise", { recategorise: { category: "Taxi" } }, { focus: saved({ entryType: "transfer" }), text: "taxi" }).kind, "note");
@@ -199,17 +199,45 @@ test("bulk preview: exactly the entries a rule with the words matches, outside t
   assert.equal(reply.kind, "change");
   const { change } = reply;
   assert.equal(change.type, "recategorise_bulk");
-  // "grab" (4 letters) matches inside GRABBAG too, exactly as a rule would.
-  assert.deepEqual(change.entries.map((entry) => entry.entryId), ["a", "e", "f", "b"]);
-  assert.equal(change.count, 4);
+  // "grab" never sweeps in another shop whose name only starts with it
+  // (GRABBAG; Ask audit B10).
+  assert.deepEqual(change.entries.map((entry) => entry.entryId), ["a", "f", "b"]);
+  assert.equal(change.count, 3);
   assert.equal(change.confirmCount, null);
   assert.deepEqual(change.save[0].body.changes.map((item) => [item.entryId, item.fromCategoryName, item.categoryName]), [
-    ["a", "Food & Drinks", "Transport"], ["e", "Food & Drinks", "Transport"], ["f", "Food & Drinks", "Transport"], ["b", "Other", "Transport"]
+    ["a", "Food & Drinks", "Transport"], ["f", "Food & Drinks", "Transport"], ["b", "Other", "Transport"]
   ]);
   assert.deepEqual(change.undo[0].body.changes.map((item) => [item.entryId, item.fromCategoryName, item.categoryName]), [
-    ["a", "Transport", "Food & Drinks"], ["e", "Transport", "Food & Drinks"], ["f", "Transport", "Food & Drinks"], ["b", "Transport", "Other"]
+    ["a", "Transport", "Food & Drinks"], ["f", "Transport", "Food & Drinks"], ["b", "Transport", "Other"]
   ]);
-  assert.deepEqual(change.rule, { pattern: "GRAB", categoryId: "cat-transport", categoryName: "Transport" });
+  // The names it moves are on the card.
+  assert.deepEqual(change.rows[1], { field: "description", before: "", after: "GRAB RIDE, KOPI" });
+  // A rule on "GRAB" would file GRABBAG next time, so none is offered.
+  assert.equal(change.rule, null);
+  // Without another shop in sight, the rule is offered.
+  const plain = buildBulkRecategorise(request, rows.filter((row) => row.entryId !== "e"), makeContext({ text: "make all Grab rides Transport" }));
+  assert.deepEqual(plain.change.rule, { pattern: "GRAB", categoryId: "cat-transport", categoryName: "Transport" });
+});
+
+test("B10: near-real Grab lines: rides move, GrabFood meals and GrabPay top-ups never do, and the card names what it moves", () => {
+  const request = { type: "recategorise_bulk", words: "grab", categoryName: "Public Transport", fromCategoryName: null, month: null };
+  const lines = [
+    candidate("trip-1", { description: "GRAB*TRIP", categoryName: "Taxi", date: "2026-11-06" }),
+    candidate("trip-2", { description: "Grab* A-9UH7853GW7TAAV Singapore     SGP", categoryName: "Taxi", date: "2026-11-05" }),
+    candidate("trip-3", { description: "GRAB*TRIP", categoryName: "Taxi", date: "2026-11-02", originalDescription: "GRAB*TRIP SINGAPORE SG" }),
+    candidate("food-1", { description: "GRAB*GRABFOOD", categoryName: "Food & Drinks", date: "2026-11-04" }),
+    candidate("food-2", { description: "Lunch", originalDescription: "GRAB*GRABFOOD SINGAPORE SG", categoryName: "Food & Drinks", date: "2026-11-03" }),
+    candidate("pay-1", { description: "GRABPAY TOP UP 0041", categoryName: "Other", date: "2026-11-01" })
+  ];
+  const reply = buildBulkRecategorise(request, lines, makeContext({ text: "make all Grab rides Public Transport" }));
+  assert.deepEqual(reply.change.entries.map((entry) => entry.entryId), ["trip-1", "trip-2", "trip-3"]);
+  assert.deepEqual(reply.change.rows, [
+    { field: "category", before: "Taxi", after: "Public Transport" },
+    { field: "description", before: "", after: "GRAB*TRIP, Grab* A-9UH7853GW7TAAV Singapore SGP" }
+  ]);
+  // Naming the other shop itself moves it.
+  const food = buildBulkRecategorise({ ...request, words: "grabfood", categoryName: "Taxi" }, lines, makeContext({ text: "make all grabfood Taxi" }));
+  assert.deepEqual(food.change.entries.map((entry) => entry.entryId), ["food-1", "food-2"]);
 });
 
 test("negative: over 10 rows the card needs an explicit confirm; over 200 or none are not offered; an existing rule is not offered again", () => {

@@ -106,7 +106,11 @@ export function readSharesByRules(text: string, people: PersonRef[], viewerId: s
   };
   const named: NamedToken[] = [];
   for (const match of cleaned.matchAll(/[\p{L}']+/gu)) {
-    const person = personAt(match[0].toLowerCase().replace(/'s$/, ""));
+    const word = match[0].toLowerCase().replace(/'s$/, "");
+    // "her share is 30", "his share 4": the other person this message is
+    // about (the one it names who is not the viewer), else the viewer's
+    // other half (Ask audit B4).
+    const person = PRONOUNS.has(word) ? pronounPerson(named, people, viewer) : personAt(word);
     if (person) named.push({ index: match.index ?? 0, end: (match.index ?? 0) + match[0].length, person });
   }
 
@@ -125,6 +129,32 @@ export function readSharesByRules(text: string, people: PersonRef[], viewerId: s
     found.set(near.id, share);
   }
   return found.size ? { shares: [...found.values()].slice(0, 2) } : null;
+}
+
+const PRONOUNS = new Set(["her", "his", "she", "he", "their", "they", "them", "him"]);
+
+function pronounPerson(named: NamedToken[], people: PersonRef[], viewer: PersonRef | null): PersonRef | null {
+  const other = [...named].reverse().find((token) => token.person.id !== viewer?.id)?.person;
+  if (other) return other;
+  return viewer && people.length === 2 ? people.find((person) => person.id !== viewer.id) ?? null : null;
+}
+
+// "her share is 30", "Serene's share 4", "my share was $12": a share stated
+// with its figure. Such a figure is a share, never the entry's amount.
+const SHARE_CLAUSE = String.raw`(?:her|his|their|my|[\p{L}]+(?:'s|’s|s'))\s+(?:share|part|portion)(?:\s+(?:is|was|=|:|of))?\s*(?:s?\$\s*)?\d[\d,]*(?:\.\d+)?\s*(?:%|percent\b|pct\b|dollars?\b|bucks\b|sgd\b)?`;
+
+export function hasShareClause(text: string): boolean {
+  return new RegExp(SHARE_CLAUSE, "iu").test(String(text ?? ""));
+}
+
+// The message with its share clauses taken out, for reading the entry
+// itself: "dinner 80 at jumbo split with serene, her share is 30" is an
+// 80 dinner, not two amounts (Ask audit B4).
+export function withoutShareClauses(text: string): string {
+  return String(text ?? "")
+    .replace(new RegExp(String.raw`[,;]?\s*(?:and\s+)?${SHARE_CLAUSE}`, "giu"), " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // The figure as the person wrote it ("1.60" keeps its zero).
