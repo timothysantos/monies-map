@@ -421,6 +421,17 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   if (active.kind === "turn-question") {
     return buildTurnQuestionChips({ focus: active, actions });
   }
+  // A message that had no connection: Try again first and filled, then the
+  // way back to an unsaved card or the usual chips.
+  if (active.kind === "retry") {
+    return {
+      prompt: "",
+      items: /** @type {AskChip[]} */ ([
+        { key: "retry", label: askCopy.chips.tryAgain, primary: true, onClick: actions.retry },
+        ...rest.items.map((item) => ({ ...item, primary: false }))
+      ])
+    };
+  }
   return buildFilterChips({ focus: active, base: rest, viewLabel, actions });
 }
 

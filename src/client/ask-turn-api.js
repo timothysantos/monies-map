@@ -104,7 +104,7 @@ export function buildTurnFocus({ card = null, intent = null, insightTopic = "", 
 }
 
 /**
- * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any, provider?: "claude" | "workers-ai" } | { ok: false }>}
+ * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any, provider?: "claude" | "workers-ai" } | { ok: false, network?: true }>}
  */
 export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN_TIMEOUT_MS } = {}) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -120,8 +120,11 @@ export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN
       return { ok: false };
     }
     return readAskTurnResponse(await response.json().catch(() => null));
-  } catch {
-    return { ok: false };
+  } catch (error) {
+    // The request never reached the server (no signal): the page keeps the
+    // words and offers Try again (docs/flows/ask-flow.md "No connection").
+    // A request that ran out of time falls back to the rules as before.
+    return error?.name === "AbortError" ? { ok: false } : { ok: false, network: true };
   } finally {
     if (timer) clearTimeout(timer);
   }

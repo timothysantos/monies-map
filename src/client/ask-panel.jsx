@@ -103,6 +103,11 @@ import "./ask-route.css";
 import CashPadSheet from "./cash-pad-sheet";
 import { amountOpensPad, emptyEntrySitsLow, PAD_SHOWN_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "./new-entry-pad";
 import { isMobileLayout, useIsMobileLayout } from "./use-viewport";
+import { keepWaitingCash, readCashQueue } from "./cash-queue";
+import { savedWhat } from "./cash-pad-model";
+import { cashPadCopy } from "./copy/cash-pad-copy";
+import { canCardWait, waitingItemForCard } from "./ask-waiting";
+import { AskWaitingList } from "./ask-waiting-list";
 
 // Waiting cash payments are sent from App.jsx through this chunk.
 export { flushCashQueue } from "./cash-queue";
@@ -660,7 +665,12 @@ function AskConversation({
   // question was about ("put these on…", then "Put them on Seoul trip").
   async function readSentence(text, options = {}) {
     const before = store.read(conversationKey) ?? conversation;
-    appendThread(threadItem("me", { text }));
+    const mine = threadItem("me", { text });
+    // A "No connection" line is about the message now being sent again.
+    updateConversation((current) => ({
+      ...current,
+      thread: [...current.thread.filter((item) => item.kind !== "status" && !(item.kind === "note" && item.text === askCopy.notes.offline)), mine]
+    }));
     if (pending) {
       setPending(null);
     }
@@ -695,6 +705,22 @@ function AskConversation({
     } finally {
       setStatus("");
       setWorking("");
+    }
+    // No connection: nothing was read, so nothing is guessed. The words go
+    // back in the message box, with Try again (docs/flows/ask-flow.md "No
+    // connection"); no AI note and no "Reply from" line for a turn that
+    // never reached the server.
+    if (!turn.ok && turn.network) {
+      updateConversation((current) => ({
+        ...current,
+        thread: [
+          ...current.thread.filter((item) => item.kind !== "status" && item.id !== mine.id && !(item.kind === "note" && item.text === askCopy.notes.offline)),
+          threadItem("note", { text: askCopy.notes.offline })
+        ],
+        composerText: current.composerText.trim() ? current.composerText : text,
+        pending: { kind: "retry", text, focus: options.focus ?? null }
+      }));
+      return;
     }
     if (turn.ok && turn.mode === "ai") {
       await applyTurnReply(text, turn.reply, turn.provider ?? "claude", focus);
@@ -1536,6 +1562,10 @@ function AskConversation({
     setWorking("save");
     try {
       const result = await saveCardEntry(createDraft);
+      if (!result.ok && result.network) {
+        keepCardWaiting(sending, createDraft, result.error);
+        return;
+      }
       if (!result.ok) {
         setCard((current) => markCardSaveFailed(current, result.error));
         return;
@@ -1569,6 +1599,28 @@ function AskConversation({
     } finally {
       setWorking("");
     }
+  }
+
+  // A Save with no connection (docs/flows/ask-flow.md "No connection"): a
+  // plain expense waits on this phone in the quick pad's list and sends
+  // itself later, exactly once; the card makes way for the next one. Any
+  // other card stays, saying why it cannot wait.
+  function keepCardWaiting(sending, createDraft, error) {
+    if (!canCardWait(sending, createDraft)) {
+      setCard((current) => markCardSaveFailed(current, askCopy.notes.offlineNotKept));
+      return;
+    }
+    const currency = context.accounts?.find((account) => account.id === createDraft.accountId)?.currency ?? "SGD";
+    const item = waitingItemForCard(createDraft, { currency });
+    keepWaitingCash(item);
+    if (!readCashQueue().some((waiting) => waiting.requestId === item.requestId)) {
+      // This phone could not keep it (storage blocked): the card stays.
+      setCard((current) => markCardSaveFailed(current, error));
+      return;
+    }
+    setPending(null);
+    setCard(isAddMode ? createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId }) : null);
+    appendThread(threadItem("note", { text: cashPadCopy.waitingSaved(savedWhat(item.label, areTotalsVisible)) }));
   }
 
   // Discard on a draft that is not saved yet: the card leaves the chat and
@@ -1840,6 +1892,14 @@ function AskConversation({
       editing_split_expense: card?.saved?.splitExpenseId
     }),
     undo: () => void undoSave(),
+    // Try again after "No connection": the words in the message box (the
+    // kept message, or what the person changed it to).
+    retry: () => {
+      if (pending?.kind !== "retry" || working) return;
+      const words = composerText.trim() || pending.text;
+      setComposerText("");
+      void readSentence(words, pending.focus && words === pending.text ? { focus: pending.focus } : {});
+    },
     // The habits' suggestion under a saved card (Do this / Not this time).
     applyHabit: () => void habits.apply(),
     dismissHabit: () => habits.dismiss(),
@@ -2349,6 +2409,10 @@ function AskConversation({
         {statusItems.map((item) => <ThreadItem key={item.id} item={item} answerProps={answerProps} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
         <AskDoneForYou items={habits.items} busy={habits.busy} error={card?.status === "saved" ? "" : habits.error} onUndo={habits.undo} onStop={habits.stop} />
+        <AskWaitingList
+          areTotalsVisible={areTotalsVisible}
+          onSent={(entry) => onEntryMutation?.({ month: String(entry?.date ?? today).slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true })}
+        />
         {questionPrompt ? <p className="ask-note ask-question" data-question-field={pendingQuestion?.field ?? ""}>{questionPrompt}</p> : null}
         <div ref={threadEndRef} />
       </div>

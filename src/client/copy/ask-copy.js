@@ -115,7 +115,11 @@ export const askCopy = {
     openInEntries: "Open in Entries",
     // An unsaved card further up the thread, once something newer owns the chips.
     backToCard: "Back to the unsaved entry",
-    newEntry: "Add another"
+    newEntry: "Add another",
+    // Sends the message kept after a turn that had no connection.
+    tryAgain: "Try again",
+    // Brings back the unsaved card a new chat set aside.
+    bringBack: "Bring it back"
   },
   backLabels: {
     entries: "Entries",
@@ -233,7 +237,15 @@ export const askCopy = {
     categoryChanged: (name) => `Moved to ${name}.`,
     cardChanged: (cardName) => `Moved to ${cardName}.`,
     addedToSplits: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
-    askNotReady: "I can find entries and add new ones. Other questions aren't answered yet."
+    askNotReady: "I can find entries and add new ones. Other questions aren't answered yet.",
+    // A message that could not reach the server (docs/flows/ask-flow.md
+    // "No connection"): the words go back in the message box.
+    offline: "No connection. Your message is kept.",
+    // A card whose Save had no connection: kept on this phone, like the
+    // quick pad's (cash-pad-copy.js waitingSaved and waitingDetail).
+    offlineNotKept: "No connection. Entries on Splits, transfers and income can't wait on this phone, so the card stays here. Save again when the connection is back.",
+    // After New chat set aside a card that was not saved.
+    cardSetAside: "The unsaved entry was put aside."
   },
   // Ask's turn (docs/flows/ask-flow.md "AI first"): the one-line note when
   // AI can't read a message and the built-in rules do, and the two draft

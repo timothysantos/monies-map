@@ -191,7 +191,11 @@ test("a failed or refused request is { ok: false }; the body sent is what the ro
   assert.deepEqual(sent, { url: "/api/ask/turn", body: { text: "hi" } });
   assert.equal(ok.mode, "rules");
   assert.deepEqual(await requestAskTurn({ text: "hi" }, { fetchImpl: async () => new Response("{}", { status: 500 }) }), { ok: false });
-  assert.deepEqual(await requestAskTurn({ text: "hi" }, { fetchImpl: async () => { throw new TypeError("offline"); } }), { ok: false });
+  // No connection (Ask audit A8): said apart from a reply that could not be
+  // read, so the page keeps the words instead of reading them by its rules.
+  assert.deepEqual(await requestAskTurn({ text: "hi" }, { fetchImpl: async () => { throw new TypeError("Failed to fetch"); } }), { ok: false, network: true });
+  // A request that ran out of time is not "no connection".
+  assert.deepEqual(await requestAskTurn({ text: "hi" }, { fetchImpl: async () => { throw new DOMException("aborted", "AbortError"); } }), { ok: false });
 });
 
 test("Add to Splits posts the existing command with the proposal's share", async () => {

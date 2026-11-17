@@ -268,8 +268,11 @@ export function linkSavedTransfer(body, { fetchImpl = fetch } = {}) {
 
 // Saves the card's draft through the composer's create path.
 export function saveCardEntry(createDraft, { fetchImpl = fetch } = {}) {
+  // A save that never reached the server says so (`network`): a plain
+  // expense can then wait to send on this phone (ask-panel.jsx saveCard).
   return createEntryFromDraft(createDraft, { fetchImpl }).catch(() => ({
     ok: false,
+    network: true,
     error: "The entry could not be saved. Check your connection and try again.",
     entryId: null,
     splitExpenseId: null,

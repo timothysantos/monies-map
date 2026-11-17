@@ -27,13 +27,12 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
     const error = tooLong === "note" ? limitsCopy.noteTooLong(ENTRY_NOTE_MAX) : limitsCopy.descriptionTooLong(ENTRY_DESCRIPTION_MAX);
     return { ok: false, error, entryId: null, splitExpenseId: null, splitExpenseMonth: null, splitAddError: "" };
   }
-  const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits?.[0] : undefined;
   const response = await fetchImpl("/api/entries/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(buildPersistedEntryPayload(entryDraft, primarySplit))
+    body: JSON.stringify(buildCreateEntryBody(entryDraft))
   });
 
   const data = await response.json().catch(() => ({}));
@@ -70,6 +69,13 @@ export async function createEntryFromDraft(entryDraft, { fetchImpl = fetch } = {
   }
 
   return { ok: true, error: "", entryId: data.entryId, splitExpenseId, splitExpenseMonth, splitAddError, time: data.time ?? null };
+}
+
+// The body /api/entries/create reads for a new entry, as createEntryFromDraft
+// sends it (an Ask card waiting to send keeps exactly this).
+export function buildCreateEntryBody(entryDraft) {
+  const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits?.[0] : undefined;
+  return buildPersistedEntryPayload(entryDraft, primarySplit);
 }
 
 export function buildPersistedEntryPayload(entry, primarySplit) {

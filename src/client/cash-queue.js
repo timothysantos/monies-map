@@ -29,6 +29,12 @@ export function deviceStorage() {
 
 export const CASH_QUEUE_KEY = "monies.cashWaiting.v1";
 export const CASH_CREATE_ENDPOINT = "/api/cash-entries/create";
+// An Ask card saved with no connection waits in the same list (docs/flows/
+// ask-flow.md "No connection"): only a plain expense, one create request
+// whose `ask:<card id>` reference makes a repeat return the entry it
+// already made. Splits, transfers and income never wait.
+export const ENTRY_CREATE_ENDPOINT = "/api/entries/create";
+const QUEUE_ENDPOINTS = new Set([CASH_CREATE_ENDPOINT, ENTRY_CREATE_ENDPOINT]);
 export const CASH_DEFAULTS_ENDPOINT = "/api/cash-entries/defaults";
 const SEND_TIMEOUT_MS = 12_000;
 // The pad never keeps more than this many waiting payments on a device.
@@ -37,14 +43,16 @@ const MAX_WAITING = 50;
 const listeners = new Set();
 
 /**
- * @typedef {{ requestId: string, body: Record<string, any>, label: { description: string, amountMinor: number, currency: string }, queuedAt: string, error?: string }} WaitingCash
+ * @typedef {{ requestId: string, body: Record<string, any>, label: { description: string, amountMinor: number, currency: string }, queuedAt: string, error?: string, endpoint?: string }} WaitingCash
  */
 
 /** @returns {WaitingCash[]} */
 export function readCashQueue(storage = deviceStorage()) {
   try {
     const parsed = JSON.parse(storage?.getItem(CASH_QUEUE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item.requestId === "string" && item.body && typeof item.body === "object") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => item && typeof item.requestId === "string" && item.body && typeof item.body === "object" && (item.endpoint === undefined || QUEUE_ENDPOINTS.has(item.endpoint)))
+      : [];
   } catch {
     return [];
   }
@@ -102,14 +110,14 @@ function isOffline() {
  *   `offerTap` names the Apple Pay tap on that card it may be (nothing saved).
  * @returns {Promise<{ kind: "saved", entry: any } | { kind: "waiting", error: string } | { kind: "refused", error: string, needsWallet?: boolean, walletChoices?: any[], offerTap?: any }>}
  */
-export async function sendCashEntry(body, { fetchImpl = fetch, timeoutMs = SEND_TIMEOUT_MS } = {}) {
+export async function sendCashEntry(body, { fetchImpl = fetch, timeoutMs = SEND_TIMEOUT_MS, endpoint = CASH_CREATE_ENDPOINT } = {}) {
   if (isOffline()) {
     return { kind: "waiting", error: "offline" };
   }
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    const response = await fetchImpl(CASH_CREATE_ENDPOINT, {
+    const response = await fetchImpl(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -124,6 +132,11 @@ export async function sendCashEntry(body, { fetchImpl = fetch, timeoutMs = SEND_
     }
     if (response.ok && data?.ok && data.entry?.entryId) {
       return { kind: "saved", entry: data.entry };
+    }
+    // An Ask card's create answers with the entry's id (the one it already
+    // made, for a repeat); the page needs its id and month.
+    if (endpoint === ENTRY_CREATE_ENDPOINT && response.ok && typeof data?.entryId === "string") {
+      return { kind: "saved", entry: { entryId: data.entryId, date: String(body.date ?? ""), description: String(body.description ?? "") } };
     }
     if (response.status >= 500 || response.status === 429 || response.status === 408 || data === null) {
       // "rate": the server has no exchange rate for the currency yet.
@@ -156,7 +169,7 @@ export function flushCashQueue({ fetchImpl = fetch, storage = deviceStorage(), o
     let sent = 0;
     for (const item of readCashQueue(storage)) {
       if (item.error) continue;
-      const result = await sendCashEntry(item.body, { fetchImpl });
+      const result = await sendCashEntry(item.body, { fetchImpl, endpoint: item.endpoint ?? CASH_CREATE_ENDPOINT });
       if (result.kind === "waiting") break;
       if (result.kind === "saved") {
         removeWaitingCash(item.requestId, storage);
