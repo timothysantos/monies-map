@@ -6,7 +6,9 @@
 // - Add mode: "‹ Entries" (or Splits, Ask) first, back to where the person
 //   came from (on the phone's Ask page, where the header has its own back
 //   link, only while the card is untouched); then a pending question's answers, or what fits the card:
-//   Cash (the cash pad), Scan receipt, Paste, Transfer, Income on an empty expense; Split with
+//   Just paid (the quick pad), Scan receipt, Paste, Transfer, Income on an
+//   empty expense (with NEW_ENTRY_PAD.justPaidFirst Just paid comes first of
+//   all, ahead of the way back, and filled); Split with
 //   <partner>, Add a note, Different card once it has content; Swap
 //   direction for a transfer; Edit in form last, to the Entries composer or
 //   the Splits expense dialog.
@@ -217,7 +219,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, headerBack = false, actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, headerBack = false, justPaidFirst = false, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -239,14 +241,20 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
 
   /** @type {AskChip[]} */
   const items = [];
+  const question = card.questions?.[0] ?? null;
+  // The card question comes before the split question: one at a time.
+  const suggested = question ? null : cardSuggestionChips(card, cardSuggestion, actions) ?? suggestionChips(card, splitSuggestion, actions);
+  const emptyExpense = !suggested && !question && card.variant !== "transfer" && card.variant !== "income" && isCardEmpty(card);
+  // On an empty new expense, Just paid is the next step: first, ahead of the
+  // way back, and filled (quick-pad-config.ts NEW_ENTRY_PAD.justPaidFirst).
+  if (emptyExpense && justPaidFirst && actions.cash) {
+    items.push({ key: "cash", label: askCopy.chips.cash, primary: true, onClick: actions.cash });
+  }
   // With the header's back link, the chip is a second way back only for a
   // card nobody has started (docs/flows/ask-flow.md "Back to where you were").
   if (isAddMode && !(headerBack && (card.touched || card.origin))) {
     items.push({ key: "back", label: askCopy.chips.back(backLabel(intent)), back: true, onClick: actions.back });
   }
-  const question = card.questions?.[0] ?? null;
-  // The card question comes before the split question: one at a time.
-  const suggested = question ? null : cardSuggestionChips(card, cardSuggestion, actions) ?? suggestionChips(card, splitSuggestion, actions);
   let prompt = "";
   if (suggested) {
     prompt = suggested.prompt;
@@ -265,10 +273,10 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
   } else if (card.variant === "income") {
     items.push({ key: "note", label: askCopy.chips.addNote, onClick: actions.addNote });
     items.push({ key: "wallet", label: askCopy.chips.differentWallet, onClick: actions.differentWallet });
-  } else if (isCardEmpty(card)) {
-    // Cash opens the cash pad (design.md "Cash pad"): first, so it shows
-    // without scrolling the row.
-    if (actions.cash) {
+  } else if (emptyExpense) {
+    // Just paid opens the quick pad (design.md "Cash pad"): first after the
+    // way back, so it shows without scrolling the row (or first of all, above).
+    if (actions.cash && !justPaidFirst) {
       items.push({ key: "cash", label: askCopy.chips.cash, onClick: actions.cash });
     }
     items.push({ key: "scan", label: askCopy.chips.scanReceipt, onClick: actions.scanReceipt });
@@ -363,9 +371,9 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, justPaidFirst = false, actions }) {
   if (active?.kind === "card") {
-    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, headerBack, actions });
+    return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, headerBack, justPaidFirst, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }

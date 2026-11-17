@@ -46,6 +46,22 @@ test("Cash opens the cash pad, only where the page offers it", () => {
   assert.equal(labels(buildAskChips({ intent: add, card: started, context, actions })).includes("Just paid"), false);
 });
 
+test("with justPaidFirst, an empty new expense leads with Just paid, filled, ahead of the way back; nothing else moves", () => {
+  const empty = buildAskChips({ intent: add, card: createAskCard(context), context, justPaidFirst: true, actions });
+  assert.deepEqual(labels(empty), ["Just paid", "‹ Entries", "Scan receipt", "Paste", "Transfer", "Income", "Edit in form"]);
+  assert.equal(empty.items[0].primary, true);
+  assert.equal(empty.items[1].back, true);
+  assert.equal(empty.items.filter((item) => item.key === "cash").length, 1);
+  // Started, income and transfer cards have no Just paid at all.
+  const started = setCardField(createAskCard(context), { description: "Coffee" }, context);
+  assert.ok(!labels(buildAskChips({ intent: add, card: started, context, justPaidFirst: true, actions })).includes("Just paid"));
+  const income = setCardVariant(createAskCard(context), "income", context);
+  assert.ok(!labels(buildAskChips({ intent: add, card: income, context, justPaidFirst: true, actions })).includes("Just paid"));
+  // Without the page's pad action, nothing leads.
+  const base = Object.fromEntries(["scanReceipt", "paste", "variant", "editInForm", "back"].map((name) => [name, () => {}]));
+  assert.equal(buildAskChips({ intent: add, card: createAskCard(context), context, justPaidFirst: true, actions: base }).items[0].key, "back");
+});
+
 test("with the header's back link (the phone's Ask page), the chip row keeps ‹ Entries only while the card is untouched", () => {
   const untouched = createAskCard(context);
   assert.deepEqual(labels(buildAskChips({ intent: add, card: untouched, context, headerBack: true, actions }))[0], "‹ Entries");
