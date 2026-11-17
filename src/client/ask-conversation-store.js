@@ -59,7 +59,6 @@ export function isConversationInProgress(conversation) {
   }
   return Boolean(
     conversation.composerText?.trim()
-    || conversation.asideCard
     || conversation.thread?.some((item) => item.kind === "me")
     || (card && card.status !== "saved" && (card.touched || card.origin))
   );

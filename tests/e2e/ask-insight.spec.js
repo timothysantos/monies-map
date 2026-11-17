@@ -183,7 +183,7 @@ test.describe("Ask about this on a phone", () => {
     await expect(card(page).last()).toBeVisible();
     await expect(page.locator(".ask-me").last()).toHaveText("Explain this money insight");
     await expect(card(page).last().locator(".ask-answer-title")).toHaveText("A money insight");
-    await expect(card(page).last().locator(".ask-brief-hidden")).toHaveText("Reveal money totals to read these insights.");
+    await expect(card(page).last().locator(".ask-brief-hidden")).toHaveText("The amounts are hidden.");
     await expect(card(page).last().locator(".ask-insight-fact")).toHaveCount(0);
     await expect(card(page).last()).not.toContainText("$");
     await expect(card(page).last().locator(".ask-insight-basis")).toHaveCount(0);

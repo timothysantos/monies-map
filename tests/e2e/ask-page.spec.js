@@ -291,8 +291,13 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.locator(".ask-note").filter({ hasText: "Removed." })).toBeVisible();
     await expect.poll(() => findEntry(page, description)).toBeNull();
     await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue(description);
+    // Undone on purpose: Discard comes first and the composer offers Send,
+    // not Save, until the card changes (Ask audit A11).
+    await expect(page.getByRole("group", { name: "Suggestions" }).getByRole("button").first()).toHaveText("Discard");
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+    await page.getByRole("textbox", { name: "Amount" }).fill("8");
 
-    // Saved again, then opened in Entries' editor.
+    // Changed, saved again, then opened in Entries' editor.
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
     const saved = await findEntry(page, description);

@@ -227,7 +227,7 @@ test("New chat clears that conversation from memory and sessionStorage", () => {
 });
 
 // Ask audit A10: the unsaved card New chat put aside survives a reload.
-test("a card put aside by New chat is kept, comes back after a reload, and counts as in progress", () => {
+test("a card put aside by New chat is kept and comes back after a reload; New chat still ends the conversation in progress", () => {
   const storage = memoryStorage();
   const store = createAskConversationStore({ storage });
   store.begin(CHAT_KEY, () => ({ ...emptyConversation(CHAT), asideCard: { ...draftCard(), status: "saving" } }));
@@ -235,7 +235,8 @@ test("a card put aside by New chat is kept, comes back after a reload, and count
   assert.equal(reloaded.asideCard.fields.amountMinor, 1250);
   assert.equal(reloaded.asideCard.status, "draft");
   assert.equal(reloaded.card, null);
-  assert.equal(isConversationInProgress(reloaded), true);
+  // The Ask tab's dot is for a conversation going on, not a card put aside.
+  assert.equal(isConversationInProgress(reloaded), false);
   // A stored aside card without its fields is dropped.
   const broken = JSON.parse(storage.getItem(ASK_CONVERSATION_STORAGE_KEY));
   broken.slots[0].asideCard = { status: "draft" };

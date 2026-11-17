@@ -1844,6 +1844,14 @@ function AskConversation({
     getAskDockStore().setIntent(readAskIntent(new URLSearchParams(Object.entries(extra).filter(([, value]) => value))));
   }
 
+  // The card brought back (Back to the unsaved entry, Bring it back): at the
+  // bottom on the chip row, its top never cut by the header.
+  function scrollCardIntoView() {
+    const box = threadBoxRef.current;
+    if (!box) return;
+    scrollThreadToNews({ box, end: threadEndRef.current, focus: box.querySelector(":scope > .ask-card"), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }
+
   const actions = {
     cash: () => {
       setCashPadStart({ startWith: "pad", personId: "" });
@@ -1916,7 +1924,7 @@ function AskConversation({
       updateConversation((current) => (current.asideCard && !current.card
         ? { ...current, card: current.asideCard, asideCard: null, pending: null, cardSlot: current.thread.filter((item) => item.kind !== "status").length }
         : current));
-      window.requestAnimationFrame(() => threadBoxRef.current?.querySelector(":scope > .ask-card")?.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" }));
+      window.requestAnimationFrame(() => scrollCardIntoView());
     },
     retry: () => {
       if (pending?.kind !== "retry" || working) return;
@@ -1970,7 +1978,7 @@ function AskConversation({
     backToCard: () => {
       const current = store.read(conversationKey) ?? conversation;
       setCardSlot(current.thread.filter((item) => item.kind !== "status").length);
-      window.requestAnimationFrame(() => threadEndRef.current?.scrollIntoView?.({ block: "end", behavior: prefersReducedMotion() ? "auto" : "smooth" }));
+      window.requestAnimationFrame(() => scrollCardIntoView());
     }
   };
 
