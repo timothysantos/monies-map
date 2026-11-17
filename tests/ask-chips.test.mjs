@@ -99,6 +99,13 @@ test("questions and options are worded by the client from structured fields", ()
   assert.equal(describeOption({ amountMinor: 1250 }, {}, context, "2026-09-29"), "$12.50");
 });
 
+test("a figure in a currency with no cents is worded in whole units, other currencies keep their cents", () => {
+  assert.equal(describeOption({ amountMinor: 3_500_000, currency: "IDR" }, {}, context, "2026-09-29"), "IDR 35,000");
+  assert.equal(describeOption({ amountMinor: 350_000, currency: "JPY" }, {}, context, "2026-09-29"), "JPY 3,500");
+  assert.equal(describeOption({ amountMinor: 1250, currency: "USD" }, {}, context, "2026-09-29"), "US$12.50");
+  assert.match(describeQuestion({ field: "amountMinor", reason: "foreign_currency", foreignAmount: { amountMinor: 3_500_000, currency: "IDR" } }, context), /^That was IDR 35,000\. /);
+});
+
 test("after a save: Back to Entries (filled), Open this entry, Open on Splits when shared, Undo", () => {
   const ready = setCardField(createAskCard(context), { amountInput: "5", description: "Kopi" }, context);
   const saved = markCardSaved(ready, { entryId: "txn-1" });

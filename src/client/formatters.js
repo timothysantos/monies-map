@@ -1,3 +1,4 @@
+import { isZeroDecimalCurrency } from "../domain/cash-entry";
 import { formatCurrencyMinor } from "../domain/split-currency";
 import { APP_TIME_ZONE } from "./app-dates";
 import { shortMonthText } from "../lib/short-month";
@@ -28,6 +29,16 @@ export function moneyWithCurrency(valueMinor, currency = "SGD") {
   }
 
   return formatCurrencyMinor(valueMinor, currency);
+}
+
+// An amount the person wrote in a currency with no cents, in whole units:
+// "IDR 35,000", not "IDR 35,000.00" (cash-entry.ts ZERO_DECIMAL_CURRENCIES).
+// Any other amount is moneyWithCurrency's.
+export function moneyInOwnCurrency(valueMinor, currency = "SGD") {
+  if (isMoneyPrivacyHidden() || !isZeroDecimalCurrency(currency) || valueMinor % 100 !== 0) {
+    return moneyWithCurrency(valueMinor, currency);
+  }
+  return `${String(currency).toUpperCase()} ${new Intl.NumberFormat("en-SG").format(valueMinor / 100)}`;
 }
 
 // Unmasked formatters for the money check-in signals only. FinancialInsight

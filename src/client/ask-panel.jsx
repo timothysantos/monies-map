@@ -699,6 +699,14 @@ function AskConversation({
     }
   }
 
+  // An amount worked out from a figure in another currency says so, in the
+  // words the saved note uses ("Paid IDR 35,000 cash. Saved as about ...").
+  function sayEstimate(card) {
+    if (card.foreign?.note) {
+      appendThread(threadItem("note", { text: card.foreign.note, tone: "calm" }));
+    }
+  }
+
   async function showTurnReply(text, reply, focus = null) {
     if (reply.kind === "entry_draft") {
       let next = applyEntryDraft(workingCard(), reply.draft, context);
@@ -706,6 +714,7 @@ function AskConversation({
         next = setShare(next, { on: true, splitGroupId: reply.share.groupId });
       }
       setCard(next);
+      sayEstimate(next);
     } else if (reply.kind === "draft_patch") {
       let next = workingCard();
       const { variant, ...fields } = reply.patch;
@@ -1105,7 +1114,9 @@ function AskConversation({
       const base = workingCard();
       if (result.ok) {
         // The card's "Filled in from your message" tag says what happened.
-        setCard(applyEntryDraft(base, result.draft, context));
+        const filled = applyEntryDraft(base, result.draft, context);
+        setCard(filled);
+        sayEstimate(filled);
       } else {
         setCard(base);
         appendThread(threadItem("note", { text: askCopy.notes.sentenceUnavailable, tone: "calm" }));

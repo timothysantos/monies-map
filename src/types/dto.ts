@@ -1627,6 +1627,8 @@ export interface EntryDraftQuestionDto {
   field: EntryDraftField;
   reason: EntryDraftQuestionReason;
   options: EntryDraftQuestionOptionDto[];
+  // A foreign_currency question: the figure as typed, in its own currency.
+  foreignAmount?: { amountMinor: number; currency: string };
 }
 
 // Exactly the /api/entries/create body, set only when nothing is missing.
@@ -1659,9 +1661,16 @@ export interface EntryDraftDto {
     splitBasisPoints?: EntryDraftFieldDto<number>;
   };
   // An amount in another currency than the account's (IDR 159,000 on an SGD
-  // card): kept as typed; amountMinor stays missing until the user confirms
-  // the account-currency amount.
-  foreignAmount?: { amountMinor: number; currency: string; source: EntryDraftFieldSource };
+  // card): kept as typed. With a rate, `estimate` is the account-currency
+  // amount at the day's rate (also the draft's amountMinor) and the note the
+  // entry is saved with; without one, amountMinor stays missing and the card
+  // asks for the account-currency amount.
+  foreignAmount?: {
+    amountMinor: number;
+    currency: string;
+    source: EntryDraftFieldSource;
+    estimate?: { amountMinor: number; accountCurrency: string; note: string };
+  };
   // The other side of a transfer, for the later transfer match. Not posted.
   transferAccount?: EntryDraftFieldDto<{ accountId: string; accountName: string }>;
   missing: EntryDraftField[];

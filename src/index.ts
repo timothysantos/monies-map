@@ -1462,6 +1462,8 @@ export default {
         splitBasisPoints?: number;
         externalReference?: unknown;
         time?: unknown;
+        originalAmountMinor?: unknown;
+        originalCurrency?: unknown;
       }>();
 
       if (
@@ -1503,6 +1505,8 @@ export default {
           note: body.note,
           splitBasisPoints: body.splitBasisPoints,
           externalReference: body.externalReference,
+          originalAmountMinor: body.originalAmountMinor === undefined || body.originalAmountMinor === null ? undefined : body.originalAmountMinor as number,
+          originalCurrency: body.originalCurrency === undefined || body.originalCurrency === null ? undefined : body.originalCurrency as string,
           time: body.time as string | null | undefined
         });
         // A new hand-made expense: its category is the person's own choice

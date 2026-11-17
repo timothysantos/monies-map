@@ -159,14 +159,25 @@ export function setCardField(card, patch, context) {
     delete filled[fieldKeyOf(key)];
   }
   const answered = new Set(Object.keys(patch).map(fieldKeyOf));
+  // A new amount or wallet is no longer the estimate of what was paid.
+  const staleEstimate = card.foreign && ["amountInput", "amountMinor", "accountId"].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+  if (staleEstimate) {
+    fields = dropEstimateNote(fields, card.foreign);
+  }
   return {
     ...card,
+    ...(staleEstimate ? { foreign: null } : {}),
     fields,
     filled,
     touched: true,
     saveError: "",
     questions: card.questions.filter((question) => !answered.has(question.field))
   };
+}
+
+// The estimate's note is the card's note until the person changes it.
+function dropEstimateNote(fields, foreign) {
+  return foreign?.note && fields.note === foreign.note ? { ...fields, note: "" } : fields;
 }
 
 // amountInput and amountMinor are one field on screen; so are the account
@@ -350,10 +361,22 @@ export function applyEntryDraft(card, draft, context) {
     fields.categoryName = valueOf("categoryName");
     mark("categoryName");
   }
+  let foreign = next.foreign ?? null;
   if (counts("amountMinor")) {
     fields.amountMinor = Math.max(0, Math.round(Number(valueOf("amountMinor")) || 0));
     fields.amountInput = fields.amountMinor ? formatEditableMinorInput(fields.amountMinor) : "";
     mark("amountMinor");
+    // An amount worked out from a figure in another currency (IDR 35,000 at
+    // the day's rate): the original is kept, with its note, and shown as
+    // an estimate; a plain amount replaces any earlier estimate.
+    Object.assign(fields, dropEstimateNote(fields, foreign));
+    const estimate = draft.foreignAmount?.estimate;
+    foreign = estimate && estimate.amountMinor === fields.amountMinor
+      ? { amountMinor: draft.foreignAmount.amountMinor, currency: draft.foreignAmount.currency, estimateMinor: estimate.amountMinor, note: estimate.note }
+      : null;
+    if (foreign) {
+      fields.note = [fields.note, foreign.note].filter(Boolean).join("\n");
+    }
   }
   if (counts("ownershipType") && valueOf("ownershipType") === "shared") {
     fields.ownerName = SHARED_OWNER;
@@ -385,6 +408,7 @@ export function applyEntryDraft(card, draft, context) {
 
   return {
     ...next,
+    foreign,
     fields,
     filled,
     origin: next.origin ?? "message",
@@ -548,6 +572,10 @@ export function buildCardCreateDraft(card, context, { splitGroups = [] } = {}) {
     ownershipType: isShared ? "shared" : "direct",
     ownerName: isShared ? undefined : fields.ownerName,
     note: fields.note ?? "",
+    // The estimate keeps what was paid: only while the amount is still it.
+    ...(card.foreign && card.foreign.estimateMinor === fields.amountMinor
+      ? { originalAmountMinor: card.foreign.amountMinor, originalCurrency: card.foreign.currency }
+      : {}),
     splits,
     addToSplits: card.variant === "expense" && card.share.on && Boolean(splitGroupId || !splitGroups.length),
     splitGroupId,

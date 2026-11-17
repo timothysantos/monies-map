@@ -225,24 +225,34 @@ export function parseEntrySentence(
       flags.push("unknown_currency");
       questions.push({ field: "amountMinor", reason: "unknown_currency", options: [] });
     } else if (candidate.currency && accountCurrency && candidate.currency !== accountCurrency) {
+      // Never offered as a chip: the figure is in another currency, so
+      // taking it would save IDR 35,000 as $35,000. The server turns it into
+      // an estimate at the day's rate (entry-draft-foreign.ts) or the card
+      // asks for the account-currency amount, as it does for a receipt.
       foreignAmount = { amountMinor: candidate.amountMinor, currency: candidate.currency, source: "sentence" };
       flags.push("foreign_currency");
       questions.push({
         field: "amountMinor",
         reason: "foreign_currency",
-        options: [{ amountMinor: candidate.amountMinor, currency: candidate.currency }]
+        options: [],
+        foreignAmount: { amountMinor: candidate.amountMinor, currency: candidate.currency }
       });
     } else {
       amountMinor = sentence(candidate.amountMinor);
     }
   } else if (amountChoice.kind === "conflict") {
     flags.push("conflicting_amounts");
+    // A figure in another currency than the account's is not a choice: its
+    // number would be saved as the account's currency.
+    const conflictCurrency = (account?.value.currency ?? priorityAccounts[0]?.currency ?? "").toUpperCase();
     questions.push({
       field: "amountMinor",
       reason: "conflicting",
-      options: amountChoice.candidates.map((candidate) => (
-        candidate.currency ? { amountMinor: candidate.amountMinor, currency: candidate.currency } : { amountMinor: candidate.amountMinor }
-      ))
+      options: amountChoice.candidates
+        .filter((candidate) => !candidate.currency || candidate.currency === "unknown" || !conflictCurrency || candidate.currency === conflictCurrency)
+        .map((candidate) => (
+          candidate.currency ? { amountMinor: candidate.amountMinor, currency: candidate.currency } : { amountMinor: candidate.amountMinor }
+        ))
     });
   } else if (isValidAmountMinor(ai.amountMinor)) {
     // The sentence named no number at all: only then may AI fill it.

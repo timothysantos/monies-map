@@ -39,6 +39,7 @@
 // the whole path without a model. X-Ask-Turn-Test-Repair-Reply stands in for
 // the repair turn's answer; without it a test-reply turn is not repaired.
 
+import { applyForeignEstimate } from "../domain/entry-draft-foreign";
 import { ASK_REPAIRABLE_CODES } from "../domain/ask-ambiguity";
 import { AI_UNUSABLE_SUGGESTION_REASON } from "../domain/ai-assistance";
 import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv, type AiProviderName } from "../domain/ai-provider";
@@ -82,7 +83,7 @@ const TEST_REPAIR_HEADER = "x-ask-turn-test-repair-reply";
 const TEST_PROVIDER_HEADER = "x-ask-turn-test-provider";
 const PAGES = new Set(["ask", "summary", "month", "entries", "splits", "imports", "settings", "faq"]);
 
-export type AskTurnEnv = AiProviderEnv & { DB: D1Database; APP_ENVIRONMENT?: string };
+export type AskTurnEnv = AiProviderEnv & { DB: D1Database; APP_ENVIRONMENT?: string; FX_RATES_OFFLINE?: string };
 
 export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<Response> {
   let body: Record<string, unknown>;
@@ -253,6 +254,11 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     reply = withAssumptions(await resolveAskTurnRequest(env.DB, reply.request, context), assumptions);
   }
   reply = forPage(reply);
+  // A foreign amount the person wrote ("35000 IDR") becomes an estimate at
+  // the day's rate when there is one; with none the card asks, in place.
+  if (reply.kind === "entry_draft") {
+    reply = { ...reply, draft: await applyForeignEstimate(env.DB, reply.draft, context.entry.accounts, { offline: env.FX_RATES_OFFLINE === "true" }) };
+  }
   // The one write Ask makes in a turn: a note the person asked for, on a new
   // entry, when "Let Ask handle safe things" is on (src/server/ask-auto-apply.ts
   // holds every gate). The words are theirs: the validator only accepts note

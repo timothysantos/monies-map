@@ -88,6 +88,8 @@ export function buildPersistedEntryPayload(entry, primarySplit) {
     ownershipType: entry.ownershipType,
     ownerName: entry.ownerName,
     note: entry.note ?? "",
+    originalAmountMinor: entry.originalAmountMinor,
+    originalCurrency: entry.originalCurrency,
     splitBasisPoints: primarySplit?.ratioBasisPoints,
     externalReference: entry.externalReference || undefined,
     // Left out when the entry has no time field (the server then keeps the

@@ -190,7 +190,9 @@ test("Warung babi guling IDR 159,000: the foreign amount is kept and the account
   assert.deepEqual(draft.questions, [{
     field: "amountMinor",
     reason: "foreign_currency",
-    options: [{ amountMinor: 15_900_000, currency: "IDR" }]
+    // No chip: taking IDR 159,000 as the card's dollars is the bug this guards.
+    options: [],
+    foreignAmount: { amountMinor: 15_900_000, currency: "IDR" }
   }]);
   assert.equal(draft.createBody, undefined);
 });
@@ -802,4 +804,20 @@ test("everyday words pick a category that exists; the household's rules win; a s
   assert.deepEqual(category("coffee 4.50", ruled), r("Shopping"));
   // Nothing fits.
   assert.deepEqual(category("zorblax 7"), d("Other"));
+});
+
+test("negative: a figure in another currency than the wallet's is never offered as a chip for the wallet's amount", () => {
+  const draft = parseEntrySentence("Lunch IDR 35,000 or $12", CONTEXT);
+  assert.deepEqual(draft.flags, ["conflicting_amounts"]);
+  assert.deepEqual(draft.questions, [{ field: "amountMinor", reason: "conflicting", options: [{ amountMinor: 1200 }] }]);
+});
+
+test("SGD typed stays SGD and a bare 35000 has no foreign amount", () => {
+  const sgd = parseEntrySentence("coffee 35000 SGD", CONTEXT);
+  assert.equal(sgd.foreignAmount, undefined);
+  assert.deepEqual(sgd.fields.amountMinor, s(3_500_000));
+  const bare = parseEntrySentence("coffee 35000", CONTEXT);
+  assert.equal(bare.foreignAmount, undefined);
+  assert.deepEqual(bare.fields.amountMinor, s(3_500_000));
+  assert.deepEqual(bare.questions, []);
 });

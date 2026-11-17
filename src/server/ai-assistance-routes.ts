@@ -33,12 +33,13 @@ import {
   parseEntryDraftAiSuggestion,
   parseEntrySentence
 } from "../domain/entry-draft";
+import { applyForeignEstimate } from "../domain/entry-draft-foreign";
 import { loadAskerPersonId, loadEntryDraftContext } from "../domain/entry-draft-context";
 import { getAuthenticatedEmail } from "./access-identity";
 import { buildMonthPageDto } from "../domain/pages/month-page";
 import { todayInAppTimeZone } from "../lib/app-calendar";
 import { getCurrentMonthKey } from "../lib/month";
-import type { EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
+import type { EntryDraftDto, EntryDraftResponseDto, ImportPreviewDto, PersonScope } from "../types/dto";
 import { json } from "./json";
 import { readJsonBody, readJsonObject, RequestBodyTooLargeError, SMALL_JSON_MAX_BYTES } from "./limited-body";
 import { IMPORT_PREVIEW_MAX_BYTES, MATCH_PAIRS_MAX_BYTES, STATEMENT_TEXT_MAX_BYTES } from "../domain/request-limits";
@@ -50,7 +51,7 @@ import { handlePlanDraft } from "./plan-draft-route";
 import { handleReceiptRead } from "./receipt-read-route";
 import { handleTranscribe } from "./transcribe-route";
 
-export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database };
+export type AiAssistRouteEnv = AiProviderEnv & { DB: D1Database; FX_RATES_OFFLINE?: string };
 
 // Each route reads its body through limited-body.ts, which stops at a byte
 // limit as the bytes arrive (a chunked upload has no Content-Length to check).
@@ -97,7 +98,8 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
       askerPersonId: await loadAskerPersonId(env.DB, getAuthenticatedEmail(request))
     });
     // The parser gets the text as sent, so it can flag a truncation itself.
-    const draft = parseEntrySentence(body?.text, context);
+    const withEstimate = (parsed: EntryDraftDto) => applyForeignEstimate(env.DB, parsed, context.accounts, { offline: env.FX_RATES_OFFLINE === "true" });
+    const draft = await withEstimate(parseEntrySentence(body?.text, context));
     if (!entryDraftWantsAi(draft)) {
       return json({ ok: true, draft, ai: { requested: false, available: false } } satisfies EntryDraftResponseDto);
     }
@@ -119,7 +121,7 @@ async function routeAiAssist(request: Request, url: URL, env: AiAssistRouteEnv):
     }
     return json({
       ok: true,
-      draft: parseEntrySentence(body?.text, context, result.value),
+      draft: await withEstimate(parseEntrySentence(body?.text, context, result.value)),
       ai: { requested: true, available: true, remaining: result.remaining }
     } satisfies EntryDraftResponseDto);
   }

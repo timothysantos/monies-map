@@ -29,7 +29,7 @@ import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
-import { moneyWithCurrency } from "./formatters";
+import { moneyInOwnCurrency } from "./formatters";
 
 /** @typedef {{ key: string, label: string, onClick: () => void, primary?: boolean, back?: boolean, disabled?: boolean }} AskChip */
 
@@ -42,7 +42,7 @@ export function describeQuestion(question, context) {
     return "";
   }
   if (question.reason === "foreign_currency" && question.foreignAmount) {
-    return askCopy.questions.foreignAmount(moneyWithCurrency(question.foreignAmount.amountMinor, question.foreignAmount.currency));
+    return askCopy.questions.foreignAmount(moneyInOwnCurrency(question.foreignAmount.amountMinor, question.foreignAmount.currency));
   }
   if (question.reason === "transfer_from") {
     return askCopy.questions.transferFrom;
@@ -69,7 +69,7 @@ export function describeOption(option, question, context, today) {
     return context.accounts?.find((account) => account.id === option.accountId)?.name ?? option.accountName ?? option.accountId;
   }
   if (typeof option.amountMinor === "number") {
-    return moneyWithCurrency(option.amountMinor, option.currency ?? "SGD");
+    return moneyInOwnCurrency(option.amountMinor, option.currency ?? "SGD");
   }
   if (option.personName && typeof option.splitBasisPoints === "number") {
     return askCopy.shareOption(option.personName, Math.round(option.splitBasisPoints / 100));

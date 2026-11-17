@@ -110,7 +110,9 @@ export function readEntryDraftResponse(body) {
       ? draft.questions.filter((question) => question && typeof question.field === "string").map((question) => ({
           field: question.field,
           reason: String(question.reason ?? "missing"),
-          options: Array.isArray(question.options) ? question.options : []
+          options: Array.isArray(question.options) ? question.options : [],
+          // A foreign_currency question names the figure as typed.
+          ...(question.foreignAmount && typeof question.foreignAmount.amountMinor === "number" ? { foreignAmount: question.foreignAmount } : {})
         }))
       : [],
     ai: body.ai ?? { requested: false, available: false }

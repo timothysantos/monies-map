@@ -38,6 +38,8 @@ export function validateEntryCreateFields(input: {
   description?: unknown;
   amountMinor?: unknown;
   note?: unknown;
+  originalAmountMinor?: unknown;
+  originalCurrency?: unknown;
 }): string | null {
   if (!isRealIsoDate(input.date)) {
     return "Enter the date as YYYY-MM-DD.";
@@ -57,6 +59,21 @@ export function validateEntryCreateFields(input: {
   }
   if (!Number.isSafeInteger(input.amountMinor) || (input.amountMinor as number) > ENTRY_AMOUNT_MAX_MINOR) {
     return "The amount must be a whole number of cents within a sensible limit.";
+  }
+  // What was paid in another currency behind an estimated amount: both
+  // together or neither.
+  const hasOriginalAmount = input.originalAmountMinor !== undefined && input.originalAmountMinor !== null;
+  const hasOriginalCurrency = input.originalCurrency !== undefined && input.originalCurrency !== null;
+  if (hasOriginalAmount || hasOriginalCurrency) {
+    if (
+      !Number.isSafeInteger(input.originalAmountMinor)
+      || (input.originalAmountMinor as number) <= 0
+      || (input.originalAmountMinor as number) > ENTRY_AMOUNT_MAX_MINOR
+      || typeof input.originalCurrency !== "string"
+      || !/^[A-Z]{3}$/.test(input.originalCurrency)
+    ) {
+      return "The amount paid must be a whole number of cents with a three-letter currency code.";
+    }
   }
   return null;
 }
