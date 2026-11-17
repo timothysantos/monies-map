@@ -56,6 +56,7 @@ import {
   type AskResolveRequest
 } from "./ask-turn-actions";
 import { describeUsuallySharedAction, validateUsuallyShared } from "./ask-usually-shared";
+import { describeDescribeAction, validateDescribeEntry } from "./ask-describe-entry";
 import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripPage, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
@@ -86,6 +87,8 @@ export const ASK_TURN_ACTIONS = [
   "set_trip_event",
   // The usual shared past entries onto Splits (ask-usually-shared.ts).
   "add_usually_shared",
+  // A few words about a quick payment (ask-describe-entry.ts).
+  "describe_entry",
   // Hands-off (ask-lookup-tools.ts): a read-only lookup before the real
   // action. The route runs it and asks again; never an answer to the person.
   "look_up"
@@ -265,6 +268,9 @@ export const ASK_TURN_SCHEMA = {
     }),
     // Only a shop the person named, as written.
     usually_shared: nullableObject({ shop: nullableString }),
+    // A quick payment's few words: what it was, a category and a person as
+    // written, its amount only when they named it by amount.
+    describe: nullableObject({ words: nullableString, category: nullableString, shared_with: nullableString, amount: nullableAmount }),
     blocked: nullableEnum([...ASK_TURN_BLOCKED]),
     lookup: nullableObject({
       tool: { type: "string", enum: [...ASK_LOOKUP_TOOL_NAMES] },
@@ -353,7 +359,9 @@ export interface AskTurnDraftFocus {
 }
 
 export type AskTurnFocus =
-  | { kind: "saved_entry"; entry: AskTurnFocusEntry }
+  // `words`: a quick payment the person is saying a few words about (the
+  // quick pad's words box, Ask's "need a few words" list).
+  | { kind: "saved_entry"; entry: AskTurnFocusEntry; words?: boolean }
   | { kind: "draft"; draft: AskTurnDraftFocus }
   | { kind: "split_group"; group: AskTurnGroup }
   | { kind: "insight"; topic: string }
@@ -505,6 +513,7 @@ interface RawAction {
   plan_link?: Record<string, unknown> | null;
   trip_event?: Record<string, unknown> | null;
   usually_shared?: Record<string, unknown> | null;
+  describe?: Record<string, unknown> | null;
   blocked?: AskTurnBlocked | null;
   lookup?: Record<string, unknown> | null;
   // The entry id a lookup in this turn returned and the action is about.
@@ -541,6 +550,7 @@ export function parseAskTurnAction(value: unknown): AskTurnAction | null {
     plan_link: part("plan_link"),
     trip_event: part("trip_event"),
     usually_shared: part("usually_shared"),
+    describe: part("describe"),
     blocked: (ASK_TURN_BLOCKED as readonly string[]).includes(String(value.blocked)) ? value.blocked as AskTurnBlocked : null,
     lookup: part("lookup"),
     target_entry: typeof value.target_entry === "string" && value.target_entry.length <= 200 ? value.target_entry : null
@@ -583,6 +593,7 @@ export function buildAskTurnPrompt(context: AskTurnContext, lookups: string[] = 
     ...describePhase2Actions(),
     describeTripEventAction(),
     describeUsuallySharedAction(),
+    describeDescribeAction(),
     "- look_up: you must find something first (an entry, a balance, how a shop was filed). lookup.tool is find_entries (text, category, person, from, to), get_entry (id), get_split_balances (group), list_recent_entries (n) or get_category_history (merchant). The app answers in the lookups section and you choose the real action. Use at most 3 lookups; never look up what the context already says. Once you found the entry, set target_entry to its id exactly as the results give it.",
     "- cannot_help: not something Ask does; note says so in one short sentence. For deleting entries, months or imports, importing or undoing a statement import, reconciling, or changing accounts or people, set blocked.",
     `"I", "me" and "my" mean ${viewer ?? "the person asking"}. A share, amount, month or day is exactly what was written, without units added.`,
@@ -615,7 +626,8 @@ function describeFocus(context: AskTurnContext) {
   if (focus.kind === "saved_entry") {
     const { entry } = focus;
     const payer = context.people.find((person) => person.id === entry.payerPersonId)?.name ?? "unknown";
-    return `a saved ${entry.entryType} "${promptEntryName(entry)}" on ${entry.date}, ${scrubName(entry.categoryName)}, from ${scrubName(entry.accountName)}, paid by ${scrubName(payer)}, ${entry.linkedToSplits ? "already on Splits" : "not on Splits"}${entry.lockedMonth ? ", amount, date, description and wallet locked by a bank statement" : ""}.`;
+    const quick = focus.words ? " A quick payment; the message says what it was (describe_entry)." : "";
+    return `a saved ${entry.entryType} "${promptEntryName(entry)}" on ${entry.date}, ${scrubName(entry.categoryName)}, from ${scrubName(entry.accountName)}, paid by ${scrubName(payer)}, ${entry.linkedToSplits ? "already on Splits" : "not on Splits"}${entry.lockedMonth ? ", amount, date, description and wallet locked by a bank statement" : ""}.${quick}`;
   }
   if (focus.kind === "draft") {
     const { draft } = focus;
@@ -698,6 +710,8 @@ export function validateAskTurnAction(action: AskTurnAction, context: AskTurnCon
       return validateSetTripEvent(action, context, ground);
     case "add_usually_shared":
       return validateUsuallyShared(action, context, ground);
+    case "describe_entry":
+      return validateDescribeEntry(action, context, ground);
     case "add_entry_to_splits":
       return validateAddToSplits(action, context, ground);
     case "draft_settlement":

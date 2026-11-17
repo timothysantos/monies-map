@@ -22,6 +22,10 @@ import {
 } from "./ask-turn-actions";
 import type { AskTurnContext, AskTurnFocusEntry, AskTurnReply } from "./ask-turn";
 import { buildUsuallySharedChange } from "./ask-usually-shared";
+import { buildDescribeChange, type AskDescribeFacts, type AskDescribeRequest } from "./ask-describe-entry";
+import { loadUndescribedQuickEntries } from "./app-repository-cash-entries";
+import { loadFocusEntry } from "./ask-turn-context";
+import { buildSplitSuggestionDto } from "./pages/split-suggestion";
 import { buildUsuallySharedDto } from "./pages/usually-shared";
 import { buildTripEventChange, type AskTripCandidate, type AskTripEventRequest } from "./ask-trip-events";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
@@ -65,9 +69,41 @@ export async function resolveAskTurnRequest(db: D1Database, request: AskResolveR
       return buildUsuallySharedChange(request, await loadUsuallyShared(db, context));
     case "trip_event":
       return buildTripEventChange(request, await loadTripCandidates(db, request.source), context.tripEvents ?? [], context);
+    case "describe_entry":
+      return buildDescribeChange(request, await loadDescribeFacts(db, request, context), context);
     default:
       return { kind: "note", text: "Ask can't do that one yet. Try the page it lives on." };
   }
+}
+
+// A few words about a quick payment: the entry (the one in focus, or the
+// newest quick entry of the person asking still waiting for words, with the
+// amount they named), and the usual split for that kind of payment with the
+// person they named. Read only.
+async function loadDescribeFacts(db: D1Database, request: AskDescribeRequest, context: AskTurnContext): Promise<AskDescribeFacts> {
+  let entry = request.entry;
+  if (!entry && request.amountMinor !== null) {
+    const personId = context.askerPersonId ?? (context.viewId !== "household" ? context.viewId : undefined);
+    const waiting = await loadUndescribedQuickEntries(db, { personIds: personId ? [personId] : [], today: context.today });
+    const found = waiting.find((row) => row.amountMinor === request.amountMinor);
+    entry = found ? await loadFocusEntry(db, found.entryId) : null;
+  }
+  if (!entry || !request.sharedWith || entry.linkedToSplits) {
+    return { entry, usual: null };
+  }
+  const suggestion = await buildSplitSuggestionDto(db, {
+    entryType: "expense",
+    description: request.words || entry.description,
+    categoryName: request.categoryName ?? entry.categoryName,
+    ownerName: entry.ownerName ?? null,
+    accountId: entry.accountId ?? null,
+    accountName: entry.accountName,
+    date: entry.date
+  }).catch(() => null);
+  return {
+    entry,
+    usual: suggestion ? { groupId: suggestion.groupId, groupName: suggestion.groupName, payerBasisPoints: suggestion.basisPoints, otherPersonId: suggestion.otherPersonId } : null
+  };
 }
 
 // Entries whose bank text may hold the words: a LIKE on the longest word

@@ -76,7 +76,7 @@ async function loadSavedEntryFocus(db: D1Database, value: unknown): Promise<AskT
   const focus = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
   if (focus?.kind === "saved_entry" && typeof focus.entryId === "string" && focus.entryId.length <= MAX_ID_LENGTH) {
     const entry = await loadFocusEntry(db, focus.entryId);
-    return entry ? { kind: "saved_entry", entry } : null;
+    return entry ? { kind: "saved_entry", entry, ...(focus.words === true ? { words: true } : {}) } : null;
   }
   return null;
 }

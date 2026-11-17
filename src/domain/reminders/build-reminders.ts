@@ -6,12 +6,14 @@ import { priceChangeReminders } from "./price-change-reminders";
 import { splitsWaitingReminders } from "./splits-reminders";
 import { taxReliefReminders } from "./tax-relief-reminder";
 import { waitingTapReminders } from "./waiting-tap-reminder";
+import { quickWordsReminders } from "./quick-words-reminder";
 
 // Position in the list: a payment waiting for its amount, overdue bills, bills due soonest, month close,
 // statements (oldest first), tax relief room (December), Splits (longest waiting first), price changes.
 function rank(reminder: ReminderDto) {
   switch (reminder.kind) {
     case "waiting_tap": return -1;
+    case "quick_words": return -0.5;
     case "card_bill": return reminder.daysUntilDue < 0 ? 0 : 1;
     case "month_close": return 2;
     case "statement_missing": return 3;
@@ -27,6 +29,7 @@ function rank(reminder: ReminderDto) {
 function withinRank(reminder: ReminderDto) {
   switch (reminder.kind) {
     case "waiting_tap": return Number(reminder.date.replace(/-/g, ""));
+    case "quick_words": return -Number(reminder.newestDate.replace(/-/g, ""));
     case "card_bill": return reminder.daysUntilDue;
     case "month_close": return Number(reminder.month.replace("-", ""));
     case "statement_missing": return -reminder.daysSinceExpected;
@@ -55,6 +58,7 @@ export function buildReminders(input: ReminderInputs): ReminderDto[] {
   const monthClose = monthCloseReminders(input);
   const reminders: ReminderDto[] = [
     ...waitingTapReminders(input),
+    ...quickWordsReminders(input),
     ...cardBillReminders(input),
     ...monthClose,
     ...statementMissingReminders(input),

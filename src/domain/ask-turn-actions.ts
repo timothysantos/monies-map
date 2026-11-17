@@ -52,6 +52,7 @@ import {
   type Ground
 } from "./ask-turn";
 import type { AskTripEventRequest } from "./ask-trip-events";
+import type { AskDescribeRequest } from "./ask-describe-entry";
 import type { AskUsuallySharedRequest } from "./ask-usually-shared";
 import type { CategoryMatchRuleDto } from "../types/dto";
 
@@ -98,7 +99,9 @@ export type AskChangeField =
   | "colour"
   | "line"
   | "trip"
-  | "dates";
+  | "dates"
+  // Whether and how an entry is on Splits (a few words about a quick payment).
+  | "splits";
 
 // One line of what changes. Money rows carry minor units (the page shows
 // them as money, hidden when money is hidden); every other row carries
@@ -241,7 +244,8 @@ export type AskResolveRequest =
   | { type: "matches"; month: string }
   | { type: "plan_link"; line: string; month: string; words: string }
   | AskTripEventRequest
-  | AskUsuallySharedRequest;
+  | AskUsuallySharedRequest
+  | AskDescribeRequest;
 
 const PREVIEW_ROWS = 8;
 const MAX_MATCHES = 6;

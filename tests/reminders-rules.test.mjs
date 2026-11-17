@@ -11,6 +11,8 @@ import { buildReminders } from "../src/domain/reminders/build-reminders.ts";
 import { monthCloseReminder, monthCloseReminders, monthsWithAllStatements } from "../src/domain/reminders/month-close-reminder.ts";
 import { priceChangeReminders } from "../src/domain/reminders/price-change-reminders.ts";
 import { splitsWaitingReminders } from "../src/domain/reminders/splits-reminders.ts";
+import { quickWordsReminders } from "../src/domain/reminders/quick-words-reminder.ts";
+import { isUndescribedQuickEntry } from "../src/domain/cash-entry.ts";
 
 const TODAY = "2026-10-12";
 const SERENE = { id: "person-serene", name: "Serene" };
@@ -482,4 +484,39 @@ test("no To do before December, on a year that has changed, or for a relief nobo
   assert.deepEqual(kinds("2026-12-10", undefined), []);
   // Only a charity gift: no limit to fill, so nothing to say.
   assert.deepEqual(kinds("2026-12-10", taxYear("2026-12-10", [ROWS[3]])), []);
+});
+
+test("quick payments that need a few words: one reminder per person, keyed by the newest, quiet with none and in another person's view", () => {
+  const quick = [
+    { entryId: "txn-c", personId: SERENE.id, date: TODAY, time: "19:40" },
+    { entryId: "txn-b", personId: SERENE.id, date: TODAY, time: "14:02" },
+    { entryId: "txn-e", personId: ETHAN.id, date: "2026-10-11", time: "" }
+  ];
+  const facts = (viewId, quickWords) => ({ today: TODAY, viewId, people: PEOPLE, quickWords });
+  assert.deepEqual(quickWordsReminders(facts(SERENE.id, quick)), [{
+    key: "quick_words:person-serene:txn-c", kind: "quick_words", personId: SERENE.id, personName: "Serene", count: 2, allToday: true, newestDate: TODAY
+  }]);
+  assert.deepEqual(quickWordsReminders(facts("household", quick)).map((reminder) => [reminder.personName, reminder.count, reminder.allToday]), [["Serene", 2, true], ["Ethan", 1, false]]);
+  // Negatives: nothing waiting, nothing read, another person's view, a row with no person.
+  assert.deepEqual(quickWordsReminders(facts(SERENE.id, [])), []);
+  assert.deepEqual(quickWordsReminders(facts(SERENE.id, undefined)), []);
+  assert.deepEqual(quickWordsReminders(facts(SERENE.id, [quick[2]])), []);
+  assert.deepEqual(quickWordsReminders(facts("household", [{ ...quick[0], personId: "" }])), []);
+  // A newer payment is a new key, so a reminder put away with Later comes back for it.
+  const newer = quickWordsReminders(facts(SERENE.id, [{ entryId: "txn-d", personId: SERENE.id, date: TODAY, time: "21:00" }, ...quick]));
+  assert.equal(newer[0].key, "quick_words:person-serene:txn-d");
+});
+
+test("the quick pad's words rule: only quick entries, the pad's own name, Other, no note, the last 3 days", () => {
+  const entry = { date: TODAY, description: "Card payment", categoryName: "Other", personNote: null, reference: "cash:abc" };
+  assert.equal(isUndescribedQuickEntry(entry, TODAY, 3), true);
+  assert.equal(isUndescribedQuickEntry({ ...entry, description: "Cash", date: "2026-10-10" }, TODAY, 3), true);
+  assert.equal(isUndescribedQuickEntry({ ...entry, date: "2026-10-09" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, date: "2026-10-13" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, reference: "shortcut:abc" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, reference: null }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, description: "Ramen" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, categoryName: "Food & Drinks" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, personNote: "for the kids" }, TODAY, 3), false);
+  assert.equal(isUndescribedQuickEntry({ ...entry, personNote: "  " }, TODAY, 3), true);
 });

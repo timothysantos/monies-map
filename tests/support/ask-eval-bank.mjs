@@ -12,7 +12,7 @@
 // An entry:
 //   id, group      a stable name, and the action it mostly exercises
 //   text           the message
-//   setup          { focus: "none" | "saved" | "draft" | "list" | "group",
+//   setup          { focus: "none" | "saved" | "quick" | "draft" | "list" | "group",
 //                    month?: "YYYY-MM" (the month in view), history?: [{role, text}] }
 //   model          the recorded model answer (the action JSON), for the unit layer
 //   repair         the recorded answer to the repair turn, when the first is refused
@@ -133,6 +133,11 @@ export async function seedBankHousehold({ db, api, today }) {
     const added = await api("/api/splits/expenses/from-entry", { entryId: id, splitGroupId: null });
     if (added.status !== 200) throw new Error(`usually shared seed: ${JSON.stringify(added.payload)}`);
   }
+  // A card payment typed on the quick pad with only its amount (DOMAIN.md
+  // "Quick Entry"): the words box's entry in focus ("quick").
+  const quick = await api("/api/cash-entries/create", { requestId: crypto.randomUUID(), personId: "person-tim", way: "card", accountId: "acct-uob-one", amountMinor: 2_350, currency: "SGD" });
+  if (quick.status !== 200) throw new Error(`quick pad seed: ${JSON.stringify(quick.payload)}`);
+  const quickId = quick.payload.entry.entryId;
   const entryId = await createEntry(api, { date: today, description: "STARBUCKS PAYNOW 91234567", accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250 });
   for (const [index, amountMinor] of [1_850, 2_240, 1_620].entries()) {
     await createEntry(api, { date: shiftDay(today, -index), description: "GRAB* RIDE", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor });
@@ -148,6 +153,7 @@ export async function seedBankHousehold({ db, api, today }) {
     groupId: group?.id ?? "",
     focus(name, month) {
       if (name === "saved") return { kind: "saved_entry", entryId };
+      if (name === "quick") return { kind: "saved_entry", entryId: quickId, words: true };
       if (name === "draft") {
         return { kind: "draft", draft: { variant: "expense", description: "Koufu lunch", date: today, accountId: "", categoryName: "Food & Drinks", ownerName: "Tim", amountMinor: 1_250, shareOn: false, splitGroupId: "" } };
       }

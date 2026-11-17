@@ -152,7 +152,8 @@ const PAGE_CHAINS = [
   { name: "month-page", path: "/api/month-page?view=person-tim&month=2026-08&scope=direct_plus_shared", maxStatements: 20, maxWaves: 3, maxRowsRead: 30_000 },
   { name: "entries-page", path: "/api/entries-page?view=household&month=2026-08", maxStatements: 9, maxWaves: 3, maxRowsRead: 10_000 },
   { name: "splits-page", path: "/api/splits-page?view=person-tim&month=2026-08", maxStatements: 24, maxWaves: 5, maxRowsRead: 70_000 },
-  { name: "reminders", path: "/api/reminders?view=household", maxStatements: 15, maxWaves: 4, maxRowsRead: 40_000 },
+  // 16: one bounded read (three days, LIMIT 48) for quick payments that need a few words (2026-11-17).
+  { name: "reminders", path: "/api/reminders?view=household", maxStatements: 16, maxWaves: 4, maxRowsRead: 40_000 },
   { name: "repeating-charges household", path: "/api/repeating-charges?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 80_000 },
   { name: "repeating-charges person", path: "/api/repeating-charges?view=person-tim", maxStatements: 8, maxWaves: 2, maxRowsRead: 80_000 },
   { name: "card-rewards household", path: "/api/card-rewards?view=household", maxStatements: 8, maxWaves: 2, maxRowsRead: 20_000 },

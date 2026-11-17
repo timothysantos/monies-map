@@ -2167,7 +2167,7 @@ export interface TransferOptionDto {
 // rule says is worth a look today, as keys, kinds, dates and minor amounts
 // only. The words come from a fixed template file on the client. Read-only
 // and deterministic; no AI decides anything (docs/flows/reminders-flow.md).
-export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close" | "tax_relief" | "waiting_tap";
+export type ReminderKind = "card_bill" | "statement_missing" | "splits_waiting" | "price_change" | "month_close" | "tax_relief" | "waiting_tap" | "quick_words";
 
 interface ReminderBaseDto {
   // Stable per occurrence (kind, subject, occurrence): snoozing and "seen"
@@ -2271,8 +2271,21 @@ export interface WaitingTapReminderDto extends ReminderBaseDto {
   accountName: string;
 }
 
+// Quick payments one person typed with only the amount and has not
+// described yet (DOMAIN.md "Quick Entry"); it opens the quick pad's list.
+export interface QuickWordsReminderDto extends ReminderBaseDto {
+  kind: "quick_words";
+  personId: string;
+  personName: string;
+  count: number;
+  // Every one is from today ("from today"), else from the last few days.
+  allToday: boolean;
+  newestDate: string;
+}
+
 export type ReminderDto =
   | WaitingTapReminderDto
+  | QuickWordsReminderDto
   | CardBillReminderDto
   | StatementMissingReminderDto
   | SplitsWaitingReminderDto

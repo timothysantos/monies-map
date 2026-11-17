@@ -4,9 +4,11 @@
 //
 // 1. AI off or not configured: { mode: "rules" } at once, before any data
 //    work or allowance use; the page reads the message with its rules.
-//    Two exceptions: a share on the saved entry in focus ("Joyce's share
-//    1.6") is read here by the rules' share reader (ask-turn-shares.ts), and
-//    a trip or event message ("put these on Seoul trip", "how much was the
+//    Exceptions: a share on the saved entry in focus ("Joyce's share
+//    1.6") is read here by the rules' share reader (ask-turn-shares.ts), a
+//    few words about a quick payment ("dinner ramen split with joyce" from
+//    the quick pad, or "the 85,000 was ramen") by the describe reader
+//    (ask-describe-entry.ts), and a trip or event message ("put these on Seoul trip", "how much was the
 //    Seoul trip?") by the trips reader (ask-trip-events.ts), each checked
 //    like the model's, so the offline backup still drafts them. A message
 //    that cannot be a trip one costs no read at all; one that might reads
@@ -63,6 +65,7 @@ import { applyNoteToNewEntry } from "./ask-auto-apply";
 import { readSharesByRules } from "../domain/ask-turn-shares";
 import { readTripEventRules } from "../domain/ask-trip-events";
 import { readUsuallySharedRules } from "../domain/ask-usually-shared";
+import { readDescribeRules } from "../domain/ask-describe-entry";
 import { loadTripEvents } from "../domain/app-repository-trip-events";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { loadAskerPersonId } from "../domain/entry-draft-context";
@@ -106,9 +109,11 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   const testRepairReply = env.APP_ENVIRONMENT === "test" ? request.headers.get(TEST_REPAIR_HEADER) : null;
   const offReason = getAiProviderUnavailableReason(env);
   const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
+  const focusIsWords = focusIsSavedEntry && (body.focus as { words?: unknown }).words === true;
   // A saved entry in focus and a message with a figure, "all" or "split" in
-  // it may be a share the rules can read; anything else answers at once.
-  if (offReason && !testReply && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !readUsuallySharedRules(text) && !(await mayBeTripMessage(env.DB, text))) {
+  // it may be a share the rules can read; a few words about a quick payment
+  // always can; anything else answers at once.
+  if (offReason && !testReply && !focusIsWords && !BY_AMOUNT_MESSAGE.test(text) && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !readUsuallySharedRules(text) && !(await mayBeTripMessage(env.DB, text))) {
     return json({ ok: true, mode: "rules", reason: offReason });
   }
 
@@ -323,6 +328,16 @@ function forPage(reply: AskTurnReply): AskTurnReply {
 // which the rules' readers turn into the same action the model would send,
 // checked the same way.
 async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string, reason: string, extra: Record<string, unknown> = {}) {
+  // A few words about a quick payment: from the pad's words box (the entry
+  // in focus), or "the 85,000 was ramen" typed into Ask.
+  const describeAction = context.focus?.kind === "saved_entry" && context.focus.words
+    ? readDescribeRules(text, context)
+    : !context.focus || context.focus.kind !== "saved_entry" ? readDescribeRules(text, context, { byAmount: true }) : null;
+  if (describeAction) {
+    let reply = validateAskTurnAction(describeAction, context);
+    if (reply.kind === "resolve") reply = withAssumptions(await resolveAskTurnRequest(db, reply.request, context), reply.assumptions ?? []);
+    return json({ ok: true, mode: "rules", reason, action: describeAction.action, reply: forPage(reply), ...extra });
+  }
   // "Add the usual shared ones to Splits" reads the same with AI off.
   const usualAction = readUsuallySharedRules(text);
   if (usualAction) {
@@ -346,6 +361,9 @@ async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string
   }
   return json({ ok: true, mode: "rules", reason, ...extra });
 }
+
+// "the 85,000 was ramen": a quick payment named by its amount.
+const BY_AMOUNT_MESSAGE = /^(?:the\s+)?(?:rp\.?\s*)?\d[\d,.]*k?\s+(?:one\s+)?(?:was|is|=|:)\s+\p{L}/iu;
 
 // Whether the rules could read the message as a trip or event one (with AI
 // off): a word such a message starts with, and a trip to name (or the word

@@ -100,6 +100,9 @@ export interface ReminderInputs {
   // Apple Pay taps waiting for their amount in this view (DOMAIN.md
   // "Waiting Tap"), oldest first. Absent: none.
   waitingTaps?: Array<{ id: string; merchant: string; date: string; time: string; accountName: string; personId: string }>;
+  // Quick payments still waiting for a few words (DOMAIN.md "Quick Entry"),
+  // newest first, already limited to the last few days. Absent: none.
+  quickWords?: Array<{ entryId: string; personId: string; date: string; time: string }>;
 }
 
 // A person view reads the accounts that person owns plus joint ones; the
