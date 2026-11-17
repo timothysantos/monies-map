@@ -22,7 +22,7 @@
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { categoryFromEverydayWords, everydayWordsFor } from "./category-everyday-words";
-import { closestNames, nameAtEnd } from "./ask-turn-names";
+import { nameAtEnd } from "./ask-turn-names";
 import { assumption, decideReadings, type AskReading } from "./ask-ambiguity";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
 import { chooseTransferOptions } from "./transfer-candidates";
@@ -442,10 +442,10 @@ function whichCategoryQuestion(action: AskTurnAction, context: AskTurnContext, g
   const names = context.entry.categoryNames.filter((name) => name !== "Transfer" && !/^other\b/i.test(name));
   const words = recategoriseWords(action, context, ground);
   const guess = words ? categoryFromEverydayWords(words, names) : undefined;
-  // After the shop's own guess, the nearest of the everyday spending
-  // categories (never Income or Savings for a shop's payments).
+  // After the shop's own guess, the everyday spending categories in the
+  // household's order (never Income or Savings for a shop's payments).
   const spending = names.filter((name) => everydayWordsFor(name).length > 0);
-  const picks = [...new Set([...(guess ? [guess] : []), ...closestNames(context.text, spending.length ? spending : names, 4)])].slice(0, 3);
+  const picks = [...new Set([...(guess ? [guess] : []), ...(spending.length ? spending : names)])].slice(0, 3);
   return categoryChips(askBack({ code: "field_missing", field: "whichCategory", valid: names.slice(0, 40) }, ACTION_COPY.whichCategory, picks), action, context, ground);
 }
 
