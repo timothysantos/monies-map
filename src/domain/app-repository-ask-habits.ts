@@ -203,6 +203,104 @@ export async function learnAliasHabit(db: D1Database, input: { alias: string; pe
   await confirmHabitValue(db, "alias", key, { personId: input.personId } satisfies AskAliasHabitValue, "ask");
 }
 
+// What a just-saved entry confirmed (its shop's category and, on Splits, its
+// split), read before the entry is removed, so Undo can take those
+// confirmations back. Null when the entry or its people cannot be read.
+export interface EntryHabitFacts {
+  key: string;
+  categoryValue: string | null;
+  splitValue: string | null;
+}
+
+export async function readEntryHabitFacts(db: D1Database, entryId: string): Promise<EntryHabitFacts | null> {
+  try {
+    const [entry, people] = await Promise.all([
+      db
+        .prepare(`
+          SELECT transactions.description, categories.name AS category_name,
+            split_expenses.id AS split_id, split_expenses.split_group_id, split_expenses.payer_person_id
+          FROM transactions
+          LEFT JOIN categories ON categories.id = transactions.category_id
+          LEFT JOIN split_expenses ON split_expenses.linked_transaction_id = transactions.id AND split_expenses.deleted_at IS NULL
+          WHERE transactions.household_id = ? AND transactions.id = ?
+          LIMIT 1
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+        .first<{ description: string; category_name: string | null; split_id: string | null; split_group_id: string | null; payer_person_id: string | null }>(),
+      db
+        .prepare(`
+          SELECT id FROM people WHERE household_id = ?
+          ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END, created_at, id
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID)
+        .all<{ id: string }>()
+    ]);
+    if (!entry) return null;
+    const key = habitMerchantKey(entry.description);
+    if (!key) return null;
+    const categoryName = entry.category_name ?? "";
+    const categoryValue = categoryName && !ASK_CATCH_ALL_CATEGORIES.has(categoryName)
+      ? canonicalHabitValue("category", { categoryName } satisfies AskCategoryHabitValue)
+      : null;
+    let splitValue: string | null = null;
+    if (entry.split_id && entry.payer_person_id) {
+      const share = await db
+        .prepare("SELECT ratio_basis_points FROM split_expense_shares WHERE split_expense_id = ? AND person_id = ?")
+        .bind(entry.split_id, entry.payer_person_id)
+        .first<{ ratio_basis_points: number }>();
+      if (share && people.results.slice(0, 2).some((person) => person.id === entry.payer_person_id)) {
+        splitValue = canonicalHabitValue("split", {
+          groupId: entry.split_group_id ?? null,
+          payerPersonId: entry.payer_person_id,
+          payerShareBasisPoints: share.ratio_basis_points
+        } satisfies AskSplitHabitValue);
+      }
+    }
+    return { key, categoryValue, splitValue };
+  } catch {
+    return null;
+  }
+}
+
+// A new entry saved on Splits with the share on its card: the shop's usual
+// split, read from the split the save wrote (the same value Undo takes
+// back).
+export async function learnSplitHabitFromSavedSplit(db: D1Database, entryId: string, source: AskHabitSource) {
+  const facts = await readEntryHabitFacts(db, entryId);
+  if (!facts?.splitValue) return;
+  try {
+    await confirmationStatement(db, "split", facts.key, facts.splitValue, source).run();
+    await pruneHabits(db);
+  } catch {
+    // Best effort.
+  }
+}
+
+// Undo of a save that counted as a confirmation takes that one confirmation
+// back (never below none), only while the habit still holds the value the
+// save confirmed. Best effort like learning.
+export async function forgetEntryHabitConfirmations(
+  db: D1Database,
+  facts: EntryHabitFacts | null,
+  counted: { category?: boolean; split?: boolean }
+) {
+  if (!facts) return;
+  const take = (kind: AskHabitKind, valueJson: string) => db
+    .prepare(`
+      UPDATE ask_habits
+      SET times_confirmed = MAX(times_confirmed - 1, 0), updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ? AND kind = ? AND key = ? AND value_json = ? AND times_confirmed > 0
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, kind, facts.key, valueJson)
+    .run();
+  try {
+    if (counted.category && facts.categoryValue) await take("category", facts.categoryValue);
+    if (counted.split && facts.splitValue) await take("split", facts.splitValue);
+  } catch {
+    // Best effort.
+  }
+}
+
 // The person undid what Ask did, or declined its suggestion: confidence for
 // this habit starts again from nothing. Best effort like learning.
 export async function recordHabitOverride(db: D1Database, kind: AskHabitKind, key: string) {

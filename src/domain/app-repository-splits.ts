@@ -6,7 +6,7 @@ import {
   newSplitRecordId,
   slugify
 } from "./app-repository-helpers";
-import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
+import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
 import { assertSplitSettlementUnchanged, SplitSettlementLockedError, type SplitSettlementFacts } from "./split-settlement-lock";
 import { USUALLY_SHARED_CONFIRM_ABOVE, USUALLY_SHARED_POLICY } from "./usually-shared";
@@ -1051,6 +1051,75 @@ async function loadSplitSharePeople(db: D1Database) {
   return people.results;
 }
 
+// What one person owes the other on Splits right now, per group: the open
+// records only (a batch not settled, nothing a settle-up checkpoint covers),
+// the same rule as the Splits page's balance. Positive: `debtorId` owes
+// `creditorId`; negative: the other way. In each group's own currency. With
+// `batchId`, that batch only. Read only, one statement.
+export async function loadOpenSplitOwed(
+  db: D1Database,
+  input: { debtorId: string; creditorId: string; batchId?: string }
+): Promise<Array<{ groupId: string | null; groupName: string; currency: string; owedMinor: number }>> {
+  const { debtorId, creditorId } = input;
+  const batchFilter = input.batchId ? "AND records.batch_id = ?" : "";
+  const result = await db
+    .prepare(`
+      WITH covered AS (
+        SELECT checkpoint_items.record_kind, checkpoint_items.record_id
+        FROM split_settlement_checkpoint_items AS checkpoint_items
+        INNER JOIN split_settlement_checkpoints AS covering ON covering.id = checkpoint_items.checkpoint_id
+        WHERE covering.household_id = ? AND covering.status NOT IN ('reopened', 'voided')
+      ),
+      records AS (
+        SELECT split_expenses.split_group_id AS group_id, split_expenses.split_batch_id AS batch_id,
+          CASE
+            WHEN split_expenses.payer_person_id = ? THEN COALESCE((SELECT amount_minor FROM split_expense_shares WHERE split_expense_id = split_expenses.id AND person_id = ?), 0)
+            WHEN split_expenses.payer_person_id = ? THEN -COALESCE((SELECT amount_minor FROM split_expense_shares WHERE split_expense_id = split_expenses.id AND person_id = ?), 0)
+            ELSE 0
+          END AS owed_minor
+        FROM split_expenses
+        LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id
+        WHERE split_expenses.household_id = ? AND split_expenses.deleted_at IS NULL
+          AND split_batches.closed_on IS NULL
+          AND split_expenses.id NOT IN (SELECT record_id FROM covered WHERE record_kind = 'expense')
+        UNION ALL
+        SELECT split_settlements.split_group_id, split_settlements.split_batch_id,
+          CASE
+            WHEN split_settlements.from_person_id = ? AND split_settlements.to_person_id = ? THEN -split_settlements.amount_minor
+            WHEN split_settlements.from_person_id = ? AND split_settlements.to_person_id = ? THEN split_settlements.amount_minor
+            ELSE 0
+          END
+        FROM split_settlements
+        LEFT JOIN split_batches ON split_batches.id = split_settlements.split_batch_id
+        WHERE split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
+          AND split_batches.closed_on IS NULL
+          AND split_settlements.id NOT IN (SELECT record_id FROM covered WHERE record_kind = 'settlement')
+      )
+      SELECT records.group_id, COALESCE(split_groups.group_name, '') AS group_name,
+        COALESCE(split_groups.currency, 'SGD') AS currency, SUM(records.owed_minor) AS owed_minor
+      FROM records
+      LEFT JOIN split_groups ON split_groups.id = records.group_id
+      WHERE 1 = 1 ${batchFilter}
+      GROUP BY records.group_id
+      ORDER BY group_name
+    `)
+    .bind(
+      DEFAULT_HOUSEHOLD_ID,
+      creditorId, debtorId, debtorId, creditorId,
+      DEFAULT_HOUSEHOLD_ID,
+      debtorId, creditorId, creditorId, debtorId,
+      DEFAULT_HOUSEHOLD_ID,
+      ...(input.batchId ? [input.batchId] : [])
+    )
+    .all<{ group_id: string | null; group_name: string; currency: string | null; owed_minor: number }>();
+  return result.results.map((row) => ({
+    groupId: row.group_id ?? null,
+    groupName: row.group_name,
+    currency: normalizeSplitCurrency(row.currency),
+    owedMinor: Number(row.owed_minor ?? 0)
+  }));
+}
+
 export async function createSplitSettlementRecord(
   db: D1Database,
   input: {
@@ -1070,36 +1139,48 @@ export async function createSplitSettlementRecord(
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
   const id = newSplitRecordId("split-settlement");
-  const batchId = await getOrCreateActiveSplitBatch(db, {
-    groupId: input.groupId || null,
-    date: input.date
-  });
-  await db
-    .prepare(`
-      INSERT INTO split_settlements (
-        id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
-        settlement_date, amount_minor, currency, fx_rate_basis_points, payment_method, payment_status, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      id,
-      DEFAULT_HOUSEHOLD_ID,
-      input.groupId || null,
-      batchId,
-      fromPersonId,
-      toPersonId,
-      input.date,
-      input.amountMinor,
-      currency,
-      input.fxRateBasisPoints ?? null,
-      input.paymentMethod ?? "cash",
-      input.paymentStatus ?? "recorded",
-      input.note ?? null
-    )
-    .run();
-  await closeSplitBatch(db, { batchId, closedOn: input.date });
+  const groupId = input.groupId || null;
+  const batch = await resolveActiveSplitBatch(db, { groupId, date: input.date });
+  // A payment settles the group only when nothing is owed either way after
+  // it. Paying more or less than is owed leaves the rest open, owed the
+  // right way round (Ask audit B9: $50 paid on $48 owed is $2 owed back,
+  // never a group closed as settled with $2 gone).
+  const [owedBefore] = batch.statements.length
+    ? [{ owedMinor: 0 }]
+    : await loadOpenSplitOwed(db, { debtorId: fromPersonId, creditorId: toPersonId, batchId: batch.id });
+  const owedAfter = (owedBefore?.owedMinor ?? 0) - input.amountMinor;
+  const closeStatement = owedAfter === 0
+    ? await buildCloseSplitBatchStatement(db, { batchId: batch.id, groupId, closedOn: input.date })
+    : null;
 
-  return { settlementId: id };
+  await db.batch([
+    ...batch.statements,
+    db
+      .prepare(`
+        INSERT INTO split_settlements (
+          id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
+          settlement_date, amount_minor, currency, fx_rate_basis_points, payment_method, payment_status, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        id,
+        DEFAULT_HOUSEHOLD_ID,
+        groupId,
+        batch.id,
+        fromPersonId,
+        toPersonId,
+        input.date,
+        input.amountMinor,
+        currency,
+        input.fxRateBasisPoints ?? null,
+        input.paymentMethod ?? "cash",
+        input.paymentStatus ?? "recorded",
+        input.note ?? null
+      ),
+    ...(closeStatement ? [closeStatement] : [])
+  ]);
+
+  return { settlementId: id, owedBeforeMinor: owedBefore?.owedMinor ?? 0, owedAfterMinor: owedAfter, settled: owedAfter === 0 };
 }
 
 export async function updateSplitExpenseRecord(
@@ -1458,6 +1539,33 @@ export async function deleteSplitExpenseRecord(
   await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return { splitExpenseId: input.splitExpenseId, deleted: true };
+}
+
+// The statements that archive the split an entry is on, for the entry
+// delete's own batch (Ask's Undo of a saved shared entry): the same archive
+// and history row as deleteSplitExpenseRecord, so the split goes with its
+// entry and no one is left owing for something that no longer exists. Reads
+// and checks first (a split a settle-up checkpoint holds is refused); no
+// active split, no statements.
+export async function buildLinkedSplitArchiveStatements(db: D1Database, entryId: string): Promise<D1PreparedStatement[]> {
+  const split = await db
+    .prepare(`SELECT split_expenses.id, split_expenses.split_group_id, split_groups.group_name,
+        split_expenses.description, split_expenses.total_amount_minor, split_expenses.currency
+      FROM split_expenses LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
+      WHERE split_expenses.household_id = ? AND split_expenses.linked_transaction_id = ? AND split_expenses.deleted_at IS NULL
+      ORDER BY split_expenses.rowid`)
+    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+    .first<{ id: string; split_group_id: string | null; group_name: string | null; description: string; total_amount_minor: number; currency: string | null }>();
+  if (!split) {
+    return [];
+  }
+  await assertSplitSettlementUnchanged(db, { recordKind: "expense", recordId: split.id, next: () => "deleted" });
+  return [
+    db
+      .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(split.id, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: "expense", recordId: split.id, action: "deleted", groupId: split.split_group_id, groupName: split.group_name, description: split.description, amountMinor: split.total_amount_minor, currency: split.currency })
+  ];
 }
 
 // The event month of the ledger entry a split expense is linked to: the only
@@ -2577,6 +2685,8 @@ async function planSharedSaveShares(
     amountMinor: number;
     currency: string;
     splitBasisPoints?: number;
+    // The first person's exact share, when it was stated as an amount.
+    splitAmountMinor?: number;
   }
 ): Promise<Array<{ personId: string; ratioBasisPoints: number; amountMinor: number }>> {
   const sharePeople = await loadSplitSharePeople(db);
@@ -2596,7 +2706,7 @@ async function planSharedSaveShares(
       return stored;
     }
   }
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints);
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints, input.splitAmountMinor);
   return [
     { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
     { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
@@ -2652,10 +2762,14 @@ export async function buildLinkedSplitUpsertStatements(
       accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment";
     };
     splitBasisPoints?: number;
+    splitAmountMinor?: number;
     splitGroupId?: string | null;
   }
 ) {
   const { entry } = input;
+  if (input.splitAmountMinor !== undefined && !(Number.isInteger(input.splitAmountMinor) && input.splitAmountMinor >= 0 && input.splitAmountMinor <= Math.abs(entry.amountMinor))) {
+    throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
+  }
   if (!entry.payerPersonId) {
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
@@ -2686,7 +2800,8 @@ export async function buildLinkedSplitUpsertStatements(
     stored: existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
     amountMinor: amount.amountMinor,
     currency: amount.currency,
-    splitBasisPoints: input.splitBasisPoints
+    splitBasisPoints: input.splitBasisPoints,
+    splitAmountMinor: input.splitAmountMinor
   });
   const paymentMethod = paymentMethodForLinkedAccount(entry.accountKind, "other");
 

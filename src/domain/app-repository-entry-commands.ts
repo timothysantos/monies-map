@@ -16,7 +16,7 @@ import { getSignedLedgerAmountMinor, normalizeStatementDate } from "./app-reposi
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, buildLinkedSplitUpsertStatements, isActiveSplitLinkConflict } from "./app-repository-splits";
+import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitArchiveStatements, buildLinkedSplitMirrorStatements, buildLinkedSplitUpsertStatements, isActiveSplitLinkConflict } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { defaultEntryTime, parseEntryTime } from "../lib/entry-time";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
@@ -872,6 +872,11 @@ export async function createEntryRecord(
     offsetsCategory?: boolean;
     note?: string;
     splitBasisPoints?: number;
+    // A Shared expense's split: the first person's exact share (wins over
+    // splitBasisPoints, so a stated "her share is 30" is kept to the cent)
+    // and the split group (absent or null: no group).
+    splitAmountMinor?: number;
+    splitGroupId?: string | null;
     externalReference?: string;
     // A Wallet amount in another currency behind an estimated amountMinor.
     originalAmountMinor?: number;
@@ -955,7 +960,9 @@ export async function createEntryRecord(
           note: input.note ?? null,
           accountKind: account.account_kind
         },
-        splitBasisPoints: input.splitBasisPoints
+        splitBasisPoints: input.splitBasisPoints,
+        splitAmountMinor: input.splitAmountMinor,
+        splitGroupId: input.splitGroupId ?? null
       })
     : null;
 
@@ -1027,7 +1034,17 @@ export async function createEntryRecord(
 
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
-  return { entryId, created: true, accountId, accountName, currency, ...(entryTime ? { time: entryTime } : {}) };
+  // The split a Shared expense was created with, so the caller never adds
+  // the entry to Splits a second time and its Undo removes both.
+  return {
+    entryId,
+    created: true,
+    accountId,
+    accountName,
+    currency,
+    ...(entryTime ? { time: entryTime } : {}),
+    ...(sharedSplit ? { linkedSplitExpenseId: sharedSplit.splitExpenseId, linkedSplitExpenseMonth: input.date.slice(0, 7) } : {})
+  };
 }
 
 // A repeat create returns the entry it already made, with the split
@@ -1146,6 +1163,11 @@ export async function deleteEntryRecord(
   db: D1Database,
   input: {
     entryId: string;
+    // Ask's Undo of an entry it just saved: the split that save made goes
+    // in the same batch, so nobody is left owing for it. Without it (the
+    // Entries page) a split recorded on Splits keeps its own life and only
+    // loses its link to the entry.
+    withLinkedSplit?: boolean;
   }
 ) {
   const transaction = await db
@@ -1181,8 +1203,10 @@ export async function deleteEntryRecord(
   }
 
   const months = [transaction.transaction_date.slice(0, 7)];
+  const splitArchive = input.withLinkedSplit ? await buildLinkedSplitArchiveStatements(db, input.entryId) : [];
   await db.batch([
     ...(transaction.transfer_group_id ? buildTransferGroupDissolveStatements(db, transaction.transfer_group_id) : []),
+    ...splitArchive,
     db
       .prepare("DELETE FROM monthly_plan_entry_links WHERE transaction_id = ?")
       .bind(input.entryId),
@@ -1207,7 +1231,8 @@ export async function deleteEntryRecord(
 
   return {
     entryId: input.entryId,
-    deleted: true
+    deleted: true,
+    ...(splitArchive.length ? { splitRemoved: true } : {})
   };
 }
 

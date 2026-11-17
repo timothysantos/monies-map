@@ -145,7 +145,7 @@ import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { handleAskTurn } from "./server/ask-turn-route";
 import { handleAskHabitsRoute } from "./server/ask-habits-routes";
 import { applyHabitsToNewEntry } from "./server/ask-auto-apply";
-import { learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntry } from "./domain/app-repository-ask-habits";
+import { forgetEntryHabitConfirmations, learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntry, learnSplitHabitFromSavedSplit, readEntryHabitFacts } from "./domain/app-repository-ask-habits";
 import { aiVisitorKey } from "./domain/ai-assistance";
 import { handleViewerPreferencesRoute, isViewerPreferencesPath } from "./server/viewer-preferences-route";
 import { handleTripEventsRoute, isTripEventsPath } from "./server/trip-events-route";
@@ -1379,19 +1379,23 @@ export default {
     }
 
     if (url.pathname === "/api/entries/delete" && request.method === "POST") {
-      const body = await request.json<{ entryId?: string }>();
+      const body = await request.json<{ entryId?: string; withLinkedSplit?: unknown; habits?: { category?: unknown; split?: unknown } }>();
 
       if (!body.entryId) {
         return json({ ok: false, error: "Missing entry id" }, 400);
       }
 
       try {
-        return json({
-          ok: true,
-          ...(await deleteEntryRecord(env.DB, {
-            entryId: body.entryId
-          }))
+        // Ask's Undo of a save: what that save confirmed as a habit is read
+        // first, and taken back once the entry is gone (best effort).
+        const forget = { category: body.habits?.category === true, split: body.habits?.split === true };
+        const habitFacts = forget.category || forget.split ? await readEntryHabitFacts(env.DB, body.entryId) : null;
+        const deleted = await deleteEntryRecord(env.DB, {
+          entryId: body.entryId,
+          withLinkedSplit: body.withLinkedSplit === true
         });
+        await forgetEntryHabitConfirmations(env.DB, habitFacts, forget);
+        return json({ ok: true, ...deleted });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete entry" }, 400);
       }
@@ -1460,10 +1464,16 @@ export default {
         offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
+        splitAmountMinor?: unknown;
+        splitGroupId?: unknown;
         externalReference?: unknown;
         time?: unknown;
         originalAmountMinor?: unknown;
         originalCurrency?: unknown;
+        // Which of the card's choices were the person's own, so only those
+        // count as habit confirmations (absent: the category counts, as on
+        // the Entries composer).
+        habits?: { category?: unknown; split?: unknown };
       }>();
 
       if (
@@ -1487,6 +1497,14 @@ export default {
       if (body.externalReference !== undefined && !isAskEntryReference(body.externalReference)) {
         return json({ ok: false, error: "Invalid entry reference" }, 400);
       }
+      if (body.splitAmountMinor !== undefined && body.splitAmountMinor !== null && !Number.isSafeInteger(body.splitAmountMinor)) {
+        return json({ ok: false, error: "A split share must be between 0% and 100% of the amount." }, 400);
+      }
+      if (body.splitGroupId !== undefined && body.splitGroupId !== null && typeof body.splitGroupId !== "string") {
+        return json({ ok: false, error: "Invalid split group" }, 400);
+      }
+      // "split-group-none" is the Splits page's own name for no group.
+      const splitGroupId = typeof body.splitGroupId === "string" && body.splitGroupId && body.splitGroupId !== "split-group-none" ? body.splitGroupId : null;
 
       try {
         const createdEntry = await createEntryRecord(env.DB, {
@@ -1504,6 +1522,8 @@ export default {
           offsetsCategory: body.offsetsCategory,
           note: body.note,
           splitBasisPoints: body.splitBasisPoints,
+          ...(typeof body.splitAmountMinor === "number" ? { splitAmountMinor: body.splitAmountMinor } : {}),
+          splitGroupId,
           externalReference: body.externalReference,
           originalAmountMinor: body.originalAmountMinor === undefined || body.originalAmountMinor === null ? undefined : body.originalAmountMinor as number,
           originalCurrency: body.originalCurrency === undefined || body.originalCurrency === null ? undefined : body.originalCurrency as string,
@@ -1513,7 +1533,19 @@ export default {
         // (a habit confirmation), then Ask handles what the habits allow
         // (src/server/ask-auto-apply.ts). Both are best effort.
         if (createdEntry.created && body.entryType === "expense") {
-          await learnCategoryHabit(env.DB, { description: body.description, categoryName: body.categoryName, source: "entries" });
+          if (body.habits?.category !== false) {
+            await learnCategoryHabit(env.DB, { description: body.description, categoryName: body.categoryName, source: "entries" });
+          }
+          // Saved on Splits with the share the card showed: the shop's usual
+          // split (an exact amount is not a habit, as on Add to Splits).
+          if (createdEntry.linkedSplitExpenseId && body.habits?.split === true && typeof body.splitAmountMinor !== "number") {
+            await learnSplitHabitFromSavedSplit(env.DB, createdEntry.entryId, "ask");
+          }
+          // A trip or event linked to the chosen group follows it, as on Add
+          // to Splits. A second command; if it fails the entry stays saved.
+          if (createdEntry.linkedSplitExpenseId && splitGroupId) {
+            await followSplitGroupTripEvent(env.DB, { entryId: createdEntry.entryId, splitGroupId }).catch(() => null);
+          }
           await applyHabitsToNewEntry(env.DB, createdEntry.entryId);
         }
         // A transfer out like last month's gets its purpose. Best effort.
