@@ -265,6 +265,14 @@ const WITH_PERSON = /\bwith\s+([\p{L}][\p{L}'.-]*)\s*$/iu;
  */
 export function readDescribeRules(text: string, context: AskTurnContext, options: { byAmount?: boolean } = {}): AskTurnAction | null {
   let rest = String(text ?? "").replace(/\s+/g, " ").trim();
+  // The answer to "Who did you share it with?" (a person's name chip): the
+  // words before it, with that person.
+  const before = [...(context.history ?? [])].reverse().find((message) => message.role === "user")?.text ?? "";
+  const answered = before && rest.split(" ").length <= 2 ? findPerson(rest, context) : null;
+  if (!options.byAmount && answered && answered !== "unknown" && before !== rest && SHARED.test(before)) {
+    const again = before.replace(SHARED, (match, name: string) => match.slice(0, match.length - name.length) + answered.name);
+    return readDescribeRules(again, { ...context, text: again, history: [] });
+  }
   let amount: string | null = null;
   if (options.byAmount) {
     const match = BY_AMOUNT.exec(rest);

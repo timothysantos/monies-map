@@ -116,6 +116,14 @@ test("AI off: a partial word names it; a name the household does not have, or th
   assert.deepEqual(unknown.reply.options, ["Tim", "Joyce"]);
   assert.equal("error" in unknown.reply, false);
 
+  // The person's chip answer reads the words again with that person.
+  const answered = (await turn(db, {
+    text: "Joyce",
+    focus: wordsFocus(entryId),
+    history: [{ role: "user", text: "dinner split with sam" }, { role: "app", text: unknown.reply.question }]
+  })).payload;
+  assert.deepEqual(answered.reply.change.rows.map((row) => [row.field, row.after]), [["description", "Dinner"], ["category", "Food & Drinks"], ["splits", "Half each with Joyce"]]);
+
   const self = (await turn(db, { text: "lunch split with tim", focus: wordsFocus(entryId) })).payload;
   assert.equal(self.reply.kind, "clarify");
   assert.match(self.reply.question, /^Who did you share it with\?/);
