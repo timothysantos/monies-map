@@ -263,6 +263,8 @@ export const settingsMessages = {
   shortcutInstallTitle: "Apple Pay transaction capture",
   shortcutInstallDetail: "The Apple-signed shortcut saves Wallet amount, merchant, date, and card context, confirms the account used, and opens the entry for optional edits.",
   shortcutInstall: "Install Apple Shortcut",
+  // The second Shortcut (DOMAIN.md "Bank Alert"), installed with the same connection.
+  bankAlertShortcutInstall: "Install the bank alert shortcut, which fills in a missing Apple Pay amount from your bank's payment alert",
   // Each person's phone has its own connection (DOMAIN.md "Shortcut connection").
   shortcutPhoneRowLabel: "Who is this phone for?",
   shortcutPhoneSelectLabel: "Whose phone the Apple Pay shortcut is set up for",

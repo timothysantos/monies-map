@@ -621,6 +621,44 @@ test.describe("settings reference data", () => {
     await popup.close();
   });
 
+  test("bank alert shortcut install copies the same private connection and opens its signed file", async ({ page }) => {
+    const apiKey = `mm_playwright_bank_alert_${Date.now()}`;
+    const shortcutPath = "/shortcuts/monies-map-bank-alert.shortcut";
+    const manifest = JSON.parse(await readFile("shortcuts/bank-alert/manifest.json", "utf8"));
+
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (value) => window.sessionStorage.setItem("playwright-shortcut-clipboard", value)
+        }
+      });
+    });
+    const artifactResponse = await page.request.get(shortcutPath);
+    expect(artifactResponse.ok()).toBeTruthy();
+    expect((await artifactResponse.body()).byteLength).toBe(manifest.signedReleaseSize);
+    await page.context().route(`**${shortcutPath}`, (route) => route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><title>Bank alert shortcut</title>"
+    }));
+
+    await openSettingsPage(page);
+    const shortcutUrl = new URL(shortcutPath, page.url()).toString();
+    await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await page.getByText("More shortcut settings", { exact: true }).click();
+    await page.getByLabel("Private connection key", { exact: true }).fill(apiKey);
+
+    const popupPromise = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Install the bank alert shortcut, which fills in a missing Apple Pay amount from your bank's payment alert" }).click();
+    const popup = await popupPromise;
+    await popup.waitForURL(shortcutUrl);
+    const copiedConnection = new URL(await page.evaluate(() => window.sessionStorage.getItem("playwright-shortcut-clipboard")));
+    expect(copiedConnection.pathname).toBe("/api/shortcuts/entries/create");
+    expect(copiedConnection.searchParams.get("shortcut_token")).toBe(apiKey);
+    await popup.close();
+  });
+
   test("edit person submits from Enter in the name field", async ({ page }) => {
     const before = await loadAppShell(page);
     const targetPerson = before.household.people[0];

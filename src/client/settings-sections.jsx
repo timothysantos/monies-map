@@ -27,6 +27,9 @@ const { accounts: accountService, format: formatService } = moniesClient;
 const APPLE_PAY_SHORTCUT_URL = "/shortcuts/monies-map-apple-pay-api.shortcut";
 // The second Shortcut (shortcuts/log-cash): the same key, its own route.
 const LOG_CASH_SHORTCUT_URL = "/shortcuts/monies-map-log-cash.shortcut";
+// The "Bank alert to Monies Map" Shortcut (DOMAIN.md "Bank Alert"): the same
+// private connection, installed the same way.
+const BANK_ALERT_SHORTCUT_URL = "/shortcuts/monies-map-bank-alert.shortcut";
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -126,7 +129,8 @@ export function SettingsShortcutApiSection({
   const foreignCurrencyAccount = draft.foreignCurrencyAccountId ? accountsById.get(draft.foreignCurrencyAccountId) : null;
 
   async function handleInstallShortcut(kind = "apple_pay") {
-    const shortcutUrl = new URL(kind === "log_cash" ? LOG_CASH_SHORTCUT_URL : APPLE_PAY_SHORTCUT_URL, window.location.origin).toString();
+    const shortcutPath = kind === "log_cash" ? LOG_CASH_SHORTCUT_URL : kind === "bank_alert" ? BANK_ALERT_SHORTCUT_URL : APPLE_PAY_SHORTCUT_URL;
+    const shortcutUrl = new URL(shortcutPath, window.location.origin).toString();
     const installWindow = window.open("about:blank", "_blank");
     if (installWindow) {
       installWindow.opener = null;
@@ -363,6 +367,13 @@ export function SettingsShortcutApiSection({
         <ExternalLink size={16} aria-hidden="true" />
         {hasSeveralPhones ? settingsMessages.logCashInstallFor(phoneName) : settingsMessages.logCashInstall}
       </button>
+      <DetailRows>
+        <DetailRow
+          label={settingsMessages.bankAlertShortcutInstall}
+          disabled={isSubmitting || isInstalling || orderedAccounts.length === 0}
+          onClick={() => void handleInstallShortcut("bank_alert")}
+        />
+      </DetailRows>
       {isRevokeOpen ? (
         <SheetDialog
           tone="danger"
