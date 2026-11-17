@@ -518,6 +518,30 @@ test("Splits lists Usually shared in the showcase: Serene's FairPrice top-ups of
   assert.ok(entryCount >= 3 && shopCount >= 1);
 });
 
+// Regression (Ask audit 2026-11-17): after a visitor saved and undid an
+// entry through Ask, its learned habit (and any Apple Pay tap or sent file
+// waiting) still named the household, so the showcase's DELETE FROM
+// households failed on a foreign key and Reset failed every time after.
+test("the showcase reseeds after Ask learned a habit and a tap and a file were waiting", async (t) => {
+  const { api, db } = await openSeededDatabase(t, showcase);
+  const [{ id: householdId }] = await rows(db, "SELECT id FROM households LIMIT 1");
+  await db.batch([
+    db.prepare("INSERT INTO ask_habits (household_id, kind, key, value_json, times_confirmed, last_used, source) VALUES (?, 'category', 'koufu', '{}', 1, '2026-05-30', 'entry')").bind(householdId),
+    db.prepare("INSERT INTO waiting_taps (id, household_id, request_id, person_id, account_id, tap_date, received_at) VALUES ('tap-1', ?, 'req-1', ?, 'acct', '2026-05-30', '2026-05-30T10:00:00Z')").bind(householdId, ETHAN),
+    db.prepare("INSERT INTO waiting_files (id, household_id, file_name, file_kind, content_type, size_bytes, sha256, chunk_count, arrived_via, received_at, expires_at) VALUES ('wf-1', ?, 'a.csv', 'csv', 'text/csv', 1, 'abc', 0, 'share', '2026-05-30', '2026-06-29')").bind(householdId),
+    db.prepare("INSERT INTO app_settings (key, value_json) VALUES ('ask_handles_safe_things', 'false') ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json")
+  ]);
+  const reseed = await api("/api/demo/reseed", {});
+  assert.equal(reseed.status, 200, JSON.stringify(reseed.payload).slice(0, 400));
+  assert.equal(reseed.payload.demo.dataset, "showcase");
+  for (const table of ["ask_habits", "waiting_taps", "waiting_files"]) {
+    const [{ count }] = await rows(db, `SELECT COUNT(*) AS count FROM ${table}`);
+    assert.equal(count, 0, `${table} cleared with the household it named`);
+  }
+  // A second reset still works.
+  assert.equal((await api("/api/demo/reseed", {})).status, 200);
+});
+
 test("a failed showcase reseed leaves the previous data untouched", async (t) => {
   const { db } = await openSeededDatabase(t, defaults);
   const before = await dumpDatabase(db);

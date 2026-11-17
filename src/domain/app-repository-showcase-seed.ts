@@ -14,6 +14,7 @@
 import { ensureDemoSchema } from "./app-repository-schema";
 import { ensureAppSettingsTable } from "./app-settings-table";
 import { PAYMENT_WAYS_SETTINGS_KEY } from "./payment-ways";
+import { ASK_HANDLES_SAFE_SETTING_KEY } from "./ask-habits";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshots } from "./app-repository-snapshots";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { isoDateInAppTimeZone } from "../lib/app-calendar";
@@ -251,6 +252,19 @@ export function buildShowcaseTripEventSql(dataset: ShowcaseDataset) {
   ].filter((sql) => !sql.endsWith("VALUES "));
 }
 
+// Additive tables whose rows name the household being replaced (Ask's
+// habits, Apple Pay taps waiting for an amount, files sent to Monies Map),
+// children first. They may be missing on an older database, so each is
+// cleared only when it is there; a row left behind would fail the
+// household's DELETE on its foreign key and with it every later reset.
+export const SHOWCASE_ADDITIVE_CLEAR_TABLES = [
+  "ask_habits",
+  "waiting_taps",
+  "waiting_file_chunks",
+  "waiting_files",
+  "waiting_file_daily_counts"
+] as const;
+
 // `guardStatements` go first: one that fails (a guard that finds the seed
 // already moved on) rolls the whole batch back before anything is replaced.
 export function buildShowcaseSeedStatements(
@@ -258,17 +272,20 @@ export function buildShowcaseSeedStatements(
   dataset: ShowcaseDataset,
   extraStatements: D1PreparedStatement[] = [],
   guardStatements: D1PreparedStatement[] = [],
-  { withTripEvents = false }: { withTripEvents?: boolean } = {}
+  { withTripEvents = false, additiveTables = [] }: { withTripEvents?: boolean; additiveTables?: readonly string[] } = {}
 ) {
   return [
     ...guardStatements,
     // Trips and events (additive tables): cleared and seeded only when the
     // database has them.
     ...(withTripEvents ? [db.prepare("DELETE FROM trip_event_entries"), db.prepare("DELETE FROM trip_events")] : []),
+    ...SHOWCASE_ADDITIVE_CLEAR_TABLES.filter((table) => additiveTables.includes(table)).map((table) => db.prepare(`DELETE FROM ${table}`)),
     ...SHOWCASE_CLEAR_TABLES.map((table) => db.prepare(`DELETE FROM ${table}`)),
     // Payment ways name the people and accounts replaced here; the Shortcut
-    // settings in the same table stay.
+    // settings in the same table stay. Ask's "handle safe things" switch
+    // goes back to its default (on), as the default demo seed does.
     db.prepare("DELETE FROM app_settings WHERE key = ?").bind(PAYMENT_WAYS_SETTINGS_KEY),
+    db.prepare("DELETE FROM app_settings WHERE key = ?").bind(ASK_HANDLES_SAFE_SETTING_KEY),
     ...buildShowcaseInsertSqlStatements(dataset).map((sql) => db.prepare(sql)),
     ...(withTripEvents ? buildShowcaseTripEventSql(dataset).map((sql) => db.prepare(sql)) : []),
     ...buildMonthlySnapshotRefreshMarkers(db, dataset.months),
@@ -303,8 +320,10 @@ export async function reseedShowcaseData(
   await ensureDemoSchema(db);
   await ensureAppSettingsTable(db);
   const dataset = buildShowcaseDataset(resolveShowcaseSeedWindow(options.seedMonth, options.now));
-  const withTripEvents = await db.prepare("SELECT 1 FROM trip_events LIMIT 1").all().then(() => true, () => false);
-  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? [], options.guardStatements ?? [], { withTripEvents }));
+  const hasTable = (table: string) => db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).all().then(() => true, () => false);
+  const [withTripEvents, ...present] = await Promise.all([hasTable("trip_events"), ...SHOWCASE_ADDITIVE_CLEAR_TABLES.map(hasTable)]);
+  const additiveTables = SHOWCASE_ADDITIVE_CLEAR_TABLES.filter((_, index) => present[index]);
+  await db.batch(buildShowcaseSeedStatements(db, dataset, options.extraStatements ?? [], options.guardStatements ?? [], { withTripEvents, additiveTables }));
   await refreshMonthlySnapshots(db, dataset.months);
   return dataset;
 }
