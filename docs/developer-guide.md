@@ -1169,9 +1169,39 @@ the Shortcut and the app):
   request id, so category guess, habits, trips, the foreign-currency
   estimate and the "Done for you" safe set match any Apple Pay entry.
 - Completion seam: `saveShortcutEntry(..., { source, tap, completedBy })`
-  with `completed_by` one of `second_tap`, `shortcut_answer`, `app`, and
-  `bank_alert` reserved for a later automation that supplies the amount
-  (for example an iOS Notification-trigger or bank email alert). Not built.
+  with `completed_by` one of `second_tap`, `shortcut_answer`, `app`,
+  `bank_alert`. Entries' Save and the bank alert both go through
+  `completeWaitingTapWithAmount` (the tap's request id, card and shop).
+- Bank alerts (DOMAIN.md "Bank Alert", since 2026-11-17): the second
+  Shortcut, "Bank alert to Monies Map" (`shortcuts/bank-alert/`, client
+  version `bank-alert-2026-11-17-v1`), replaces `entries/create` with
+  `alerts/bank` in the same connection URL and posts `{ text, receivedAt,
+  requestId, clientVersion }` to `POST /api/shortcuts/alerts/bank` (same key,
+  POST only, on the Shortcut Worker and the Access exemption beside the
+  other Shortcut paths; `src/server/bank-alert-route.ts`). The body goes
+  through `readJsonObject` with `BANK_ALERT_MAX_BODY_BYTES` (8 KiB, 413 past
+  it). `readBankAlert` (`src/domain/bank-alerts.ts`) drops a one-time code
+  first, scrubs card, account and phone digits (`redactText`, then the
+  digits after "ending", "card", "a/c", masked `XXXX-1234`), reads only the
+  first `BANK_ALERT_READ_CHARS` (600), refuses money in, sign-ins, refunds,
+  declined payments, transfers and promotions (`BANK_ALERT_NOT_A_PAYMENT`)
+  and two different amounts (a balance or limit and a bracketed converted
+  figure do not count), then tries `BANK_ALERT_WORDINGS` in order. A new
+  bank is one entry there: an id, `verified`, a pattern with `{money}` and
+  `{merchant}` (or `{merchantLine}`), and a sanitized sample that
+  `tests/bank-alerts.test.mjs` reads. `findTapForBankAlert` takes the key's
+  person's waiting taps from `BANK_ALERT_MATCH_BEFORE_SECONDS` (600) before
+  to `BANK_ALERT_MATCH_AFTER_SECONDS` (1800) after the tap, shops agreeing
+  by `merchantsAgree` once `BANK_ALERT_MERCHANT_PREFIXES` (`AMAZE*`) is
+  dropped, or the import's `AMAZE*` prefix rule; exactly one completes,
+  none or several answer `{ ok: true, completed: false, reason }`. The
+  phone's `receivedAt` counts only within an hour of the server's clock.
+  A repeat (the same or another alert for the same payment) finds the tap
+  no longer waiting; two at once save one entry (the tap's request id is
+  the entry's external reference). The text is never stored or logged.
+  Tests: `tests/bank-alerts.test.mjs`, `tests/bank-alert-route.test.mjs`
+  (route, privacy, simulated Shortcut runs, artifact),
+  `tests/atomic-writes-bank-alerts.test.mjs`.
 - Imports clear a waiting tap in the commit's batch
   (`buildImportWaitingTapClearStatements`): the bank's row on the tap's card
   (or the person's card for other currencies) within 7 days and the same

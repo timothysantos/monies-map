@@ -3161,6 +3161,41 @@ To get this, install the Shortcut again once on each iPhone (**Settings →
 Apple Pay shortcut → Install Apple Shortcut**, then **Replace**); an older
 copy still asks **How much was it?** straight away.
 
+### Let your bank's alert fill in the amount
+
+Your bank sends an alert for every card payment, with the amount and the
+shop: a notification from its app, a text message or an email. A second
+Shortcut, **Bank alert to Monies Map**, can pass that alert on, so a payment
+waiting for its amount finishes by itself.
+
+1. Open **Settings → Apple Pay shortcut** on your iPhone and select **Install
+   the bank alert shortcut**. The app copies the same private connection and
+   opens the Shortcut.
+2. Select **Add Shortcut** and paste the connection when Apple asks.
+3. In the Shortcuts app, open **Automation**, select **+**, and choose the one
+   that matches how your bank alerts you:
+   - **Notification**, then your bank's app (for example the Amaze app);
+   - **Message**, then the name your bank's text messages come from (for
+     example "UOB");
+   - **Email**, then the address your bank's alert emails come from.
+4. Choose **Run Immediately** and turn off **Notify When Run**. As the
+   action, choose **Run Shortcut**, pick **Bank alert to Monies Map** and pass
+   it the **Shortcut Input**.
+5. Do the same for each bank or card you use abroad.
+
+It runs quietly and shows nothing. It only finishes a payment that is waiting
+for its amount, and only when exactly one of yours is waiting from the same
+shop, from a few minutes before the alert to half an hour after; otherwise it
+does nothing and you finish the payment in **Entries** as before. It never
+adds an entry on its own and never changes one that already has its amount.
+A code for signing in or approving a payment is thrown away unread, and the
+alert's words are not kept: only the amount reaches the waiting payment.
+
+Not every bank's alert can be read yet, and some iPhones may not pass a
+bank app's notification on. If a payment still waits after your bank's alert
+came, finish it in **Entries**, and tell whoever looks after the app which
+bank sent the alert.
+
 Apple Pay doesn't tell the app which card paid, so a purchase abroad would go
 to your first card in **Default account**. On the **Other currencies go to**
 row, choose the card such purchases really land on, for example the

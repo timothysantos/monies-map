@@ -128,6 +128,48 @@ What is verified and what is not:
   log (one run or two, and whether the second had an amount), and check the
   tap's `second_run_seconds` in `waiting_taps`.
 
+## Bank alert to Monies Map (second Shortcut)
+
+`../bank-alert/` holds a second, much smaller Shortcut (DOMAIN.md "Bank
+Alert"): `monies-map-bank-alert.plist` (secret-free source, 3 actions),
+`releases/monies-map-bank-alert-2026-11-17-v1.shortcut` (Apple-signed with
+`shortcuts sign --mode anyone`), the byte-identical
+`public/shortcuts/monies-map-bank-alert.shortcut`, and its own
+`manifest.json`. Settings installs it with the same private connection URL
+(the import question on action 0, the same blank Text pattern).
+
+It runs from a personal automation the person makes on the phone (a
+Notification from the bank's app, a Message from the bank's sender, or an
+Email); an automation cannot be shipped in a file. Its actions: the setup
+Text; Replace Text `entries/create` with `alerts/bank`; one POST of
+`{ text, receivedAt, requestId, clientVersion }` (`text` is the Shortcut
+Input as text, `receivedAt` the current date as `yyyy-MM-dd'T'HH:mm:ssXXX`,
+`requestId` `bank-alert-` and the current date to the millisecond,
+`clientVersion` `bank-alert-2026-11-17-v1`). Nothing reads the reply: no
+notification, no question, no result, whatever the server answers.
+
+- Verified (tests against a local Worker and D1,
+  `tests/bank-alert-route.test.mjs`): the source's actions and keys, the
+  artifact's hashes, and simulated runs (an OTP and a promotion end
+  silently and change nothing; the bank's alert then finishes the waiting
+  tap).
+- Not verified: anything on a phone. Unknown: whether iOS passes a bank
+  app's notification text to the Shortcut at all (and whether Messages and
+  Mail pass the body), and each bank's exact wording (the reader's wordings
+  are guesses, `verified: false` in `src/domain/bank-alerts-config.ts`).
+- The phone check: install it, make a Notification automation for the
+  bank's app with Run Immediately, pay a small amount, then open the
+  Shortcuts app's automation log. Did it run? If a waiting tap was there,
+  did it finish (`waiting_taps.completed_by = 'bank_alert'`)? If it ran and
+  nothing finished, copy the alert's wording (with the card digits and
+  names changed) into a new config entry and its test.
+
+Release: change the plist, `plutil -convert binary1` it to a temporary
+`.shortcut` file, sign it with `shortcuts sign --mode anyone`, copy the
+signed file to `releases/` (new version in its name) and `public/shortcuts/`,
+and update `manifest.json` (hashes, size, action count). Never put a key,
+`shortcut_token` or connection URL in it.
+
 ## Release Procedure
 
 1. Change the secret-free plist source and keep its setup Text action blank.

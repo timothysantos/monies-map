@@ -897,9 +897,10 @@ Rules (`src/domain/waiting-taps.ts`, timings in `waiting-taps-config.ts`):
 - completed by the amount from the person (Entries' card, or the Shortcut's
   own question with the same request id), or as a backstop by a second run
   of the same person on the same card within 10 minutes with merchants that
-  agree; completion takes one path whatever the source (`completed_by`:
-  `second_tap`, `shortcut_answer`, `app`; `bank_alert` reserved for a later
-  automation), so it behaves as any Apple Pay entry
+  agree, or by the bank's own payment alert (`Bank Alert`); completion takes
+  one path whatever the source (`completed_by`: `second_tap`,
+  `shortcut_answer`, `app`, `bank_alert`), so it behaves as any Apple Pay
+  entry
 - cleared by an import's bank row for it (same card or the card for other
   currencies, within 7 days, same shop), or by a certified statement that
   covers its day on every card it could be on without such a row; a rollback
@@ -907,6 +908,36 @@ Rules (`src/domain/waiting-taps.ts`, timings in `waiting-taps-config.ts`):
 - **Not a payment** removes it; after 7 days unfinished it is put away
   (`expired`) with an audit line
 - no AI anywhere
+
+### Bank Alert
+
+The real-time alert a card issuer sends for each card payment (an app
+notification, a text message or an email) with the amount and its currency,
+the time and the shop's name, which Singapore issuers must send (MAS E-Payments
+User Protection Guidelines, para 4.10). The "Bank alert to Monies Map"
+Shortcut, run by a personal automation on the person's iPhone, posts its
+text so the amount can finish a `Waiting Tap`. It is not an entry and never
+becomes one by itself.
+
+Storage:
+- none: the text is read in memory and dropped; no row, field or log keeps
+  it. Only the completed tap's entry (the tap's own shop, day and card, the
+  alert's amount) and the tap's usual audit line are written
+
+Rules (`src/domain/bank-alerts.ts`, every pattern and window in
+`bank-alerts-config.ts`):
+- deterministic reader, never AI; a new bank's wording is one config entry
+- a text that looks like a one-time code is dropped before anything is read;
+  card, account and phone digits are scrubbed first
+- money in, refunds, sign-ins, declined payments, transfers, promotions, two
+  different amounts, no currency or an unknown wording read as nothing
+- completes a tap only when exactly one of the key's person's waiting taps
+  fits: from 10 minutes before to 30 minutes after the tap, at a shop that
+  agrees (`merchantsAgree`, a payment app prefix such as `AMAZE*` dropped
+  first); none or several change nothing
+- completes through the one save path (`completed_by` `bank_alert`), all or
+  nothing; never changes an entry that already has an amount
+- the wordings are unverified guesses until a real alert confirms them
 
 ### Waiting File
 

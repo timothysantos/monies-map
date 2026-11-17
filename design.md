@@ -1696,7 +1696,9 @@ Where it is used:
   (Apple-signed, opens the entry to edit), rows Default account (opens the
   priority list, the same drag and up/down controls), Other currencies go to
   (a native select over the row), How to set it up (4 steps, folded) and More
-  shortcut settings (folded), Install Apple Shortcut at the bottom. Ask and
+  shortcut settings (folded), Install Apple Shortcut at the bottom, and under
+  it one action row that installs the bank alert shortcut with the same
+  connection (DOMAIN.md "Bank Alert"). Ask and
   AI: a lead (who answers Ask, one chip for the credit state), Model and
   Last checked rows, then the existing credit line, month line and actions.
   Payment ways: a person chip and two rows per person. Categories: a row per

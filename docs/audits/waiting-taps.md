@@ -40,7 +40,7 @@ paying, and possibly keeping the run open when the second tap comes.
 | Main way to finish | The card at the top of Entries and Ask's reminder | design.md "Waiting tap card" |
 | Import clears | The bank's row on the tap's card or the person's card for other currencies, within 7 days (the posting room a one-off charge gets), same shop (`matchMerchants` strong or the `AMAZE*` prefix rule); or a certified statement covering the day on every card the tap could be on without such a row | `planWaitingTapClears` |
 | Put away | After 7 days unfinished (`expired`, audit line) | `WAITING_TAP_EXPIRE_DAYS` |
-| Completion seam | One save path (`saveShortcutEntry`) with `completed_by`: `second_tap`, `shortcut_answer`, `app`; `bank_alert` reserved for a later automation that supplies the amount (an iOS Notification trigger or an email alert). Not built | `waiting-taps.ts` |
+| Completion seam | One save path (`saveShortcutEntry`) with `completed_by`: `second_tap`, `shortcut_answer`, `app`; `bank_alert` from the bank's own payment alert ("Bank alerts" below) | `waiting-taps.ts` |
 
 The brief's first default was to wait 45 seconds and ask. It changed to never
 ask in the run on the coordinator's findings above: a held-open run might be
@@ -81,6 +81,60 @@ that rule is not built here. Reported, not widened.
   path; another person's key, an unknown id or no key is 404 or 401.
 - Every command is all-or-nothing (`tests/atomic-writes-waiting-taps.test.mjs`).
 - The table is additive; with it missing everything behaves as before.
+
+## Bank alerts (2026-11-17)
+
+The bank's own payment alert finishes a waiting tap (DOMAIN.md "Bank
+Alert"). Built on branch `bank-alert-shortcut`; Shortcut "Bank alert to
+Monies Map" `bank-alert-2026-11-17-v1`.
+
+- Why: MAS E-Payments User Protection Guidelines para 4.10 require
+  Singapore issuers to send a real-time alert for each card transaction
+  with the amount (and currency), time and merchant's trading name, by SMS,
+  email or push. iOS Shortcuts' Notification trigger (an app posts a
+  notification), Message trigger and Email trigger can each run a Shortcut
+  with that text.
+- **Unverified**: whether each bank app's notification text reaches a
+  Shortcut, and every bank's exact wording. The six wordings in
+  `src/domain/bank-alerts-config.ts` (DBS / POSB labelled email, UOB
+  "A transaction of ... was made", Citi "A SGD ... transaction was made",
+  OCBC "was charged ... at", Amaze "You spent ... at AMAZE*", and a generic
+  "payment word, amount, at shop") are invented, structure-faithful guesses
+  marked `verified: false`.
+- Matching: exactly one of the key's person's waiting taps, from 10 minutes
+  before to 30 minutes after the tap, shops agreeing (`AMAZE*` dropped).
+  None or several: nothing. Never a new entry, never an entry that has an
+  amount. Completion is the one save path (`completed_by` `bank_alert`), so
+  the foreign-currency estimate, category guess, habits, trips and the
+  audit line behave as for any completed tap.
+
+Privacy:
+
+- Sent by the phone: the alert's text as the automation got it (up to
+  8 KiB), the phone's time, a request id and the Shortcut's version, to the
+  household's own Worker with the person's Shortcut key. Nothing goes to AI.
+- Read: only the first 4,000 characters; a text that looks like a one-time
+  code (a word like OTP and a 6 to 8 figure code) is dropped before
+  anything is read; card, account, phone and NRIC digits are scrubbed
+  before the amount and shop are read.
+- Kept: nothing of the text. The amount (and its currency) becomes the
+  entry's amount; the entry keeps the tap's own shop, day and card; the
+  tap's existing audit line says it was completed by the bank's alert. The
+  alert's shop name, wording, card digits and request id are not stored.
+- Never kept or logged: the text, any one-time code, any card or account
+  digit. The route logs only an error's name.
+  `tests/bank-alert-route.test.mjs` checks every row written and every log
+  line for the alert's card and phone digits and wording.
+
+Cost: one read of the person's waiting taps per alert (one row set, usually
+empty), and the usual save when one fits. No AI.
+
+The phone check that settles the unverified part: install the Shortcut,
+make a Notification automation for the bank's app, pay a small amount, and
+open the Shortcuts app's automation log: did it run, and did a waiting tap
+(made by tapping a terminal that asks the currency, or by hand on a test
+day) finish with `completed_by = 'bank_alert'`? If it ran but nothing
+finished, the bank's wording needs a config entry.
 
 ## What was not tested
 
