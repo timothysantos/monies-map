@@ -21,6 +21,8 @@
 // opens the page that does it and says why.
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
+import { categoryFromEverydayWords } from "./category-everyday-words";
+import { closestNames, nameAtEnd } from "./ask-turn-names";
 import { assumption, decideReadings, type AskReading } from "./ask-ambiguity";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE, BULK_RECATEGORISE_MAX } from "./entry-category-bulk";
 import { chooseTransferOptions } from "./transfer-candidates";
@@ -54,7 +56,7 @@ import {
 import type { AskTripEventRequest } from "./ask-trip-events";
 import type { AskDescribeRequest } from "./ask-describe-entry";
 import type { AskUsuallySharedRequest } from "./ask-usually-shared";
-import type { CategoryMatchRuleDto } from "../types/dto";
+import type { CategoryMatchRuleDto, EntryType } from "../types/dto";
 
 // ---------------------------------------------------------------------------
 // The change card
@@ -129,6 +131,9 @@ export interface AskChangeEntry {
   trip?: { before: string; after: string };
   // A line the card shows under the entry (the usual split it would get).
   detail?: string;
+  // Whether it is money out, in or moved, so the card signs its amount as
+  // the entry card does ("−$7.00").
+  entryType?: EntryType;
 }
 
 // The only commands a change card may post to (the page checks the path
@@ -380,9 +385,13 @@ export function validateEditSavedEntry(action: AskTurnAction, context: AskTurnCo
 // route from the household's rows).
 export function validateRecategorise(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.recategorise ?? {};
-  const category = findCategory(raw.category, context);
-  if (category === "unknown") return categoryQuestion(context, String(raw.category ?? ""));
-  if (!category) return askBack({ code: "field_missing", field: "whichCategory" }, ACTION_COPY.whichCategory, []);
+  // A category the model left out is still in the person's words ("make all
+  // Grab rides Transport", or "Taxi" answering the question): names are the
+  // server's to read (ask-turn-names.ts).
+  const ended = raw.category ? null : nameAtEnd(context.text, context.entry.categoryNames);
+  const category = ended !== null ? context.entry.categoryNames[ended] : findCategory(raw.category, context);
+  if (category === "unknown") return categoryChips(categoryQuestion(context, String(raw.category ?? "")), action, context, ground);
+  if (!category) return whichCategoryQuestion(action, context, ground);
   if (category === "Transfer") {
     // One saved entry in focus becomes a transfer through the same search
     // as "link this as a transfer"; many entries cannot.
@@ -423,6 +432,33 @@ export function validateRecategorise(action: AskTurnAction, context: AskTurnCont
     month: entry.date.slice(0, 7),
     refresh: ["entries", "month", "summary"]
   });
+}
+
+// "Which category?" always comes with categories to tap: the one the shop's
+// own words point at first, then the nearest names. With the shop known, a
+// chip is the whole message ("Move all grab to Taxi"), so it reads the same
+// with AI or without.
+function whichCategoryQuestion(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
+  const names = context.entry.categoryNames.filter((name) => name !== "Transfer" && !/^other\b/i.test(name));
+  const words = recategoriseWords(action, context, ground);
+  const guess = words ? categoryFromEverydayWords(words, names) : undefined;
+  const picks = [...new Set([...(guess ? [guess] : []), ...closestNames(context.text, names, 4)])].slice(0, 3);
+  return categoryChips(askBack({ code: "field_missing", field: "whichCategory", valid: names.slice(0, 40) }, ACTION_COPY.whichCategory, picks), action, context, ground);
+}
+
+function recategoriseWords(action: AskTurnAction, context: AskTurnContext, ground: Ground) {
+  return groundedWords(action.recategorise?.words, ground) || (context.focus?.kind === "entry_list" ? context.focus.list.search : "");
+}
+
+// Category chips as whole messages where the change is known ("Move all
+// grab to Taxi", "Make it Taxi"), so a tap reads the same with AI or without.
+function categoryChips(reply: AskTurnReply, action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
+  if (reply.kind !== "clarify") return reply;
+  const words = recategoriseWords(action, context, ground);
+  const options = words
+    ? reply.options.map((name) => ACTION_COPY.moveAllTo(words, name))
+    : context.focus?.kind === "saved_entry" ? reply.options.map(ACTION_COPY.makeIt) : reply.options;
+  return { ...reply, options };
 }
 
 // A note on the saved entry in focus, or a month's note. The words are the
@@ -1031,7 +1067,7 @@ function change(input: Omit<AskChange, "confirmCount" | "rule"> & Partial<Pick<A
 }
 
 function entryRow(entry: AskTurnFocusEntry): AskChangeEntry {
-  return { entryId: entry.entryId, date: entry.date, description: entry.description, amountMinor: entry.amountMinor, currency: entry.currency, categoryName: entry.categoryName, accountName: entry.accountName };
+  return { entryId: entry.entryId, date: entry.date, description: entry.description, amountMinor: entry.amountMinor, currency: entry.currency, categoryName: entry.categoryName, accountName: entry.accountName, entryType: entry.entryType };
 }
 
 function reverse(changes: Array<{ entryId: string; fromCategoryName: string; categoryName: string }>) {
@@ -1092,6 +1128,8 @@ export const ACTION_COPY = {
   transferIsALink: "A transfer is money moved between your own wallets. Say \"link this as a transfer\" to pair it with the other side.",
   transferKeepsCategory: "A transfer keeps its Transfer category.",
   whichCategory: "Which category should it go in?",
+  moveAllTo: (words: string, category: string) => `Move all ${scrubName(words)} to ${category}`,
+  makeIt: (category: string) => `Make it ${category}`,
   whichEntries: "Which entries? Name the shop as the bank shows it, for example: make all Grab rides Transport.",
   alreadyInCategory: (name: string) => `It's already in ${name}.`,
   noneToMove: (words: string, category: string) => `No entries with "${scrubName(words)}" are outside ${category}.`,

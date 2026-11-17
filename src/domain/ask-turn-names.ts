@@ -150,6 +150,42 @@ export function closestNames(query: unknown, candidates: readonly string[], coun
   return scored.sort((left, right) => right.score - left.score).slice(0, count).map((item) => item.candidate);
 }
 
+// The name a message ends on, where a change names its target ("make all
+// Grab rides Transport", "move all my grab entries to the Public Transport
+// category", or just "Taxi" answering a question): the words after its last
+// "to", "as", "into" or "under", else its last one, two or three words.
+// Only a clear match counts; null otherwise.
+const END_LINKS = new Set(["to", "as", "into", "under"]);
+const END_FILLER = new Set(["category", "categories", "instead", "please", "pls", "one", "ones"]);
+export function nameAtEnd(text: unknown, candidates: readonly string[]): number | null {
+  const words = String(text ?? "").toLowerCase().replace(/[.!?]+$/, "").split(/\s+/).filter(Boolean);
+  while (words.length && END_FILLER.has(words.at(-1) as string)) words.pop();
+  if (!words.length) return null;
+  const tails: string[][] = [];
+  const link = words.reduce((last, word, index) => (END_LINKS.has(word) ? index : last), -1);
+  if (link >= 0 && link < words.length - 1) tails.push(words.slice(link + 1));
+  if (words.length <= 3) tails.push(words);
+  for (const size of [1, 2, 3]) {
+    if (words.length > size) tails.push(words.slice(-size));
+  }
+  for (const tail of tails) {
+    const cut = tail[0] === "the" || tail[0] === "my" || tail[0] === "our" ? tail.slice(1) : tail;
+    const match = matchName(cut.join(" "), candidates);
+    if (match.kind === "match") return match.index;
+  }
+  return null;
+}
+
+// The names a message mentions by one of their own words ("food" names
+// "Food & Drinks", "transport" "Public Transport"): whole words only, no
+// typo guessing, so a name is mentioned only when its word is there.
+export function namesMentioned(text: unknown, candidates: readonly string[]): number[] {
+  const words = new Set(tokensOf(normaliseName(text)));
+  return candidates.flatMap((candidate, index) => (
+    significantTokens(normaliseName(candidate)).some((token) => token.length >= 3 && token !== "other" && words.has(token)) ? [index] : []
+  ));
+}
+
 // ---------------------------------------------------------------------------
 // Amounts
 

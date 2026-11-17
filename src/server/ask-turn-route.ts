@@ -46,7 +46,7 @@
 
 import { applyForeignEstimate } from "../domain/entry-draft-foreign";
 import { ASK_REPAIRABLE_CODES } from "../domain/ask-ambiguity";
-import { AI_UNUSABLE_SUGGESTION_REASON } from "../domain/ai-assistance";
+import { AI_UNUSABLE_SUGGESTION_REASON, ALLOWANCE_USED_REASON } from "../domain/ai-assistance";
 import { getAiProviderUnavailableReason, runTextJson, type AiProviderEnv, type AiProviderName } from "../domain/ai-provider";
 import {
   ASK_TURN_MAX_HISTORY,
@@ -183,8 +183,9 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     provider = result.provider;
     if (!action) {
       return rulesAnswer(env.DB, context, text, result.reason ?? "AI is temporarily unavailable.", {
-        // The demo's Claude allowance is used up: the page says so plainly.
-        ...(result.demoAllowanceUsed ? { notice: "demo_allowance" } : {}),
+        // The demo's Claude allowance, or the day's own allowance, is used
+        // up: the page says so plainly.
+        ...(result.demoAllowanceUsed ? { notice: "demo_allowance" } : result.reason === ALLOWANCE_USED_REASON ? { notice: "allowance_used" } : {}),
         ...(remaining !== undefined ? { remaining } : {})
       });
     }
@@ -263,6 +264,18 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   if (reply.kind === "clarify" && reply.error?.code === "not_an_entry") {
     const ruled = await readRulesReply(env.DB, context);
     if (ruled) {
+      return json({ ok: true as const, mode: "ai" as const, action: ruled.action ?? action.action, ...(provider ? { provider } : {}), ...(remaining !== undefined ? { remaining } : {}), ...(repaired !== null ? { repaired } : {}), reply: ruled.reply });
+    }
+  }
+  // Any other question back that is left after the repair: when the rules
+  // read this message into something the person can use (the settle-up
+  // card with its groups, the bulk change card, a shared expense, a change
+  // to the entry in focus), that reading wins over asking again. A rules
+  // "couldn't read that" or a question with nothing to tap does not.
+  if (reply.kind === "clarify") {
+    const ruled = await readRulesReply(env.DB, context);
+    if (ruled && usableRulesReply(ruled.reply)) {
+      console.info(JSON.stringify({ event: "ask_turn_rules_fallback", action: action.action, rulesAction: ruled.action ?? null }));
       return json({ ok: true as const, mode: "ai" as const, action: ruled.action ?? action.action, ...(provider ? { provider } : {}), ...(remaining !== undefined ? { remaining } : {}), ...(repaired !== null ? { repaired } : {}), reply: ruled.reply });
     }
   }
@@ -395,6 +408,15 @@ async function readRulesReply(db: D1Database, context: AskTurnContext): Promise<
   if (reply.kind === "resolve") reply = withAssumptions(await resolveAskTurnRequest(db, reply.request, context), reply.assumptions ?? []);
   if (ruled.action.action === "split_group") reply = settleChips(reply, context);
   return { action: ruled.action.action, reply: forPage(reply) };
+}
+
+// A rules reading worth showing instead of the model's question: anything
+// but a note (the rules' "couldn't read that change") or a question with
+// nothing to tap.
+function usableRulesReply(reply: AskTurnReply) {
+  if (reply.kind === "note") return false;
+  if (reply.kind === "clarify") return reply.options.length > 0;
+  return true;
 }
 
 // "the 85,000 was ramen": a quick payment named by its amount.
