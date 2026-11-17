@@ -141,8 +141,11 @@ function parseUobCreditCardTransactionRows(
   const rows: Record<string, string>[] = [];
   // UOB's export can repeat a block of transactions further down the sheet.
   // A bank reference names one transaction, so a reference already read is
-  // the same purchase again. Rows without a reference are all kept.
+  // the same purchase again. Payments carry no reference but a payment code
+  // in the description (EP32), so a row with no reference counts as a repeat
+  // only when its dates, full description and amount all match an earlier row.
   const seenReferences = new Set<string>();
+  const seenUnreferencedRows = new Set<string>();
   for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRowIndex)) {
     const transactionDate = parseLongDateCell(cellString(row.values.get(0)));
     const postingDate = parseLongDateCell(cellString(row.values.get(1)));
@@ -160,6 +163,12 @@ function parseUobCreditCardTransactionRows(
         continue;
       }
       seenReferences.add(descriptionParts.reference);
+    } else {
+      const rowKey = [transactionDate ?? "", postingDate, rawDescription, signedAmountMinor].join("|");
+      if (seenUnreferencedRows.has(rowKey)) {
+        continue;
+      }
+      seenUnreferencedRows.add(rowKey);
     }
     const description = descriptionParts.description;
     const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";

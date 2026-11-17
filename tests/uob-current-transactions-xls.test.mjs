@@ -93,7 +93,7 @@ test("keeps one row per bank reference when a UOB card export repeats a block", 
   const referenced = parsed.rows.filter((row) => row.reference);
   assert.equal(new Set(referenced.map((row) => row.reference)).size, referenced.length);
   assert.equal(referenced.length, 209);
-  assert.equal(parsed.rows.length - referenced.length, 9);
+  assert.equal(parsed.rows.length - referenced.length, 6);
 
   // Two different purchases at the same stall on the same day both stay.
   const hawker = parsed.rows
@@ -112,4 +112,26 @@ test("keeps same-day same-amount card rows that carry different bank references"
   );
   const kampung = parsed.rows.filter((row) => row.description.startsWith("FO ION- TODAY KAMPUNG"));
   assert.deepEqual(kampung.map((row) => row.reference), ["74541836310288074293253", "74541836310288074293261"]);
+});
+
+test("keeps one copy of each card payment when a UOB card export repeats a block", () => {
+  const parsed = parseCurrentTransactionSpreadsheet(
+    readWorkbookFixture("CC_TXN_History-privimiles-repeated-block-nov-2026-sanitized.xls"),
+    "CC_TXN_History-privimiles-repeated-block-nov-2026-sanitized.xls"
+  );
+
+  assert.equal(parsed.rows.length, 291);
+  // Payments carry no bank reference; each appears twice in the file.
+  const payments = parsed.rows
+    .filter((row) => row.description.startsWith("PAYMT THRU E-BANK"))
+    .map((row) => `${row.transactionDate} ${row.income}`);
+  assert.deepEqual(payments, [
+    "2026-08-30 2411.00",
+    "2026-09-15 3182.87",
+    "2026-10-01 1958.23",
+    "2026-10-15 1539.14",
+    "2026-10-27 3217.56",
+    "2026-11-02 3072.71",
+    "2026-11-15 3686.84"
+  ]);
 });
