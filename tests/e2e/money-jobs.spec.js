@@ -294,7 +294,7 @@ test.describe("phone", () => {
     const answer = page.locator('[data-ask-money-answer="plan"]');
     await expect(answer.locator(".ask-answer-title")).toHaveText("May against plan", { timeout: 30_000 });
     await expect(answer.locator(".ask-answer-amount")).toHaveText("••••");
-    await expect(answer.locator(".ask-brief-hidden")).toHaveText("Reveal money totals to read these insights.");
+    await expect(answer.locator(".ask-brief-hidden")).toHaveText("The amounts are hidden.");
     await expect(answer).not.toContainText(/\$\d|more than|under the/);
   });
 });

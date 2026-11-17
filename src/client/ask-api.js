@@ -266,13 +266,22 @@ export function linkSavedTransfer(body, { fetchImpl = fetch } = {}) {
   return postJson(ASK_ENDPOINTS.transferLink, body, "The other side could not be linked.", fetchImpl);
 }
 
+// A request the page itself cut off by leaving or reloading is not "no
+// connection": the card comes back after the reload, as before.
+let pageLeaving = false;
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => { pageLeaving = true; });
+  window.addEventListener("pagehide", () => { pageLeaving = true; });
+  window.addEventListener("pageshow", () => { pageLeaving = false; });
+}
+
 // Saves the card's draft through the composer's create path.
 export function saveCardEntry(createDraft, { fetchImpl = fetch } = {}) {
   // A save that never reached the server says so (`network`): a plain
   // expense can then wait to send on this phone (ask-panel.jsx saveCard).
   return createEntryFromDraft(createDraft, { fetchImpl }).catch(() => ({
     ok: false,
-    network: true,
+    network: !pageLeaving,
     error: "The entry could not be saved. Check your connection and try again.",
     entryId: null,
     splitExpenseId: null,
