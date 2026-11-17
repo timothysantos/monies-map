@@ -56,7 +56,8 @@ test("the computed wording has no tag", () => {
 test("with money hidden the tag goes with the words", () => {
   const html = render({ text: "March came to $10,391.23.", source: "ai" }, { visible: false });
   assert.doesNotMatch(html, /Worded by AI/);
-  assert.match(html, /Reveal money totals to read these insights\./);
+  assert.match(html, /The amounts are hidden\./);
+  assert.match(html, /data-ask-show-totals[^>]*>.*Show money totals/);
 });
 
 // September for one person: more went out than came in. Built by the
@@ -87,7 +88,7 @@ test("spending against income: the part from savings and the categories, and hid
 
   const hidden = render(wording, { card, intent: "spentVsEarned", visible: false });
   assert.match(hidden, /September spending and income/);
-  assert.match(hidden, /Reveal money totals to read these insights\./);
+  assert.match(hidden, /The amounts are hidden\./);
   // The savings bar is the Month lead's own in its hidden form: shares of
   // income and no amount, as on the lead. Everything else on the card (the
   // title, lead, chips, words and lines) has no amount and no word that
