@@ -76,8 +76,9 @@ const AMOUNT = "\\$?\\d[\\d,]*(?:\\.\\d{1,2})?k?";
 // A line's name: words, with & / ' - allowed ("food & drinks", "kids' things").
 const NAME = "[a-z][a-z0-9&'/ .-]*?";
 // The month a request is for, at its end: "for November", "in the
-// November plan", "for next month", "this month".
-const TAIL = `(?:\\s+(?:for|in|on|of|during|to|into)\\s+(?:the\\s+)?(?:month of\\s+)?(${MONTH})(?:'s)?(?:\\s+plan)?|\\s+((?:this|next) month)(?:'s plan)?)?`;
+// November plan", "for next month", "this month", and "this months plan"
+// typed without its apostrophe.
+const TAIL = `(?:\\s+(?:for|in|on|of|during|to|into)\\s+(?:the\\s+)?(?:month of\\s+)?(${MONTH})(?:'?s)?(?:\\s+plan)?|\\s+((?:this|next) month)(?:'?s plan)?)?`;
 const PLAN_WORD = "(?:\\s+(?:plan|budget|line|bucket|budget line|plan line))?";
 
 const POLITE_STARTS = /^(?:please|pls|can you|could you|would you|can we|could we|let's|lets|let us|i want to|i'd like to|i would like to|we want to|help me|go ahead and|just)\s+/;

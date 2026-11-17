@@ -24,7 +24,7 @@ import { ASK_LOOKUP_TOOL_NAMES } from "./ask-lookup-spec";
 import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent";
 import { categoryFromDescription } from "./category-keywords";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
-import { parsePlanAiReading, type PlanRequest } from "./plan-draft-reader";
+import { parsePlanAiReading, readPlanRequest, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
 import { assumption, type AskAssumption, type AskValidatorError } from "./ask-ambiguity";
 import {
@@ -33,6 +33,7 @@ import {
   findDayIn,
   findMonthIn,
   matchName,
+  namesMentioned,
   readAmountMinor as readAmountWords,
   readDayWord,
   readMonthWord,
@@ -727,11 +728,17 @@ export function validateAskTurnAction(action: AskTurnAction, context: AskTurnCon
       return validatePage(action, context);
     case "ask_clarification":
       return validateClarification(action, ground);
-    default:
-      if (action.blocked) {
-        return validateBlocked(action.blocked, context);
+    default: {
+      // Which thing Ask won't do is read from the person's words when they
+      // name one ("add a new account" is accounts, whatever the model
+      // chose), so the reason and the page are that thing's own.
+      const said = readCommandIntent(context.text);
+      const blocked = said?.kind === "blocked" ? said.blocked : action.blocked;
+      if (blocked) {
+        return validateBlocked(blocked, context);
       }
       return { kind: "note", text: groundedProse(action.note, ground, NOTE_MAX) ?? COPY.cannotHelp };
+    }
   }
 }
 
@@ -927,9 +934,7 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   // real one other than Other (or when the person named it themselves);
   // "Other" only when nothing fits, and then said as an assumption.
   const category = findCategory(raw.category, context);
-  if (category === "unknown") {
-    assumptions.push(assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
-  }
+  const categoryAt = assumptions.length;
   if (fields.entryType.value === "expense" && fields.categoryName.source !== "rule" && fields.categoryName.source !== "sentence") {
     // The model's tidied description ("Starbucks coffee") may carry the word
     // the message's own reading did not.
@@ -947,6 +952,13 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
     if (/^other\b/i.test(fields.categoryName.value) && fields.categoryName.source !== "sentence") {
       assumptions.push(assumption(COPY.assumed.categoryOther(fields.categoryName.value)));
     }
+  }
+  // "There's no category called …, so I left the category out" only when it
+  // was left out: not when the person's own words found one ("netflix"
+  // files under Subscriptions MO).
+  const categoryFound = fields.entryType.value !== "transfer" && Boolean(fields.categoryName.value) && !/^other\b/i.test(fields.categoryName.value);
+  if (category === "unknown" && !categoryFound) {
+    assumptions.splice(categoryAt, 0, assumption(COPY.assumed.noCategory(String(raw.category)), askableNames(raw.category, context.entry.categoryNames, 3).map(COPY.chips.inCategory)));
   }
   const owner = findPerson(raw.owner, context);
   if (owner === "unknown") {
@@ -1367,13 +1379,25 @@ function validatePlan(action: AskTurnAction, context: AskTurnContext, ground: Gr
   // reader gets YYYY-MM.
   const month = readMonth(raw.month, context);
   const copyFrom = readMonth(raw.copy_from, context, false);
-  const request = parsePlanAiReading({
+  const reading = (planMonth: unknown) => parsePlanAiReading({
     kind: "plan",
-    month: month.ok ? month.month : raw.month ?? null,
+    month: planMonth,
     copyFrom: copyFrom.ok ? copyFrom.month : raw.copy_from ?? null,
     ops: raw.ops ?? []
   }, ground.userText, context.today);
+  // The month is the server's to read ("this months plan"): when the plan
+  // reader cannot find the model's month in the words, the lines still
+  // stand with the month read here.
+  const fromModel = reading(month.ok ? month.month : raw.month ?? null) ?? (month.ok ? withPlanMonth(reading(null), month.month) : null);
+  // The person's own words, read by the rules' plan reader, when the
+  // model's lines are not words they wrote ("shoping" became "Shopping").
+  const ruled = fromModel ? null : readPlanRequest(context.text, { today: context.today, walletNames: context.entry.accounts.map((account) => account.name) });
+  const request = fromModel ?? (ruled?.kind === "request" ? withPlanMonth(ruled.request, ruled.request.month ?? (month.ok ? month.month : null)) : null);
   return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion);
+}
+
+function withPlanMonth(request: PlanRequest | null, month: string | null): PlanRequest | null {
+  return request ? { ...request, month: request.month ?? month } : null;
 }
 
 const QUESTION_KIND: Record<Exclude<AskTurnTopic, "trip">, AskAnswerIntentKind> = {
@@ -1399,6 +1423,13 @@ const QUESTION_KIND: Record<Exclude<AskTurnTopic, "trip">, AskAnswerIntentKind> 
 function validateQuestion(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
   const raw = action.question ?? {};
   const topic = (ASK_TURN_TOPICS as readonly string[]).includes(String(raw.topic)) ? raw.topic as AskTurnTopic : null;
+  // "How much did we spend on food this month?" asks about one category:
+  // the answer is that category's entries and total, as the rules read it,
+  // never the whole month's spending or a trip the person did not name.
+  if (!(topic === "trip" && raw.trip)) {
+    const byCategory = categorySpendSearch(context, ground);
+    if (byCategory) return byCategory;
+  }
   if (!topic) return askBack({ code: "question_unclear", field: "question.topic", valid: [...ASK_TURN_TOPICS] }, COPY.questionUnclear);
   if (topic === "trip") {
     // A trip's cost is across its months: the view and scope, not a month.
@@ -1473,7 +1504,37 @@ function canonicalQuestion(topic: AskTurnTopic, when: string, month: string, oth
   }
 }
 
+// The categories a spending question names, when the rules' own question
+// reader leaves it to the Entries answer (it names a category): that answer,
+// for the month the message names. Null when it names none, or names a
+// money question the answer route reads itself.
+function categorySpendSearch(context: AskTurnContext, ground: Ground): AskTurnReply | null {
+  if (!/\b(?:spend|spent|spending|pay|paid|cost|costs)\b/i.test(context.text)) return null;
+  const names = context.entry.categoryNames.filter((name) => name !== "Transfer" && !/^other\b/i.test(name));
+  const vocabulary = [...names, ...context.entry.accounts.map((account) => account.name)];
+  if (readAnswerIntent(context.text, { today: context.today, month: context.month, people: context.people, vocabulary })) return null;
+  const named = namesMentioned(context.text, names).map((index) => names[index]);
+  if (!named.length || named.length > 3) return null;
+  return validateSearch(parseAskTurnAction({ action: "search_entries", search: { categories: named } }) as AskTurnAction, context, ground);
+}
+
+// "lunch 9.90" is a new entry, even right after a question: one amount,
+// some words, and nothing that asks, filters or names a command.
+function readsAsNewEntry(text: string) {
+  const message = text.trim();
+  if (!message || /\?\s*$/.test(message) || amountsIn(message).size !== 1 || readCommandIntent(message)) return false;
+  if (/^(?:who|what|whats|what's|how|why|when|where|which|is|are|do|does|did|can|could|show|find|search|list|filter|look|any|total|sum)\b/i.test(message)) return false;
+  if (/\b(?:over|under|above|below|than|least|most|between|entries|transactions|payments|spent|spend|spending)\b|\b(?:19|20)\d{2}\b/i.test(message)) return false;
+  return /\p{L}{2,}/u.test(message.replace(/\d/g, " "));
+}
+
 function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: Ground): AskTurnReply {
+  if (readsAsNewEntry(context.text)) {
+    const base = parseEntrySentence(context.text, context.entry);
+    if (base.fields.amountMinor && base.fields.description) {
+      return validateEntryDraft({ ...action, action: "draft_entry", entry: null, search: null }, context, ground, false);
+    }
+  }
   const raw = action.search ?? {};
   const month = readMonth(raw.month, context);
   if (!month.ok) return askBack({ code: "month_invalid", field: "search.month" }, COPY.whichMonth);

@@ -91,6 +91,8 @@ function readBlocked(lower: string): AskTurnBlocked | null {
 
   const people = startsWith("add|remove|delete|rename|change");
   if (people && /^(?:an?\s+|the\s+|a new\s+)?(?:person|people|member|partner|spouse)\b/.test(people[1])) return "people";
+  // "remove Serene from the household", "add my mum to the household".
+  if (/^(?:add|remove|delete|take|kick)\s+.+\s+(?:from|to|into|out of|off)\s+(?:the|our|my|this)\s+(?:household|family)$/.test(lower)) return "people";
   const accounts = startsWith("add|open|close|remove|delete|rename|create|new");
   if (accounts && /^(?:an?\s+|my\s+|the\s+|a new\s+|new\s+)?(?:account|bank account|wallet|credit card)s?\b/.test(accounts[1])) return "accounts";
 

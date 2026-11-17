@@ -37,6 +37,7 @@ export interface AiAssistResult<T> {
 }
 
 export const DEMO_ALLOWANCE_USED_REASON = "The demo's Claude allowance is used up for today, so Ask is using its built-in rules.";
+export const ALLOWANCE_USED_REASON = "Today's optional AI allowance has been used. The normal workflow is still available.";
 const VISITOR_COUNTER_PREFIX = "demo-visitor:";
 
 // Only when AI_ASSIST_DAILY_LIMIT is unset or not a number (local and test
@@ -220,7 +221,7 @@ export async function reserveDailyAiBudget(
         .run();
       return { ...unavailable(DEMO_ALLOWANCE_USED_REASON, 0), demoAllowanceUsed: true };
     }
-    return unavailable("Today's optional AI allowance has been used. The normal workflow is still available.", 0);
+    return unavailable(ALLOWANCE_USED_REASON, 0);
   }
 
   const used = await db
