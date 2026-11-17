@@ -111,8 +111,8 @@ export async function saveShortcutEntry(
   options: {
     source: "shortcut" | "app";
     // A held tap this save completes, and who supplied the amount: the
-    // person in the app today; a later bank-alert automation would pass
-    // its own source (DOMAIN.md "Waiting Tap", the completion seam).
+    // person in the app, or the bank's alert (completeWaitingTapWithAmount;
+    // DOMAIN.md "Waiting Tap", "Bank Alert").
     tap?: WaitingTapRow;
     completedBy?: WaitingTapCompletedBy;
     now?: Date;
@@ -544,6 +544,24 @@ export async function handleWaitingTapAppRoute(request: Request, env: ShortcutEn
   if (!tap || tap.status !== "waiting") {
     return json({ ok: false, error: new WaitingTapNotWaitingError().message }, 409);
   }
+  return completeWaitingTapWithAmount(env, request, tap, { currency, amountText, completedBy: "app" });
+}
+
+/**
+ * Completes a waiting tap with an amount from the app (Entries' card) or a
+ * bank's alert, through the one save path (saveShortcutEntry): the tap's
+ * day, time, card and shop, the person's card for other currencies, the
+ * foreign-currency estimate, category guess, habits and trips, the entry
+ * and the tap's completion in one batch. Idempotent on the tap's own
+ * request id: a second completion finds the entry already saved.
+ */
+export async function completeWaitingTapWithAmount(
+  env: ShortcutEntryEnv,
+  request: Request,
+  tap: WaitingTapRow,
+  input: { currency: string; amountText: string; completedBy: Extract<WaitingTapCompletedBy, "app" | "bank_alert"> }
+) {
+  const { currency, amountText } = input;
   const connection = await connectionForPerson(env, tap.person_id);
   if (!connection) {
     return json({ ok: false, error: "This payment's person is no longer in the household." }, 409);
@@ -562,8 +580,8 @@ export async function handleWaitingTapAppRoute(request: Request, env: ShortcutEn
     // "IDR 150.000" reads the dots as thousands, as the Shortcut's reader does.
     amount: `${currency} ${amountText}`,
     requestId: tap.request_id,
-    clientVersion: "app"
-  }, { source: "app", tap });
+    clientVersion: input.completedBy === "bank_alert" ? "bank-alert" : "app"
+  }, { source: "app", tap, completedBy: input.completedBy });
 }
 
 function applyShortcutCreateDefaults<T extends ShortcutCreateBody>(body: T, defaultParams = ""): T {

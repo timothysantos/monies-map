@@ -23,6 +23,7 @@
 
 import { SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH } from "../domain/app-repository-shortcuts";
 import { WAITING_FILES_INTAKE_PATH } from "../domain/waiting-files-config";
+import { BANK_ALERT_PATH } from "../domain/bank-alerts-config";
 import { rememberVerifiedIdentity } from "./access-identity";
 import { json } from "./json";
 
@@ -122,11 +123,13 @@ export function readAccessToken(request: Request) {
 // signed in to Access. The "Send to Monies Map" file endpoint is the same:
 // a phone's Shortcut with its own key (src/server/waiting-files-route.ts).
 // The Apple Pay Shortcut's tap status read (a held tap, DOMAIN.md "Waiting
-// Tap") answers to the same key. Exempt for those three paths and POST only;
+// Tap") answers to the same key, and so does the "Bank alert to Monies Map"
+// Shortcut (DOMAIN.md "Bank Alert"). Exempt for those four paths and POST only;
 // every other method and path, including the route that reads a waiting file
 // back and the app's own waiting-tap routes, stays behind Access.
 function isExempt(request: Request, pathname: string) {
-  return (pathname === SHORTCUT_ENDPOINT_PATH || pathname === SHORTCUT_TAP_STATUS_PATH || pathname === WAITING_FILES_INTAKE_PATH)
+  return (pathname === SHORTCUT_ENDPOINT_PATH || pathname === SHORTCUT_TAP_STATUS_PATH || pathname === WAITING_FILES_INTAKE_PATH
+    || pathname === BANK_ALERT_PATH)
     && request.method === "POST";
 }
 

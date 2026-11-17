@@ -161,6 +161,7 @@ import {
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
 import { WAITING_FILES_INTAKE_PATH } from "./domain/waiting-files-config";
+import { BANK_ALERT_PATH, handleBankAlert } from "./server/bank-alert-route";
 import {
   findWaitingFile,
   handleWaitingFilesIntake,
@@ -176,7 +177,7 @@ import {
 } from "./server/shortcut-entry-route";
 
 // The Shortcut Worker's public paths (POST only, outside Access).
-const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH, WAITING_FILES_INTAKE_PATH, SHORTCUT_CASH_PATH] as const;
+const SHORTCUT_PUBLIC_PATHS = [SHORTCUT_ENDPOINT_PATH, SHORTCUT_TAP_STATUS_PATH, WAITING_FILES_INTAKE_PATH, SHORTCUT_CASH_PATH, BANK_ALERT_PATH] as const;
 
 // A refused write returns its message. One refused by the settlement lock is
 // a 409 that names the settlement (a simplification's checkpointId or a group
@@ -1577,6 +1578,16 @@ export default {
         return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
       }
       return handleShortcutTapStatus(env, request, shortcutAuth.connection);
+    }
+
+    // The "Bank alert to Monies Map" Shortcut: a bank's payment alert that
+    // may finish a waiting tap (src/server/bank-alert-route.ts).
+    if (url.pathname === BANK_ALERT_PATH && request.method === "POST") {
+      const shortcutAuth = await authenticateShortcutRequest(request, env, "alerts:bank");
+      if (!shortcutAuth.ok) {
+        return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
+      }
+      return handleBankAlert(env, request, shortcutAuth.connection);
     }
 
     // Entries' waiting tap card: the amount, or Not a payment.

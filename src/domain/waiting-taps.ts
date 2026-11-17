@@ -12,8 +12,8 @@ import {
 } from "./waiting-taps-config";
 
 export type WaitingTapStatus = "waiting" | "completed" | "not_a_payment" | "bank_row" | "statement_no_match" | "expired";
-// Who supplied the amount that completed a tap. "bank_alert" is the seam for
-// a later automation (a bank's alert read on the phone) and is not sent yet.
+// Who supplied the amount that completed a tap. "bank_alert": the bank's own
+// payment alert, read by the "Bank alert to Monies Map" Shortcut (bank-alerts.ts).
 export type WaitingTapCompletedBy = "second_tap" | "shortcut_answer" | "app" | "bank_alert";
 
 export interface WaitingTapFact {
