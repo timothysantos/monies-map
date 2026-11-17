@@ -722,7 +722,7 @@ function AskConversation({
     // back in the message box, with Try again (docs/flows/ask-flow.md "No
     // connection"); no AI note and no "Reply from" line for a turn that
     // never reached the server.
-    if (!turn.ok && turn.network) {
+    if (!turn.ok && "network" in turn && turn.network) {
       updateConversation((current) => ({
         ...current,
         thread: [
@@ -1574,7 +1574,7 @@ function AskConversation({
     setWorking("save");
     try {
       const result = await saveCardEntry(createDraft);
-      if (!result.ok && result.network) {
+      if (!result.ok && "network" in result && result.network) {
         keepCardWaiting(sending, createDraft, result.error);
         return;
       }
