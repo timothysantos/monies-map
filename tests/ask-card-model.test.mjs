@@ -10,7 +10,6 @@ import {
   applyEntryDraft,
   applyReceiptRead,
   buildCardCreateDraft,
-  cardShares,
   cardFromSavedEntry,
   createAskCard,
   getTransferEnds,
