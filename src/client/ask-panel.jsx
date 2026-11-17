@@ -2359,6 +2359,9 @@ function AskConversation({
         {!isAddMode && !isShortcut ? (
           <AskBriefCard queryClient={queryClient} view={view} scope={selectedScope} month={selectedMonth} accounts={accounts} params={params} />
         ) : null}
+        {/* What Ask did by itself sits with the reminders at the top, folded,
+            never as the last line above the chips (Ask audit A24). */}
+        <AskDoneForYou items={habits.items} busy={habits.busy} error={card?.status === "saved" ? "" : habits.error} onUndo={habits.undo} onStop={habits.stop} />
         {!isAddMode && !isShortcut && !card && !thread.length ? <EmptyState compact title={askCopy.greeting}>{askCopy.greetingHint}</EmptyState> : null}
         {settledThread.slice(0, card ? cardSlot : settledThread.length).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />)}
         {card ? (
@@ -2434,7 +2437,6 @@ function AskConversation({
         {card ? settledThread.slice(cardSlot).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />) : null}
         {statusItems.map((item) => <ThreadItem key={item.id} item={item} answerProps={answerProps} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
-        <AskDoneForYou items={habits.items} busy={habits.busy} error={card?.status === "saved" ? "" : habits.error} onUndo={habits.undo} onStop={habits.stop} />
         <AskWaitingList
           areTotalsVisible={areTotalsVisible}
           onSent={(entry) => onEntryMutation?.({ month: String(entry?.date ?? today).slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true })}
