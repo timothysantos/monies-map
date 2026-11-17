@@ -163,3 +163,23 @@ test("a statement with nothing to pay has no due date, and a real Citi statement
   const [citi] = parseFixture("citibank-rewards-aug-2026-real").checkpoints;
   assert.equal(citi.paymentDueDate, "2026-09-05");
 });
+
+// The CDA statement prints Withdrawal, Deposit and Balance columns, but a row
+// fills only one of the first two, so its text carries just "amount balance".
+// The running balance says which column the amount was in.
+test("a real OCBC CDA statement reads a deposit and interest as money in and a purchase as money out", () => {
+  const parsed = parseFixture("ocbc-cda-jun-2026-real");
+  assert.equal(parsed.parserKey, "ocbc_cda_pdf");
+  assert.deepEqual(parsed.checkpoints.map((c) => [c.statementStartDate, c.statementEndDate, c.statementBalanceMinor]), [["2026-06-01", "2026-06-30", 365807]]);
+  assert.deepEqual(parsed.rows.map((row) => [row.date, row.description, row.expense, row.income]), [
+    ["2026-06-05", "IBG GIRO", "", "5000.00"],
+    ["2026-06-30", "INTEREST CREDIT", "", "4.22"],
+    ["2026-06-30", "POS PURCHASE-CDA", "1346.15", ""]
+  ]);
+});
+
+test("a CDA row whose amount does not explain the balance change is still refused", () => {
+  const text = readFileSync(new URL("./fixtures/pdf-statement-text/ocbc-cda-jun-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8")
+    .replace("05 JUN 05 JUN IBG GIRO 5,000.00 5,000.00", "05 JUN 05 JUN IBG GIRO 4,000.00 5,000.00");
+  assert.throws(() => parseStatementText(text, "ocbc-cda-jun-2026-real.pdf"), /did not reconcile around 2026-06-05/);
+});

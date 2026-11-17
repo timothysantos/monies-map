@@ -320,7 +320,7 @@ function parseOcbcDepositRows(
   const rows: Record<string, string>[] = [];
   let runningBalanceMinor = openingBalanceMinor;
   for (const line of lines) {
-    const parsedRow = parseOcbcDepositTransactionLine(line, accountName, statementStartDate, statementEndDate);
+    const parsedRow = parseOcbcDepositTransactionLine(line, accountName, statementStartDate, statementEndDate, runningBalanceMinor);
     if (!parsedRow) {
       continue;
     }
@@ -341,7 +341,8 @@ function parseOcbcDepositTransactionLine(
   line: string,
   accountName: string,
   statementStartDate: string,
-  statementEndDate: string
+  statementEndDate: string,
+  previousBalanceMinor: number
 ) {
   const datePattern = "(\\d{1,2}\\s+[A-Z]{3})";
   const moneyPattern = "(\\d{1,3}(?:\\s*,\\s*\\d{3})*\\s*\\.\\s*\\d{2})";
@@ -358,10 +359,20 @@ function parseOcbcDepositTransactionLine(
   }
 
   const balanceMinor = parseOcbcMoneyToMinor(moneyValues.at(-1) ?? "0.00");
-  const depositMinor = moneyValues.length >= 3 ? parseOcbcMoneyToMinor(moneyValues.at(-2) ?? "0.00") : 0;
-  const withdrawalMinor = moneyValues.length >= 3 ? parseOcbcMoneyToMinor(moneyValues.at(-3) ?? "0.00") : parseOcbcMoneyToMinor(moneyValues[0]);
-  const isIncome = depositMinor > 0;
-  const amountMinor = isIncome ? depositMinor : withdrawalMinor;
+  let isIncome: boolean;
+  let amountMinor: number;
+  if (moneyValues.length >= 3) {
+    const depositMinor = parseOcbcMoneyToMinor(moneyValues.at(-2) ?? "0.00");
+    isIncome = depositMinor > 0;
+    amountMinor = isIncome ? depositMinor : parseOcbcMoneyToMinor(moneyValues.at(-3) ?? "0.00");
+  } else {
+    // A row fills only one of Withdrawal and Deposit, so its text is just
+    // "amount balance" and the column is lost. The balance rising by the
+    // amount means it was a deposit; anything else is read as a withdrawal
+    // and the caller's reconciliation refuses it if that does not add up.
+    amountMinor = parseOcbcMoneyToMinor(moneyValues[0]);
+    isIncome = balanceMinor - previousBalanceMinor === amountMinor;
+  }
   const description = cleanOcbcDescription(match[3]);
   const type = isTransferDescription(description) ? "transfer" : isIncome ? "income" : "expense";
 
