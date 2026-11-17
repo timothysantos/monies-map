@@ -414,8 +414,16 @@ export function applyEntryDraft(card, draft, context) {
     origin: next.origin ?? "message",
     touched: true,
     saveError: "",
-    questions: (draft.questions ?? []).map((question) => ({ ...question, source: "message" }))
+    // A follow-up ("it was yesterday") says nothing about the amount or what
+    // it was; the card already has them, so "How much was it?" is not asked.
+    questions: (draft.questions ?? [])
+      .filter((question) => !(question.reason === "missing" && hasValue(fields, question.field)))
+      .map((question) => ({ ...question, source: "message" }))
   };
+}
+
+function hasValue(fields, field) {
+  return field === "amountMinor" ? Number(fields.amountMinor) > 0 : Boolean(fields[field]);
 }
 
 function matchAccountByLast4(accounts, last4) {

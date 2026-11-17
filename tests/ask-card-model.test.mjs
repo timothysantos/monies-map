@@ -171,6 +171,28 @@ test("a follow-up sentence changes the amount but keeps the description and cate
   assert.equal(card.fields.ownerName, "Ethan", "a default in a follow-up never overrides");
 });
 
+test("a follow-up with no amount (\"it was yesterday\") does not ask \"How much was it?\" when the card has one; an empty card still does", () => {
+  const followUp = readEntryDraftResponse({
+    draft: {
+      fields: {
+        date: { value: "2026-09-28", source: "sentence" },
+        categoryName: { value: "Other", source: "default" },
+        entryType: { value: "expense", source: "default" },
+        ownershipType: { value: "direct", source: "default" }
+      },
+      questions: [{ field: "amountMinor", reason: "missing", options: [] }, { field: "description", reason: "missing", options: [] }]
+    }
+  });
+  const filled = setCardField(createAskCard(context), { description: "Koufu lunch", amountInput: "14" }, context);
+  const changed = applyEntryDraft(filled, followUp, context);
+  assert.equal(changed.fields.date, "2026-09-28");
+  assert.equal(changed.fields.amountMinor, 1400);
+  assert.deepEqual(changed.questions, []);
+  // Negative: a card with no amount yet is still asked.
+  const empty = applyEntryDraft(createAskCard(context), followUp, context);
+  assert.deepEqual(empty.questions.map((question) => question.field), ["amountMinor", "description"]);
+});
+
 test("an income sentence switches the card to the income variant with money-in category", () => {
   const draft = readEntryDraftResponse({
     draft: {
