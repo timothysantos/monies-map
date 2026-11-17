@@ -1,7 +1,7 @@
 import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Nfc, Sparkles } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { describeTransfer, getTransferEnds, isCardEmpty, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
+import { describeTransfer, getTransferEnds, isCardEmpty, orderWalletsForCard, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate, formatCardDateTime } from "./copy/ask-copy";
 import { entryAmountTone } from "../domain/money-tone";
 import { bankStateChipLabel } from "./entry-source";
@@ -417,7 +417,10 @@ export function AskCardRows({
     onOpenChange: (open) => setActivePicker(open ? key : "")
   });
   const accounts = (context.accounts ?? []).filter((account) => account.isActive !== false);
-  const accountOptions = accounts.map((account) => ({ value: account.id, label: account.ownerLabel ? `${account.name} - ${account.ownerLabel}` : account.name }));
+  const toOption = (account) => ({ value: account.id, label: account.ownerLabel ? `${account.name} - ${account.ownerLabel}` : account.name });
+  const accountOptions = accounts.map(toOption);
+  // A payment's wallet: the owner's own first, investments last.
+  const walletOptions = orderWalletsForCard(accounts, { ownerName: card.fields.ownerName, people: context.people ?? [] }).map(toOption);
   const categoryOptions = (context.categories ?? [])
     .filter((category) => category.name !== "Transfer")
     .slice()
@@ -498,7 +501,7 @@ export function AskCardRows({
               valueLabel={card.fields.accountName || askCopy.card.chooseWallet}
               filled={Boolean(filled.accountId)}
               value={card.fields.accountId}
-              options={accountOptions}
+              options={walletOptions}
               onValueChange={(accountId) => onChange({ accountId })}
             />
           </>

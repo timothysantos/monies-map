@@ -289,6 +289,25 @@ export function declineCardSuggestion(card) {
   return card ? { ...card, cardSuggestionAnswer: "declined" } : card;
 }
 
+// The wallet list for a card, in the order a payment is most likely made
+// from (Ask audit A19): the owner's own cards and cash first, then joint
+// ones, then the other person's, investment accounts last. Within each
+// group the household's own order is kept. A Shared card has no owner: its
+// joint wallets come first.
+export function orderWalletsForCard(accounts, { ownerName = "", people = [] } = {}) {
+  const ownerId = people.find((person) => person.name === ownerName)?.id ?? "";
+  const rank = (account) => {
+    if (account.kind === "investment") return 3;
+    if (ownerId && account.ownerPersonId === ownerId && !account.isJoint) return 0;
+    if (account.isJoint || !account.ownerPersonId) return ownerId ? 1 : 0;
+    return 2;
+  };
+  return accounts
+    .map((account, index) => ({ account, index, rank: rank(account) }))
+    .sort((left, right) => left.rank - right.rank || left.index - right.index)
+    .map((item) => item.account);
+}
+
 // The groups a shared expense can go to; with one group the switch picks it.
 export function resolveShareGroupId(card, splitGroups = []) {
   if (!card.share.on) {

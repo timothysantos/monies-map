@@ -383,3 +383,24 @@ test("a saved entry from the Apple Pay Shortcut becomes a saved card", () => {
   assert.equal(card.fields.amountMinor, 690);
   assert.equal(card.fields.categoryName, "Other");
 });
+
+// Ask audit A19: the wallet list for a lunch listed brokerage accounts and
+// the other person's cards in a fixed order, the owner's own near the end.
+test("a card's wallets list the owner's own first, joint next, the other person's after, investments last", async () => {
+  const { orderWalletsForCard } = await import("../src/client/ask-card-model.js");
+  const people = [{ id: "person-ethan", name: "Ethan" }, { id: "person-serene", name: "Serene" }];
+  const accounts = [
+    { id: "citi", kind: "credit_card", ownerPersonId: "person-ethan", isJoint: false },
+    { id: "posb-joint", kind: "bank", ownerPersonId: "", isJoint: true },
+    { id: "endowus", kind: "investment", ownerPersonId: "person-ethan", isJoint: false },
+    { id: "ocbc-serene", kind: "credit_card", ownerPersonId: "person-serene", isJoint: false },
+    { id: "uob-one", kind: "bank", ownerPersonId: "person-ethan", isJoint: false },
+    { id: "ibkr", kind: "investment", ownerPersonId: "person-serene", isJoint: false }
+  ];
+  const ids = (list) => list.map((account) => account.id);
+  assert.deepEqual(ids(orderWalletsForCard(accounts, { ownerName: "Ethan", people })), ["citi", "uob-one", "posb-joint", "ocbc-serene", "endowus", "ibkr"]);
+  assert.deepEqual(ids(orderWalletsForCard(accounts, { ownerName: "Serene", people })), ["ocbc-serene", "posb-joint", "citi", "uob-one", "endowus", "ibkr"]);
+  // Shared (no owner): joint first, then everyone's in the household's order.
+  assert.deepEqual(ids(orderWalletsForCard(accounts, { ownerName: "Shared", people })), ["posb-joint", "citi", "ocbc-serene", "uob-one", "endowus", "ibkr"]);
+  assert.deepEqual(orderWalletsForCard([], { ownerName: "Ethan", people }), []);
+});
