@@ -77,7 +77,7 @@ async function importMonth(page, testInfo, month, expectedWorth) {
 // The Accounts card starts at 3 rows with Show all (Summary, 11 Nov 2026).
 async function showAllAccounts(page) {
   await expect(page.locator(".summary-wallet-row").first()).toBeVisible({ timeout: 60_000 });
-  const showAll = page.getByRole("button", { name: /^Show all \d+/ });
+  const showAll = page.locator(".summary-accounts-more");
   if (await showAll.count()) await showAll.click();
 }
 

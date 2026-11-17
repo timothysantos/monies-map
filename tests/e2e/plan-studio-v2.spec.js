@@ -646,9 +646,13 @@ test.describe("Plan Studio v2 on a phone", () => {
     await seed(page);
     await open(page);
     // First row with Undo and Discard changes; Save plan keeps its own row. No row is spent on the switch.
-    const undo = await page.locator("[data-ps-undo]").boundingBox();
+    // Layout can still be settling on a loaded machine, so poll the row alignment.
+    await expect.poll(async () => {
+      const undoBox = await page.locator("[data-ps-undo]").boundingBox();
+      const switchRect = await modeSwitch(page).boundingBox();
+      return Math.abs((switchRect.y + switchRect.height / 2) - (undoBox.y + undoBox.height / 2));
+    }).toBeLessThan(6);
     const switchBox = await modeSwitch(page).boundingBox();
-    expect(Math.abs((switchBox.y + switchBox.height / 2) - (undo.y + undo.height / 2))).toBeLessThan(6);
     const toolbar = await page.locator(".ps-toolbar").first().boundingBox();
     expect(switchBox.y + switchBox.height).toBeLessThanOrEqual(toolbar.y + toolbar.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

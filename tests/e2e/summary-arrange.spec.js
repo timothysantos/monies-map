@@ -24,7 +24,8 @@ test.describe("Arrange Summary", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/?view=household");
     await expect(page.locator(".summary-cards-arrange button")).toHaveText("Arrange cards", { timeout: 30_000 });
-    expect(await cardOrder(page)).toEqual(USUAL);
+    // Some cards (investments, miles, tax reliefs) arrive with their own data, so wait for the full usual order.
+    await expect.poll(() => cardOrder(page), { timeout: 30_000 }).toEqual(USUAL);
 
     await page.locator(".summary-cards-arrange button").click();
     const dialog = page.getByRole("dialog", { name: "Arrange cards" });
