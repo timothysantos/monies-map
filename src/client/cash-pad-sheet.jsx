@@ -110,10 +110,16 @@ const EMPTY_AFTER = { category: "", shared: false, splitExpenseId: "", busy: fal
  *   viewId?: string,
  *   startWith?: "pad" | "words",
  *   startPersonId?: string,
- *   onChanged?: (month: string) => void
+ *   onChanged?: (month: string) => void,
+ *   onTypeInstead?: () => void
  * }} props
  */
-export default function CashPadSheet({ open, onOpenChange, people, accounts, categories, viewId = "household", startWith = "pad", startPersonId = "", onChanged = () => {} }) {
+// `onTypeInstead`, from a new entry: the pad's quiet way out ("Type it
+// instead") back to that entry, to type or say a sentence or scan a receipt.
+export default function CashPadSheet({ open, onOpenChange, people, accounts, categories, viewId = "household", startWith = "pad", startPersonId = "", onChanged = () => {}, onTypeInstead = undefined }) {
+  // Set by Type it instead: the page focuses its message box itself, so the
+  // dialog does not hand focus back on its way out.
+  const leavingToTypeRef = useRef(false);
   const { areTotalsVisible } = useMoneyPrivacy();
   const [today] = useState(() => todayInAppTimeZone());
   const [personId, setPersonId] = useState(() => firstPersonId(people, startPersonId || viewId));
@@ -428,10 +434,25 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             event.preventDefault();
             (event.currentTarget instanceof HTMLElement ? event.currentTarget : null)?.focus({ preventScroll: true });
           }}
+          onCloseAutoFocus={(event) => {
+            if (leavingToTypeRef.current) event.preventDefault();
+          }}
         >
           <header className="cash-pad-head">
             <Dialog.Title className="cash-pad-title">{copy.title}</Dialog.Title>
             <Dialog.Description id="cash-pad-description" className="sr-only">{copy.description}</Dialog.Description>
+            {onTypeInstead && !saved && !listOpen ? (
+              <button
+                type="button"
+                className="cash-pad-link cash-pad-type-instead"
+                onClick={() => {
+                  leavingToTypeRef.current = true;
+                  onTypeInstead();
+                }}
+              >
+                {copy.typeInstead}
+              </button>
+            ) : null}
             <Dialog.Close className="cash-pad-close" aria-label={copy.close}>
               <X size={20}/>
             </Dialog.Close>

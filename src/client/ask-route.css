@@ -570,6 +570,29 @@
   color: var(--muted);
 }
 
+/* A phone's empty new entry: the $0.00 is a button opening Just paid
+   (new-entry-pad.js), drawn exactly as the empty field. */
+.ask-card-amount-tap {
+  min-height: 44px;
+  margin: 0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ask-card-amount-tap .ask-card-amount-input {
+  min-width: 0;
+}
+
+.ask-card-amount-tap:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
 .ask-card-merchant-input:focus-visible,
 .ask-card-amount-input:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
@@ -1102,6 +1125,14 @@
 
   .ask-head.is-inline h2 {
     font-size: 1.85rem;
+  }
+
+  /* An empty new entry sits just above the chips, under the thumb, with its
+     detail rows folded away (ask-panel.jsx leaves them out) until it has
+     content; then it is back at the top. The auto margin keeps it in the
+     scrolling thread, so an open keyboard only shortens the space above. */
+  .ask-page.is-entry-low .ask-thread > .ask-card {
+    margin-top: auto;
   }
 }
 

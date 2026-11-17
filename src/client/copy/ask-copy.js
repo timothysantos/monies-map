@@ -161,6 +161,8 @@ export const askCopy = {
     whatWasIt: "What was it?",
     descriptionLabel: "What it was",
     amountLabel: "Amount",
+    // A phone's empty new entry: the $0.00 opens the Just paid pad.
+    amountOpensPad: "Amount, opens Just paid",
     coaxBefore: "Type the amount and shop, or just say it below: ",
     coaxExample: "“Koufu lunch $12.50, Citi”",
     coaxAfter: ". A receipt photo works too.",

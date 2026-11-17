@@ -57,6 +57,15 @@
   font-size: var(--type-title, 1.35rem);
 }
 
+/* The way out to the new entry: a quiet link beside Close, away from the
+   keys and Save. */
+.cash-pad-head .cash-pad-type-instead {
+  margin-left: auto;
+  margin-right: 6px;
+  color: var(--accent-strong);
+  font-size: 0.95rem;
+}
+
 .cash-pad-close {
   display: grid;
   place-items: center;

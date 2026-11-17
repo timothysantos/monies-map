@@ -1,6 +1,7 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowUp, Camera, ClipboardPaste, Image, Maximize2, Mic, Plus, SquarePen } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -98,6 +99,8 @@ import "./ask-route.css";
 // The cash pad (design.md "Cash pad") ships in Ask's lazy chunk: a chunk of
 // its own split the first screen's shared code into one more file.
 import CashPadSheet from "./cash-pad-sheet";
+import { amountOpensPad, emptyEntrySitsLow, FROM_PLUS_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "./new-entry-pad";
+import { isMobileLayout, useIsMobileLayout } from "./use-viewport";
 
 // Waiting cash payments are sent from App.jsx through this chunk.
 export { flushCashQueue } from "./cash-queue";
@@ -274,10 +277,23 @@ function AskConversation({
   const [working, setWorking] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
-  const [cashPadOpen, setCashPadOpen] = useState(false);
+  // Amount first (new-entry-pad.js): the Entries + on a phone opens the new
+  // entry with Just paid already open, from the first paint.
+  const padConfig = useMemo(() => newEntryPadConfig(), []);
+  const isPhone = useIsMobileLayout();
+  const arrivalOpensPad = !inDock && shouldOpenPadOnArrival({ intent, state: location.state, card, isPhone: isMobileLayout(), config: padConfig });
+  const [cashPadOpen, setCashPadOpen] = useState(arrivalOpensPad);
   // How the quick pad opens: on the number pad, or (from the "need a few
   // words" reminder) on that person's list of payments to describe.
   const [cashPadStart, setCashPadStart] = useState({ startWith: "pad", personId: "" });
+  // The + mark is used once: cleared from this history entry, so a reload or
+  // coming back to it shows the entry, not the pad again.
+  useEffect(() => {
+    if (!arrivalOpensPad) return;
+    setCashPadStart({ startWith: "pad", personId: "" });
+    setCashPadOpen(true);
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: { ...location.state, [FROM_PLUS_STATE]: false } });
+  }, [arrivalOpensPad, location, navigate]);
   const [openPicker, setOpenPicker] = useState("");
   const [savedPicker, setSavedPicker] = useState(false);
   const [savedWalletPicker, setSavedWalletPicker] = useState(false);
@@ -1862,8 +1878,20 @@ function AskConversation({
     splitSuggestion,
     cardSuggestion,
     headerBack: showHeaderBack,
+    justPaidFirst: justPaidLeads({ intent, config: padConfig }),
     actions
   });
+  // Amount first on a phone (new-entry-pad.js): the empty new entry's $0.00
+  // opens Just paid, and the entry sits low, above the chips, until it has
+  // content.
+  const amountTapOpensPad = !inDock && amountOpensPad({ intent, card, isPhone, config: padConfig });
+  const entrySitsLow = !inDock && emptyEntrySitsLow({ intent, card, isPhone, rowsInUse: Boolean(openPicker) || moreOpen, config: padConfig });
+  // The pad's way out to this page, focusing the message box in the same tap
+  // so a phone's keyboard opens.
+  function typeInstead() {
+    flushSync(() => setCashPadOpen(false));
+    composerRef.current?.focus();
+  }
 
   const showSave = Boolean(cardActive && card.status !== "saved" && !composerText.trim());
   const canSave = Boolean(validation?.canSave) && !working;
@@ -2140,7 +2168,7 @@ function AskConversation({
   return (
     <article
       ref={articleRef}
-      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}${inDock ? ` is-in-dock is-${placement}` : ""}`}
+      className={`panel ask-page${isAddMode ? " is-add-mode" : ""}${entrySitsLow ? " is-entry-low" : ""}${inDock ? ` is-in-dock is-${placement}` : ""}`}
       aria-labelledby="ask-page-title"
       onDragOver={(event) => {
         if ([...(event.dataTransfer?.types ?? [])].includes("Files")) {
@@ -2216,6 +2244,7 @@ function AskConversation({
             today={today}
             descriptionRef={descriptionRef}
             amountRef={amountRef}
+            onAmountTap={amountTapOpensPad ? actions.cash : undefined}
             onChange={updateCard}
             walletChipRef={savedWalletAnchorRef}
             onOpenField={(key) => {
@@ -2250,7 +2279,7 @@ function AskConversation({
             <AskSuggestionRow suggestion={habits.suggestion} busy={habits.busy} error={habits.error} onApply={() => void habits.apply()} onDismiss={habits.dismiss} />
           </>
         ) : null}
-        {card && card.status !== "saved" ? (
+        {card && card.status !== "saved" && !entrySitsLow ? (
           <AskCardRows
             card={card}
             context={context}
@@ -2316,6 +2345,7 @@ function AskConversation({
             onOpenChange={setCashPadOpen}
             startWith={cashPadStart.startWith === "words" ? "words" : "pad"}
             startPersonId={cashPadStart.personId}
+            onTypeInstead={isAddMode && card?.status === "draft" && cashPadStart.startWith === "pad" ? typeInstead : undefined}
             people={people}
             accounts={accounts}
             categories={categories}

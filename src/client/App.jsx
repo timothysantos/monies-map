@@ -3123,11 +3123,13 @@ export function App() {
   // The page's place (URL and scroll; the page adds an open sheet through
   // the event) is kept first on its own entry and handed to Ask, so Ask's
   // back link and the back gesture both return to it (ask-origin.js).
-  function openAskFromPage(target, from) {
+  // `extraState` rides along: the Entries + marks itself so Ask can open the
+  // Just paid pad at once (new-entry-pad.js, FROM_PLUS_STATE).
+  function openAskFromPage(target, from, extraState = {}) {
     const origin = { id: `${Date.now()}`, from, path: location.pathname + location.search, scrollY: window.scrollY, sheet: null };
     window.dispatchEvent(new CustomEvent("monies:ask-origin", { detail: origin }));
     navigate(origin.path, { replace: true, state: { askReturn: origin } });
-    navigate(target, { state: { askOrigin: origin } });
+    navigate(target, { state: { ...extraState, askOrigin: origin } });
   }
 
   // Opening the month sheet re-reads the range's Summary page when a save
@@ -3586,7 +3588,7 @@ export function App() {
               // which stays. The Entries composer stays on "+ Add entry"
               // and the card's "Edit in form".
               if (isMobileLayout()) {
-                openAskFromPage(buildAskLocation(searchParams, { mode: "add", from: "entries" }), "entries");
+                openAskFromPage(buildAskLocation(searchParams, { mode: "add", from: "entries" }), "entries", { newEntryFromPlus: true });
               } else {
                 openAskDock({ intent: { mode: "add", from: "entries" } });
               }

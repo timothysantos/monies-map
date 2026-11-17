@@ -85,7 +85,8 @@ export function AskEntryCard({
   amountRef,
   onChange,
   onOpenField = undefined,
-  walletChipRef = undefined
+  walletChipRef = undefined,
+  onAmountTap = undefined
 }) {
   const isSaved = card.status === "saved";
   // Only a draft's chips edit it; a saved card's wallet chip opens the saved
@@ -136,7 +137,14 @@ export function AskEntryCard({
 
   const amount = (
     <div className={`ask-card-amount ${toneClass}`}>
-      {isEditable ? (
+      {isEditable && onAmountTap ? (
+        // An empty new entry on a phone: the same $0.00, opening the Just
+        // paid pad instead of the keyboard (new-entry-pad.js).
+        <button type="button" className="ask-card-amount-field is-empty ask-card-amount-tap" aria-label={askCopy.card.amountOpensPad} onClick={onAmountTap}>
+          <span className="ask-card-amount-prefix" aria-hidden="true">{currency === "SGD" ? "$" : `${currency} `}</span>
+          <span className="ask-card-amount-input" aria-hidden="true">0.00</span>
+        </button>
+      ) : isEditable ? (
         <label htmlFor={amountId} className={`ask-card-amount-field${card.fields.amountMinor > 0 ? "" : " is-empty"}`}>
           <span className="ask-sr-only">{askCopy.card.amountLabel}</span>
           <span className="ask-card-amount-prefix" aria-hidden="true">{sign}{currency === "SGD" ? "$" : `${currency} `}</span>

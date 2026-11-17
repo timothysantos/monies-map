@@ -8,6 +8,8 @@ export const cashPadCopy = Object.freeze({
   title: "Just paid",
   description: "Type what you paid, then Save. Say what it was later.",
   close: "Close",
+  // From a new entry: back to it, to type or say a sentence or scan a receipt.
+  typeInstead: "Type it instead",
   changeLine: "Change how you paid, the currency, day or who paid",
   chooseWallet: "Choose a wallet",
   today: "Today",
