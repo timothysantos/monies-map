@@ -59,6 +59,7 @@ export function isConversationInProgress(conversation) {
   }
   return Boolean(
     conversation.composerText?.trim()
+    || conversation.asideCard
     || conversation.thread?.some((item) => item.kind === "me")
     || (card && card.status !== "saved" && (card.touched || card.origin))
   );
@@ -117,6 +118,8 @@ function toStored(conversation) {
     cardSlot: Math.max(0, kept.cardSlot - overflow),
     composerText: clampText(conversation.composerText),
     pending: conversation.pending ?? null,
+    // An unsaved card New chat put aside, until Bring it back.
+    ...(isObject(conversation.asideCard) ? { asideCard: { ...conversation.asideCard, status: "draft" } } : {}),
     ...(conversation.rulesNoted ? { rulesNoted: true } : {}),
     scrollFromBottom: Number.isFinite(conversation.scrollFromBottom) ? conversation.scrollFromBottom : 0
   });
@@ -184,6 +187,7 @@ export function parseStoredConversations(text) {
           cardSlot: Math.min(thread.length, Math.max(0, Number(slot.cardSlot) || 0)),
           composerText: typeof slot.composerText === "string" ? slot.composerText : "",
           pending: isObject(slot.pending) ? slot.pending : null,
+          ...(isObject(slot.asideCard) && isObject(slot.asideCard.fields) ? { asideCard: slot.asideCard } : {}),
           ...(slot.rulesNoted === true ? { rulesNoted: true } : {}),
           scrollFromBottom: Number.isFinite(slot.scrollFromBottom) ? slot.scrollFromBottom : 0
         };

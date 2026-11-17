@@ -250,7 +250,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   return { items, prompt };
 }
 
-export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, headerBack = false, justPaidFirst = false, actions }) {
+export function buildAskChips({ intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, headerBack = false, justPaidFirst = false, asideCard = null, actions }) {
   const isAddMode = intent.mode !== "chat";
   if (!card) {
     if (intent.savedEntryId) {
@@ -258,6 +258,8 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
     }
     return {
       items: /** @type {AskChip[]} */ ([
+        // The unsaved card New chat put aside (Ask audit A10), first.
+        ...(asideCard ? [{ key: "bring-back", label: askCopy.chips.bringBack, primary: true, onClick: actions.bringBack }] : []),
         { key: "scan", label: askCopy.chips.scanReceipt, onClick: actions.scanReceipt },
         { key: "paste", label: askCopy.chips.paste, onClick: actions.paste },
         { key: "add-entry", label: askCopy.chips.addEntry, onClick: actions.addEntry },
@@ -402,13 +404,13 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
 // "Back to the unsaved entry", which makes it the newest item again. An
 // answer for a month with no entries (canOpenAnswer false) has no Entries
 // page to open.
-export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, justPaidFirst = false, actions }) {
+export function buildChipRow({ active, intent, card, context, splitGroups = [], entries = [], today, partner = "", splitSuggestion = null, cardSuggestion = null, habitSuggestion = null, habitBusy = false, viewLabel = "", canOpenAnswer = true, moneyLabels = null, headerBack = false, justPaidFirst = false, asideCard = null, actions }) {
   if (active?.kind === "card") {
     return buildAskChips({ intent, card, context, splitGroups, entries, today, partner, splitSuggestion, cardSuggestion, habitSuggestion, habitBusy, headerBack, justPaidFirst, actions });
   }
   const rest = card && card.status !== "saved"
     ? { items: /** @type {AskChip[]} */ ([{ key: "back-to-card", label: askCopy.chips.backToCard, onClick: actions.backToCard }]), prompt: "" }
-    : buildAskChips({ intent, card: null, context, today, actions });
+    : buildAskChips({ intent, card: null, context, today, asideCard: card ? null : asideCard, actions });
   if (!active || (active.kind === "answer" && !canOpenAnswer)) {
     return rest;
   }

@@ -193,6 +193,27 @@ test("after a save from the Ask tab, Open this entry is the filled chip and ther
   assert.equal(buildAskChips({ intent: add, card: saved, context, actions }).items[0].label, "Back to Entries");
 });
 
+// Ask audit A8 and A10: no connection keeps the words with Try again; New
+// chat puts an unsaved card aside with Bring it back.
+test("Try again leads after no connection; Bring it back leads while a card is put aside", async () => {
+  const { buildChipRow } = await import("../src/client/ask-chips.js");
+  const retry = buildChipRow({ active: { kind: "retry", text: "Koufu dinner $18" }, intent: chat, card: null, context, actions });
+  assert.deepEqual(labels(retry), ["Try again", "Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.deepEqual(retry.items.map((item) => Boolean(item.primary)), [true, false, false, false, false]);
+  assert.equal(retry.items[0].onClick(), "retry");
+  const draft = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu lunch" }, context);
+  assert.deepEqual(labels(buildChipRow({ active: { kind: "retry", text: "x" }, intent: chat, card: draft, context, actions })), ["Try again", "Back to the unsaved entry"]);
+
+  const aside = buildChipRow({ active: null, intent: chat, card: null, context, asideCard: draft, actions });
+  assert.deepEqual(labels(aside), ["Bring it back", "Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.equal(aside.items[0].primary, true);
+  assert.equal(aside.items[0].onClick(), "bringBack");
+  // Nothing put aside, or a card already on screen: no Bring it back.
+  assert.equal(labels(buildChipRow({ active: null, intent: chat, card: null, context, actions })).includes("Bring it back"), false);
+  const saved = markCardSaved(draft, { entryId: "txn-1" });
+  assert.equal(labels(buildChipRow({ active: { kind: "answer", filter: {} }, intent: chat, card: saved, context, asideCard: draft, actions })).includes("Bring it back"), false);
+});
+
 test("Ask has its own route; its params never leak into other tabs", () => {
   assert.equal(getSelectedTabId("/ask"), "ask");
   assert.equal(getSelectedTabId("/asks"), "summary");

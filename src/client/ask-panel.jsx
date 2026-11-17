@@ -136,14 +136,21 @@ export function AskPanel(props) {
   const conversationKey = askConversationKey(intent);
   // New chat remounts the conversation over a cleared store entry.
   const [chatRound, setChatRound] = useState(0);
+  // An unsaved card is never lost to New chat (Ask audit A10): it is put
+  // aside with the new conversation, which offers Bring it back.
+  const [asideCard, setAsideCard] = useState(null);
   const startNewChat = useCallback(() => {
-    getAskConversationStore().clear(conversationKey);
+    const store = getAskConversationStore();
+    const before = store.read(conversationKey);
+    const unsaved = before?.card && before.card.status === "draft" && !isCardEmpty(before.card) ? before.card : before?.asideCard ?? null;
+    store.clear(conversationKey);
+    setAsideCard(unsaved);
     setChatRound((round) => round + 1);
   }, [conversationKey]);
   // Each way in has its own conversation, kept in the Ask conversation
   // store (ask-conversation-store.js), so leaving Ask and coming back, or
   // reloading the tab, picks it up where it was.
-  return <AskConversation key={`${conversationKey}|${chatRound}`} {...props} intent={intent} conversationKey={conversationKey} onNewChat={startNewChat} />;
+  return <AskConversation key={`${conversationKey}|${chatRound}`} {...props} intent={intent} conversationKey={conversationKey} onNewChat={startNewChat} asideCard={chatRound ? asideCard : null} />;
 }
 
 export function askConversationKey(intent) {
@@ -214,6 +221,7 @@ function AskConversation({
   intent,
   conversationKey,
   onNewChat,
+  asideCard: newChatAsideCard = null,
   view,
   selectedMonth,
   selectedScope,
@@ -261,11 +269,14 @@ function AskConversation({
   const store = getAskConversationStore();
   const { conversation, restored } = useAskConversation(store, conversationKey, () => ({
     intent,
-    thread: isShortcut ? [threadItem("status", { text: askCopy.notes.shortcutLoading })] : [],
+    thread: isShortcut
+      ? [threadItem("status", { text: askCopy.notes.shortcutLoading })]
+      : newChatAsideCard ? [threadItem("note", { text: askCopy.notes.cardSetAside, tone: "calm" })] : [],
     card: isAddMode ? createAskCard(context, { mode: intent.mode, splitGroupId: intent.splitGroupId }) : null,
     cardSlot: 0,
     composerText: "",
     pending: null,
+    ...(newChatAsideCard ? { asideCard: newChatAsideCard } : {}),
     scrollFromBottom: 0
   }));
   const { card, thread, composerText } = conversation;
@@ -1894,6 +1905,13 @@ function AskConversation({
     undo: () => void undoSave(),
     // Try again after "No connection": the words in the message box (the
     // kept message, or what the person changed it to).
+    // The unsaved card New chat put aside comes back as the newest item.
+    bringBack: () => {
+      updateConversation((current) => (current.asideCard && !current.card
+        ? { ...current, card: current.asideCard, asideCard: null, pending: null, cardSlot: current.thread.filter((item) => item.kind !== "status").length }
+        : current));
+      window.requestAnimationFrame(() => threadBoxRef.current?.querySelector(":scope > .ask-card")?.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" }));
+    },
     retry: () => {
       if (pending?.kind !== "retry" || working) return;
       const words = composerText.trim() || pending.text;
@@ -1976,6 +1994,7 @@ function AskConversation({
     cardSuggestion,
     habitSuggestion: card?.status === "saved" ? habits.suggestion : null,
     habitBusy: habits.busy === "apply",
+    asideCard: conversation.asideCard ?? null,
     headerBack: showHeaderBack,
     justPaidFirst: justPaidLeads({ intent, config: padConfig }),
     actions
