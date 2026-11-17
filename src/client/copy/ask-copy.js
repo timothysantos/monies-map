@@ -241,6 +241,8 @@ export const askCopy = {
     categoryChanged: (name) => `Moved to ${name}.`,
     cardChanged: (cardName) => `Moved to ${cardName}.`,
     addedToSplits: (groupName) => (groupName ? `Added to Splits: ${groupName}.` : "Added to Splits."),
+    // Done for you's words (ask-auto-apply.ts), for a half-and-half share.
+    addedHalfEach: (name, groupName) => `Added to splits half each with ${name}${groupName ? ` in ${groupName}` : ""}.`,
     askNotReady: "I can find entries and add new ones. Other questions aren't answered yet.",
     // A message that could not reach the server (docs/flows/ask-flow.md
     // "No connection"): the words go back in the message box.

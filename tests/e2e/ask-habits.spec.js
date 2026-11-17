@@ -97,6 +97,9 @@ for (const [name, viewport] of [["phone", iPhone], ["desktop", { width: 1280, he
       await chips.first().click();
       await expect(row).toHaveCount(0);
       await expect.poll(() => entryOnSplits(page, first)).toEqual({ onSplits: true, category: "Food & Drinks" });
+      // It says what was promised, never the internal "Non-group expenses" (Ask audit A13).
+      await expect(page.locator(".ask-note").filter({ hasText: "Added to splits" })).toHaveText("Added to splits half each with Joyce.");
+      await expect(page.locator('[data-ask-card="saved"]')).not.toContainText("Non-group expenses");
 
       // That was the third confirmation: the next entry is done for you at once.
       const second = await applePayEntry(page, shop.toUpperCase());

@@ -1730,14 +1730,18 @@ function AskConversation({
         appendThread(threadItem("note", { text: result.error }));
         return false;
       }
-      const groupName = splitGroups.find((group) => group.id === splitGroupId)?.name ?? "";
+      // "Non-group expenses" is no group a person named: the line says who
+      // shares it instead, as Done for you does (Ask audit A13).
+      const groupName = splitGroupId === "split-group-none" ? "" : splitGroups.find((group) => group.id === splitGroupId)?.name ?? "";
+      const partner = partnerName(context, card.fields.ownerName);
+      const sharedNote = splitBasisPoints === 5000 && partner ? askCopy.notes.addedHalfEach(partner, groupName) : askCopy.notes.addedToSplits(groupName);
       setCard((current) => ({
         ...current,
         share: { on: true, splitGroupId },
         saved: { ...current.saved, splitExpenseId: result.splitExpenseId ?? null, splitExpenseMonth: result.splitExpenseMonth ?? null, splitGroupId, splitGroupName: groupName }
       }));
       onSplitMutation?.({ month: result.splitExpenseMonth ?? card.fields.date.slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
-      appendThread(threadItem("note", { text: askCopy.notes.addedToSplits(groupName) }));
+      appendThread(threadItem("note", { text: sharedNote }));
       void runBackgroundRefresh(entriesPage.refresh);
       return true;
     } finally {
