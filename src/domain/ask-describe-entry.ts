@@ -303,20 +303,14 @@ export function readDescribeRules(text: string, context: AskTurnContext, options
     if (shares.length) rest = rest.replace(/\b\d[\d.,]*\b/g, " ");
   }
 
-  // A category named in the words ("taxi transport"): the household's own
-  // category names, whole words only.
-  let category: string | null = null;
-  const lower = ` ${rest.toLowerCase()} `;
-  const named = [...context.entry.categoryNames]
+  // A category named in the words ("taxi to the villa", "bintang
+  // groceries"): the household's own category names, whole words only. The
+  // words stay as they were said: they are its name too.
+  const lower = ` ${rest.toLowerCase().replace(/[,;:.!]+/g, " ")} `;
+  const category = [...context.entry.categoryNames]
     .filter((name) => name !== "Other" && name !== "Transfer")
     .sort((left, right) => right.length - left.length)
-    .find((name) => lower.includes(` ${name.toLowerCase()} `));
-  if (named) {
-    category = named;
-    const without = rest.replace(new RegExp(`\\b${named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), " ").replace(/\s+/g, " ").trim();
-    // "Groceries" alone is both what it was and its category.
-    if (/\p{L}{2,}/u.test(without)) rest = without;
-  }
+    .find((name) => lower.includes(` ${name.toLowerCase()} `)) ?? null;
   const words = rest
     .replace(/\b(?:and|&)\s*$/i, "")
     .replace(/^\s*(?:and|&)\b/i, "")

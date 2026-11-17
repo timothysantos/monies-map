@@ -179,7 +179,8 @@ test("the rules reader: category words, 'with NAME' only for a household person,
   assert.deepEqual(read("dinner ramen split with joyce"), { words: "dinner ramen", category: null, shared_with: "joyce", amount: null });
   assert.deepEqual(read("coffee with milk"), { words: "coffee with milk", category: null, shared_with: null, amount: null });
   assert.deepEqual(read("ramen with Joyce"), { words: "ramen", category: null, shared_with: "Joyce", amount: null });
-  assert.deepEqual(read("bintang groceries"), { words: "bintang", category: "Groceries", shared_with: null, amount: null });
+  assert.deepEqual(read("bintang groceries"), { words: "bintang groceries", category: "Groceries", shared_with: null, amount: null });
+  assert.deepEqual(read("flight home, travel"), { words: "flight home travel", category: "Travel", shared_with: null, amount: null });
   assert.deepEqual(read("groceries"), { words: "groceries", category: "Groceries", shared_with: null, amount: null });
   assert.deepEqual(read("it was taxi, shared w/ joyce 60/40"), { words: "taxi", category: null, shared_with: "joyce", amount: null });
   assert.deepEqual(read("the 85,000 was ramen", { byAmount: true }), { words: "ramen", category: null, shared_with: null, amount: "85,000" });

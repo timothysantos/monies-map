@@ -3,7 +3,7 @@ import { devices, expect, test } from "@playwright/test";
 import { gotoPageAfterApi, loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 // The cash pad (design.md "Cash pad"; docs/flows/cash-entry-flow.md): from
-// the Entries + button, Cash opens a number pad already set to Tim's cash
+// the Entries + button, Just paid opens a number pad already set to Tim's cash
 // wallet, the trip's currency, today and Tim. An amount and Save is the
 // whole entry; after Save come Undo and the optional chips. A Save that
 // cannot reach the server waits on the phone and is sent again with the
@@ -39,9 +39,9 @@ async function withTestRate(page) {
 async function openPad(page, { phone = true } = {}) {
   await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
   await page.locator(".entries-fab:not(.splits-fab)").click();
-  const chip = page.getByRole("button", { name: "Cash", exact: true });
+  const chip = page.getByRole("button", { name: "Just paid", exact: true });
   await chip.click({ timeout: 60_000 });
-  const pad = page.getByRole("dialog", { name: "Cash" });
+  const pad = page.getByRole("dialog", { name: "Just paid" });
   await expect(pad).toBeVisible();
   // The defaults have arrived: the quiet line names the wallet.
   await expect(pad.locator(".cash-pad-line")).toContainText("Tim's cash", { timeout: 30_000 });
@@ -97,15 +97,16 @@ test.describe("Cash pad on a phone", () => {
     await expect(pad.locator(".cash-pad-chip.is-done")).toHaveText("Food & Drinks");
     await expect.poll(async () => (await entryOf(page, entry.entryId))?.categoryName).toBe("Food & Drinks");
 
-    await pad.getByRole("button", { name: "Add a note" }).click();
-    await pad.getByRole("textbox", { name: "Add a note" }).fill("Kopi at the warung");
-    await pad.getByRole("button", { name: "Save note" }).click();
-    await expect(pad.getByText("Note saved")).toBeVisible();
-    await expect.poll(async () => (await entryOf(page, entry.entryId))?.note ?? "").toContain("Kopi at the warung");
-    // The rupiah line the save wrote stays with the note.
+    // A few words name it (the words box, read by Ask's rules here).
+    await pad.getByRole("textbox", { name: "What was it?" }).fill("Kopi at the warung");
+    await pad.getByRole("button", { name: "Add", exact: true }).click();
+    await pad.locator('[data-change-draft="draft"]').getByRole("button", { name: "Save", exact: true }).click();
+    await expect(pad.locator(".cash-pad-saved-line")).toHaveText("Saved: Kopi at the warung, Rp 35,000");
+    await expect.poll(async () => (await entryOf(page, entry.entryId))?.description ?? "").toBe("Kopi at the warung");
+    // The rupiah line the save wrote stays in the note.
     expect((await entryOf(page, entry.entryId)).note).toContain("Paid IDR 35,000 cash.");
 
-    await pad.getByRole("button", { name: "Undo" }).click();
+    await pad.locator(".cash-pad-after-actions").getByRole("button", { name: "Undo" }).click();
     await expect(pad.getByText("Removed that payment.")).toBeVisible();
     await expect.poll(() => entryOf(page, entry.entryId)).toBeNull();
     // The pad is ready for the next one.
@@ -135,8 +136,8 @@ test.describe("Cash pad on a phone", () => {
     // Runs after the describe's init script, so money stays hidden.
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "false"));
     await page.reload();
-    await page.getByRole("button", { name: "Cash", exact: true }).click({ timeout: 60_000 });
-    const hiddenPad = page.getByRole("dialog", { name: "Cash" });
+    await page.getByRole("button", { name: "Just paid", exact: true }).click({ timeout: 60_000 });
+    const hiddenPad = page.getByRole("dialog", { name: "Just paid" });
     await expect(hiddenPad.getByRole("group", { name: "Again" }).getByRole("button")).toHaveText(["Coffee"]);
   });
 
@@ -229,13 +230,13 @@ test.describe("Cash pad on a wide screen", () => {
     const spare = await postJson(page, "/api/accounts/create", { name: "Spare cash", institution: "Cash", kind: "cash", currency: "SGD", ownerPersonId: TIM });
     await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
     await page.locator(".entries-fab:not(.splits-fab)").click();
-    await page.getByRole("button", { name: "Cash", exact: true }).click({ timeout: 60_000 });
-    const pad = page.getByRole("dialog", { name: "Cash" });
+    await page.getByRole("button", { name: "Just paid", exact: true }).click({ timeout: 60_000 });
+    const pad = page.getByRole("dialog", { name: "Just paid" });
     await expect(pad.locator(".cash-pad-line")).toContainText("Choose a wallet");
     await page.keyboard.type("7");
     await page.keyboard.press("Enter");
     await expect(pad.getByRole("alert")).toHaveText("Which wallet did the cash come from?");
-    const walletRow = pad.locator(".cash-pad-choice-row").filter({ hasText: "Wallet" });
+    const walletRow = pad.locator(".cash-pad-choice-row").filter({ hasText: "Cash from" });
     await expect(walletRow.getByRole("button").first()).toHaveText("Spare cash");
     await walletRow.getByRole("button", { name: "Spare cash" }).click();
     const saved = page.waitForResponse((response) => response.url().includes("/api/cash-entries/create") && response.ok());
