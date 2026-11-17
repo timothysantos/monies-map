@@ -11,8 +11,8 @@
 // an Entries list or a total until the server confirms it, and then the
 // page refreshes through its data owner (onSaved).
 //
-// Loaded with the cash pad, and by App.jsx only when this device has
-// something waiting (it reads CASH_QUEUE_KEY directly, without this file).
+// Ships in Ask's lazy chunk (ask-panel.jsx re-exports flushCashQueue); App.jsx
+// loads that chunk only when this device has something waiting (CASH_QUEUE_KEY).
 
 // This device's storage, or null when the browser blocks it (the same
 // guard as device-storage.js, kept here so this lazy file does not split

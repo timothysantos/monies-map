@@ -1,6 +1,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowUp, Camera, ClipboardPaste, Image, Maximize2, Mic, Plus, SquarePen } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -95,9 +95,12 @@ import { forgetTripEvents } from "./trip-events-api";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
-// The cash pad (design.md "Cash pad") is its own lazy chunk, fetched when
-// the person taps Cash.
-const CashPadSheet = lazy(() => import("./cash-pad-sheet"));
+// The cash pad (design.md "Cash pad") ships in Ask's lazy chunk: a chunk of
+// its own split the first screen's shared code into one more file.
+import CashPadSheet from "./cash-pad-sheet";
+
+// Waiting cash payments are sent from App.jsx through this chunk.
+export { flushCashQueue } from "./cash-queue";
 
 // The desktop dock around this conversation loads in this chunk (ask-dock.jsx).
 export { default as AskDockPanel } from "./ask-dock-panel";
@@ -2280,24 +2283,24 @@ function AskConversation({
           near={limitsCopy.messageLong}
           over={limitsCopy.messageTooLong}
         />
+        {/* The cash pad sits outside the composer form: a portal still
+            bubbles React events (its note form's submit) to its parents. */}
+        {cashPadOpen ? (
+          <CashPadSheet
+            open={cashPadOpen}
+            onOpenChange={setCashPadOpen}
+            people={people}
+            accounts={accounts}
+            categories={categories}
+            viewId={view.id}
+            onChanged={(month) => {
+              onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+              onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+            }}
+          />
+        ) : null}
         <form className="ask-composer" onSubmit={submitComposer}>
           <span className="ask-sr-only" role="status" aria-live="polite">{voiceAnnouncement}</span>
-          {cashPadOpen ? (
-            <Suspense fallback={null}>
-              <CashPadSheet
-                open={cashPadOpen}
-                onOpenChange={setCashPadOpen}
-                people={people}
-                accounts={accounts}
-                categories={categories}
-                viewId={view.id}
-                onChanged={(month) => {
-                  onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
-                  onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
-                }}
-              />
-            </Suspense>
-          ) : null}
           <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
           <input ref={attachInputRef} className="ask-file-input" type="file" accept="image/*" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
           {/* One rounded field: the + glyph, the message box, the mic glyph.

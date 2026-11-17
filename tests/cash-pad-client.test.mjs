@@ -160,6 +160,6 @@ test("the app checks the same storage key the queue writes, and loads the queue 
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
   assert.ok(app.includes(`getItem("${CASH_QUEUE_KEY}")`));
-  assert.match(app, /import\("\.\/cash-queue\.js"\)/);
+  assert.match(app, /loadRouteModule\("ask"\)\.then\(\(ask\) => ask\.flushCashQueue/);
   assert.doesNotMatch(app, /from "\.\/cash-queue/);
 });

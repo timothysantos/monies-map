@@ -696,7 +696,7 @@ The fastest way to log a cash payment (DOMAIN.md "Cash Entry";
 `docs/flows/cash-entry-flow.md`). No new floating control: the Entries +
 opens Ask's new entry card as before, and the first chip of an empty card
 is **Cash** (`ask-chips.js`, `actions.cash`). It opens `cash-pad-sheet.jsx`,
-a lazy chunk with its own `cash-pad.css`, from `ask-panel.jsx`.
+part of Ask's lazy route chunk with its own `cash-pad.css` (a chunk of its own split the first screen's shared code into one more file).
 
 - Phone: a sheet over the whole screen (above the floating bars at 80/81,
   below the category list at 90/91 it can open). From the top: the title

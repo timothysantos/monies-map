@@ -77,7 +77,7 @@ made or answered: offline, a timeout (12 s), a 5xx, 429 or 408, or 503
   body and label, and shown in the pad's Waiting to send panel with Remove;
 - it is sent again, oldest first, one round at a time, when the pad opens,
   when the browser says it is back online, on Send now, and when the app is
-  opened again (App.jsx loads the queue only when that key exists, once the
+  opened again (App.jsx loads Ask's chunk, which holds the queue, only when that key exists, once the
   screen is usable);
 - a retry carries the same request id, so the server returns the entry it
   already saved when the first answer was lost: never a second entry;

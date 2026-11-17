@@ -9,7 +9,6 @@ import {
   isZeroDecimalCurrency,
   pressCashPadKey
 } from "../domain/cash-entry";
-import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
 import {
   deviceStorage,
   flushCashQueue,
@@ -24,8 +23,9 @@ import {
   subscribeCashQueue
 } from "./cash-queue";
 import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, savedWhat } from "./cash-pad-model";
-import { CategoryPickerHost } from "./category-picker-host";
 import { cashPadCopy as copy } from "./copy/cash-pad-copy";
+import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
+import { CategoryPickerHost } from "./category-picker-host";
 import { useMoneyPrivacy } from "./money-privacy";
 import { todayInAppTimeZone } from "./app-dates";
 import "./cash-pad.css";
@@ -37,8 +37,8 @@ import "./cash-pad.css";
 // works with just an amount. After Save the sheet shows the saved line with
 // Undo and optional one-tap chips (a category, Shared, a note); Add another
 // keeps the pad open. A Save that cannot reach the server waits on this
-// device (cash-queue.js) and sends itself later. Lazy: loaded only when the
-// person taps Cash.
+// device (cash-queue.js) and sends itself later. It ships in Ask's lazy route
+// chunk, never on the first screen.
 
 // The pad's three glyphs, drawn here (the lucide shapes) so this lazy chunk
 // shares no icon code with the first screen's chunks.

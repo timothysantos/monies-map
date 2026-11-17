@@ -1083,7 +1083,7 @@ flow; `docs/audits/cash-entry-route.md` the security notes.
   without recomputing it.
 - The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by Ask's
   **Cash** chip. Waiting payments live in `src/client/cash-queue.js`
-  (device storage key `monies.cashWaiting.v1`); `App.jsx` loads that file
+  (device storage key `monies.cashWaiting.v1`); `App.jsx` loads Ask's route chunk (which re-exports `flushCashQueue`)
   only when the key exists, once the screen is usable, and on `online`.
 - Zero-decimal currencies are one list, `ZERO_DECIMAL_CURRENCIES` in
   `src/domain/cash-entry.ts`.

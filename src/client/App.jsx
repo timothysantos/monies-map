@@ -2389,8 +2389,9 @@ export function App() {
     void handleRemoteSplitMutation(payload);
   }, [broadcastSplitMutation, handleRemoteSplitMutation]);
   // Cash payments waiting on this device (cash-queue.js) send once the
-  // screen is usable and whenever the connection returns. The queue's code
-  // loads only when something is waiting; the key is CASH_QUEUE_KEY.
+  // screen is usable and whenever the connection returns. The queue ships in
+  // Ask's lazy chunk, loaded here only when something is waiting; the key is
+  // CASH_QUEUE_KEY.
   const cashAppUsable = routeWork.usable;
   useEffect(() => {
     if (!cashAppUsable) return undefined;
@@ -2402,7 +2403,7 @@ export function App() {
         // Storage blocked: nothing can be waiting on this device.
       }
       if (!waiting) return;
-      void import("./cash-queue.js").then((queue) => queue.flushCashQueue({
+      void loadRouteModule("ask").then((ask) => ask.flushCashQueue({
         onSaved: (entry) => onAskDockEntryMutation({ month: String(entry.date).slice(0, 7), invalidateEntries: true, invalidateMonth: true, invalidateSummary: true })
       }));
     };
