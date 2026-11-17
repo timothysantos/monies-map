@@ -726,8 +726,37 @@ person left still lands in it.
   with its client id (see "Data Flow"), so saving it again resolves to the
   entry already made, if that save had reached the server, and shows Saved.
 - `New chat` (chat mode, once there is something to start over from)
-  clears that conversation. A saved card in add mode ends that visit: the
-  next + starts a new card. Undo and Save work as before.
+  clears that conversation. An unsaved card is never lost to it: the new
+  conversation keeps it aside (`asideCard`, stored with the rest) with the
+  note "The unsaved entry was put aside." and a filled **Bring it back**
+  chip first while no other card is on screen, which makes it the newest
+  item again (Ask audit A10). A saved card in add mode ends that visit:
+  the next + starts a new card. Undo and Save work as before; after Undo
+  the card comes back with Discard as its first chip and Send (not Save)
+  until something on it changes (A11).
+
+### No connection
+
+A message that cannot reach the server (`requestAskTurn` answers
+`network: true` when the request itself fails; a request that ran out of
+time still falls back to the rules) is not read by the rules and not
+guessed at: its bubble is taken back, the words return to the message box,
+and one line says "No connection. Your message is kept." with a filled
+**Try again** chip (it sends what is in the box). No AI note and no "Reply
+from" line for a turn that never left (Ask audit A8).
+
+A card's Save with no connection (A9): a plain expense waits on this phone
+in the quick pad's own "Waiting to send" list (`cash-queue.js`,
+`ask-waiting.js`): the exact `/api/entries/create` body, keyed by the
+card's `ask:<id>` reference, so a repeat returns the entry already made
+and it lands exactly once. The card makes way, the thread says "Waiting to
+send: Koufu dinner, $18.00", and the list (the pad's words, with Remove and
+Send now) stays at the end of the conversation until it has gone. It sends
+when the connection returns (App.jsx's flush, as for the pad), on Send
+now, or when the app opens again. A card on Splits, a transfer or income
+needs more than that one request, so it never waits: the card stays with
+"No connection. Entries on Splits, transfers and income can't wait on this
+phone, so the card stays here. Save again when the connection is back."
 - While a conversation is in progress (something said, a card being
   filled, words typed) and the person is on another tab, the Ask tab shows
   a small accent dot, and its link reads "Ask, conversation in progress".
@@ -1308,9 +1337,16 @@ keeps it and the next turn tells the model.
 **Suggestion row.** When a saved entry's card opens (Apple Pay, an Ask add,
 an entry opened from Entries), the page asks `POST /api/ask/entry-habits`
 once. Under the card, a single quiet row shows what the habits say that the
-entry does not already have, with a tick (the existing category and Add to
-Splits commands) and a cross (an override). It replaces the history-based
-split question when it has a split. No notification, never an interruption.
+entry does not already have. While the card owns the chips, the row is the
+sentence only and the chip row leads with a filled **Do this** (the
+existing category and Add to Splits commands), then **Not this time** (an
+override) and Open this entry; the category and group chips it would
+answer wait until it is answered (Ask audit A12). When something newer owns
+the chips, the row shows its tick and cross again. It replaces the
+history-based split question when it has a split. A half-and-half share
+added this way says "Added to splits half each with <name>." (the Done for
+you words), never the internal "Non-group expenses" (A13). No
+notification, never an interruption.
 
 **Done for you.** With the switch on, a high-confidence habit is applied to a
 new entry without asking, only inside the safe set and every gate (new within
@@ -1320,7 +1356,8 @@ category is never replaced). `/api/shortcuts/entries/create` and
 card runs it again; an entry is never handled twice, so an Undo is final. A
 note the person asked for in a turn (`edit_note` on a new entry) is added the
 same way and the reply says so. Every line is logged and listed under "Done
-for you" at the end of the Ask page with Undo and Stop doing this; an Undo
+for you" (folded, at the top of the conversation with the reminders, never
+as the last line above the chips) with Undo and Stop doing this; an Undo
 refuses an entry changed since. The change is reversed if its log row cannot
 be written.
 
@@ -1529,7 +1566,19 @@ Ask does not own:
   after Save, See it on Month shows the new plan and Undo this change puts
   it back.
 - Leaving Ask and coming back, or reloading the tab, keeps the
-  conversation; the Ask tab shows a dot meanwhile.
+  conversation; the Ask tab shows a dot meanwhile. New chat keeps an
+  unsaved card aside with Bring it back.
+- A card a message made or changed shows its top (name and amount) just
+  under the header, with Save in reach; news below a short item still sits
+  on the chip row.
+- No connection keeps the message's words in the box with Try again; a
+  plain expense saved with no connection waits in "Waiting to send" (with
+  Remove) and lands once; Splits, transfers and income stay as a card.
+- With money hidden, an answer says "The amounts are hidden." and offers
+  Show money totals (the app's own show/hide money control); "Since you
+  last looked" says the same with its own line.
+- "Since you last looked" and the plan answer give one spend and one plan
+  for a month: the spend job's (`summaryMonthSpendJob`, splitMoneyUse).
 - On a phone, after the + or the receipt button, the header's "‹ Entries"
   / "‹ Splits" link and the back gesture return to the page exactly as it
   was (URL, scroll, an open sheet with its draft), with no confirm.

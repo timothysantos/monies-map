@@ -184,7 +184,14 @@ test.describe("money questions on Ask on a wide screen", () => {
     await expect(plan.locator(".ask-answer-amount")).toHaveText("••••");
     await expect(plan.locator(".ask-money-wording")).toHaveCount(0);
     await expect(plan.locator(".ask-money-lines")).toHaveCount(0);
-    await expect(plan.locator(".ask-brief-hidden")).toHaveText("Reveal money totals to read these insights.");
+    await expect(plan.locator(".ask-brief-hidden")).toHaveText("The amounts are hidden.");
     await expect(plan.locator(".lsd-bar-fill")).toHaveCount(0);
+    // The answer offers the app's own show/hide money control right there
+    // (Ask audit A14): one tap and the figures show, here and everywhere.
+    await plan.getByRole("button", { name: "Show money totals" }).click();
+    await expect(plan.locator(".ask-answer-amount")).not.toHaveText("••••");
+    await expect(plan.locator(".ask-money-wording")).toBeVisible();
+    await expect(plan.getByRole("button", { name: "Show money totals" })).toHaveCount(0);
+    expect(await page.evaluate(() => window.localStorage.getItem("monies-map:money-totals-visible"))).toBe("true");
   });
 });
