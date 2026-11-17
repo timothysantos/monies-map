@@ -13,6 +13,7 @@ import { money, unmaskedMoney } from "./formatters";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
+import { summaryMonthSpendJob } from "./money-jobs-model";
 import { reminderDeviceState } from "./reminders-device-state";
 import { coveredSignalKeys } from "./reminders-model";
 import { useCachedReminders } from "./use-reminders";
@@ -83,8 +84,11 @@ export function AskBriefCard({ queryClient, view, scope, month, accounts, params
     }
   }
 
-  const spent = monthFigures?.realExpensesMinor ?? 0;
-  const planned = monthFigures?.estimatedExpensesMinor ?? 0;
+  // The month's spend against its plan as the Month lead and Ask's plan
+  // answer say it (the spend job), so one month has one plan figure.
+  const spendJob = summaryMonthSpendJob(summary.summaryPage, month);
+  const spent = spendJob?.spentMinor ?? 0;
+  const planned = spendJob?.planMinor ?? 0;
   const ratio = planned > 0 ? Math.min(1, spent / planned) : spent > 0 ? 1 : 0;
   const tone = spendTone(spent, planned);
   const actionShown = headline?.action && ["review-statement", "open-category"].includes(headline.action.id);

@@ -98,6 +98,30 @@ test("why was March so expensive: the Month page's figures, plan, Spending Mix a
   assert.equal(answer.lead.label, `Spent · ${opened.count} expenses`);
 });
 
+// Ask audit A15: "Since you last looked" said "of $7,936.44 plan" for the
+// month the plan answer gave as "of $4,136.44 plan": the card read the
+// Summary month's whole plan, savings target and investing included. It now
+// reads the same spend job as the answer and the Month lead, for every view.
+test("Ask's Since you last looked and the plan answer give one spend and one plan for a month", async (t) => {
+  const { api } = await openSeededDatabase(t, showcase);
+  const { summaryMonthSpendJob } = await import("../src/client/money-jobs-model.js");
+  for (const viewId of ["household", ETHAN, SERENE]) {
+    for (const month of ["2026-03", "2026-05"]) {
+      const payload = await ask(api, "how am I doing against the plan?", { viewId, month });
+      const summary = await get(api, `/api/summary-page?view=${viewId}&month=${month}&scope=direct_plus_shared`);
+      const brief = summaryMonthSpendJob(summary.summaryPage, month);
+      assert.equal(brief.planMinor, payload.answer.lead.planMinor, `${viewId} ${month} plan`);
+      assert.equal(brief.spentMinor, payload.answer.lead.amountMinor, `${viewId} ${month} spent`);
+    }
+  }
+  // The household's May: the card's old figure, the whole plan, is not the
+  // spend plan the answer says.
+  const may = await get(api, "/api/summary-page?view=household&month=2026-05&scope=direct_plus_shared");
+  assert.equal(summaryMonthSpendJob(may.summaryPage, "2026-05").planMinor, 413644);
+  assert.notEqual(may.summaryPage.months.find((item) => item.month === "2026-05").estimatedExpensesMinor, 413644);
+  assert.equal(summaryMonthSpendJob(may.summaryPage, "2019-01"), null);
+});
+
 test("where did April go leads with the categories, then the biggest cost and the plan", async (t) => {
   const { api } = await openSeededDatabase(t, showcase);
   const payload = await ask(api, "where did April go?");
