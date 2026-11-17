@@ -313,10 +313,13 @@ and data contract: [`docs/flows/ask-flow.md`](docs/flows/ask-flow.md).
 
 Hands-off parts (owner decision 2026-10-14; `docs/flows/ask-flow.md`
 "Hands-off"): under a saved entry's card, at most one quiet line in the
-neutral card tone (`.ask-habit-row`): the habits' suggestion with a tick and
-a cross (44 px targets), or what Ask did by itself with an Undo; at the end
-of the thread, a folded "Done for you" list (`.ask-done`) of the last 30
-days. Settings has "What Ask remembers" as a normal list-row section (the
+neutral card tone (`.ask-habit-row`): the habits' suggestion, or what Ask
+did by itself with an Undo. While the card owns the chips, the suggestion's
+"Do this" is the filled first chip and "Not this time" the second (Ask
+audit A12), and the row is the sentence alone; its tick and cross (44 px
+targets) show only when something newer owns the chips. At the top of the
+thread, with the reminders, a folded "Done for you" list (`.ask-done`) of
+the last 30 days (never the last line above the chips, A24). Settings has "What Ask remembers" as a normal list-row section (the
 switch, one row per habit with change and forget, Forget everything); its
 code stays in the lazy Settings route and the habits' client code in the Ask
 chunk (`use-ask-habits.js`, `ask-habits-ui.jsx`, `ask-habits-api.js`; copy in
@@ -473,7 +476,11 @@ question (docs/flows/ask-flow.md "Money questions"):
 - Detail: the answer in one to three sentences, then quiet rows (label and
   a short detail on the left; the amount on the right in its tone, with the
   plan or the other month small under it). Hidden money replaces the words
-  and rows with "Reveal money totals to read these insights."
+  and rows with "The amounts are hidden." and, beside it, a quiet accent
+  "Show money totals" button with the eye (`ask-hidden-totals.jsx`): the
+  app's own show/hide money control, since the Ask page has no header eye
+  (Ask audit A14). "Since you last looked" keeps "Reveal money totals to
+  read these insights." with the same button.
 
 The plan answer is Plan vs actual (round-2 mockups `chat-intent-*`):
 its lead reads the Month lead's "Spent" and "of $X plan" (the spend job:
@@ -529,7 +536,7 @@ spending. Once answered it stays in the thread, faded.
   Splits, or a money question Ask already answers), then the usual chips.
 - Hidden money: the title reads "A money insight", the question "Explain
   this money insight", amounts are masked and the Detail gives way to
-  "Reveal money totals to read these insights."
+  "The amounts are hidden." with Show money totals.
 
 ### Plan draft
 
@@ -688,7 +695,37 @@ the server. The card keeps its `clientId` there, so a card that was saving
 when the tab reloaded (it comes back as a draft) sends the same
 `externalReference` when saved again and resolves to the entry already
 made (`createEntryRecord` returns it, `created: false`, with its linked
-split).
+split). New chat keeps an unsaved card as the new conversation's
+`asideCard` (stored too), offered back by the filled "Bring it back" chip
+while no other card is on screen (Ask audit A10).
+
+### Ask conversation scroll
+
+`ask-thread-scroll.js` places the conversation when something new arrives
+(Ask audit A1). The person's own message goes to the top as before; a
+money answer's question too. Other news goes to the bottom so the newest
+line sits on the chip row, unless that would cut the top of the item to
+read: the card a reply just made or changed (its name and amount), else
+the first new element with content (not a "Reply from …" line or a status
+line). Then that item's top goes 8 px under the header instead
+(`threadScrollTarget`: the end, or the focus top less the gap, whichever
+is higher up), so the amount is in view while Save is in reach. The box
+scrolls on a phone and in the dock; on a wide page the window does, with
+the same rule.
+
+### Ask with no connection
+
+A turn that never reached the server (`requestAskTurn` `network: true`)
+takes back its bubble, puts the words back in the message box and shows
+"No connection. Your message is kept." with a filled Try again chip. A
+card's Save with no connection keeps a plain expense in the quick pad's
+"Waiting to send" list (`cash-queue.js` items may name
+`ENTRY_CREATE_ENDPOINT`; `ask-waiting.js` builds the exact create body,
+keyed by its `ask:<id>` reference), shown at the end of the conversation
+by `ask-waiting-list.jsx` in the pad's own words with Remove and Send now
+(`.cash-pad-waiting`, butter). App.jsx's existing flush sends it when the
+connection returns. Splits, transfers and income never wait; their card
+stays with one line saying so. See docs/flows/ask-flow.md "No connection".
 
 ## Cash Pad
 

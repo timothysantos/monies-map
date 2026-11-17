@@ -1449,7 +1449,10 @@ Canonical terms:
   **Just paid** (the quick pad)
 - `Log cash`: the second Apple-signed Shortcut (`shortcuts/log-cash/`)
 - `waiting to send`: a cash payment kept on the device because its Save
-  could not reach the server; it is not an entry until the server confirms
+  could not reach the server; it is not an entry until the server confirms.
+  The same list keeps an Ask card's plain expense saved with no connection
+  (its `/api/entries/create` body, keyed by its `ask:<id>` reference, so it
+  lands once); Splits, transfers and income never wait
 - `Again chip`: one of up to 4 recent cash payments to repeat
 
 Code:

@@ -1134,7 +1134,8 @@ bottom right ([Ask on a computer](#ask-on-a-computer)).
   over $50 this month". A message can be up to 300 characters: a small count
   shows above the box when you get close, and a longer one is not sent.
 - **New chat**: at the top right once you have said something. It clears
-  the conversation and starts again.
+  the conversation and starts again. A card you had not saved is put
+  aside, not lost: tap **Bring it back** to carry on with it.
 
 When you are adding an entry, a **card** shows it as it will be saved: the
 category, what it was, the amount (red for spending, green for money in,
@@ -1159,8 +1160,8 @@ that both fit.
   the date into the card. The photo is made smaller on your phone first and
   is not kept. A very large photo says so; one that is still over 1.5 MB
   after that is read on your phone instead of being sent.
-- **Paste** (a suggestion, or in the **+** menu): paste a copied receipt
-  photo or sentence.
+- **Paste** (in the **+** menu, or a suggestion on a new entry card):
+  paste a copied receipt photo or sentence.
 - **The mic** (at the right of the message box): tap and hold the mic and
   say what you bought, then let go. Or tap it once to start and tap again
   to stop. While it listens it turns orange with a ring around it. Your words appear in the message box; check them, change
@@ -1564,13 +1565,13 @@ what you type in the chat.
 - **A quiet suggestion.** When you open a new entry in Ask (an Apple Pay
   purchase, or one you added), a single line can appear under it, such as
   *Food & Drinks · Add to splits half each with Joyce, as you usually do*. Tap
-  the tick to do it, or the cross for "not this time". It never pops up on
-  its own and is never a notification.
+  **Do this**, the first button above the message box, or **Not this time**.
+  It never pops up on its own and is never a notification.
 - **Done for you.** Once Ask has seen you do the same thing three times in a
   row, it does it for a **new** Apple Pay or hand-added entry without
   asking: it sets the category, or adds the entry to Splits the usual way,
-  and tells you right under the entry with an **Undo**. **Done for you**, at
-  the bottom of Ask, lists the last 30 days. **Undo** puts it back and Ask
+  and tells you right under the entry with an **Undo**. **Done for you**, near
+  the top of Ask with the reminders, lists the last 30 days. **Undo** puts it back and Ask
   stops trusting that habit until you repeat it. **Stop doing this** makes
   Ask forget it.
 - **What it never does by itself.** Ask never changes an amount, date,
@@ -1581,6 +1582,25 @@ what you type in the chat.
 In **Settings**, **What Ask remembers** has the switch **Let Ask handle safe
 things** (on to start with), lists everything Ask has learned, lets you
 change or forget any of it, and has **Forget everything**.
+
+### No signal
+
+If your phone has no connection when you send a message, Ask says "No
+connection. Your message is kept." Your words go back in the message box;
+tap **Try again** when you have signal.
+
+A new spending entry you save in Ask with no signal is kept on your phone
+under **Waiting to send**, the same list the quick pad uses, and sends
+itself when the connection is back (or tap **Send now**). It is never saved
+twice. Tap **Remove** if you did not mean it. An entry shared on Splits, a
+transfer or income can't wait like this: its card stays, so save it again
+when you have signal.
+
+### Money hidden
+
+With money totals hidden, an answer in Ask says "The amounts are hidden."
+Tap **Show money totals** right there to see them (it shows them across the
+app, like the eye at the top of other pages).
 
 ### Reminders
 
@@ -1719,7 +1739,7 @@ the start of each month.
 If you go to another page and come back to Ask, your conversation is where
 you left it: what you said, the answers, a card you were filling in and
 anything you had typed. It stays until you close the browser tab, or tap
-**New chat**. While a conversation is waiting for you, the Ask button at
+**New chat** (a card you had not saved can still be brought back). While a conversation is waiting for you, the Ask button at
 the bottom shows a small orange dot. Receipt photos are not kept: the card
 keeps what was read from the photo, but the photo itself goes when you
 leave Ask.
