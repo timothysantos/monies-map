@@ -183,3 +183,15 @@ test("a CDA row whose amount does not explain the balance change is still refuse
     .replace("05 JUN 05 JUN IBG GIRO 5,000.00 5,000.00", "05 JUN 05 JUN IBG GIRO 4,000.00 5,000.00");
   assert.throws(() => parseStatementText(text, "ocbc-cda-jun-2026-real.pdf"), /did not reconcile around 2026-06-05/);
 });
+
+// Month-end interest is printed with next month's transaction date and this
+// month's value date ("01 NOV 31 OCT"). It belongs to this statement.
+test("a real OCBC CDA statement books month-end interest on its value date inside the statement", () => {
+  const parsed = parseFixture("ocbc-cda-oct-2026-real");
+  assert.deepEqual(parsed.checkpoints.map((c) => [c.statementStartDate, c.statementEndDate, c.statementBalanceMinor]), [["2026-10-01", "2026-10-31", 299606]]);
+  assert.deepEqual(parsed.rows.map((row) => [row.date, row.description, row.expense, row.income, row.note]), [
+    ["2026-10-01", "IBG GIRO", "676.12", "", ""],
+    ["2026-10-31", "INTEREST CREDIT", "", "3.05", "transaction date: 2026-11-01"]
+  ]);
+  assert.ok(parsed.rows.every((row) => row.date >= "2026-10-01" && row.date <= "2026-10-31"));
+});

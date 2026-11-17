@@ -375,19 +375,22 @@ function parseOcbcDepositTransactionLine(
   }
   const description = cleanOcbcDescription(match[3]);
   const type = isTransferDescription(description) ? "transfer" : isIncome ? "income" : "expense";
+  const dateLanes = ocbcDepositDateLanes(transactionDate, valueDate);
 
   return {
     incomeMinor: isIncome ? amountMinor : 0,
     expenseMinor: isIncome ? 0 : amountMinor,
     balanceMinor,
     row: {
-      date: transactionDate,
+      // Booked on the value date like OCBC 360: interest for July is printed
+      // "01 AUG 31 JUL" and belongs to the July statement.
+      date: dateLanes.date,
       description,
       expense: isIncome ? "" : minorToDecimal(amountMinor),
       income: isIncome ? minorToDecimal(amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(description, isIncome),
-      note: valueDate === transactionDate ? "" : `value date: ${valueDate}`,
+      note: dateLanes.note,
       type
     }
   };
