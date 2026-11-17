@@ -432,8 +432,12 @@ test("plan_change goes through the plan reader's check: names and amounts the pe
   const context = makeContext({ text: "move 50 from food to groceries in october" });
   const reply = validateAskTurnAction(act("plan_change", { plan: { month: "2026-10", copy_from: null, ops: [{ kind: "move", from: "food", to: "groceries", amount: "50" }] } }), context);
   assert.deepEqual(reply, { kind: "plan", request: { month: "2026-10", copyFrom: null, ops: [{ kind: "move", from: "food", to: "groceries", amountMinor: 5_000 }] } });
+  // An amount the person never wrote is never used: the person's own words,
+  // read by the rules' plan reader, stand instead (Ask audit 2, B16).
   const invented = validateAskTurnAction(act("plan_change", { plan: { month: "2026-10", ops: [{ kind: "set", line: "groceries", amount: "300" }] } }), context);
-  assert.equal(invented.kind, "clarify");
+  assert.deepEqual(invented, { kind: "plan", request: { month: "2026-10", copyFrom: null, ops: [{ kind: "move", from: "food", to: "groceries", amountMinor: 5_000 }] } });
+  const nothingReadable = validateAskTurnAction(act("plan_change", { plan: { month: "2026-10", ops: [{ kind: "set", line: "groceries", amount: "300" }] } }), makeContext({ text: "sort the plan out please" }));
+  assert.equal(nothingReadable.kind, "clarify");
 });
 
 test("answer_question becomes a sentence the answer route reads as the same topic", () => {

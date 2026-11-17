@@ -366,6 +366,54 @@ the route answers with `readTurnRules`' reading. Tests:
 the eval bank's `notentry-*`, `saved-*`, `split-with-*` and `draft-its-*`
 messages, `tests/e2e/ask-rules-reading.spec.js` (390 px phone).
 
+The same principle holds for any question back (Ask audit 2, 2026-11-18,
+AI on): when the model's action still ends as a question after its one
+repair, and `readTurnRules` reads the message into something the person can
+use (the settle-up question with "Settle up <group>" chips, the bulk change
+card, a shared expense, a change to the entry in focus), the route answers
+with that reading instead of asking again (`ask_turn_rules_fallback` is
+logged with the two action names only). A rules note ("I couldn't read that
+change") or a question with nothing to tap never replaces the model's own
+question. The audit's cases:
+
+- **A category the model left out** of a change ("make all Grab rides
+  Transport", or "Taxi" answering the question) is read from the person's
+  words (`nameAtEnd`, `ask-turn-names.ts`: the words after the last
+  "to"/"as"/"into", else the last one to three words), with no repair turn.
+  "Which category should it go in?" always offers categories: the one the
+  shop's own words point at first, then the nearest, as whole messages ("Move
+  all grab to Taxi", or "Make it Taxi" on a saved entry), so a tap reads the
+  same with AI or without.
+- **"Make that one Groceries"** after an Entries answer that showed exactly
+  one entry: the page sends that entry's id with the list (`onlyEntryOfAnswer`,
+  the answer card's own cached page and selector), and the server loads it
+  as the saved entry in focus, for the model and for the rules ("that one",
+  "these", "them" read as "it"). "Make these Taxi" after a longer list is the
+  bulk card over the list's words, with AI off too.
+- **A plan change** whose lines the model tidied ("shoping" became
+  "Shopping") or whose month the plan reader cannot find in the words ("this
+  months plan") is read from the person's own words by the rules' plan
+  reader (`readPlanRequest`), with the month the server read: no repair turn.
+- **A spending question that names a category** ("how much did we spend on
+  food this month?", even read as a trip with no trip named) is that
+  category's Entries answer with its total, as the rules read it, never the
+  month's whole spending. A question naming no category is the money
+  question it was.
+- **A new entry right after a question** ("lunch 9.90", one amount, words,
+  nothing that asks or filters) is an entry draft even when the model reads
+  it as a search.
+- **Refusals** take what Ask won't do from the person's words when
+  `readCommandIntent` names it ("add a new account" is accounts; "remove
+  Serene from the household" is people), so the reason and the page are that
+  thing's own, whatever the model named.
+- **The day's allowance used up** answers `notice: "allowance_used"` and the
+  note reads "Today's AI allowance is used up, so Ask read this with its
+  built-in rules."
+
+Tests: `tests/ask-audit2-turn.test.mjs`, `tests/ask-audit2-route.test.mjs`,
+the eval bank's `recategorise-model-left-category-out` and the other audit 2
+messages, `tests/e2e/ask-audit2-fixes.spec.js` (390 px phone).
+
 ### Three principles
 
 Owner request, 2026-10-14: fix the class of failure, not the phrase. Every
@@ -753,7 +801,10 @@ and it lands exactly once. The card makes way, the thread says "Waiting to
 send: Koufu dinner, $18.00", and the list (the pad's words, with Remove and
 Send now) stays at the end of the conversation until it has gone. It sends
 when the connection returns (App.jsx's flush, as for the pad), on Send
-now, or when the app opens again. A card on Splits, a transfer or income
+now, or when the app opens again. Once it has gone, the thread's line reads
+"Sent: Koufu dinner, $18.00" (`subscribeCashSent`, `wasCashSent` in
+`cash-queue.js`: sent from this page now or before Ask opened), so the
+conversation never says it is still waiting (Ask audit 2, B21). A card on Splits, a transfer or income
 needs more than that one request, so it never waits: the card stays with
 "No connection. Entries on Splits, transfers and income can't wait on this
 phone, so the card stays here. Save again when the connection is back."

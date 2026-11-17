@@ -1220,6 +1220,11 @@ Splits** for you, and "it's Joyce's" on a card you are filling in makes it
 Joyce's. If the built-in rules can't read a change to a saved entry, Ask
 says so and nothing changes; tap **Open this entry** to change it yourself.
 
+After Ask shows you one entry ("what did I pay at Koufu this month"), "make
+that one Groceries" changes that entry. "How much did we spend on food this
+month?" shows your Food & Drinks entries and their total. When Ask asks
+"Which category should it go in?", it offers categories to tap.
+
 ### Change things you already saved
 
 Ask can also change what is already in the app. Each change comes back as a
@@ -1591,8 +1596,8 @@ tap **Try again** when you have signal.
 
 A new spending entry you save in Ask with no signal is kept on your phone
 under **Waiting to send**, the same list the quick pad uses, and sends
-itself when the connection is back (or tap **Send now**). It is never saved
-twice. Tap **Remove** if you did not mean it. An entry shared on Splits, a
+itself when the connection is back (or tap **Send now**); the line in the
+chat then says "Sent". It is never saved twice. Tap **Remove** if you did not mean it. An entry shared on Splits, a
 transfer or income can't wait like this: its card stays, so save it again
 when you have signal.
 

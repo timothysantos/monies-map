@@ -12,7 +12,7 @@
 // An entry:
 //   id, group      a stable name, and the action it mostly exercises
 //   text           the message
-//   setup          { focus: "none" | "saved" | "quick" | "draft" | "list" | "group",
+//   setup          { focus: "none" | "saved" | "quick" | "draft" | "list" | "list-one" | "group",
 //                    month?: "YYYY-MM" (the month in view), history?: [{role, text}] }
 //   model          the recorded model answer (the action JSON), for the unit layer
 //   repair         the recorded answer to the repair turn, when the first is refused
@@ -158,6 +158,8 @@ export async function seedBankHousehold({ db, api, today }) {
         return { kind: "draft", draft: { variant: "expense", description: "Koufu lunch", date: today, accountId: "", categoryName: "Food & Drinks", ownerName: "Tim", amountMinor: 1_250, shareOn: false, splitGroupId: "" } };
       }
       if (name === "list") return { kind: "entry_list", list: { month: month ?? today.slice(0, 7), search: "grab", categories: [] } };
+      // An Entries answer that showed one entry: the page sends its id.
+      if (name === "list-one") return { kind: "entry_list", list: { month: month ?? today.slice(0, 7), search: "starbucks", categories: [], entryId } };
       if (name === "group") return { kind: "split_group", groupId: group?.id ?? "" };
       return null;
     }
