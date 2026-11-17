@@ -80,8 +80,9 @@ export const askCopy = {
   ofPlan: (amount) => `of ${amount} plan`,
   chipsLabel: "Suggestions",
   chips: {
-    // Opens the cash pad (cash-pad-copy.js has the pad's own words).
-    cash: "Cash",
+    // Opens the quick pad for a payment just made, cash or card
+    // (cash-pad-copy.js has the pad's own words).
+    cash: "Just paid",
     scanReceipt: "Scan receipt",
     paste: "Paste",
     addEntry: "Add entry",
@@ -322,7 +323,8 @@ export const askCopy = {
         colour: "Colour",
         line: "Plan line",
         trip: "Trip or event",
-        dates: "Days"
+        dates: "Days",
+        splits: "Splits"
       },
       none: "None",
       noGroup: "No group",

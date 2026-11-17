@@ -43,6 +43,8 @@ export function laterChoices(reminder, today) {
     // A payment is never skipped for good: only later.
     case "waiting_tap":
       return { days, skips: [], note: copy.waitingTap.laterNote };
+    case "quick_words":
+      return { days, skips: [copy.quickWords.skip], note: copy.quickWords.laterNote };
     case "card_bill":
       return { days, skips: [copy.cardBill.skip, copy.cardBill.elsewhere], note: copy.cardBill.laterNote };
     case "statement_missing":
@@ -61,6 +63,7 @@ export function laterChoices(reminder, today) {
 function laterTitleFor(reminder) {
   switch (reminder.kind) {
     case "waiting_tap": return copy.waitingTap.laterTitle(reminder.merchant);
+    case "quick_words": return copy.quickWords.laterTitle;
     case "card_bill": return copy.cardBill.laterTitle(reminder.accountName);
     case "statement_missing": return copy.statement.laterTitle(reminder.accountName, reminderMonthName(reminder.statementMonth));
     case "splits_waiting": return reminder.direction === "between" ? copy.splits.laterTitleHousehold : copy.splits.laterTitle(otherName(reminder));
@@ -86,6 +89,9 @@ export function reminderTarget(reminder, row = null) {
     // The card at the top of Entries, with this tap's amount field ready.
     case "waiting_tap":
       return { pathname: "/entries", extra: { waiting_tap: reminder.tapId } };
+    // The quick pad's list of payments that need a few words, opened in Ask.
+    case "quick_words":
+      return { pathname: "/ask", extra: {}, pad: "words", personId: reminder.personId };
     case "card_bill":
       return { pathname: "/entries", extra: { entry_wallet: reminder.accountId } };
     case "statement_missing":
@@ -158,6 +164,16 @@ function buildCard(reminder, options) {
         title: copy.waitingTap.title(reminder.merchant),
         sentence: copy.waitingTap.sentence({ dayText: reminder.date === today ? "today" : reminderDate(reminder.date), time: reminder.time, accountName: reminder.accountName }),
         primaryLabel: copy.waitingTap.open,
+        quiet: "later"
+      };
+    case "quick_words":
+      return {
+        ...base,
+        icon: "card",
+        tone: "butter",
+        title: copy.quickWords.title(reminder.count, reminder.allToday),
+        sentence: copy.quickWords.sentence,
+        primaryLabel: copy.quickWords.open,
         quiet: "later"
       };
     case "card_bill": {

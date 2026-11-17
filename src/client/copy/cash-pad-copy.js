@@ -1,13 +1,14 @@
-// Every visible word of the cash pad (design.md "Cash pad";
+// Every visible word of the quick pad (design.md "Cash pad";
 // docs/flows/cash-entry-flow.md). Plain words: what happened to the
 // person's money, then the number.
 export const cashPadCopy = Object.freeze({
-  // The chip on Ask's new entry card that opens the pad.
-  chip: "Cash",
-  title: "Cash",
-  description: "Type what you paid in cash, then Save.",
+  // The chip on Ask's new entry card that opens the pad, and its title: one
+  // pad for cash and cards, for a payment just made.
+  chip: "Just paid",
+  title: "Just paid",
+  description: "Type what you paid, then Save. Say what it was later.",
   close: "Close",
-  changeLine: "Change wallet, currency, day or who paid",
+  changeLine: "Change how you paid, the currency, day or who paid",
   chooseWallet: "Choose a wallet",
   today: "Today",
   yesterday: "Yesterday",
@@ -18,14 +19,30 @@ export const cashPadCopy = Object.freeze({
   keys: { back: "Delete last digit", thousand: "Three zeros", point: "Decimal point" },
   // The change panel behind the quiet line.
   change: {
-    wallet: "Wallet",
+    way: "Paid with",
+    wallet: "Cash from",
     currency: "Currency",
     day: "Day",
     person: "Who paid",
     done: "Done"
   },
+  // "Paid with": cash, or one of this person's cards (by name).
+  cash: "Cash",
   walletQuestion: "Which wallet did the cash come from?",
   walletHint: "Set a cash wallet in Settings, Payment ways, and this won't ask again.",
+  // Apple Pay taps that reached the app without their amount.
+  taps: {
+    title: "Apple Pay missed the amount",
+    button: (merchant, time) => (time ? `${merchant}, ${time}` : merchant),
+    chosen: (merchant, cardName) => `${merchant} · ${cardName}`,
+    clear: "Not this one"
+  },
+  // A card payment saved while a tap on that card waits.
+  offer: {
+    question: (merchant, time) => `Is this the ${merchant} payment${time ? ` from ${time}` : ""}? Apple Pay didn't send its amount.`,
+    yes: "Yes, that one",
+    no: "No, a new payment"
+  },
   // After Save.
   saved: (what) => `Saved: ${what}`,
   undo: "Undo",
@@ -33,13 +50,29 @@ export const cashPadCopy = Object.freeze({
   moreCategories: "More categories",
   shared: "Shared",
   sharedDone: "Shared on Splits",
-  addNote: "Add a note",
-  notePlaceholder: "What was it for?",
-  saveNote: "Save note",
-  noteSaved: "Note saved",
   addAnother: "Add another",
   done: "Done",
   categoryTitle: "Category",
+  // The one words box: what it was, in a few words, now or later.
+  words: {
+    label: "What was it?",
+    // The other person's name when there is one: "Like: dinner, split with Joyce".
+    placeholder: (otherName) => (otherName ? `Like: dinner, split with ${otherName}` : "Like: dinner"),
+    send: "Add",
+    reading: "Reading…",
+    failed: "That couldn't be read just now. Try again, or pick a category.",
+    other: "That reads like something else. Say what it was, and who shared it.",
+    saved: "Saved.",
+    undone: "Put back as it was."
+  },
+  // The list Ask's reminder opens: payments that still need a few words.
+  list: {
+    title: (count) => (count === 1 ? "1 payment needs a few words" : `${count} payments need a few words`),
+    none: "Every payment has a few words now.",
+    backToPad: "Type a payment",
+    describe: "Add words",
+    described: "Has its words"
+  },
   // Waiting to send.
   waitingTitle: "Waiting to send",
   waitingDetail: "Kept on this phone. It sends by itself when the connection is back.",

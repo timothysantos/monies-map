@@ -84,6 +84,16 @@ export const remindersCopy = {
     laterNote: "This only hides it on this device. It goes away once the amount is added, it is marked not a payment, or the bank's statement brings it in."
   },
 
+  // Payments typed on the quick pad with only the amount, not described yet.
+  quickWords: {
+    title: (count, allToday) => `${count === 1 ? "1 payment" : `${count} payments`} from ${allToday ? "today" : "the last few days"} ${count === 1 ? "needs" : "need"} a few words`,
+    sentence: "Only the amount was typed. Say what each one was in a few words, like: dinner.",
+    open: "Add words",
+    laterTitle: "Payments that need a few words",
+    skip: { label: "Not for these", hint: "back for the next payment" },
+    laterNote: "This only hides it on this device. It goes away once each payment has a few words, or after 3 days."
+  },
+
   statement: {
     title: (name, monthName) => `${name}'s ${monthName} statement should be out`,
     sentence: (daysSinceExpected, expectedText, monthName) => (

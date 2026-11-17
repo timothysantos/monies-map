@@ -275,6 +275,9 @@ function AskConversation({
   const [moreOpen, setMoreOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [cashPadOpen, setCashPadOpen] = useState(false);
+  // How the quick pad opens: on the number pad, or (from the "need a few
+  // words" reminder) on that person's list of payments to describe.
+  const [cashPadStart, setCashPadStart] = useState({ startWith: "pad", personId: "" });
   const [openPicker, setOpenPicker] = useState("");
   const [savedPicker, setSavedPicker] = useState(false);
   const [savedWalletPicker, setSavedWalletPicker] = useState(false);
@@ -1724,7 +1727,10 @@ function AskConversation({
   }
 
   const actions = {
-    cash: () => setCashPadOpen(true),
+    cash: () => {
+      setCashPadStart({ startWith: "pad", personId: "" });
+      setCashPadOpen(true);
+    },
     scanReceipt: () => cameraInputRef.current?.click(),
     paste: () => void pasteFromClipboard(),
     addEntry: () => openAsk({ mode: "add", from: "ask" }),
@@ -2186,7 +2192,15 @@ function AskConversation({
             enabled={creditStatusEnabled}
             placement={placement}
             fetchRequiredQuery={fetchRequiredQuery}
-            onOpen={(target) => goTo(target.pathname, target.extra, params, undefined, target.hash)}
+            onOpen={(target) => {
+              // Payments that need a few words open the quick pad's list here.
+              if (target.pad === "words") {
+                setCashPadStart({ startWith: "words", personId: target.personId ?? "" });
+                setCashPadOpen(true);
+                return;
+              }
+              goTo(target.pathname, target.extra, params, undefined, target.hash);
+            }}
           />
         ) : null}
         {!isAddMode && !isShortcut ? (
@@ -2300,6 +2314,8 @@ function AskConversation({
           <CashPadSheet
             open={cashPadOpen}
             onOpenChange={setCashPadOpen}
+            startWith={cashPadStart.startWith === "words" ? "words" : "pad"}
+            startPersonId={cashPadStart.personId}
             people={people}
             accounts={accounts}
             categories={categories}

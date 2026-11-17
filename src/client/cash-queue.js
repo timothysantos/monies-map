@@ -98,8 +98,9 @@ function isOffline() {
  * - "saved": the server has it (new, or the same request saved before).
  * - "waiting": a network reason (offline, timeout, 5xx, 429, or no exchange
  *   rate yet, `error: "rate"`): try again later.
- * - "refused": the server said no (a 4xx); `needsWallet` asks which wallet.
- * @returns {Promise<{ kind: "saved", entry: any } | { kind: "waiting", error: string } | { kind: "refused", error: string, needsWallet?: boolean, walletChoices?: any[] }>}
+ * - "refused": the server said no (a 4xx); `needsWallet` asks which wallet,
+ *   `offerTap` names the Apple Pay tap on that card it may be (nothing saved).
+ * @returns {Promise<{ kind: "saved", entry: any } | { kind: "waiting", error: string } | { kind: "refused", error: string, needsWallet?: boolean, walletChoices?: any[], offerTap?: any }>}
  */
 export async function sendCashEntry(body, { fetchImpl = fetch, timeoutMs = SEND_TIMEOUT_MS } = {}) {
   if (isOffline()) {
@@ -131,7 +132,8 @@ export async function sendCashEntry(body, { fetchImpl = fetch, timeoutMs = SEND_
     return {
       kind: "refused",
       error: String(data?.error ?? "This couldn't be saved."),
-      ...(data?.needsWallet ? { needsWallet: true, walletChoices: Array.isArray(data.walletChoices) ? data.walletChoices : [] } : {})
+      ...(data?.needsWallet ? { needsWallet: true, walletChoices: Array.isArray(data.walletChoices) ? data.walletChoices : [] } : {}),
+      ...(data?.offerTap && typeof data.offerTap.id === "string" ? { offerTap: data.offerTap } : {})
     };
   } catch {
     return { kind: "waiting", error: "network" };
@@ -204,7 +206,7 @@ const DEFAULTS_KEY = "monies.cashDefaults.v1";
 export function rememberCashDefaults(defaults, storage = deviceStorage()) {
   try {
     const all = JSON.parse(storage?.getItem(DEFAULTS_KEY) ?? "{}") ?? {};
-    all[defaults.personId] = { ...defaults, again: [] };
+    all[defaults.personId] = { ...defaults, again: [], undescribed: [] };
     storage?.setItem(DEFAULTS_KEY, JSON.stringify(all));
   } catch {
     // Not remembered: the pad still works when it can read them.

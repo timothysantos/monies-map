@@ -13,7 +13,7 @@ import {
   removeWaitingCash,
   sendCashEntry
 } from "../src/client/cash-queue.js";
-import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, savedWhat } from "../src/client/cash-pad-model.js";
+import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "../src/client/cash-pad-model.js";
 
 function memoryStorage(initial = {}) {
   const map = new Map(Object.entries(initial));
@@ -154,6 +154,44 @@ test("the Save body: the pad's amount, and an Again chip's name, category and no
 test("the quiet line names the wallet, currency, day and person, or asks for a wallet", () => {
   assert.deepEqual(describeCashLine({ walletName: "Tim's cash", currency: "IDR", date: "2026-11-17", today: "2026-11-17", personName: "Tim" }), ["Tim's cash", "IDR", "Today", "Tim"]);
   assert.deepEqual(describeCashLine({ walletName: null, currency: "SGD", date: "2026-11-16", today: "2026-11-17", personName: "Joyce" }), ["Choose a wallet", "SGD", "Yesterday", "Joyce"]);
+});
+
+test("Paid with: Cash first, then the person's cards by name; the Save body for a card, a waiting tap, and a new payment", () => {
+  assert.deepEqual(payWayChoices([{ id: "acct-uob-one", name: "UOB One", currency: "SGD" }]), [
+    { value: "cash", label: "Cash" },
+    { value: "acct-uob-one", label: "UOB One" }
+  ]);
+  assert.deepEqual(payWayChoices(), [{ value: "cash", label: "Cash" }]);
+  const base = { requestId: "req-12345678", personId: "person-tim", padText: "85000", currency: "IDR", date: "2026-11-17" };
+  assert.deepEqual(buildCashBody({ ...base, cardId: "acct-uob-one" }), {
+    requestId: "req-12345678", personId: "person-tim", amountMinor: 8_500_000, currency: "IDR", date: "2026-11-17", way: "card", accountId: "acct-uob-one"
+  });
+  assert.deepEqual(buildCashBody({ ...base, cardId: "acct-uob-one", newPayment: true }).newPayment, true);
+  // A cash payment never says it is a new payment.
+  assert.equal("newPayment" in buildCashBody({ ...base, newPayment: true }), false);
+  // A waiting tap's amount: the tap names the shop and card; an Again chip's name does not ride along.
+  assert.deepEqual(buildCashBody({ ...base, tapId: "tap-1", cardId: "acct-uob-one", again: { description: "Coffee" } }), {
+    requestId: "req-12345678", personId: "person-tim", amountMinor: 8_500_000, currency: "IDR", date: "2026-11-17", tapId: "tap-1"
+  });
+  assert.equal(buildCashBody({ ...base, padText: "", tapId: "tap-1" }), null);
+});
+
+test("waiting taps and payments that need words: the shop and time; money hidden shows no figure", () => {
+  assert.equal(tapButtonLabel({ merchant: "Periplus Bali", time: "14:02" }), "Periplus Bali, 14:02");
+  assert.equal(tapButtonLabel({ merchant: "Periplus Bali", time: "" }), "Periplus Bali");
+  const entry = { amountMinor: 8_500_000, currency: "IDR", time: "14:02", date: "2026-11-17", accountName: "UOB One" };
+  assert.equal(quickRowLabel(entry, true, "2026-11-17"), "Rp 85,000 · 14:02 · UOB One");
+  assert.equal(quickRowLabel(entry, false, "2026-11-17"), "14:02 · UOB One");
+  assert.doesNotMatch(quickRowLabel(entry, false, "2026-11-17"), /85|Rp/);
+  assert.equal(quickRowLabel({ ...entry, time: "" }, false, "2026-11-17"), "Today · UOB One");
+});
+
+test("a card payment refused because a tap on that card waits carries the tap to offer", async () => {
+  const offerTap = { id: "tap-1", merchant: "Periplus Bali", time: "14:02", date: "2026-11-17", accountId: "acct-uob-one", accountName: "UOB One" };
+  const result = await sendCashEntry({ requestId: "req-12345678" }, { fetchImpl: reply(409, { ok: false, offerTap, error: "Is this the Periplus Bali payment from 14:02?" }) });
+  assert.deepEqual(result, { kind: "refused", error: "Is this the Periplus Bali payment from 14:02?", offerTap });
+  const plain = await sendCashEntry({ requestId: "req-12345678" }, { fetchImpl: reply(409, { ok: false, offerTap: { merchant: "no id" }, error: "x" }) });
+  assert.equal("offerTap" in plain, false);
 });
 
 test("the app checks the same storage key the queue writes, and loads the queue only then", async () => {

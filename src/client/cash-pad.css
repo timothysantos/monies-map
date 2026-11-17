@@ -388,6 +388,81 @@
   gap: 8px;
 }
 
+.cash-pad-after-actions.is-two {
+  grid-template-columns: 1fr 1.6fr;
+}
+
+/* A card payment while an Apple Pay tap on that card waits: is it that tap? */
+.cash-pad-offer {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-group, 16px);
+  background: var(--pastel-butter);
+  color: var(--pastel-butter-ink);
+}
+
+.cash-pad-offer p {
+  margin: 0;
+}
+
+/* The words box after Save and in the list: Ask's change card in place. */
+.quick-words {
+  display: grid;
+  gap: 8px;
+}
+
+.quick-words-question {
+  display: grid;
+  gap: 6px;
+}
+
+.quick-words-card .ask-turn-card {
+  margin: 0;
+}
+
+/* Payments that still need a few words (Ask's reminder opens this). */
+.cash-pad-words-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cash-pad-words-list ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cash-pad-words-list li {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.cash-pad-words-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cash-pad-words-add {
+  color: var(--accent-strong);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 @media (max-height: 640px) {
   .cash-pad-key {
     min-height: 56px;

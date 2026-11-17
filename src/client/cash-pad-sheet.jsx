@@ -6,6 +6,7 @@ import {
   addDays,
   formatCashAmount,
   groupCashPadText,
+  isPadDefaultDescription,
   isZeroDecimalCurrency,
   pressCashPadKey
 } from "../domain/cash-entry";
@@ -22,23 +23,28 @@ import {
   sendCashEntry,
   subscribeCashQueue
 } from "./cash-queue";
-import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, savedWhat } from "./cash-pad-model";
+import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "./cash-pad-model";
 import { cashPadCopy as copy } from "./copy/cash-pad-copy";
 import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
 import { CategoryPickerHost } from "./category-picker-host";
 import { useMoneyPrivacy } from "./money-privacy";
 import { todayInAppTimeZone } from "./app-dates";
+import { QuickPadWords } from "./quick-pad-words";
 import "./cash-pad.css";
 
-// The cash pad (design.md "Cash pad"; docs/flows/cash-entry-flow.md): the
-// fastest way to log a cash payment. It opens on a large number pad at the
-// bottom of the screen, under the thumb; every other field is decided
-// already and shown as one quiet line that can be tapped to change. Save
-// works with just an amount. After Save the sheet shows the saved line with
-// Undo and optional one-tap chips (a category, Shared, a note); Add another
-// keeps the pad open. A Save that cannot reach the server waits on this
-// device (cash-queue.js) and sends itself later. It ships in Ask's lazy route
-// chunk, never on the first screen.
+// The quick pad (design.md "Cash pad"; docs/flows/cash-entry-flow.md): the
+// fastest way to log a payment just made, in cash or by card. It opens on a
+// large number pad at the bottom of the screen, under the thumb; every other
+// field is decided already and shown as one quiet line that can be tapped to
+// change (Paid with: Cash or one of the person's cards). Save works with just
+// an amount. An Apple Pay tap that came without its amount shows above
+// Again: one tap picks it and Save finishes it. After Save the sheet shows
+// the saved line with Undo, one-tap chips (a category, Shared) and one words
+// box ("dinner, split with Joyce") that Ask reads into a change card; Add
+// another keeps the pad open. Ask's "need a few words" reminder opens the
+// pad on the list of payments still waiting for words. A Save that cannot
+// reach the server waits on this device (cash-queue.js) and sends itself
+// later. It ships in Ask's lazy route chunk, never on the first screen.
 
 // The pad's three glyphs, drawn here (the lucide shapes) so this lazy chunk
 // shares no icon code with the first screen's chunks.
@@ -55,6 +61,9 @@ const Delete = ({ size = 16 }) => <Glyph size={size}><path d="M10 5a2 2 0 0 0-1.
 
 const PERSON_KEY = "monies.cashPerson.v1";
 const WALLET_KEY = "monies.cashWallet.v1";
+// "Paid with" for the rest of the day on this device, per person: a
+// convenience only (the server checks every card).
+const WAY_KEY = "monies.padWay.v1";
 const COMMON_CURRENCIES = ["SGD", "IDR", "JPY", "KRW", "VND", "THB", "MYR", "USD", "EUR", "GBP", "AUD", "HKD"];
 // When a person has no cash history yet, the chips after Save start with
 // these, where the household has them.
@@ -83,13 +92,13 @@ function firstPersonId(people, viewId) {
   return people[0]?.id ?? "";
 }
 
-function postNote(entryId, note) {
-  return fetch("/api/entries/update-note", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entryId, note })
-  }).then((response) => response.ok, () => false);
+// The card chosen today on this device for the person, or "" (cash).
+function rememberedCard(personId, today) {
+  const stored = readStored(WAY_KEY)?.[personId];
+  return stored && stored.day === today && typeof stored.cardId === "string" ? stored.cardId : "";
 }
+
+const EMPTY_AFTER = { category: "", shared: false, splitExpenseId: "", busy: false, words: 0 };
 
 /**
  * @param {{
@@ -99,19 +108,25 @@ function postNote(entryId, note) {
  *   accounts: Array<{ id: string, name: string, kind: string, currency: string, ownerPersonId?: string, isJoint?: boolean, isActive?: boolean }>,
  *   categories: Array<{ name: string }>,
  *   viewId?: string,
+ *   startWith?: "pad" | "words",
+ *   startPersonId?: string,
  *   onChanged?: (month: string) => void
  * }} props
  */
-export default function CashPadSheet({ open, onOpenChange, people, accounts, categories, viewId = "household", onChanged = () => {} }) {
+export default function CashPadSheet({ open, onOpenChange, people, accounts, categories, viewId = "household", startWith = "pad", startPersonId = "", onChanged = () => {} }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const [today] = useState(() => todayInAppTimeZone());
-  const [personId, setPersonId] = useState(() => firstPersonId(people, viewId));
+  const [personId, setPersonId] = useState(() => firstPersonId(people, startPersonId || viewId));
   const person = people.find((item) => item.id === personId) ?? people[0];
   const [defaults, setDefaults] = useState(() => rememberedCashDefaults(personId));
   const [padText, setPadText] = useState("");
   const [currency, setCurrency] = useState(/** @type {string | null} */ (null));
   const [date, setDate] = useState(today);
   const [walletId, setWalletId] = useState(() => readStored(WALLET_KEY)?.[personId] ?? "");
+  // "Paid with": "" is cash, else one of the person's cards.
+  const [cardId, setCardId] = useState(() => rememberedCard(personId, today));
+  const [tap, setTap] = useState(/** @type {any} */ (null));
+  const [offer, setOffer] = useState(/** @type {any} */ (null));
   const [again, setAgain] = useState(/** @type {any} */ (null));
   const [changeOpen, setChangeOpen] = useState(false);
   const [askWallet, setAskWallet] = useState(false);
@@ -119,13 +134,16 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(/** @type {any} */ (null));
-  const [after, setAfter] = useState({ category: "", shared: false, splitExpenseId: "", note: "", noteOpen: false, noteSaved: false, busy: false });
+  const [after, setAfter] = useState(EMPTY_AFTER);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [waiting, setWaiting] = useState(() => readCashQueue());
+  // The list of payments that need a few words (Ask's reminder opens it).
+  const [listOpen, setListOpen] = useState(startWith === "words");
+  const [listRow, setListRow] = useState("");
+  const [described, setDescribed] = useState(/** @type {Record<string, boolean>} */ ({}));
   // Bumped when a payment reaches the server, so the Again chips follow.
   const [sentCount, setSentCount] = useState(0);
   const requestIdRef = useRef(newCashRequestId());
-  const noteRef = useRef(null);
 
   const activeCurrency = currency ?? defaults?.currency ?? "SGD";
   const zeroDecimal = isZeroDecimalCurrency(activeCurrency);
@@ -137,6 +155,9 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   }, [accounts, personId]);
   const chosenWallet = walletId ? personAccounts.find((account) => account.id === walletId) : null;
   const wallet = chosenWallet ?? defaults?.wallet ?? null;
+  const cards = defaults?.personId === personId ? defaults?.cards ?? [] : [];
+  const card = cardId ? cards.find((item) => item.id === cardId) ?? null : null;
+  const taps = defaults?.personId === personId ? defaults?.waitingTaps ?? [] : [];
   const categoryNames = useMemo(() => categories.map((category) => category.name), [categories]);
 
   // The defaults for the person: the server's, else the last read on this
@@ -184,19 +205,25 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   const resetPad = useCallback(() => {
     setPadText("");
     setAgain(null);
+    setTap(null);
+    setOffer(null);
     setError("");
     setSaved(null);
-    setAfter({ category: "", shared: false, splitExpenseId: "", note: "", noteOpen: false, noteSaved: false, busy: false });
+    setAfter(EMPTY_AFTER);
     requestIdRef.current = newCashRequestId();
   }, []);
 
   const press = useCallback((key) => {
     setError("");
+    setOffer(null);
     setPadText((current) => pressCashPadKey(current, key, activeCurrency));
   }, [activeCurrency]);
 
-  async function save() {
+  // `answer`: the person's choice when a tap on this card waits ("tap": it
+  // is that tap; "new": a separate payment).
+  async function save(answer = "") {
     if (saving) return;
+    const asTap = tap ?? (answer === "tap" ? offer : null);
     const body = buildCashBody({
       requestId: requestIdRef.current,
       personId,
@@ -204,18 +231,23 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
       currency: activeCurrency,
       date,
       accountId: chosenWallet?.id ?? "",
-      again
+      again: asTap ? null : again,
+      cardId: card?.id ?? "",
+      tapId: asTap?.id ?? "",
+      newPayment: answer === "new"
     });
     if (!body) return;
     setSaving(true);
     setError("");
     setMessage("");
-    const label = { description: again?.description || CASH_DEFAULT_DESCRIPTION, amountMinor: body.amountMinor, currency: activeCurrency };
+    setOffer(null);
+    const label = { description: asTap?.merchant || again?.description || CASH_DEFAULT_DESCRIPTION, amountMinor: body.amountMinor, currency: activeCurrency };
     const result = await sendCashEntry(body);
     setSaving(false);
     writeStored(PERSON_KEY, personId);
     if (result.kind === "saved") {
       setSaved(result.entry);
+      setTap(null);
       setAskWallet(false);
       reportSent(result.entry);
       return;
@@ -229,6 +261,11 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
       if (kept) resetPad();
       return;
     }
+    if (result.offerTap) {
+      // Nothing saved: is this the tap Apple Pay sent without its amount?
+      setOffer(result.offerTap);
+      return;
+    }
     if (result.needsWallet) {
       setAskWallet(true);
       setChangeOpen(true);
@@ -240,7 +277,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
 
   // Digits, Backspace, "." and Enter on a keyboard (a wide screen).
   function onKeyDown(event) {
-    if (saved || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    if (saved || listOpen || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (/^\d$/.test(event.key)) press(event.key);
     else if (event.key === "Backspace") press("back");
     else if (event.key === "." || event.key === ",") press(".");
@@ -257,10 +294,32 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     setError("");
   }
 
+  // "Paid with": Cash or a card, remembered for the rest of today here.
+  function chooseWay(value) {
+    const next = value === "cash" ? "" : value;
+    setCardId(next);
+    setTap(null);
+    setOffer(null);
+    setError("");
+    const stored = readStored(WAY_KEY) ?? {};
+    writeStored(WAY_KEY, { ...stored, [personId]: { day: today, cardId: next } });
+  }
+
   function choosePerson(id) {
     setPersonId(id);
     setWalletId(readStored(WALLET_KEY)?.[id] ?? "");
+    setCardId(rememberedCard(id, today));
+    setTap(null);
+    setOffer(null);
     setCurrency(null);
+  }
+
+  // A waiting tap: its shop and card are known; the pad needs the amount.
+  function chooseTap(item) {
+    setTap((current) => (current?.id === item.id ? null : item));
+    setAgain(null);
+    setOffer(null);
+    setError("");
   }
 
   async function changeCategory(categoryName) {
@@ -287,15 +346,29 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     else setError(copy.followUpFailed);
   }
 
-  async function saveNote() {
-    if (!saved) return;
-    const text = after.note.trim();
-    setAfter((current) => ({ ...current, busy: true }));
-    const foreignLine = saved.storedNote && saved.note !== saved.storedNote ? String(saved.storedNote).split("\n")[0] : "";
-    const ok = await postNote(saved.entryId, [foreignLine, text].filter(Boolean).join("\n"));
-    setAfter((current) => ({ ...current, busy: false, noteOpen: !ok, ...(ok ? { noteSaved: true } : {}) }));
-    if (ok) onChanged(saved.date.slice(0, 7));
-    else setError(copy.followUpFailed);
+  // The words box saved its change: the saved line, the chips and the pages
+  // follow it.
+  function wordsSaved(change, entryId) {
+    const update = change.save.find((step) => step.path === "/api/entries/update")?.body;
+    const onSplits = change.save.some((step) => step.path === "/api/splits/expenses/add-usual");
+    if (saved?.entryId === entryId) {
+      if (update) setSaved((current) => ({ ...current, description: update.description, categoryName: update.categoryName }));
+      setAfter((current) => ({ ...current, words: current.words + 1, ...(update ? { category: update.categoryName } : {}), ...(onSplits ? { shared: true } : {}) }));
+    } else {
+      setDescribed((current) => ({ ...current, [entryId]: true }));
+    }
+    onChanged(change.month);
+  }
+
+  function wordsUndone(change, entryId) {
+    const update = (change.undo ?? []).find((step) => step.path === "/api/entries/update")?.body;
+    if (saved?.entryId === entryId) {
+      if (update) setSaved((current) => ({ ...current, description: update.description, categoryName: update.categoryName }));
+      setAfter((current) => ({ ...current, category: "", shared: false }));
+    } else {
+      setDescribed((current) => ({ ...current, [entryId]: false }));
+    }
+    onChanged(change.month);
   }
 
   async function undo() {
@@ -321,7 +394,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   }
 
   const line = describeCashLine({
-    walletName: wallet?.name ?? null,
+    walletName: tap ? tap.accountName : card ? card.name : wallet?.name ?? null,
     currency: activeCurrency,
     date,
     today,
@@ -339,6 +412,9 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     .filter((category) => category.name !== "Transfer")
     .map((category) => ({ value: category.name, label: category.name }));
   const canSave = Boolean(buildCashBody({ requestId: "x", personId, padText, currency: activeCurrency, date })) && !saving;
+  const undescribed = defaults?.personId === personId ? defaults?.undescribed ?? [] : [];
+  const month = (saved?.date ?? today).slice(0, 7);
+  const otherName = people.find((item) => item.id !== personId)?.name ?? "";
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -361,28 +437,40 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             </Dialog.Close>
           </header>
 
-          <button
-            type="button"
-            className="cash-pad-line"
-            aria-expanded={changeOpen}
-            aria-label={`${copy.changeLine}: ${line.join(", ")}`}
-            onClick={() => setChangeOpen((current) => !current)}
-          >
-            {line.map((part, index) => (
-              <span key={`${index}-${part}`} className={!wallet && index === 0 ? "cash-pad-line-ask" : undefined}>{part}</span>
-            ))}
-            <span className="cash-pad-line-caret" aria-hidden="true" />
-          </button>
+          {listOpen ? null : (
+            <button
+              type="button"
+              className="cash-pad-line"
+              aria-expanded={changeOpen}
+              aria-label={`${copy.changeLine}: ${line.join(", ")}`}
+              onClick={() => setChangeOpen((current) => !current)}
+            >
+              {line.map((part, index) => (
+                <span key={`${index}-${part}`} className={!wallet && !card && !tap && index === 0 ? "cash-pad-line-ask" : undefined}>{part}</span>
+              ))}
+              <span className="cash-pad-line-caret" aria-hidden="true" />
+            </button>
+          )}
 
-          {changeOpen ? (
+          {changeOpen && !listOpen ? (
             <div className="cash-pad-change" role="group" aria-label={copy.changeLine}>
               {askWallet ? <p className="cash-pad-hint">{copy.walletHint}</p> : null}
-              <ChoiceRow
-                label={copy.change.wallet}
-                choices={personAccounts.map((account) => ({ value: account.id, label: account.name }))}
-                value={wallet?.id ?? ""}
-                onChoose={chooseWallet}
-              />
+              {cards.length ? (
+                <ChoiceRow
+                  label={copy.change.way}
+                  choices={payWayChoices(cards)}
+                  value={card?.id ?? "cash"}
+                  onChoose={chooseWay}
+                />
+              ) : null}
+              {card ? null : (
+                <ChoiceRow
+                  label={copy.change.wallet}
+                  choices={personAccounts.map((account) => ({ value: account.id, label: account.name }))}
+                  value={wallet?.id ?? ""}
+                  onChoose={chooseWallet}
+                />
+              )}
               <ChoiceRow
                 label={copy.change.currency}
                 choices={currencyChoices.map((code) => ({ value: code, label: code }))}
@@ -411,7 +499,39 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
           ) : null}
 
           <div className="cash-pad-middle">
-            {saved ? (
+            {listOpen ? (
+              <section className="cash-pad-words-list" aria-label={copy.list.title(undescribed.length)}>
+                <p className="cash-pad-eyebrow">{undescribed.length ? copy.list.title(undescribed.filter((entry) => !described[entry.entryId]).length) : copy.list.none}</p>
+                <ul>
+                  {undescribed.map((entry) => (
+                    <li key={entry.entryId} className={listRow === entry.entryId ? "is-open" : undefined}>
+                      <button
+                        type="button"
+                        className="cash-pad-words-row"
+                        aria-expanded={listRow === entry.entryId}
+                        onClick={() => setListRow((current) => (current === entry.entryId ? "" : entry.entryId))}
+                      >
+                        <span>{quickRowLabel(entry, areTotalsVisible, today)}</span>
+                        {described[entry.entryId]
+                          ? <span className="cash-pad-chip is-done"><Check size={14}/>{copy.list.described}</span>
+                          : <span className="cash-pad-words-add">{copy.list.describe}</span>}
+                      </button>
+                      {listRow === entry.entryId ? (
+                        <QuickPadWords
+                          entryId={entry.entryId}
+                          personId={personId}
+                          otherName={otherName}
+                          month={entry.date.slice(0, 7)}
+                          autoFocus
+                          onSaved={(change) => wordsSaved(change, entry.entryId)}
+                          onUndone={(change) => wordsUndone(change, entry.entryId)}
+                        />
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : saved ? (
               <div className="cash-pad-saved" role="status">
                 <p className="cash-pad-saved-line">
                   <Check size={18}/>
@@ -433,7 +553,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                     title={copy.categoryTitle}
                     options={pickerOptions}
                     value={after.category || saved.categoryName}
-                    description={saved.description === CASH_DEFAULT_DESCRIPTION ? "" : saved.description}
+                    description={isPadDefaultDescription(saved.description) ? "" : saved.description}
                     onChoose={(name) => changeCategory(name)}
                   />
                   {people.length > 1 ? (
@@ -441,34 +561,16 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                       ? <span className="cash-pad-chip is-done"><Check size={14}/>{copy.sharedDone}</span>
                       : <button type="button" className="cash-pad-chip" disabled={after.busy} onClick={() => void share()}>{copy.shared}</button>
                   ) : null}
-                  {after.noteSaved
-                    ? <span className="cash-pad-chip is-done"><Check size={14}/>{copy.noteSaved}</span>
-                    : (
-                      <button
-                        type="button"
-                        className="cash-pad-chip"
-                        disabled={after.busy}
-                        onClick={() => setAfter((current) => ({ ...current, noteOpen: true }))}
-                      >
-                        {copy.addNote}
-                      </button>
-                    )}
                 </div>
-                {after.noteOpen ? (
-                  <form className="cash-pad-note" onSubmit={(event) => { event.preventDefault(); void saveNote(); }}>
-                    <input
-                      ref={noteRef}
-                      autoFocus
-                      className="cash-pad-note-input"
-                      value={after.note}
-                      maxLength={500}
-                      placeholder={copy.notePlaceholder}
-                      aria-label={copy.addNote}
-                      onChange={(event) => setAfter((current) => ({ ...current, note: event.target.value }))}
-                    />
-                    <button type="submit" className="cash-pad-chip" disabled={after.busy || !after.note.trim()}>{copy.saveNote}</button>
-                  </form>
-                ) : null}
+                <QuickPadWords
+                  key={saved.entryId}
+                  entryId={saved.entryId}
+                  personId={personId}
+                  otherName={otherName}
+                  month={month}
+                  onSaved={(change) => wordsSaved(change, saved.entryId)}
+                  onUndone={(change) => wordsUndone(change, saved.entryId)}
+                />
               </div>
             ) : (
               <>
@@ -476,8 +578,36 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                   <span className="cash-pad-amount-sign">{formatCashAmount(0, activeCurrency).replace(/[\d.,\s]/g, "")}</span>
                   <span className={`cash-pad-amount-figure${padText ? "" : " is-empty"}`}>{groupCashPadText(padText)}</span>
                 </output>
-                {again ? <p className="cash-pad-again-chosen">{again.description}{again.categoryName ? ` · ${again.categoryName}` : ""}</p> : null}
-                {defaults?.again?.length ? (
+                {tap ? <p className="cash-pad-again-chosen">{copy.taps.chosen(tap.merchant, tap.accountName)}</p> : null}
+                {again && !tap ? <p className="cash-pad-again-chosen">{again.description}{again.categoryName ? ` · ${again.categoryName}` : ""}</p> : null}
+                {offer ? (
+                  <div className="cash-pad-offer" role="alert">
+                    <p>{copy.offer.question(offer.merchant, offer.time)}</p>
+                    <div className="cash-pad-chips">
+                      <button type="button" className="cash-pad-chip is-on" disabled={saving} onClick={() => void save("tap")}>{copy.offer.yes}</button>
+                      <button type="button" className="cash-pad-chip" disabled={saving} onClick={() => void save("new")}>{copy.offer.no}</button>
+                    </div>
+                  </div>
+                ) : null}
+                {taps.length && !offer ? (
+                  <div className="cash-pad-again" role="group" aria-label={copy.taps.title}>
+                    <span className="cash-pad-eyebrow">{copy.taps.title}</span>
+                    <div className="cash-pad-chips">
+                      {taps.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`cash-pad-chip${tap?.id === item.id ? " is-on" : ""}`}
+                          aria-pressed={tap?.id === item.id}
+                          onClick={() => chooseTap(item)}
+                        >
+                          {tapButtonLabel(item)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {defaults?.again?.length && !tap && !offer ? (
                   <div className="cash-pad-again" role="group" aria-label={copy.again}>
                     <span className="cash-pad-eyebrow">{copy.again}</span>
                     <div className="cash-pad-chips">
@@ -503,7 +633,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             )}
             {message ? <p className="cash-pad-message" role="status">{message}</p> : null}
             {error ? <p className="cash-pad-error" role="alert">{error}</p> : null}
-            {waiting.length ? (
+            {waiting.length && !listOpen ? (
               <section className="cash-pad-waiting" aria-label={copy.waitingTitle}>
                 <p className="cash-pad-eyebrow">{copy.waitingTitle}</p>
                 <p className="cash-pad-hint">{copy.waitingDetail}</p>
@@ -523,7 +653,12 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             ) : null}
           </div>
 
-          {saved ? (
+          {listOpen ? (
+            <div className="cash-pad-after-actions is-two">
+              <button type="button" className="cash-pad-secondary" onClick={() => onOpenChange(false)}>{copy.done}</button>
+              <button type="button" className="cash-pad-save" onClick={() => { setListOpen(false); resetPad(); }}>{copy.list.backToPad}</button>
+            </div>
+          ) : saved ? (
             <div className="cash-pad-after-actions">
               <button type="button" className="cash-pad-secondary" disabled={after.busy} onClick={() => void undo()}>{copy.undo}</button>
               <button type="button" className="cash-pad-secondary" onClick={() => onOpenChange(false)}>{copy.done}</button>

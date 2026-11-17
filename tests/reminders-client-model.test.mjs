@@ -95,6 +95,22 @@ test("a phone shows 2 cards and '1 more reminder', the docked panel 3; 'N more' 
   assert.equal(list(all.slice(0, 2)).more, 0);
 });
 
+test("payments that need a few words: one card, its count and day in words, no figure, opening the quick pad's list for that person", () => {
+  const quick = { key: "quick_words:person-serene:txn-c", kind: "quick_words", personId: "person-serene", personName: "Serene", count: 3, allToday: true, newestDate: TODAY };
+  for (const hidden of [false, true]) {
+    const [card] = list([quick], { hidden }).entries;
+    assert.equal(card.title, "3 payments from today need a few words");
+    assert.equal(card.sentence, "Only the amount was typed. Say what each one was in a few words, like: dinner.");
+    assert.equal(card.amountText, "");
+    assert.equal(card.primaryLabel, "Add words");
+    assert.deepEqual(card.target, { pathname: "/ask", extra: {}, pad: "words", personId: "person-serene" });
+  }
+  assert.equal(list([{ ...quick, count: 1, allToday: false }]).entries[0].title, "1 payment from the last few days needs a few words");
+  const later = laterChoices(quick, TODAY);
+  assert.deepEqual(later.skips.map((skip) => skip.label), ["Not for these"]);
+  assert.equal(later.days.length, 3);
+});
+
 test("no reminders, or only ones put away, shows nothing", () => {
   assert.deepEqual(list([]), { entries: [], total: 0, more: 0 });
   const state = { v: 1, items: { "card_bill:uob:2026-09": { skip: true, at: TODAY }, "statement:ocbc:2026-09": { until: "2026-10-13", at: TODAY } } };
