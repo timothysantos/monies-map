@@ -27,7 +27,7 @@ async function shot(page, name) {
 
 async function openAsk(page) {
   await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
-  await page.goto("/");
+  // Reseed before the app loads anything, so no earlier household is kept.
   await reseedDemo(page);
   await page.goto("/ask?view=person-tim");
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible({ timeout: 60_000 });
@@ -56,12 +56,13 @@ async function chooseGroup(page, name) {
 test("B1, B2, B4: a stated share shows on the card, saves in the chosen group, and Undo takes it back off Splits", async ({ page }) => {
   await openAsk(page);
   const before = await balances(page);
-  await send(page, "dinner $80 at jumbo split with Joyce, her share is 30");
+  // On Tim's own card, so Tim paid and Joyce owes her share.
+  await send(page, "dinner $80 at jumbo on UOB One split with Joyce, her share is 30");
   const card = page.locator('[data-ask-card="draft"]');
   await expect(card).toBeVisible();
   await expect(page.getByRole("switch", { name: "Share with Joyce on Splits" })).toHaveAttribute("aria-checked", "true");
-  await expect(card.locator('[data-card-share="Tim"]')).toContainText("$50.00");
-  await expect(card.locator('[data-card-share="Joyce"]')).toContainText("$30.00");
+  await expect(page.locator('[data-card-share="Tim"]')).toContainText("$50.00");
+  await expect(page.locator('[data-card-share="Joyce"]')).toContainText("$30.00");
   await chooseGroup(page, "Baby River");
   await shot(page, "B4-after-1-shares-on-card.png");
 
@@ -74,7 +75,7 @@ test("B1, B2, B4: a stated share shows on the card, saves in the chosen group, a
   expect(after["Baby River"] - (before["Baby River"] ?? 0)).toBe(3_000);
   expect(after["Non-group expenses"] ?? 0).toBe(before["Non-group expenses"] ?? 0);
 
-  await page.locator('[data-ask-card="saved"]').getByRole("button", { name: "Undo" }).click();
+  await chips(page).filter({ hasText: /^Undo$/ }).click();
   await expect(page.locator(".ask-note").filter({ hasText: "Removed" }).last()).toBeVisible();
   await expect.poll(async () => (await balances(page))["Baby River"] ?? 0).toBe(before["Baby River"] ?? 0);
   await shot(page, "B2-after-1-undo-balance-back.png");
@@ -87,12 +88,12 @@ test("B3: Splits switched off saves the entry as one person's and nothing on Spl
   const card = page.locator('[data-ask-card="draft"]');
   const share = page.getByRole("switch", { name: "Share with Joyce on Splits" });
   await expect(share).toHaveAttribute("aria-checked", "true");
-  await expect(card.locator('[data-card-share="Tim"]')).toContainText("$5.90");
-  await expect(card.locator('[data-card-share="Joyce"]')).toContainText("$4.00");
+  await expect(page.locator('[data-card-share="Tim"]')).toContainText("$5.90");
+  await expect(page.locator('[data-card-share="Joyce"]')).toContainText("$4.00");
   await shot(page, "B3-after-1-switch-on-with-shares.png");
   await share.click();
   await expect(share).toHaveAttribute("aria-checked", "false");
-  await expect(card.locator("[data-card-share]")).toHaveCount(0);
+  await expect(page.locator("[data-card-share]")).toHaveCount(0);
   await expect(card.locator('[data-chip="owner"]')).toHaveText("Tim");
   await shot(page, "B3-after-2-switch-off-one-owner.png");
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -111,8 +112,58 @@ test("B9: a payment back asks which group, shows what is owed before and after, 
   await expect(payment).toContainText("Baby River");
   const owed = payment.locator("[data-settlement-owed]");
   await expect(owed).toContainText("Owed");
+  await owed.scrollIntoViewIfNeeded();
   await shot(page, "B9-after-2-owed-before-after.png");
   await payment.getByRole("button", { name: "Record payment" }).click();
   await expect(page.locator('[data-settlement-draft="saved"]')).toBeVisible();
   await expect.poll(async () => (await balances(page))["Baby River"]).toBe((before["Baby River"] ?? 0) - 5_000);
+});
+
+test("B6, B7, B11: 'not shared, just mine. it was S$21.80' makes it Tim's with Splits off, and the yen goes with the save", async ({ page }) => {
+  await openAsk(page);
+  const before = await balances(page);
+  const bodies = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/entries/create")) bodies.push(request.postDataJSON());
+  });
+  await send(page, "ramen 2400 yen yesterday split with Joyce");
+  const share = page.getByRole("switch", { name: /^Share with .* on Splits$/ });
+  await expect(share).toHaveAttribute("aria-checked", "true");
+  const card = page.locator('[data-ask-card="draft"]');
+  const wallet = await card.locator('[data-chip="wallet"]').textContent();
+  await send(page, "not shared, just mine. it was S$21.80");
+  await expect(share).toHaveAttribute("aria-checked", "false");
+  await expect(card.locator('[data-chip="owner"]')).toHaveText("Tim");
+  await expect(card.locator(".ask-card-amount-input")).toHaveValue(/^21\.80?$/);
+  // "S$" and "just" are never a wallet or a name.
+  await expect(card.locator('[data-chip="wallet"]')).toHaveText(wallet ?? "");
+  await expect(page.locator("[data-card-share]")).toHaveCount(0);
+  await shot(page, "B6-after-1-not-shared-just-mine.png");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
+  expect(bodies).toHaveLength(1);
+  expect([bodies[0].ownershipType, bodies[0].amountMinor, bodies[0].originalAmountMinor, bodies[0].originalCurrency]).toEqual(["direct", 2_180, 240_000, "JPY"]);
+  expect(await balances(page)).toEqual(before);
+  await shot(page, "B7-after-1-saved-with-yen.png");
+});
+
+test("B8: 'kopi 2.40 cash' with no cash wallet asks which wallet and never fills a card in", async ({ page }) => {
+  await openAsk(page);
+  await send(page, "kopi 2.40 cash");
+  const card = page.locator('[data-ask-card="draft"]');
+  await expect(card).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByText("Choose a wallet").first()).toBeVisible();
+  await expect(chips(page).filter({ hasText: "UOB One" })).toBeVisible();
+  // No card is filled in: the card shows no wallet until one is chosen.
+  await expect(card.locator('[data-chip="wallet"]')).toHaveCount(0);
+  await shot(page, "B8-after-1-wallet-asked.png");
+});
+
+test("B5: 'Joyce owes me 20' answers who owes whom and drafts no payment", async ({ page }) => {
+  await openAsk(page);
+  await send(page, "Joyce owes me 20");
+  await expect(page.locator('[data-settlement-draft="draft"]')).toHaveCount(0);
+  await expect(page.locator(".ask-answer-detail").first()).toBeVisible();
+  await shot(page, "B5-after-1-owes-answer.png");
 });

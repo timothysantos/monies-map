@@ -1304,8 +1304,8 @@ hold them.
 
 - **What the card shows is what is saved.** An expense is on Splits exactly
   when the Splits switch is on. Owner Shared turns the switch on; switching
-  it off gives the card one owner again (the wallet's owner, else the
-  person whose view is open); a Shared card with the switch off cannot
+  it off gives the card one owner again (the person whose view is open,
+  else the wallet's owner); a Shared card with the switch off cannot
   save (`ask-card-model.js` `setShare`, `validateCard`).
 - **One command.** An expense on Splits is saved by `POST /api/entries/create`
   as a Shared entry (the owner the card names is the payer, else the

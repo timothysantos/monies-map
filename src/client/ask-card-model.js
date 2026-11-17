@@ -272,9 +272,9 @@ export function chooseTransferMatch(card, transferMatchId) {
   return card?.status === "draft" && card.variant === "transfer" ? { ...card, transferMatchId } : card;
 }
 
-// Switching Splits off on a Shared card gives it one owner again: whoever
-// owns the wallet, else the person whose view is open (Ask audit B3), so
-// the card never says Shared while nothing goes on Splits.
+// Switching Splits off on a Shared card gives it one owner again: the
+// person whose view is open, else whoever owns the wallet (Ask audit B3),
+// so the card never says Shared while nothing goes on Splits.
 export function setShare(card, { on, splitGroupId }, context = {}) {
   if (card.status !== "draft" || card.variant !== "expense") {
     return card;
@@ -295,7 +295,8 @@ function soleOwnerFor(card, context) {
   const people = context.people ?? [];
   const account = findAccount(context.accounts ?? [], card.fields.accountId);
   const walletOwner = account?.ownerPersonId && !account.isJoint ? people.find((person) => person.id === account.ownerPersonId)?.name : "";
-  return walletOwner || pickDefaultOwner(context) || "";
+  const viewer = context.viewId && context.viewId !== "household" ? people.find((person) => person.id === context.viewId)?.name : "";
+  return viewer || walletOwner || pickDefaultOwner(context) || "";
 }
 
 // The split suggestion's two answers (ask-split-suggestion.js). Choosing it
