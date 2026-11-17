@@ -1173,7 +1173,11 @@ that both fit.
 - **Transfer** and **Income**: switch the card to a transfer between two of
   your wallets (From and To) or to money coming in.
 - **Share with … on Splits**: the switch on the card shares the expense with
-  the other person, as **Add to Splits** does on Entries.
+  the other person, as **Add to Splits** does on Entries. When it is on, the
+  card lists each person's share ("Joyce's share $30.00"), and that is
+  exactly what Save puts on Splits, in the split group you chose. Choosing
+  **Shared** as the owner turns it on; turning it off makes the entry one
+  person's again.
 - **Edit in form**: open the same entry in the usual form instead, filled
   in with what the card has (from the receipt button: New split expense).
 - **‹ Entries** (or **‹ Splits**) at the top left: after the round **+**
@@ -1215,9 +1219,13 @@ the built-in rules". "Joyce paid me back $80" drafts the settle-up payment,
 "settle up with Joyce" asks which group to settle, "I owe Joyce $20" shows
 who owes whom, "delete the Koufu lunch" or "import my statement" says why
 Ask doesn't do that and opens the page that does, and "open Splits" opens
-that page. "Dinner $80 split with Joyce" turns on **Share with Joyce on
-Splits** for you, and "it's Joyce's" on a card you are filling in makes it
-Joyce's. If the built-in rules can't read a change to a saved entry, Ask
+that page. "Dinner $80 split with Joyce, her share is 30" turns on **Share
+with Joyce on Splits** for you with Joyce's $30 on the card; Ask only shares
+an expense when your words say so. "it's Joyce's" or "not shared, just mine"
+on a card you are filling in makes it one person's and turns Splits off.
+When someone paid back more or less than they owed, the payment card shows
+what was owed before and after (**Owed**), and the group stays open with the
+difference; if more than one group has money owed, Ask asks which one. If the built-in rules can't read a change to a saved entry, Ask
 says so and nothing changes; tap **Open this entry** to change it yourself.
 
 After Ask shows you one entry ("what did I pay at Koufu this month"), "make

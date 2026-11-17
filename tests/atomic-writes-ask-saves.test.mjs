@@ -13,6 +13,7 @@
 //   less than is owed leaves the rest open, the right way round.
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   assertSameDatabase,
@@ -232,6 +233,86 @@ test("B9: paying less than is owed leaves the rest owed; an exact payment closes
   assert.equal((await owedByGroup(db, joyce.id, tim.id)).none, 800);
   const rest = await api("/api/splits/settlements/create", { groupId: null, date: DATE, fromPersonName: joyce.display_name, toPersonName: tim.display_name, amountMinor: 800, currency: "SGD" });
   assert.equal(rest.payload.settled, true);
+});
+
+// ---------------------------------------------------------------- B13
+
+async function habit(db, kind, key) {
+  return (await rows(db, "SELECT value_json, times_confirmed, times_overridden FROM ask_habits WHERE kind = ? AND key = ?", kind, key))[0] ?? null;
+}
+
+test("B13: only the person's own category counts, a rule's never wears a habit down, Undo takes a confirmation back, and 'make it food' counts", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const koufu = (ref, categoryName, habits) => api("/api/entries/create", {
+    date: DATE, description: "Koufu lunch", accountName: "UOB One", categoryName, amountMinor: 600, entryType: "expense",
+    ownershipType: "direct", ownerName: "Tim", externalReference: ref, ...(habits ? { habits } : {})
+  });
+  // Three of the person's own choices: a habit with high confidence.
+  for (const ref of ["ask:audit2-habit-01", "ask:audit2-habit-02", "ask:audit2-habit-03"]) {
+    assert.equal((await koufu(ref, "Groceries", { category: true, split: false })).status, 200);
+  }
+  assert.deepEqual(await habit(db, "category", "koufu lunch"), { value_json: JSON.stringify({ categoryName: "Groceries" }), times_confirmed: 3, times_overridden: 0 });
+  // A save whose category the rules filled: no confirmation, no override.
+  await koufu("ask:audit2-habit-04", "Food & Drinks", { category: false, split: false });
+  assert.deepEqual(await habit(db, "category", "koufu lunch"), { value_json: JSON.stringify({ categoryName: "Groceries" }), times_confirmed: 3, times_overridden: 0 });
+  // Undo of a save that counted takes that one back.
+  const counted = await koufu("ask:audit2-habit-05", "Groceries", { category: true, split: false });
+  assert.equal((await habit(db, "category", "koufu lunch")).times_confirmed, 4);
+  const undone = await api("/api/entries/delete", { entryId: counted.payload.entryId, withLinkedSplit: true, habits: { category: true, split: false } });
+  assert.equal(undone.status, 200);
+  assert.equal((await habit(db, "category", "koufu lunch")).times_confirmed, 3);
+  // Undo of a save that did not count changes nothing.
+  const quiet = await koufu("ask:audit2-habit-06", "Groceries", { category: false, split: false });
+  await api("/api/entries/delete", { entryId: quiet.payload.entryId, withLinkedSplit: true, habits: { category: false, split: false } });
+  assert.equal((await habit(db, "category", "koufu lunch")).times_confirmed, 3);
+  // "make it food" on a saved entry, saved by the person: an override.
+  const [{ id: entryId }] = await rows(db, "SELECT id FROM transactions WHERE external_reference = 'ask:audit2-habit-01'");
+  const change = await api("/api/entries/update-category", { changes: [{ entryId, fromCategoryName: "Groceries", categoryName: "Food & Drinks" }], learn: true });
+  assert.equal(change.status, 200, JSON.stringify(change.payload));
+  assert.deepEqual(await habit(db, "category", "koufu lunch"), { value_json: JSON.stringify({ categoryName: "Food & Drinks" }), times_confirmed: 1, times_overridden: 1 });
+  // A shared save with the share on the card is the shop's usual split.
+  const dinner = await api("/api/entries/create", sharedDinner({ splitAmountMinor: undefined, splitBasisPoints: 5000, habits: { category: false, split: true }, externalReference: "ask:audit2-habit-07" }));
+  assert.equal(dinner.status, 200);
+  assert.equal((await habit(db, "split", "dinner at jumbo")).times_confirmed, 1);
+  await api("/api/entries/delete", { entryId: dinner.payload.entryId, withLinkedSplit: true, habits: { category: false, split: true } });
+  assert.equal((await habit(db, "split", "dinner at jumbo")).times_confirmed, 0);
+});
+
+// ---------------------------------------------------------------- the check
+
+// docs/audits/ask-audit2-data-check.sql, run on rows the old paths wrote: a
+// split left after its entry was deleted, a no-group Ask split, and a batch
+// closed with $2 still owed. Read only.
+test("the read-only data check finds what the old save paths left wrong, and writes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { tim, joyce } = await people(db);
+  const sql = readFileSync(new URL("../docs/audits/ask-audit2-data-check.sql", import.meta.url), "utf8");
+  const queries = sql.split(/;\s*\n/).map((part) => part.replace(/^\s*--.*$/gm, "").trim()).filter(Boolean);
+  assert.equal(queries.length, 3);
+  const run = async () => Promise.all(queries.map(async (query) => (await db.prepare(query).all()).results));
+  const [orphansBefore, noGroupBefore, closedBefore] = await run();
+
+  // B2 as it was: the entry deleted alone (the Entries delete) leaves its split.
+  const orphan = await api("/api/entries/create", sharedDinner({ splitGroupId: null, externalReference: "ask:audit2-check-01" }));
+  await api("/api/entries/delete", { entryId: orphan.payload.entryId });
+  // B1 as it was: an Ask split with no group.
+  const kept = await api("/api/entries/create", sharedDinner({ splitGroupId: null, description: "Lunch at Koufu", externalReference: "ask:audit2-check-02" }));
+  // B9 as it was: a batch closed while $2 is still owed.
+  const start = (await owedByGroup(db, joyce.id, tim.id)).none ?? 0;
+  await nonGroupDinner(api, db, 9_600 - 2 * start);
+  const paid = await api("/api/splits/settlements/create", { groupId: null, date: DATE, fromPersonName: joyce.display_name, toPersonName: tim.display_name, amountMinor: 5_000, currency: "SGD" });
+  const [{ split_batch_id: batchId }] = await rows(db, "SELECT split_batch_id FROM split_settlements WHERE id = ?", paid.payload.settlementId);
+  await db.prepare("UPDATE split_batches SET closed_on = ? WHERE id = ?").bind(DATE, batchId).run();
+
+  const before = await dumpDatabase(db);
+  const [orphans, noGroup, closed] = await run();
+  assertSameDatabase(await dumpDatabase(db), before);
+  assert.deepEqual(orphans.filter((row) => !orphansBefore.some((old) => old.split_expense_id === row.split_expense_id)).map((row) => row.split_expense_id), [orphan.payload.linkedSplitExpenseId]);
+  assert.deepEqual(noGroup.filter((row) => !noGroupBefore.some((old) => old.entry_id === row.entry_id)).map((row) => row.entry_id), [kept.payload.entryId]);
+  const newClosed = closed.filter((row) => !closedBefore.some((old) => old.batch_id === row.batch_id));
+  assert.equal(newClosed.length, 1);
+  assert.equal(newClosed[0].batch_id, batchId);
+  assert.equal(Math.abs(newClosed[0].second_owes_first_minor), 200);
 });
 
 test("B9: a payment that fails on its row writes no batch, no settlement and closes nothing", async (t) => {

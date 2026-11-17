@@ -1295,6 +1295,77 @@ note. A failed answer request is the calm note "That couldn't be answered
 just now. Try again in a moment." A failed plan-draft request is the calm
 note "That couldn't be drafted just now. Try again in a moment."
 
+### What a save writes
+
+The second Ask audit (AI on, every write read back row by row) fixed these
+rules; `tests/atomic-writes-ask-saves.test.mjs`, `tests/ask-card-saves.test.mjs`
+and the B-tests in `tests/ask-turn.test.mjs` and `tests/ask-turn-actions.test.mjs`
+hold them.
+
+- **What the card shows is what is saved.** An expense is on Splits exactly
+  when the Splits switch is on. Owner Shared turns the switch on; switching
+  it off gives the card one owner again (the wallet's owner, else the
+  person whose view is open); a Shared card with the switch off cannot
+  save (`ask-card-model.js` `setShare`, `validateCard`).
+- **One command.** An expense on Splits is saved by `POST /api/entries/create`
+  as a Shared entry (the owner the card names is the payer, else the
+  wallet's owner) with `splitGroupId` and, for a share stated in money,
+  `splitAmountMinor`: the entry, its split in that group and its shares go
+  in one batch, and the route answers with `linkedSplitExpenseId`. The page
+  then never calls `/api/splits/expenses/from-entry` (it would be refused as
+  already linked), and the note says "Saved to Entries and added to
+  Splits." A repeat with the card's reference answers with the same split.
+- **The shares are on the card before Save:** "Ethan's share $50.00",
+  "Serene's share $30.00" (`cardShares`, the Add to Splits card's rows),
+  to the cent: a share the person stated in money is sent exactly, never
+  rebuilt from basis points.
+- **Undo takes the split with the entry.** `POST /api/entries/delete`
+  `{ entryId, withLinkedSplit: true }` archives the entry's split (with
+  its Splits history row) in the same batch as the delete; a split a
+  settle-up checkpoint holds refuses the Undo and keeps both. Without the
+  flag (Entries' own delete) a split recorded on Splits only loses its link.
+- **Splits only when the words share it.** A model's shared draft becomes a
+  plain entry unless the message says split, half, share, 50/50, go dutch,
+  a share with its figure, or "with/for <person>" (`mentionsSharing`).
+  "not shared", "just mine", "only me", "it's mine" or "it's Serene's" on a
+  draft give it one owner and turn Splits off (`saysNotShared`,
+  `saysWhoseItIs`); "Serene paid" keeps it shared. The rules read "her share
+  is 30" (her and his are the other person the message names) and take
+  the share clause out before reading the entry's own amount.
+- **A balance is never a payment.** "S owes me 20" drafted as a payment is
+  refused (`not_an_entry`), repaired once, then answered with the rules'
+  who-owes-whom answer.
+- **A payment shows what is owed, and closes a group only at zero.** Before
+  the payment card, the turn route reads what is owed between the two in
+  each group (`loadOpenSplitOwed`): with no group said, the one group with
+  something owed is used; two or more are asked ("Which split group should
+  it go in?", each chip the whole payment again with its group, read the
+  same with AI off). The card shows "Owed: Serene owes Ethan $48.00 →
+  Ethan owes Serene $2.00". `POST /api/splits/settlements/create` records
+  the payment and closes the group's batch in one batch only when nothing
+  is owed after it; more or less than is owed stays open, owed the right
+  way round. Existing data written before this: `docs/audits/ask-audit2-data-check.sql`.
+- **Paid in another currency.** The amount in the card's currency given to
+  the "What did it cost in your card's currency?" question keeps the
+  figure paid (`originalAmountMinor`, `originalCurrency`) through Save.
+- **No silent wallet.** A payment word the household has no wallet for
+  ("kopi 2.40 cash" with no cash wallet) leaves the wallet empty with the
+  wallet question and its chips; Save waits for the choice.
+- **Bulk changes stay on one shop.** "make all Grab rides …" never moves a
+  line whose shop name only starts with the word (GRAB*GRABFOOD, GRABPAY);
+  the card lists the names it moves, and no rule is offered on words that
+  would file such a shop later.
+- **"the 12.80 was ramen with serene".** The words come from the message
+  when the model leaves them out, and the answer to "What was it?" after
+  such a message describes that payment, never a new entry.
+- **Habits count only the person's choices.** A new draft's category is the
+  shop's habit first, then the household's rules and everyday words. A save
+  counts as a category confirmation only when the category was picked on
+  the card or named in the message (`habits: { category, split }` on the
+  create body); Undo takes back what that save counted. A one-entry change
+  card ("make it food") counts as the person's choice (`learn`,
+  `learnCategory`).
+
 ### Split suggestion
 
 On a new expense card (typed, sentence or receipt) with one owner and

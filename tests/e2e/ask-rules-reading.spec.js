@@ -42,7 +42,11 @@ test.describe("Ask, rules reading", () => {
     });
     await openAsk(page);
     await send(page, "Joyce paid me back $30");
+    // More than one group has something owed: which one is asked (B9).
+    const noGroup = page.getByRole("group", { name: "Suggestions" }).getByRole("button", { name: "Joyce paid Tim back $30, no group" });
     const payment = page.locator('[data-settlement-draft="draft"]');
+    await expect(payment.or(noGroup)).toBeVisible();
+    if (await noGroup.isVisible()) await noGroup.click();
     await expect(payment).toBeVisible();
     await expect(payment).toContainText("Joyce");
     await expect(payment).toContainText("$30.00");

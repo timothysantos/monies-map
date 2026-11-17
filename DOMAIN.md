@@ -2240,6 +2240,11 @@ Rules:
 - A card saved again with the same client id (after a reload during its
   save) resolves to the entry already made; a new card, and the card Undo
   gives back, get a new id.
+- What the card shows is what is saved (Ask audit 2): an expense is on
+  Splits exactly when the Splits switch is on, and owner Shared turns it
+  on. On Splits it is saved as one Shared entry with its split, in the
+  chosen split group, with each person's share as the card lists it, in one
+  batch. Undo removes the entry and that split together.
 
 ### Money Tone
 
@@ -2665,6 +2670,13 @@ Relationships:
 - has one `from person`
 - has one `to person`
 - may link to one `ledger entry`
+
+Rules:
+- a settle-up payment closes its group's current batch only when nothing is
+  owed either way after it (Ask audit B9). A payment more or less than what
+  is owed is recorded and the rest stays open, owed the right way round
+  ($50 paid on $48 owed leaves $2 owed back), never a group shown as
+  settled with money gone. The payment and the close are one batch.
 
 ### Group Spend (open period)
 
@@ -3446,6 +3458,16 @@ Canonical terms:
   Drinks · Add to splits half each with Joyce, as you usually do", with a tick
   and a cross
 - `nickname`: an `alias` habit; reaches the model as a fact
+
+Rules (Ask audit B13):
+- only the person's own choice counts: a category picked on the card or
+  named in their words, a split saved with the Splits switch on, a one-entry
+  change card they saved ("make it food"). A category the household's
+  rules, the word list, a habit, AI or a receipt filled in counts as
+  nothing, so it can never wear a habit down.
+- Undo of an Ask save takes back the confirmations that save counted.
+- a new draft's category is the shop's habit (confidence `suggest` or
+  `high`) before the household's rules and the everyday words.
 
 Code:
 - `src/domain/ask-habits.ts` (rules, `autoApplyRefusal`), `ask-habit-plan.ts`
