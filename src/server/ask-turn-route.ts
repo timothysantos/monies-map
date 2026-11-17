@@ -10,7 +10,10 @@
 //    the quick pad, or "the 85,000 was ramen") by the describe reader
 //    (ask-describe-entry.ts), and a trip or event message ("put these on Seoul trip", "how much was the
 //    Seoul trip?") by the trips reader (ask-trip-events.ts), each checked
-//    like the model's, so the offline backup still drafts them. A message
+//    like the model's, so the offline backup still drafts them. So are the
+//    messages ask-turn-rules.ts reads (a payment back, settle up, delete,
+//    import, a page; a change to the entry or card in focus; "split with"),
+//    so none of them becomes a new expense. A message
 //    that cannot be a trip one costs no read at all; one that might reads
 //    the trip list first.
 // 2. The context is loaded (ask-turn-context.ts): people, wallets,
@@ -66,6 +69,7 @@ import { readSharesByRules } from "../domain/ask-turn-shares";
 import { readTripEventRules } from "../domain/ask-trip-events";
 import { readUsuallySharedRules } from "../domain/ask-usually-shared";
 import { readDescribeRules } from "../domain/ask-describe-entry";
+import { mayBeRulesTurn, readTurnRules, settleChips } from "../domain/ask-turn-rules";
 import { loadTripEvents } from "../domain/app-repository-trip-events";
 import { loadAskTurnContext } from "../domain/ask-turn-context";
 import { loadAskerPersonId } from "../domain/entry-draft-context";
@@ -110,10 +114,11 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
   const offReason = getAiProviderUnavailableReason(env);
   const focusIsSavedEntry = typeof body.focus === "object" && body.focus !== null && (body.focus as { kind?: unknown }).kind === "saved_entry";
   const focusIsWords = focusIsSavedEntry && (body.focus as { words?: unknown }).words === true;
+  const focusKind = typeof body.focus === "object" && body.focus !== null && typeof (body.focus as { kind?: unknown }).kind === "string" ? String((body.focus as { kind: string }).kind) : null;
   // A saved entry in focus and a message with a figure, "all" or "split" in
   // it may be a share the rules can read; a few words about a quick payment
   // always can; anything else answers at once.
-  if (offReason && !testReply && !focusIsWords && !BY_AMOUNT_MESSAGE.test(text) && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !readUsuallySharedRules(text) && !(await mayBeTripMessage(env.DB, text))) {
+  if (offReason && !testReply && !focusIsWords && !BY_AMOUNT_MESSAGE.test(text) && !(focusIsSavedEntry && /\d|\ball\b|\bsplits?\b/i.test(text)) && !readUsuallySharedRules(text) && !mayBeRulesTurn(text, focusKind) && !(await mayBeTripMessage(env.DB, text))) {
     return json({ ok: true, mode: "rules", reason: offReason });
   }
 
@@ -251,6 +256,17 @@ export async function handleAskTurn(request: Request, env: AskTurnEnv): Promise<
     console.info(JSON.stringify({ event: "ask_turn_repair", action: refused, validatorError: error.code, field: error.field, repaired }));
   }
 
+  // A new entry drafted from a message that is not one ("Serene paid me back
+  // $50"), still refused after the repair: the rules' reading of it (the
+  // settle-up payment, the "Ask won't do this" note, the page), never an
+  // expense.
+  if (reply.kind === "clarify" && reply.error?.code === "not_an_entry") {
+    const ruled = await readRulesReply(env.DB, context);
+    if (ruled) {
+      return json({ ok: true as const, mode: "ai" as const, action: ruled.action ?? action.action, ...(provider ? { provider } : {}), ...(remaining !== undefined ? { remaining } : {}), ...(repaired !== null ? { repaired } : {}), reply: ruled.reply });
+    }
+  }
+
   // A Phase 2 change that needs the household's rows (every entry a bulk
   // recategorise would move, a group's balance, the matches) is built from
   // them here, read only.
@@ -359,7 +375,26 @@ async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string
       return json({ ok: true, mode: "rules", reason, action: action.action, reply: forPage(validateAskTurnAction(action, context)), ...extra });
     }
   }
+  // What the message asks for (ask-turn-rules.ts): never a new entry for a
+  // payment back, a delete, an import or a page; a change to the entry or
+  // card in focus; a shared expense on Splits; a bulk recategorise.
+  const ruled = await readRulesReply(db, context);
+  if (ruled) {
+    return json({ ok: true, mode: "rules", reason, ...ruled, ...extra });
+  }
   return json({ ok: true, mode: "rules", reason, ...extra });
+}
+
+// The rules' reading of a message, checked and completed like the model's
+// action, or null when the page should read it as before.
+async function readRulesReply(db: D1Database, context: AskTurnContext): Promise<{ action?: string; reply: AskTurnReply } | null> {
+  const ruled = readTurnRules(context);
+  if (!ruled) return null;
+  if ("reply" in ruled) return { reply: ruled.reply };
+  let reply = validateAskTurnAction(ruled.action, context);
+  if (reply.kind === "resolve") reply = withAssumptions(await resolveAskTurnRequest(db, reply.request, context), reply.assumptions ?? []);
+  if (ruled.action.action === "split_group") reply = settleChips(reply, context);
+  return { action: ruled.action.action, reply: forPage(reply) };
 }
 
 // "the 85,000 was ramen": a quick payment named by its amount.

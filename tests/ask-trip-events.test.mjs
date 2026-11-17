@@ -361,14 +361,16 @@ test("open the Seoul trip: the trip's own page by name, typos too; no name, two 
   assert.ok(unknown.reply.options.every((option) => option.startsWith("Open ")));
 
   // AI off: the rules read "open the Seoul trip" into the same reply; a page
-  // that is not a trip, or a name that is none, stays the page's own.
+  // of the app opens that page (ask-turn-rules.ts); a name that is none
+  // stays the page's own.
   const off = (text) => post(db, { text }, { ai: false }).then(({ payload }) => payload);
   const offOpen = await off("open the Seoul trip");
   assert.equal(offOpen.mode, "rules");
   assert.equal(offOpen.action, "open_page");
   assert.deepEqual(offOpen.reply, reply);
   assert.equal((await off("show me Bali holiday")).reply.params.trip, trips.bali.id);
-  for (const text of ["open splits", "open the tokyo trip", "show me my groceries"]) {
+  assert.equal((await off("open splits")).reply.page, "splits");
+  for (const text of ["open the tokyo trip", "show me my groceries"]) {
     assert.equal((await off(text)).reply, undefined, text);
   }
   // Opening a page writes nothing.

@@ -155,11 +155,14 @@ const isText = (value) => typeof value === "string";
 
 // A rules answer may carry only what the server's rule readers checked: the
 // split draft from its share reader, a trip or event change or money
-// question from its trips reader, or their plain question or note; any
+// question from its trips reader, what ask-turn-rules.ts read (a settle-up
+// payment, a page with why, a money question, a change to the card being
+// filled, a shared expense on Splits), or their plain question or note; any
 // other kind is the page's own rules' job.
+const RULES_REPLY_KINDS = ["split_proposal", "change", "trip_answer", "clarify", "note", "settlement_draft", "open_page", "question", "draft_patch", "entry_draft"];
 function readRulesReply(reply) {
   const read = readReply(reply);
-  return read && ["split_proposal", "change", "trip_answer", "clarify", "note"].includes(read.kind) ? read : null;
+  return read && RULES_REPLY_KINDS.includes(read.kind) ? read : null;
 }
 
 const ASSUMPTION_TEXT_LIMIT = 140;
