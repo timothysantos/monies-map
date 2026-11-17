@@ -518,11 +518,15 @@ test("a settle-up edit or delete that fails part way changes nothing", async (t)
   });
   assert.equal(created.status, 200, JSON.stringify(created.payload));
   const settlementId = created.payload.settlementId;
-  // The settle-up closed its batch, which locks its amount; undo it so the
-  // edit and delete reach their writes.
+  // A payment that leaves something owed keeps its batch open (Ask audit
+  // B9); one that settled it closed it, which locks its amount, so that is
+  // undone first and the edit and delete reach their writes.
   const [{ split_batch_id: batchId }] = await rows(db, "SELECT split_batch_id FROM split_settlements WHERE id = ?", settlementId);
-  const undo = await api("/api/splits/batches/reopen", { batchId });
-  assert.equal(undo.status, 200, JSON.stringify(undo.payload));
+  const [{ closed_on: closedOn }] = await rows(db, "SELECT closed_on FROM split_batches WHERE id = ?", batchId);
+  if (closedOn) {
+    const undo = await api("/api/splits/batches/reopen", { batchId });
+    assert.equal(undo.status, 200, JSON.stringify(undo.payload));
+  }
   // Moving it to a group without a batch opens one, files the settle-up
   // there and closes it: three writes, the close last.
   const group = await api("/api/splits/groups/create", { name: "Atomic settle group", currency: "SGD", expenseSource: "mixed" });

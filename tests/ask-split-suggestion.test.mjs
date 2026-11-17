@@ -160,7 +160,8 @@ test("choosing it turns the Splits switch on with that group; Save then adds it 
   const createDraft = buildCardCreateDraft(card, context, { splitGroups });
   assert.equal(createDraft.addToSplits, true);
   assert.equal(createDraft.splitGroupId, "split-group-home");
-  assert.equal(createDraft.ownershipType, "direct");
+  // One shared save in that group, Tim the payer (Ask audit B1).
+  assert.equal(createDraft.ownershipType, "shared");
   assert.equal(createDraft.ownerName, "Tim");
   // Declining leaves the card as it was, Splits off.
   const declined = declineSplitSuggestion(filled());
