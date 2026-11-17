@@ -39,7 +39,7 @@ const EMPTY: Omit<AskTurnAction, "action"> = {
 const act = (action: AskTurnAction["action"], parts: Partial<AskTurnAction> = {}): { action: AskTurnAction } => ({ action: { ...EMPTY, action, ...parts } as AskTurnAction });
 
 const CHANGE_VERB = String.raw`(?:please\s+)?(?:make|move|put|change|set|switch|file|recategori[sz]e|categori[sz]e|mark)`;
-const IT = String.raw`(?:it|this|that|this one|the category|its category|the amount|the owner)`;
+const IT = String.raw`(?:it|this one|that one|this|that|these|those|them|the category|its category|the amount|the owner)`;
 const LINK = String.raw`(?:\s+(?:to|as|into|in|under|is|be))?`;
 // Words that only say what kind of thing the shop's entries are.
 const GENERIC = new Set(["rides", "ride", "trips", "entries", "entry", "payments", "payment", "charges", "purchases", "transactions", "ones", "orders", "bills"]);
@@ -53,6 +53,7 @@ export function readTurnRules(context: AskTurnContext): AskRulesReading {
   const focus = context.focus;
   if (focus?.kind === "saved_entry") return readSavedChange(text, context);
   if (focus?.kind === "draft") return readDraftChange(text, context);
+  if (focus?.kind === "entry_list") return readBulkRecategorise(text, context) ?? readListChange(text, context);
   return readBulkRecategorise(text, context) ?? readSplitExpense(text, context);
 }
 
@@ -60,7 +61,7 @@ export function readTurnRules(context: AskTurnContext): AskRulesReading {
 // route answers every other message at once, before reading anything.
 export function mayBeRulesTurn(text: string, focusKind: string | null): boolean {
   if (readCommandIntent(text)) return true;
-  if (focusKind === "saved_entry" && (changeTail(text) !== null || noteText(text) !== null)) return true;
+  if ((focusKind === "saved_entry" || focusKind === "entry_list") && (changeTail(text) !== null || noteText(text) !== null)) return true;
   if (focusKind === "draft" && (ownerWord(text) !== null || splitWords(text))) return true;
   return BULK.test(text) || (splitWords(text) && amountsIn(text).size > 0);
 }
@@ -158,6 +159,17 @@ function readSavedChange(text: string, context: AskTurnContext): AskRulesReading
   const category = findCategory(cleaned, context);
   if (typeof category === "string" && category !== "unknown") return act("recategorise", { recategorise: { category } });
   return { reply: { kind: "note", text: RULES_COPY.cannotReadChange } };
+}
+
+// "make these Transport" right after an Entries answer: the entries it
+// listed move to that category (the same bulk card, read again by the
+// route from the household's rows). Only a category; anything else is left
+// to the page.
+function readListChange(text: string, context: AskTurnContext): AskRulesReading {
+  const tail = changeTail(text);
+  if (tail === null) return null;
+  const category = findCategory(tail.replace(/^(?:the\s+)?category\s+/, "").trim(), context);
+  return typeof category === "string" && category !== "unknown" ? act("recategorise", { recategorise: { category } }) : null;
 }
 
 // ---- The card being filled -----------------------------------------------

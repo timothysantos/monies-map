@@ -97,6 +97,27 @@ export function subscribeCashQueue(listener) {
   };
 }
 
+const sentListeners = new Set();
+// The payments sent from this page so far: a page that opens after the send
+// can still tell a line that said "Waiting to send" that it went.
+const sentRequestIds = new Set();
+
+export function wasCashSent(requestId) {
+  return sentRequestIds.has(requestId);
+}
+
+/**
+ * Calls `listener(requestId)` each time a waiting payment is sent from this
+ * page (a payment the person removed is not sent), so a line that said
+ * "Waiting to send" can say it went.
+ */
+export function subscribeCashSent(listener) {
+  sentListeners.add(listener);
+  return () => {
+    sentListeners.delete(listener);
+  };
+}
+
 function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -175,6 +196,8 @@ export function flushCashQueue({ fetchImpl = fetch, storage = deviceStorage(), o
         removeWaitingCash(item.requestId, storage);
         sent += 1;
         onSaved(result.entry);
+        sentRequestIds.add(item.requestId);
+        for (const listener of sentListeners) listener(item.requestId);
       } else {
         keepWaitingCash({ ...item, error: result.error }, storage);
       }

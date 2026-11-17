@@ -68,7 +68,7 @@ import { planAskBack, readAskOrigin, rememberAskOrigin } from "./ask-origin";
 import { applyFilterOption, readFilterRequest } from "./ask-filter-reader";
 import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
-import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
+import { onlyEntryOfAnswer, readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildChipRow, findActiveItem } from "./ask-chips";
 import { findThreadFocus, rememberThreadChildren, scrollThreadToNews } from "./ask-thread-scroll";
@@ -104,7 +104,7 @@ import "./ask-route.css";
 import CashPadSheet from "./cash-pad-sheet";
 import { amountOpensPad, emptyEntrySitsLow, PAD_SHOWN_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "./new-entry-pad";
 import { isMobileLayout, useIsMobileLayout } from "./use-viewport";
-import { keepWaitingCash, readCashQueue } from "./cash-queue";
+import { keepWaitingCash, readCashQueue, subscribeCashSent, wasCashSent } from "./cash-queue";
 import { savedWhat } from "./cash-pad-model";
 import { cashPadCopy } from "./copy/cash-pad-copy";
 import { canCardWait, waitingItemForCard } from "./ask-waiting";
@@ -293,6 +293,23 @@ function AskConversation({
   const setCardSlot = useCallback((value) => updateConversation((current) => ({ ...current, cardSlot: value })), [updateConversation]);
   const setComposerText = useCallback((value) => updateConversation((current) => ({ ...current, composerText: value })), [updateConversation]);
   const setPending = useCallback((value) => updateConversation((current) => ({ ...current, pending: value })), [updateConversation]);
+  // A "Waiting to send" line says "Sent" once its payment has gone (from
+  // this page's send, now or before Ask opened), so the conversation never
+  // says it is still waiting.
+  const totalsVisibleRef = useRef(areTotalsVisible);
+  totalsVisibleRef.current = areTotalsVisible;
+  useEffect(() => {
+    const markSent = (isSent) => updateConversation((current) => (current.thread.some((item) => item.waitingRequestId && isSent(item.waitingRequestId))
+      ? {
+        ...current,
+        thread: current.thread.map((item) => (item.waitingRequestId && isSent(item.waitingRequestId)
+          ? { ...item, text: cashPadCopy.waitingSent(savedWhat(item.waitingLabel, totalsVisibleRef.current)), waitingRequestId: undefined }
+          : item))
+      }
+      : current));
+    markSent(wasCashSent);
+    return subscribeCashSent((requestId) => markSent((id) => id === requestId));
+  }, [updateConversation]);
   const [working, setWorking] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -692,16 +709,13 @@ function AskConversation({
     let focus = null;
     try {
       // A message right after an Entries answer ("make these Transport")
-      // is about that list.
+      // is about that list; one that showed a single entry names it.
+      const last = before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1);
       focus = options.focus ?? buildTurnFocus({
         card: before.card,
         intent,
-        insightTopic: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "insight-answer"
-          ? String(before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).answer?.kind ?? "")
-          : "",
-        list: before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1)?.kind === "answer"
-          ? before.thread.filter((item) => item.kind !== "status" && item.kind !== "source").at(-1).filter
-          : null
+        insightTopic: last?.kind === "insight-answer" ? String(last.answer?.kind ?? "") : "",
+        list: last?.kind === "answer" ? { ...last.filter, entryId: onlyEntryOfAnswer(queryClient, last.filter, accounts) } : null
       });
       turn = await requestAskTurn({
         text,
@@ -740,7 +754,8 @@ function AskConversation({
     }
     if (!before.rulesNoted) {
       updateConversation((current) => ({ ...current, rulesNoted: true }));
-      appendThread(threadItem("note", { text: turn.ok && turn.mode === "rules" && turn.notice === "demo_allowance" ? askCopy.turn.demoAllowanceNote : askCopy.turn.rulesNote, tone: "calm" }));
+      const notice = turn.ok && turn.mode === "rules" ? turn.notice : undefined;
+      appendThread(threadItem("note", { text: notice === "demo_allowance" ? askCopy.turn.demoAllowanceNote : notice === "allowance_used" ? askCopy.turn.allowanceUsedNote : askCopy.turn.rulesNote, tone: "calm" }));
     }
     // A share on the saved entry ("Joyce's share 1.6") the server's rules
     // already read and checked: shown like the model's draft.
@@ -1632,7 +1647,7 @@ function AskConversation({
     }
     setPending(null);
     setCard(isAddMode ? createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId }) : null);
-    appendThread(threadItem("note", { text: cashPadCopy.waitingSaved(savedWhat(item.label, areTotalsVisible)) }));
+    appendThread(threadItem("note", { text: cashPadCopy.waitingSaved(savedWhat(item.label, areTotalsVisible)), waitingRequestId: item.requestId, waitingLabel: item.label }));
   }
 
   // Discard on a draft that is not saved yet: the card leaves the chat and

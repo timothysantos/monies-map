@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { hashKey } from "@tanstack/react-query";
 
 import { buildEntriesPageParams } from "./app-routing";
+import { summarizeFilterAnswer } from "./ask-filter-answer";
 import { queryKeys } from "./query-keys";
 
 function useQueryCacheValue(queryClient, queryKey) {
@@ -58,6 +59,17 @@ export function useAskEntriesPage({ queryClient, fetchEntriesPage, viewId, month
 
   const refresh = useCallback(() => fetchEntriesPage(params, { bypassCache: true }), [fetchEntriesPage, params]);
   return { page, status: page ? "ready" : status, refresh };
+}
+
+// The one entry an Entries answer showed, from the same cached page and the
+// same selector the answer card used, or "" when it showed none or several
+// (or its page is not cached).
+export function onlyEntryOfAnswer(queryClient, filter, accounts = []) {
+  if (!filter?.month) return "";
+  const page = queryClient.getQueryData(queryKeys.entriesPage(buildEntriesPageParams({ viewId: filter.viewId, month: filter.month })));
+  if (!page?.monthPage || page.monthPage.month !== filter.month) return "";
+  const { entryIds } = summarizeFilterAnswer(page, filter, { accounts });
+  return entryIds.length === 1 ? entryIds[0] : "";
 }
 
 // Split groups the card can share an expense to: from this view's Entries

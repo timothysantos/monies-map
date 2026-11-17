@@ -79,6 +79,8 @@ export const cashPadCopy = Object.freeze({
   waitingTitle: "Waiting to send",
   waitingDetail: "Kept on this phone. It sends by itself when the connection is back.",
   waitingSaved: (what) => `Waiting to send: ${what}`,
+  // The same line once that payment has gone.
+  waitingSent: (what) => `Sent: ${what}`,
   waitingRate: (currency) => `No ${currency} exchange rate yet. It sends by itself when there is one.`,
   waitingNotKept: "This phone couldn't keep it. Keep the pad open until it sends.",
   sendNow: "Send now",

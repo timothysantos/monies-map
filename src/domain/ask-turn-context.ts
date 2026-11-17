@@ -72,11 +72,19 @@ export async function loadAskTurnContext(db: D1Database, input: AskTurnRequestIn
 }
 
 // A saved entry in focus, read with the rest (null for any other focus).
+// An Entries answer that showed exactly one entry (the page sends its id)
+// is that entry: "make that one Groceries" after "what did I pay at Koufu
+// this month" changes the one entry it showed.
 async function loadSavedEntryFocus(db: D1Database, value: unknown): Promise<AskTurnFocus> {
   const focus = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
   if (focus?.kind === "saved_entry" && typeof focus.entryId === "string" && focus.entryId.length <= MAX_ID_LENGTH) {
     const entry = await loadFocusEntry(db, focus.entryId);
     return entry ? { kind: "saved_entry", entry, ...(focus.words === true ? { words: true } : {}) } : null;
+  }
+  const list = focus?.kind === "entry_list" && focus.list && typeof focus.list === "object" ? focus.list as Record<string, unknown> : null;
+  if (list && typeof list.entryId === "string" && list.entryId && list.entryId.length <= MAX_ID_LENGTH) {
+    const entry = await loadFocusEntry(db, list.entryId);
+    return entry ? { kind: "saved_entry", entry } : null;
   }
   return null;
 }

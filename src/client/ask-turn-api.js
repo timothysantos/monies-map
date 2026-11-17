@@ -67,11 +67,18 @@ function describeThreadItem(item) {
  */
 export function buildTurnFocus({ card = null, intent = null, insightTopic = "", list = null } = {}) {
   // The Entries answer Ask showed last ("make these Transport"): what it
-  // searched for, never its rows; the server reads the entries again.
+  // searched for, never its rows; the server reads the entries again. When
+  // it showed exactly one entry, its id too: "make that one Groceries" is
+  // about that entry (the server loads it from the household's own rows).
   if (list?.month) {
     return {
       kind: "entry_list",
-      list: { month: list.month, search: typeof list.search === "string" ? list.search : "", categories: Array.isArray(list.categories) ? list.categories : [] }
+      list: {
+        month: list.month,
+        search: typeof list.search === "string" ? list.search : "",
+        categories: Array.isArray(list.categories) ? list.categories : [],
+        ...(typeof list.entryId === "string" && list.entryId ? { entryId: list.entryId } : {})
+      }
     };
   }
   if (card?.status === "saved" && card.saved?.entryId) {
@@ -104,7 +111,7 @@ export function buildTurnFocus({ card = null, intent = null, insightTopic = "", 
 }
 
 /**
- * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance", reply?: any } | { ok: true, mode: "ai", action: string, reply: any, provider?: "claude" | "workers-ai" } | { ok: false, network?: true }>}
+ * @returns {Promise<{ ok: true, mode: "rules", reason: string, notice?: "demo_allowance" | "allowance_used", reply?: any } | { ok: true, mode: "ai", action: string, reply: any, provider?: "claude" | "workers-ai" } | { ok: false, network?: true }>}
  */
 export async function requestAskTurn(body, { fetchImpl = fetch, timeoutMs = TURN_TIMEOUT_MS } = {}) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -143,7 +150,7 @@ export function readAskTurnResponse(body) {
       reason: typeof body.reason === "string" ? body.reason : "",
       // The rules' own checked reading of a share on the saved entry, when there is one.
       ...(readRulesReply(body.reply) ? { reply: readRulesReply(body.reply) } : {}),
-      ...(body.notice === "demo_allowance" ? { notice: "demo_allowance" } : {})
+      ...(body.notice === "demo_allowance" || body.notice === "allowance_used" ? { notice: body.notice } : {})
     };
   }
   const reply = body.mode === "ai" ? readReply(body.reply) : null;
