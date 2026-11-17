@@ -70,6 +70,7 @@ import { formatFilterView } from "./copy/entry-filter-copy";
 import { readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
 import { buildChipRow, findActiveItem } from "./ask-chips";
+import { findThreadFocus, rememberThreadChildren, scrollThreadToNews } from "./ask-thread-scroll";
 import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
 import { BottomActions } from "./ui/lead-support-detail";
 import { LimitHint } from "./limit-hint";
@@ -472,15 +473,23 @@ function AskConversation({
   // and any other news to the bottom; motion only when the person allows it.
   // A status line ("Reading your receipt…") coming or going moves nothing.
   const settledLength = thread.filter((item) => item.kind !== "status").length;
-  const scrolledThreadRef = useRef({ length: settledLength, status: card?.status ?? "" });
+  const scrolledThreadRef = useRef({ length: settledLength, status: card?.status ?? "", card, children: /** @type {WeakSet<Element> | null} */ (null) });
+  // What the page opened with is not news.
+  useLayoutEffect(() => {
+    scrolledThreadRef.current.children ??= rememberThreadChildren(threadBoxRef.current);
+  }, []);
   useEffect(() => {
     const previous = scrolledThreadRef.current;
     const settled = thread.filter((item) => item.kind !== "status");
-    scrolledThreadRef.current = { length: settled.length, status: card?.status ?? "" };
+    const box = threadBoxRef.current;
     const justSaved = card?.status === "saved" && previous.status !== "saved";
     if (settled.length <= previous.length && !justSaved) {
+      // The card a reply changes may land a moment before the reply's
+      // words: it still counts as changed when they arrive.
+      scrolledThreadRef.current = { ...previous, length: settled.length, status: card?.status ?? "" };
       return;
     }
+    scrolledThreadRef.current = { length: settled.length, status: card?.status ?? "", card, children: rememberThreadChildren(box) };
     const behavior = prefersReducedMotion() ? "auto" : "smooth";
     const newItems = settled.slice(previous.length);
     // A money answer or the check before it arrives after its question, and
@@ -499,8 +508,20 @@ function AskConversation({
       document.getElementById(lastMine.id)?.scrollIntoView?.({ block: "start", behavior });
       return;
     }
-    threadEndRef.current?.scrollIntoView?.({ block: "end", behavior });
-  }, [card?.status, thread]);
+    // Other news goes to the bottom, but never cuts the top of the card that
+    // was just made or changed (its name and amount), or of a tall answer.
+    if (!box) {
+      threadEndRef.current?.scrollIntoView?.({ block: "end", behavior });
+      return;
+    }
+    const focus = findThreadFocus({
+      box,
+      previous: previous.children ?? new WeakSet(),
+      card: box.querySelector(":scope > .ask-card"),
+      cardChanged: Boolean(card) && card !== previous.card
+    });
+    scrollThreadToNews({ box, end: threadEndRef.current, focus, behavior });
+  }, [card?.status, thread]); // eslint-disable-line react-hooks/exhaustive-deps -- the card is compared only when the thread grows
 
   const validation = useMemo(() => (card ? validateCard(card, { splitGroups }) : null), [card, splitGroups]);
   const appendThread = useCallback((...items) => updateConversation((current) => ({
@@ -1819,6 +1840,9 @@ function AskConversation({
       editing_split_expense: card?.saved?.splitExpenseId
     }),
     undo: () => void undoSave(),
+    // The habits' suggestion under a saved card (Do this / Not this time).
+    applyHabit: () => void habits.apply(),
+    dismissHabit: () => habits.dismiss(),
     category: (categoryName) => void changeSavedCategory(categoryName),
     chooseCategory: () => setSavedPicker(true),
     shareSaved: (splitGroupId) => void shareSavedEntry(splitGroupId),
@@ -1890,6 +1914,8 @@ function AskConversation({
     moneyLabels: active?.kind === "money-check" ? skewCheckLabels(active.candidate) : null,
     splitSuggestion,
     cardSuggestion,
+    habitSuggestion: card?.status === "saved" ? habits.suggestion : null,
+    habitBusy: habits.busy === "apply",
     headerBack: showHeaderBack,
     justPaidFirst: justPaidLeads({ intent, config: padConfig }),
     actions
@@ -2289,7 +2315,7 @@ function AskConversation({
         {card?.status === "saved" ? (
           <>
             <AskDoneInline items={habits.items.filter((item) => item.entryId === card.saved?.entryId)} busy={habits.busy} error={habits.suggestion ? "" : habits.error} onUndo={habits.undo} />
-            <AskSuggestionRow suggestion={habits.suggestion} busy={habits.busy} error={habits.error} onApply={() => void habits.apply()} onDismiss={habits.dismiss} />
+            <AskSuggestionRow suggestion={habits.suggestion} busy={habits.busy} error={habits.error} onApply={() => void habits.apply()} onDismiss={habits.dismiss} inChips={chips.items.some((chip) => chip.key === "habit-apply")} />
           </>
         ) : null}
         {card && card.status !== "saved" && !entrySitsLow ? (
