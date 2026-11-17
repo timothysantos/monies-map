@@ -37,6 +37,9 @@ export function reminderMonthName(month) {
 }
 
 const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+// A pair named in one order on every title ("Ethan and Serene"), whoever
+// owes whom; the sentence below says which way (Ask audit A17).
+const pairNames = (first, second) => [first, second].sort((left, right) => left.localeCompare(right)).join(" and ");
 
 export const remindersCopy = {
   heading: "Reminders",
@@ -109,7 +112,7 @@ export const remindersCopy = {
     settleUpTitle: ({ direction, otherName, fromName, toName, weeks }) => {
       const waiting = `waiting ${plural(weeks, "week")}`;
       return direction === "between"
-        ? `Settle-up between ${fromName} and ${toName} ${waiting}`
+        ? `Settle-up between ${pairNames(fromName, toName)} ${waiting}`
         : `Settle-up with ${otherName} ${waiting}`;
     },
     settleUpSentence: ({ direction, otherName, fromName, toName, dateText, hidden }) => {
@@ -122,7 +125,7 @@ export const remindersCopy = {
     balanceTitle: ({ direction, otherName, fromName, toName, weeks }) => {
       const waiting = `waiting ${plural(weeks, "week")}`;
       return direction === "between"
-        ? `Shared costs between ${fromName} and ${toName} ${waiting}`
+        ? `Shared costs between ${pairNames(fromName, toName)} ${waiting}`
         : `Shared costs with ${otherName} ${waiting}`;
     },
     balanceSentence: ({ direction, otherName, fromName, toName, groupName, dateText, hidden }) => {

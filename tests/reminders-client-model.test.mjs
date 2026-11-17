@@ -164,9 +164,16 @@ test("a Splits card names the other person from the viewer's side, with the mone
   const [owed] = list([settleUp({ direction: "owed_to_you", fromName: "Ethan", toName: "Serene" })]).entries;
   assert.deepEqual([owed.title, owed.sentence, owed.amountTone], ["Settle-up with Ethan waiting 5 weeks", "On 6 Sep Ethan agreed to pay you this to even out your shared costs.", "in"]);
   const [between] = list([settleUp({ direction: "between", fromName: "Serene", toName: "Ethan" })]).entries;
+  // The pair is named in one order on every title, whoever owes whom (Ask
+  // audit A17); the sentence says which way.
   assert.deepEqual([between.title, between.sentence, between.amountTone, between.personName], [
-    "Settle-up between Serene and Ethan waiting 5 weeks", "On 6 Sep Serene agreed to pay Ethan this to even out their shared costs.", "neutral", ""
+    "Settle-up between Ethan and Serene waiting 5 weeks", "On 6 Sep Serene agreed to pay Ethan this to even out their shared costs.", "neutral", ""
   ]);
+  const [other] = list([settleUp({ direction: "between", fromName: "Ethan", toName: "Serene" })]).entries;
+  assert.equal(other.title, "Settle-up between Ethan and Serene waiting 5 weeks");
+  assert.equal(other.sentence, "On 6 Sep Ethan agreed to pay Serene this to even out their shared costs.");
+  const [balance] = list([settleUp({ variant: "group_balance", direction: "between", fromName: "Serene", toName: "Ethan", groupName: "Japan trip", sinceDate: "2026-06-06", weeks: 23 })]).entries;
+  assert.equal(balance.title, "Shared costs between Ethan and Serene waiting 23 weeks");
   const [group] = list([settleUp({ variant: "group_balance", groupName: "Bali trip", sinceDate: "2026-09-10", weeks: 4 })]).entries;
   assert.deepEqual([group.title, group.sentence], ["Shared costs with Ethan waiting 4 weeks", "In Bali trip, you owe Ethan for costs open since 10 Sep."]);
 });
