@@ -11,7 +11,7 @@
 // address at run time; never write them into this repo).
 import { readFile, writeFile } from "node:fs/promises";
 
-import { privateCheckTerms, statementLayout } from "./statement-private-areas.mjs";
+import { privateAreasOnPage, privateCheckTerms, statementLayout } from "./statement-private-areas.mjs";
 
 const [inputPath, outputPath, ...flags] = process.argv.slice(2);
 if (!inputPath || !outputPath) {
@@ -39,7 +39,8 @@ if (leaked.length) {
 await writeFile(outputPath, output, "utf8");
 console.log(`Wrote ${outputPath}${checkTerms.length ? ` (checked ${checkTerms.length} terms)` : ""}`);
 
-function sanitizeOcrTsv(tsv, { referenceWidth, referenceHeight, page, areas }) {
+function sanitizeOcrTsv(tsv, layout) {
+  const { referenceWidth, referenceHeight } = layout;
   const lines = tsv.split("\n");
   const pageSizes = new Map();
   for (const line of lines) {
@@ -50,7 +51,8 @@ function sanitizeOcrTsv(tsv, { referenceWidth, referenceHeight, page, areas }) {
   }
   return lines.map((line) => {
     const columns = line.split("\t");
-    if (columns[0] !== "5" || columns.length < 12 || Number(columns[1]) !== page) {
+    const areas = columns[0] === "5" && columns.length >= 12 ? privateAreasOnPage(layout, Number(columns[1])) : [];
+    if (!areas.length) {
       return line;
     }
     const size = pageSizes.get(columns[1]) ?? { width: referenceWidth, height: referenceHeight };

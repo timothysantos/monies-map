@@ -2020,6 +2020,37 @@ re-checks the current preview rows against those totals on every change; the
 import blocker disables the commit until they add up, and a leftover amount is
 offered only while it exactly equals the live difference.
 
+`hsbc-ocr.ts` finds the transaction table on every page by itself: from that
+page's column header ("POST TRAN" over "DATE DATE DESCRIPTION AMOUNT(SGD)";
+three of the five words are enough, since OCR splits or loses one) down to
+"Total Due" or "Continued on next page", or to the mailing address when
+neither is read. A long page 1 runs beside the credit limit and rewards boxes,
+so only words left of x=1120 can start, continue or end a row. A page whose
+header is unreadable falls back to a fixed window, extended to the end marker
+when there is one. Two date rules catch a lost digit: HSBC prints every day
+with two digits, so a one-digit day ("4 Oct" for "14 Oct") is doubtful, and a
+transaction date after its post date is a misread. Either asks for the second
+pass and the cell reads, and a reading without the fault wins.
+
+Regression proof for image statements has four layers, and a change to an OCR
+parser must keep all of them:
+
+- each real statement's exact rows (`tests/hsbc-ocr-parser.test.mjs`);
+- "every HSBC statement fixture's rows add up to its printed balances", which
+  runs over every month in `tests/fixtures/hsbc-ocr/browser-2026/` without a
+  list, so a new fixture is covered as soon as it is added;
+- damaged copies of a real read (header unreadable, end marker unreadable,
+  an amount unreadable), including the case that must stop for review;
+- the browser tests in `tests/e2e/import-ledger-flow.spec.js`, which OCR the
+  sanitized image PDFs for real.
+
+When a statement imports wrongly, capture what the browser read, outside the
+repo, before changing the parser:
+
+```bash
+node --import tsx scripts/capture-statement-ocr.mjs statement.pdf /tmp/raw/name
+```
+
 Fixtures for OCR parsers come from real statements, sanitized:
 
 ```bash
@@ -2031,9 +2062,10 @@ OCR_SANITIZE_CHECK_TERMS="real name,card digits,street" node scripts/create-sani
 ```
 
 Both replace the private areas listed for the layout in
-`scripts/statement-private-areas.mjs` and refuse to write when a check term is
-still there (the PDF script OCRs its own output to check). Pass the real values
-only on the command line.
+`scripts/statement-private-areas.mjs`, on page 1 and on every continuation
+page, and refuse to write when a check term is still there (the PDF script
+OCRs every page it painted to check). Pass the real values only on the
+command line.
 
 ## How are locked (password-protected) PDFs opened?
 

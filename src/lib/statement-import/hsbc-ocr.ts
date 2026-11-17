@@ -67,6 +67,10 @@ interface HsbcRowCandidate {
   top: number;
   postDate?: string;
   transactionDate?: string;
+  // The date column showed one digit before the month. HSBC prints every day
+  // with two ("05 Oct"), so a digit was lost and the date is doubtful.
+  postDateShort?: boolean;
+  transactionDateShort?: boolean;
   description: string;
   descriptionScore: number;
   descriptionMeanConfidence: number | null;
@@ -243,8 +247,15 @@ export function parseHsbcVisaRevolutionOcrTsv(text: string, fileName?: string): 
     description: importRows[index].description,
     amount: minorToDecimal(resolved.amounts[index].minor)
   }));
+  // A date that lost a digit ("4 Oct" for "14 Oct"), or a purchase dated
+  // after it posted, is a misread the cell pass can settle.
   const isFirstPassDoubtful = inferredAmounts.length > 0
-    || rows.some((row) => !row.transactionDate || (row.minConfidence != null && row.minConfidence < LEGIBLE_WORD_CONFIDENCE));
+    || rows.some((row) => (
+      !row.transactionDate
+      || !row.postDate
+      || row.hasDoubtfulDate
+      || (row.minConfidence != null && row.minConfidence < LEGIBLE_WORD_CONFIDENCE)
+    ));
 
   return {
     parserKey: "hsbc_visa_revolution_ocr_pdf",
@@ -387,14 +398,21 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
     for (let cursor = index + 1; cursor < transactionLines.length; cursor += 1) {
       const candidate = transactionLines[cursor];
       // Only the table's side of the page can end a row: the summary column
-      // on the right has its own "Total Account Balance".
-      const tableText = ocrWordsToText(candidate.words.filter((word) => word.left < 1120));
+      // on the right has its own "Total Account Balance", and a line of it
+      // can fall between a merchant's two lines.
+      const tableText = hsbcTableSideText(candidate);
+      if (!tableText.trim()) {
+        continue;
+      }
       // A line with its own amount under a row that already has one is the
       // next transaction with unreadable dates, not a merchant's second line.
       if (
         (amount && findAmountInRange(candidate.words, 930, 1140))
         || readHsbcDate(candidate.words, 125, 245, period, 0)
-        || /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(tableText)
+        // A readable transaction date starts the next row even when its
+        // post date was not read.
+        || readHsbcDate(candidate.words, 240, 390, period, 31)
+        || /Total\s*Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(tableText)
         || !isHsbcMerchantContinuationLine(candidate, line, 85)
       ) {
         break;
@@ -416,6 +434,8 @@ function readHsbcPass(rawLines: OcrLine[], pass: number, period: OcrStatementPer
       top: line.top,
       postDate,
       transactionDate,
+      postDateShort: Boolean(postDate) && isHsbcDayShort(line.words, 125, 245),
+      transactionDateShort: Boolean(transactionDate) && isHsbcDayShort(line.words, 240, 390),
       description: cleanHsbcDescription(descriptionParts.join(" ")),
       descriptionScore: ocrLegibilityScore(descriptionWords),
       descriptionMeanConfidence: meanOcrConfidence(descriptionWords),
@@ -526,11 +546,24 @@ function describeMergedRow(candidates: HsbcRowCandidate[]) {
       readings.push({ minor: amount.minor, isCredit: amount.isCredit });
     }
   }
+  // Among the passes' readings of a date, one that kept both of its day's
+  // digits comes first; and for the transaction date, one that is not after
+  // the post date: a purchase cannot post before it was made.
+  const postReading = byReliability.find((candidate) => candidate.postDate && !candidate.postDateShort)
+    ?? byReliability.find((candidate) => candidate.postDate);
+  const postDate = postReading?.postDate;
+  const isPlausible = (candidate: HsbcRowCandidate) => Boolean(candidate.transactionDate) && (!postDate || candidate.transactionDate! <= postDate);
+  const transactionReading = byReliability.find((candidate) => isPlausible(candidate) && !candidate.transactionDateShort)
+    ?? byReliability.find(isPlausible)
+    ?? byReliability.find((candidate) => candidate.transactionDate);
+  const transactionDate = transactionReading?.transactionDate;
   return {
     page: candidates[0].page,
     top: candidates[0].top,
-    postDate: byReliability.find((candidate) => candidate.postDate)?.postDate,
-    transactionDate: byReliability.find((candidate) => candidate.transactionDate)?.transactionDate,
+    postDate,
+    transactionDate,
+    hasDoubtfulDate: Boolean(postReading?.postDateShort || transactionReading?.transactionDateShort)
+      || Boolean(postDate && transactionDate && transactionDate > postDate),
     description: legible?.description ?? "",
     minConfidence: legible?.descriptionMinConfidence ?? null,
     readings
@@ -582,42 +615,59 @@ function buildHsbcRow({
   };
 }
 
-function getHsbcTransactionTableLines(lines: OcrLine[]) {
-  const tableHeader = lines.find((line, index) => {
-    const leftText = ocrWordsToText(line.words.filter((word) => word.left < 1120));
-    if (
-      /POST/i.test(leftText)
-      && /TRAN/i.test(leftText)
-      && /DESCRIPTION/i.test(leftText)
-      && /AMOUNT/i.test(leftText)
-    ) {
-      return true;
-    }
-    if (!/POST/i.test(leftText) || !/TRAN/i.test(leftText)) {
-      return false;
-    }
-    const nearbyLeftText = ocrWordsToText(lines
-      .slice(index + 1)
-      .filter((candidate) => candidate.page === line.page && candidate.top > line.top && candidate.top - line.top <= 80)
-      .flatMap((candidate) => candidate.words.filter((word) => word.left < 1120)));
-    return /DATE/i.test(nearbyLeftText) && /DESCRIPTION/i.test(nearbyLeftText) && /AMOUNT/i.test(nearbyLeftText);
-  });
-  if (!tableHeader) {
-    return lines.filter((line) => line.top > 850 && line.top < 1300);
-  }
+// The transaction table sits on the left of the page (x < 1120); the account
+// summary, credit limit and rewards boxes share its lines on the right.
+function hsbcTableSideText(line: OcrLine) {
+  return ocrWordsToText(line.words.filter((word) => word.left < 1120));
+}
 
-  const tableEnd = lines.find((line) => {
-    if (line.page !== tableHeader.page || line.top <= tableHeader.top) {
+// The table's column header is two printed lines, "POST TRAN" over "DATE DATE
+// DESCRIPTION AMOUNT(SGD)". OCR can split a word ("AMOU NT(SGD)"), glue one
+// to a stray mark ("_DESCRIPTION") or miss one, so the header is any line that
+// with the lines just under it shows three of the five column words. They are
+// matched as printed, in capitals: the terms page uses the same words in prose.
+const HSBC_TABLE_HEADER_WORDS = [/POST/, /TRAN/, /DATE/, /DESCRIP/, /AMOU/];
+
+function findHsbcTableHeader(pageLines: OcrLine[]) {
+  return pageLines.find((line) => {
+    const lineText = hsbcTableSideText(line).replace(/\s+/g, "");
+    if (!HSBC_TABLE_HEADER_WORDS.some((word) => word.test(lineText))) {
       return false;
     }
-    const leftText = ocrWordsToText(line.words.filter((word) => word.left < 1120));
-    return /\bTotal\s+Due\b/i.test(leftText);
+    const headerText = pageLines
+      .filter((candidate) => candidate.top >= line.top && candidate.top - line.top <= 80)
+      .map(hsbcTableSideText)
+      .join("")
+      .replace(/\s+/g, "");
+    return HSBC_TABLE_HEADER_WORDS.filter((word) => word.test(headerText)).length >= 3;
   });
-  const endTop = tableEnd?.top ?? 1700;
-  return uniqueOcrLines([
-    ...lines.filter((line) => line.top > 850 && line.top < 1300),
-    ...lines.filter((line) => line.page === tableHeader.page && line.top > tableHeader.top && line.top < endTop)
-  ]);
+}
+
+// Where a page's table stops: "Total Due" under the last row, or "Continued
+// on next page". Without either, the mailing address block is the limit.
+const HSBC_TABLE_BOTTOM = 2150;
+// Where the table starts and stops on a page whose header OCR could not read.
+const HSBC_UNREAD_HEADER_TABLE_TOP = 850;
+const HSBC_UNREAD_HEADER_TABLE_BOTTOM = 1300;
+
+function isHsbcTableBottomLine(line: OcrLine) {
+  // Either half of "Continued on next page" is enough: OCR can lose a word.
+  return /\bTotal\s*Due\b|\bContinued\b|\bnext\s*page\b/i.test(hsbcTableSideText(line));
+}
+
+// Every page is read on its own: a statement's rows run from that page's
+// column header down to its end marker, however far down the page that is
+// (a long page 1 runs beside the credit limit and rewards boxes).
+function getHsbcTransactionTableLines(lines: OcrLine[]) {
+  const pages = [...new Set(lines.map((line) => line.page))];
+  return uniqueOcrLines(pages.flatMap((page) => {
+    const pageLines = lines.filter((line) => line.page === page);
+    const header = findHsbcTableHeader(pageLines);
+    const tableTop = header?.top ?? HSBC_UNREAD_HEADER_TABLE_TOP;
+    const bottomLine = pageLines.find((line) => line.top > tableTop && isHsbcTableBottomLine(line));
+    const tableBottom = bottomLine?.top ?? (header ? HSBC_TABLE_BOTTOM : HSBC_UNREAD_HEADER_TABLE_BOTTOM);
+    return pageLines.filter((line) => line.top > tableTop && line.top < tableBottom);
+  }));
 }
 
 function uniqueOcrLines(lines: OcrLine[]) {
@@ -659,6 +709,13 @@ function readHsbcDate(words: OcrWord[], leftMin: number, leftMax: number, period
   return readOcrDayMonth(normalized, period, { earlierDays });
 }
 
+// HSBC prints "05 Oct": one digit followed by a whole month name means OCR
+// lost the day's other digit ("4 Oct" for "14 Oct").
+function isHsbcDayShort(words: OcrWord[], leftMin: number, leftMax: number) {
+  const text = ocrWordsToText(ocrWordsInColumn(words, leftMin, leftMax)).replace(/[^0-9A-Za-z]/g, "");
+  return /^\d(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(text);
+}
+
 function findAmountInRange(words: OcrWord[], leftMin: number, leftMax: number) {
   for (const word of ocrWordsInColumn(words, leftMin, leftMax).sort((left, right) => right.left - left.left)) {
     const amount = parseOcrAmount(word.text);
@@ -694,7 +751,7 @@ function wordsToHsbcTransactionDescription(words: OcrWord[], continuation: boole
 }
 
 function isHsbcTableEndLine(line: OcrLine) {
-  return /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance|Previous\s+Statement\s+Balance/i
+  return /Total\s*Due|Minimum\s+Payment|Total\s+Account\s+Balance|Previous\s+Statement\s+Balance/i
     .test(ocrWordsToText(line.words.filter((word) => word.left < 1120)));
 }
 
@@ -745,7 +802,8 @@ const HSBC_KNOWN_MISREADS: Array<[RegExp, string]> = [
   [/\bVIAUOBVISA\b/gi, "VIA UOB VISA"],
   [/\bVIAUOB\b/gi, "VIA UOB"],
   [/\bUOBVISA\b/gi, "UOB VISA"],
-  [/\bRECT\b/gi, "DIRECT"]
+  [/\bRECT\b/gi, "DIRECT"],
+  [/\bDCCFEE\b/gi, "DCC FEE"]
 ];
 
 function cleanHsbcDescription(value: string) {

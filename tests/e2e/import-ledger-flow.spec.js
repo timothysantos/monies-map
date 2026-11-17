@@ -156,6 +156,81 @@ const HSBC_2026_CASES = [
       "29.92",
       "txn date: 2026-10-01"
     ]
+  },
+  {
+    // A long page 1 (rows beside the credit limit and rewards boxes) and a
+    // continuation page.
+    month: "nov",
+    routeMonth: "2026-11",
+    readyText: "15 rows ready for review",
+    secondPass: true,
+    // Two purchase dates lost a digit in the first pass and one in both, so
+    // the package carries the cell reads the app makes for them.
+    cellPass: true,
+    // OCR of the sanitized image loses the "C" of FAL.AI's second line "CA".
+    imagePdfValues: { "FAL FEATURES LABELS FAL.AI CA": "FAL FEATURES LABELS FAL.AI" },
+    values: [
+      "2026-10-06",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "218.35",
+      "txn date: 2026-10-05",
+      "2026-10-09",
+      "WATSONS - GREAT WORLD SINGAPORE SG",
+      "10.10",
+      "txn date: 2026-10-07",
+      "2026-10-13",
+      "ANTHROPIC ANTHROPIC.COM CA USD 21.80",
+      "28.86",
+      "txn date: 2026-10-11",
+      "2026-10-14",
+      "MINMED PAEDIATRICS(RIV SINGAPORE SG",
+      "175.49",
+      "txn date: 2026-10-12",
+      "2026-10-15",
+      "FAIRPRICE FINEST-VALLE SINGAPORE SG",
+      "16.90",
+      "txn date: 2026-10-13",
+      "2026-10-16",
+      "DCC FEE",
+      "0.13",
+      "txn date: 2026-10-16",
+      "2026-10-16",
+      "FAL FEATURES LABELS FAL.AI CA",
+      "13.34",
+      "txn date: 2026-10-14",
+      "2026-10-16",
+      "WORLD LABS WORLDLABS.AI CA USD 5.00",
+      "6.62",
+      "txn date: 2026-10-14",
+      "2026-10-28",
+      "KINOKUNIYA-TAKASHIMAYA SINGAPORE SG",
+      "43.60",
+      "txn date: 2026-10-27",
+      "2026-10-31",
+      "CS FRESH GREATWORLDCIT Singapore SG",
+      "19.15",
+      "txn date: 2026-10-30",
+      "2026-10-31",
+      "MINMED PAEDIATRICS(RIV SINGAPORE SG",
+      "119.90",
+      "txn date: 2026-10-29",
+      "2026-11-04",
+      "DCC FEE",
+      "0.43",
+      "txn date: 2026-11-04",
+      "2026-11-04",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "434.09",
+      "txn date: 2026-11-03",
+      "2026-11-04",
+      "PAYPAL *CGTRADER 35314369001 LT",
+      "42.63",
+      "txn date: 2026-11-02",
+      "2026-11-05",
+      "FAMILY-COM ELECTRONICS SINGAPORE SG",
+      "139.00",
+      "txn date: 2026-11-03"
+    ]
   }
 ];
 
@@ -1331,7 +1406,7 @@ test.describe("import flow", () => {
     await expect(cleanupCard).toContainText("possible split link");
   });
 
-  test("local HSBC OCR packages upload Feb-Oct 2026 through the statement preview path", async ({ page }, testInfo) => {
+  test("local HSBC OCR packages upload Feb-Nov 2026 through the statement preview path", async ({ page }, testInfo) => {
     await createHsbcVisaRevolutionAccount(page);
 
     for (const item of HSBC_2026_CASES) {
@@ -1340,8 +1415,12 @@ test.describe("import flow", () => {
       if (item.secondPass) {
         passes.push(await readFile(`${fixture}.browser-pass2.tsv`, "utf8"));
       }
+      const packages = passes.map((tsv) => `__OCR_TSV__\n${tsv}`);
+      if (item.cellPass) {
+        packages.push(`__OCR_TSV__ kind=cells\n${await readFile(`${fixture}.browser-cells.tsv`, "utf8")}`);
+      }
       const ocrPackagePath = testInfo.outputPath(`hsbc-visa-revolution-${item.month}-2026.hsbc-ocr.tsv`);
-      await writeFile(ocrPackagePath, passes.map((tsv) => `__OCR_TSV__\n${tsv}`).join("\n"), "utf8");
+      await writeFile(ocrPackagePath, packages.join("\n"), "utf8");
 
       await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
       await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
@@ -1353,9 +1432,9 @@ test.describe("import flow", () => {
     }
   });
 
-  test("sanitized HSBC image PDFs upload Feb-Oct 2026 through private browser OCR", async ({ page }) => {
-    // Nine statements of real browser OCR; Aug-Oct each take a second pass.
-    test.setTimeout(600_000);
+  test("sanitized HSBC image PDFs upload Feb-Nov 2026 through private browser OCR", async ({ page }) => {
+    // Ten statements of real browser OCR; Aug-Nov each take a second pass.
+    test.setTimeout(720_000);
     await createHsbcVisaRevolutionAccount(page);
 
     for (const item of HSBC_2026_CASES) {
@@ -1368,7 +1447,7 @@ test.describe("import flow", () => {
 
       await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
       await expectImportRowsReady(page, item.readyText, { timeout: 120_000 });
-      await expectHsbcPreviewValues(page, item.values);
+      await expectHsbcPreviewValues(page, item.values.map((value) => item.imagePdfValues?.[value] ?? value));
     }
   });
 

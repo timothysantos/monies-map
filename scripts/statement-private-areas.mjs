@@ -13,7 +13,16 @@ export const STATEMENT_PRIVATE_AREAS = {
       { box: [140, 470, 760, 540], placeholder: "4000-0000-0000-0000", size: 28 }, // full card number
       { box: [140, 935, 1160, 1005], placeholder: "TEST CARD HOLDER 4000-XXXX-XXXX-0000", size: 22 }, // holder bar above the transactions
       { box: [140, 2190, 760, 2400], placeholder: "TEST CARD HOLDER\n1 TEST AVENUE\n#01-01\nSINGAPORE 000000", size: 22 } // mailing address
-    ]
+    ],
+    // A long statement continues on later pages (page 2 is the printed
+    // terms). Each continuation page repeats the holder's name and bar.
+    continuation: {
+      fromPage: 3,
+      areas: [
+        { box: [140, 290, 1150, 350], placeholder: "TEST CARD HOLDER", size: 28 }, // card holder name under the title
+        { box: [140, 556, 1160, 618], placeholder: "TEST CARD HOLDER 4000-XXXX-XXXX-0000", size: 22 } // holder bar above the transactions
+      ]
+    }
   }
 };
 
@@ -31,4 +40,13 @@ export function statementLayout(flags, fallback = "hsbc-visa-revolution") {
 // values are never written into the repo.
 export function privateCheckTerms() {
   return (process.env.OCR_SANITIZE_CHECK_TERMS ?? "").split(",").map((term) => term.trim()).filter(Boolean);
+}
+
+// The private areas printed on one page of a layout: page 1's, a
+// continuation page's, or none (the terms page).
+export function privateAreasOnPage(layout, pageNumber) {
+  if (pageNumber === layout.page) {
+    return layout.areas;
+  }
+  return layout.continuation && pageNumber >= layout.continuation.fromPage ? layout.continuation.areas : [];
 }

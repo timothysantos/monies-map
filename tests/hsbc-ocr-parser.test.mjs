@@ -565,3 +565,204 @@ test("HSBC cell reads cannot slip a wrong amount past the statement totals", asy
   assert.equal(withSecond.reconciliation, undefined);
   assert.equal(withSecond.rows.find((row) => row.description === "IKEA SINGAPORE SG").expense, "64.70");
 });
+
+// The real Nov 2026 statement (browser OCR, sanitized): 8 rows on page 1,
+// which run down beside the credit limit and rewards boxes, and 7 on the
+// continuation page. On page 1 OCR split the column header ("AMOU NT(SGD)").
+const NOV_2026_ROWS = [
+  ["2026-10-06", "PAYMENT VIA UOB VISA DIRECT SG", "", "218.35", "Transfer", "txn date: 2026-10-05", "transfer"],
+  ["2026-10-09", "WATSONS - GREAT WORLD SINGAPORE SG", "10.10", "", "Other", "txn date: 2026-10-07", "expense"],
+  ["2026-10-13", "ANTHROPIC ANTHROPIC.COM CA USD 21.80", "28.86", "", "Other", "txn date: 2026-10-11", "expense"],
+  ["2026-10-14", "MINMED PAEDIATRICS(RIV SINGAPORE SG", "175.49", "", "Other", "txn date: 2026-10-12", "expense"],
+  ["2026-10-15", "FAIRPRICE FINEST-VALLE SINGAPORE SG", "16.90", "", "Groceries", "txn date: 2026-10-13", "expense"],
+  ["2026-10-16", "DCC FEE", "0.13", "", "Fees", "txn date: 2026-10-16", "expense"],
+  ["2026-10-16", "FAL FEATURES LABELS FAL.AI CA", "13.34", "", "Other", "txn date: 2026-10-14", "expense"],
+  ["2026-10-16", "WORLD LABS WORLDLABS.AI CA USD 5.00", "6.62", "", "Other", "txn date: 2026-10-14", "expense"],
+  ["2026-10-28", "KINOKUNIYA-TAKASHIMAYA SINGAPORE SG", "43.60", "", "Education", "txn date: 2026-10-27", "expense"],
+  ["2026-10-31", "CS FRESH GREATWORLDCIT Singapore SG", "19.15", "", "Groceries", "txn date: 2026-10-30", "expense"],
+  ["2026-10-31", "MINMED PAEDIATRICS(RIV SINGAPORE SG", "119.90", "", "Other", "txn date: 2026-10-29", "expense"],
+  ["2026-11-04", "DCC FEE", "0.43", "", "Fees", "txn date: 2026-11-04", "expense"],
+  ["2026-11-04", "PAYMENT VIA UOB VISA DIRECT SG", "", "434.09", "Transfer", "txn date: 2026-11-03", "transfer"],
+  ["2026-11-04", "PAYPAL *CGTRADER 35314369001 LT", "42.63", "", "Other", "txn date: 2026-11-02", "expense"],
+  ["2026-11-05", "FAMILY-COM ELECTRONICS SINGAPORE SG", "139.00", "", "Other", "txn date: 2026-11-03", "expense"]
+];
+// Printed on the statement: purchases 616.15, payments 652.44.
+const NOV_2026_AMOUNTS = NOV_2026_ROWS.map(([date, , expense, income]) => [date, expense, income]);
+
+async function novPasses({ cells = true, edit = (tsv) => tsv } = {}) {
+  return joinOcrTsvPasses([
+    edit(await readBrowserOcrFixture("nov")),
+    edit(await readBrowserOcrFixture("nov", "-pass2")),
+    ...(cells ? [await cellPass("nov")] : [])
+  ]);
+}
+
+// Rewrites the OCR words a predicate picks (page, left, top, text), the way a
+// worse read of the same page would.
+function editOcrWords(tsv, pick, replace) {
+  return tsv.split("\n").map((line) => {
+    const columns = line.split("\t");
+    if (columns[0] !== "5" || columns.length < 12) {
+      return line;
+    }
+    const word = { page: Number(columns[1]), left: Number(columns[6]), top: Number(columns[7]), text: columns.slice(11).join("\t") };
+    if (!pick(word)) {
+      return line;
+    }
+    columns.splice(11, columns.length - 11, replace(word));
+    return columns.join("\t");
+  }).join("\n");
+}
+
+function moneyTotals(parsed) {
+  const toMinor = (value) => Math.round(Number(value || 0) * 100);
+  return {
+    debitMinor: parsed.rows.reduce((total, row) => total + toMinor(row.expense), 0),
+    creditMinor: parsed.rows.reduce((total, row) => total + toMinor(row.income), 0)
+  };
+}
+
+test("HSBC Nov 2026: every row on a long page 1 and its continuation page is read", async () => {
+  const parsed = parseStatementText(await novPasses(), "hsbc-visa-revolution-nov_2026.pdf");
+  assert.deepEqual(parsed.checkpoints, [{
+    accountName: "HSBC Visa Revolution",
+    checkpointMonth: "2026-11",
+    statementStartDate: "2026-10-06",
+    statementEndDate: "2026-11-05",
+    statementBalanceMinor: 18206,
+    previousBalanceMinor: 21835,
+    note: "Imported from HSBC Visa Revolution OCR statement"
+  }]);
+  assert.deepEqual(rowValues(parsed), NOV_2026_ROWS);
+  assert.deepEqual(moneyTotals(parsed), { debitMinor: 61615, creditMinor: 65244 });
+  assert.equal(parsed.reconciliation, undefined);
+  assert.deepEqual(parsed.ocrReview, { passCount: 3, inferredAmounts: [], wantsSecondPass: false });
+});
+
+test("HSBC Nov 2026: the two page passes alone find all 15 rows and their amounts", async () => {
+  const parsed = parseStatementText(await novPasses({ cells: false }), "hsbc-visa-revolution-nov_2026.pdf");
+  assert.deepEqual(parsed.rows.map((row) => [row.date, row.expense, row.income]), NOV_2026_AMOUNTS);
+  assert.deepEqual(parsed.rows.map((row) => row.description), NOV_2026_ROWS.map((row) => row[1]));
+  assert.equal(parsed.reconciliation, undefined);
+  // HSBC prints "14 Oct". The first pass read "4 Oct" for both 16 Oct rows
+  // and "2 Oct"/"3 Oct" above them; the second pass's two-digit days win.
+  const notes = Object.fromEntries(parsed.rows.map((row) => [`${row.date} ${row.expense}`, row.note]));
+  assert.equal(notes["2026-10-16 13.34"], "txn date: 2026-10-14");
+  assert.equal(notes["2026-10-16 6.62"], "txn date: 2026-10-14");
+  assert.equal(notes["2026-10-14 175.49"], "txn date: 2026-10-12");
+  assert.equal(notes["2026-10-15 16.90"], "txn date: 2026-10-13");
+});
+
+test("HSBC OCR asks for a second look when a day is read with one digit", async () => {
+  // March's IKEA row was bought on "20 Feb"; read as "2 Feb" it is still a
+  // date before the post date, so only the missing digit gives it away.
+  const march = await readBrowserOcrFixture("mar");
+  const misread = parseStatementText(
+    `__OCR_TSV__\n${editOcrWords(march, (word) => word.page === 1 && word.left > 290 && word.left < 330 && word.text === "20", () => "2")}`,
+    "hsbc-visa-revolution-mar_2026.pdf"
+  );
+  assert.equal(misread.rows[0].note, "txn date: 2026-02-02");
+  assert.equal(misread.ocrReview.wantsSecondPass, true);
+  assert.equal(parseStatementText(`__OCR_TSV__\n${march}`, "hsbc-visa-revolution-mar_2026.pdf").rows[0].note, "txn date: 2026-02-20");
+});
+
+test("HSBC Nov 2026: the first pass finds all 15 rows and asks for a second look", async () => {
+  const parsed = parseStatementText(`__OCR_TSV__\n${await readBrowserOcrFixture("nov")}`, "hsbc-visa-revolution-nov_2026.pdf");
+  assert.deepEqual(parsed.rows.map((row) => [row.date, row.expense, row.income]), NOV_2026_AMOUNTS);
+  assert.equal(parsed.ocrReview.wantsSecondPass, true);
+  // One date cell pair and one amount cell for each of the 15 rows.
+  assert.equal(parsed.ocrReview.cellRegions.length, 45);
+});
+
+test("HSBC Nov 2026: rows are still all read when OCR cannot read page 1's column header at all", async () => {
+  const noHeader = (tsv) => editOcrWords(tsv, (word) => word.page === 1 && word.left < 1120 && word.top > 840 && word.top < 915, () => "~");
+  const parsed = parseStatementText(await novPasses({ edit: noHeader }), "hsbc-visa-revolution-nov_2026.pdf");
+  assert.deepEqual(rowValues(parsed), NOV_2026_ROWS);
+});
+
+test("HSBC Nov 2026: rows are still all read when OCR cannot read 'Continued on next page'", async () => {
+  const isMarkerWord = (word) => word.page === 1 && word.left < 1120 && word.top > 1725 && word.top < 1760;
+  const noContinued = (tsv) => editOcrWords(tsv, isMarkerWord, () => "~");
+  const parsed = parseStatementText(await novPasses({ edit: noContinued }), "hsbc-visa-revolution-nov_2026.pdf");
+  assert.deepEqual(rowValues(parsed), NOV_2026_ROWS);
+  // Half the marker is still the end of the table, not part of a merchant.
+  const halfRead = (tsv) => editOcrWords(tsv, (word) => isMarkerWord(word) && /^(next|page)$/.test(word.text), () => "~");
+  assert.deepEqual(rowValues(parseStatementText(await novPasses({ edit: halfRead }), "hsbc-visa-revolution-nov_2026.pdf")), NOV_2026_ROWS);
+});
+
+// The guarded path: when the page gives no way to find the table's extent
+// (no header and no end marker), rows can be missed, and the statement must
+// then stop for review with its printed totals, never import short.
+test("HSBC Nov 2026: with neither header nor end marker readable the statement stops for review", async () => {
+  const blind = (tsv) => editOcrWords(
+    tsv,
+    (word) => word.page === 1 && word.left < 1120 && ((word.top > 840 && word.top < 915) || (word.top > 1725 && word.top < 1760)),
+    () => "~"
+  );
+  const parsed = parseStatementText(await novPasses({ edit: blind }), "hsbc-visa-revolution-nov_2026.pdf");
+  assert.ok(parsed.rows.length < NOV_2026_ROWS.length);
+  assert.equal(parsed.reconciliation.expectedDebitMinor, 61615);
+  assert.equal(parsed.reconciliation.expectedCreditMinor, 65244);
+  assert.notDeepEqual(moneyTotals(parsed), { debitMinor: 61615, creditMinor: 65244 });
+});
+
+test("HSBC Nov 2026: a row whose amount cannot be read anywhere is not imported as if complete", async () => {
+  // FairPrice's 16.90 unreadable in both page passes and its cell.
+  const noAmount = (tsv) => editOcrWords(tsv, (word) => word.page === 1 && word.text === "16.90", () => "~");
+  const cells = await cellPass("nov");
+  const text = joinOcrTsvPasses([
+    noAmount(await readBrowserOcrFixture("nov")),
+    noAmount(await readBrowserOcrFixture("nov", "-pass2")),
+    { kind: "cells", tsv: noAmount(cells.tsv) }
+  ]);
+  const parsed = parseStatementText(text, "hsbc-visa-revolution-nov_2026.pdf");
+  // The one unknown is filled from the printed purchases total and shown as
+  // inferred; nothing is guessed silently.
+  assert.deepEqual(parsed.ocrReview.inferredAmounts, [{ date: "2026-10-15", description: "FAIRPRICE FINEST-VALLE SINGAPORE SG", amount: "16.90" }]);
+  assert.deepEqual(moneyTotals(parsed), { debitMinor: 61615, creditMinor: 65244 });
+});
+
+test("HSBC OCR asks for a second look when a transaction date reads later than its post date", async () => {
+  // March's IKEA row: posted 23 Feb, bought 20 Feb. Read as "26 Feb" it would
+  // be a purchase made after it posted.
+  const march = await readBrowserOcrFixture("mar");
+  const clean = parseStatementText(`__OCR_TSV__\n${march}`, "hsbc-visa-revolution-mar_2026.pdf");
+  const misread = parseStatementText(
+    `__OCR_TSV__\n${editOcrWords(march, (word) => word.page === 1 && word.left > 290 && word.left < 330 && word.text === "20", () => "26")}`,
+    "hsbc-visa-revolution-mar_2026.pdf"
+  );
+  assert.equal(misread.rows[0].note, "txn date: 2026-02-26");
+  assert.equal(misread.ocrReview.wantsSecondPass, true);
+  assert.equal(clean.rows[0].note, "txn date: 2026-02-20");
+});
+
+// Every real statement fixture, however it was read: the rows must add up to
+// the statement's own balances. A reader change that drops or doubles a row
+// in any month fails here even if that month's rows are not listed above.
+test("every HSBC statement fixture's rows add up to its printed balances", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const directory = "tests/fixtures/hsbc-ocr/browser-2026";
+  const files = await readdir(directory);
+  const months = [...new Set(files.map((file) => file.match(/revolution-([a-z]{3})-2026\./)?.[1]).filter(Boolean))];
+  assert.ok(months.length >= 10);
+  for (const month of months) {
+    const read = (suffix) => readFile(`${directory}/hsbc-visa-revolution-${month}-2026.${suffix}.tsv`, "utf8");
+    const passes = [await read("browser")];
+    if (files.includes(`hsbc-visa-revolution-${month}-2026.browser-pass2.tsv`)) {
+      passes.push(await read("browser-pass2"));
+    }
+    if (files.includes(`hsbc-visa-revolution-${month}-2026.browser-cells.tsv`)) {
+      passes.push({ kind: "cells", tsv: await read("browser-cells") });
+    }
+    const parsed = parseStatementText(joinOcrTsvPasses(passes), `hsbc-visa-revolution-${month}_2026.pdf`);
+    const { debitMinor, creditMinor } = moneyTotals(parsed);
+    const [checkpoint] = parsed.checkpoints;
+    assert.equal(parsed.reconciliation, undefined, month);
+    assert.equal(checkpoint.previousBalanceMinor + debitMinor - creditMinor, checkpoint.statementBalanceMinor, month);
+    for (const row of parsed.rows) {
+      assert.ok(row.date >= checkpoint.statementStartDate && row.date <= checkpoint.statementEndDate, `${month} ${row.date}`);
+      const transactionDate = row.note.replace("txn date: ", "");
+      assert.ok(transactionDate <= row.date, `${month} ${row.description}: bought ${transactionDate}, posted ${row.date}`);
+    }
+  }
+});

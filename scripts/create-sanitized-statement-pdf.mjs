@@ -8,14 +8,14 @@
 //   node scripts/create-sanitized-statement-pdf.mjs <in.pdf> <out.pdf> [--layout hsbc-visa-revolution]
 //
 // Set OCR_SANITIZE_CHECK_TERMS="term one,term two" (the real name, card
-// digits, address) to OCR the sanitized first page with the app's vendored
+// digits, address) to OCR every sanitized page with the app's vendored
 // Tesseract and refuse to write the file when any term is still readable.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { chromium } from "@playwright/test";
 
-import { privateCheckTerms, statementLayout } from "./statement-private-areas.mjs";
+import { privateAreasOnPage, privateCheckTerms, statementLayout } from "./statement-private-areas.mjs";
 
 const DPI = 220;
 const ORIGIN = "https://sanitizer.local";
@@ -52,13 +52,16 @@ try {
   await page.goto(`${ORIGIN}/`);
 
   const pdfBase64 = (await readFile(inputPath)).toString("base64");
-  const rendered = await page.evaluate(async ({ pdfBase64, layout, dpi, verify }) => {
+  // Functions do not cross into the page, so the areas go in per page number
+  // (statements are a few pages; 40 is far past any of them).
+  const areasByPage = Object.fromEntries(Array.from({ length: 40 }, (_, index) => [index + 1, privateAreasOnPage(layout, index + 1)]));
+  const rendered = await page.evaluate(async ({ pdfBase64, layout, areasByPage, dpi, verify }) => {
     const pdfjs = await import("/pdf.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
     const data = Uint8Array.from(atob(pdfBase64), (char) => char.charCodeAt(0));
     const document = await pdfjs.getDocument({ data }).promise;
     const pages = [];
-    let firstPageCanvas;
+    const paintedCanvases = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const pdfPage = await document.getPage(pageNumber);
       const viewport = pdfPage.getViewport({ scale: dpi / 72 });
@@ -70,10 +73,11 @@ try {
       context.fillRect(0, 0, canvas.width, canvas.height);
       await pdfPage.render({ canvasContext: context, viewport }).promise;
 
-      if (pageNumber === layout.page) {
+      const areas = areasByPage[pageNumber] ?? [];
+      if (areas.length) {
         const xScale = canvas.width / layout.referenceWidth;
         const yScale = canvas.height / layout.referenceHeight;
-        for (const { box: [left, top, right, bottom], placeholder, size } of layout.areas) {
+        for (const { box: [left, top, right, bottom], placeholder, size } of areas) {
           context.fillStyle = "#fff";
           context.fillRect(left * xScale, top * yScale, (right - left) * xScale, (bottom - top) * yScale);
           context.fillStyle = "#000";
@@ -83,7 +87,7 @@ try {
             context.fillText(text, (left + 10) * xScale, (top + 6 + index * (size + 4)) * yScale);
           });
         }
-        firstPageCanvas = canvas;
+        paintedCanvases.push(canvas);
       }
 
       const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -100,8 +104,8 @@ try {
       pages.push({ width: canvas.width, height: canvas.height, data: btoa(binary) });
     }
 
-    let firstPageText = "";
-    if (verify && firstPageCanvas) {
+    let sanitizedText = "";
+    if (verify && paintedCanvases.length) {
       const tesseract = await import("/vendor/tesseract/tesseract.esm.min.js");
       const createWorker = tesseract.createWorker ?? tesseract.default?.createWorker;
       const worker = await createWorker("eng", 1, {
@@ -111,15 +115,17 @@ try {
         gzip: false
       });
       await worker.setParameters({ tessedit_pageseg_mode: "4" });
-      firstPageText = (await worker.recognize(firstPageCanvas)).data.text ?? "";
+      for (const canvas of paintedCanvases) {
+        sanitizedText += `${(await worker.recognize(canvas)).data.text ?? ""}\n`;
+      }
       await worker.terminate();
     }
-    return { pages, firstPageText };
-  }, { pdfBase64, layout, dpi: DPI, verify: checkTerms.length > 0 });
+    return { pages, sanitizedText };
+  }, { pdfBase64, layout, areasByPage, dpi: DPI, verify: checkTerms.length > 0 });
 
-  const leaked = checkTerms.filter((term) => rendered.firstPageText.toLowerCase().includes(term.toLowerCase()));
+  const leaked = checkTerms.filter((term) => rendered.sanitizedText.toLowerCase().includes(term.toLowerCase()));
   if (leaked.length) {
-    console.error(`${leaked.length} private term(s) are still readable on page 1; not written.`);
+    console.error(`${leaked.length} private term(s) are still readable; not written.`);
     process.exitCode = 1;
   } else {
     await writeFile(outputPath, buildGrayscaleImagePdf(rendered.pages.map((item) => ({ ...item, data: Buffer.from(item.data, "base64") })), DPI));
