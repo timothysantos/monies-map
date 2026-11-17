@@ -1064,15 +1064,20 @@ Deploying changes the file offered to future installations; existing devices
 keep their local copy until the user installs the new version and chooses
 Replace.
 
-### How do cash entries and the Log cash Shortcut work?
+### How do cash entries, the quick pad and the Log cash Shortcut work?
 
 DOMAIN.md "Cash Entry" has the rules; `docs/flows/cash-entry-flow.md` the
 flow; `docs/audits/cash-entry-route.md` the security notes.
 
 - Routes (`src/server/cash-entry-route.ts`): `GET /api/cash-entries/defaults?person=<id>`
-  (what the pad opens with), `POST /api/cash-entries/create` (the pad's Save;
-  body `{ requestId, personId, amountMinor, currency?, date?, accountId?,
-  description?, categoryName?, note? }`), and the Shortcut Worker's third
+  (what the pad opens with: the wallet, currency, Again chips, and the
+  person's `cards`, `waitingTaps` and `undescribed` quick payments),
+  `POST /api/cash-entries/create` (the pad's Save; body `{ requestId,
+  personId, amountMinor, currency?, date?, way?, accountId?, newPayment?,
+  tapId?, description?, categoryName?, note? }`: `way: "card"` pays by one
+  of the person's own cards and answers 409 `offerTap` while a tap on that
+  card waits, unless `newPayment`; `tapId` finishes that waiting tap through
+  `completeWaitingTapWithAmount`), and the Shortcut Worker's third
   public path `POST /api/shortcuts/cash/create?shortcut_token=<key>` (body
   `{ amount?, text?, requestId?, clientVersion? }`, answers
   `{ ok, entryId, created, notification }`). All bodies go through
@@ -1081,8 +1086,18 @@ flow; `docs/audits/cash-entry-route.md` the security notes.
   decides the fields and saves through `createEntryRecord` with the external
   reference `cash:<requestId>`; a repeated id returns the saved entry
   without recomputing it.
+- Every window and limit of the quick pad is in
+  `src/domain/quick-pad-config.ts` (words reminder 3 days, list 12 rows, tap
+  offer 60 minutes, card order 7 days).
+- Words later: `src/domain/ask-describe-entry.ts` is the `describe_entry`
+  Ask action (validator, change builder, rules reader); the pad's words box
+  is `src/client/quick-pad-words.jsx`, which posts to `/api/ask/turn` with
+  `focus.words` and shows `AskChangeCard`. The reminder is
+  `src/domain/reminders/quick-words-reminder.ts` (one bounded read in
+  `buildRemindersDto`, `loadUndescribedQuickEntries`).
 - The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by Ask's
-  **Cash** chip. Waiting payments live in `src/client/cash-queue.js`
+  **Just paid** chip, or by the "need a few words" reminder on its list
+  (`startWith: "words"`). Waiting payments live in `src/client/cash-queue.js`
   (device storage key `monies.cashWaiting.v1`); `App.jsx` loads Ask's route chunk (which re-exports `flushCashQueue`)
   only when the key exists, once the screen is usable, and on `online`.
 - Zero-decimal currencies are one list, `ZERO_DECIMAL_CURRENCIES` in

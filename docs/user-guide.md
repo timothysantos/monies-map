@@ -1284,31 +1284,64 @@ to Home?" **Half each in Home** turns Splits on for the new entry (it is
 saved when you tap **Save**); **Not this time** puts the question away. It
 only looks at your own past entries and never guesses from one purchase.
 
-### Pay cash in a hurry
+### Paying while travelling
 
-For cash, there is a quicker way than typing. Tap **+** on Entries, then
-**Cash**, the first suggestion under the new entry. A number pad opens at
-the bottom of the screen, where your thumb is:
+With your hands full at the till, write down only the amount. Say what it
+was later, when you sit down.
+
+**At the till: just the amount.** Tap **+** on Entries, then **Just paid**,
+the first suggestion under the new entry. A number pad opens at the bottom
+of the screen, where your thumb is:
 
 1. Type what you paid, for example 3, 5, 000 for 35,000 rupiah.
 2. Tap **Save**.
 
 That is the whole entry. Everything else is already chosen and shown in
-one line at the top, for example "Tim's cash · IDR · Today · Tim": your
-cash wallet (from Settings, Payment ways), the money of the trip you are on
-today (or the money you last paid cash in this week, or your wallet's own),
-today, and you. Tap that line if one of them is wrong. For money with no
-cents, such as rupiah, yen, won and dong, the pad has a **000** key and no
-decimal point.
+one line at the top, for example "Tim's cash · IDR · Today · Tim": how you
+paid (your cash wallet from Settings, Payment ways), the money of the trip
+you are on today (or the money you last paid in this week, or your
+wallet's own), today, and you. Tap that line if one of them is wrong. For
+money with no cents, such as rupiah, yen, won and dong, the pad has a
+**000** key and no decimal point.
 
-![The cash pad in rupiah: Ethan's cash, IDR, Today, Ethan, with 35,000 typed](/faq/guide/phone/thumbs/phone-cash-pad.webp)
+![The pad in rupiah: Ethan's cash, IDR, Today, Ethan, with 35,000 typed](/faq/guide/phone/thumbs/phone-cash-pad.webp)
 
-After **Save** you see what was saved, with **Undo**. You can stop there,
-or tidy it with one tap: a category, **More categories** for the full list,
-**Shared** to put it on Splits the way you usually share, or **Add a note**.
+**Paid by card?** Tap the line, then your card under **Paid with**. The pad
+remembers it for the rest of the day. A card payment in the trip's money is
+saved in your card's money at the day's rate, with what you paid kept
+beside it; when the card's statement comes in, its line replaces this one,
+so it is never counted twice.
+
+![Paid with a card: UOB One, IDR, Today, with 85,000 typed](/faq/guide/phone/thumbs/phone-quick-pad-card.webp)
+
+**Apple Pay didn't send the amount?** Sometimes a terminal asks which money
+to pay in, and the app gets the shop but not the amount. Those payments
+show on the pad under **Apple Pay missed the amount**, for example
+"Periplus Bali, 14:02". Tap it, type the amount, **Save**: that payment is
+finished, not added twice. If you type a card payment while one is waiting
+on the same card, the pad asks "Is this the Periplus Bali payment from
+14:02?" first. **Yes, that one** finishes it; **No, a new payment** saves a
+new one.
+
+**Later: a few words.** After **Save** you see what was saved, with
+**Undo**, a few category suggestions, **More categories**, **Shared**, and
+one box: **What was it?** Type, or tap the microphone on your keyboard and
+say, a few words such as "dinner ramen split with Joyce". The app names
+the payment, picks the category from your words, and puts it on Splits
+with Joyce (half each unless you say otherwise, or the way you usually
+share that kind of payment). It shows the change first; nothing changes
+until you tap **Save**, and **Undo** puts it back.
+
+![Saved: Cash, Rp 35,000, with category suggestions, Shared, the What was it? box, Undo and Add another](/faq/guide/phone/thumbs/phone-cash-saved.webp)
+
+![A few words read as a change: Cash becomes Nasi goreng, on Splits half each with Serene, with Save](/faq/guide/phone/thumbs/phone-quick-words.webp)
+
+Didn't have a moment? Ask gathers them for you: "3 payments from today
+need a few words". **Add words** shows each one with its amount, time and
+card, each with the same box. You can also type into Ask "the 85,000 was
+ramen with Joyce". Payments older than 3 days drop off the list.
+
 **Add another** keeps the pad open for the next payment.
-
-![Saved: Cash, Rp 35,000, with category suggestions, Shared, Add a note, Undo and Add another](/faq/guide/phone/thumbs/phone-cash-saved.webp)
 
 Paid for the same thing before on this trip? It shows under **Again** (for
 example "Coffee 35,000"): one tap fills in the amount, the category and

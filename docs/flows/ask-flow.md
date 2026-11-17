@@ -479,6 +479,7 @@ command can take it back, and Open on the page that shows it.
 | `edit_category` | create: a new name; rename: not a built-in category; colour: a palette colour (any other word opens Settings) | name or colour before → after | `/api/categories/create` (none), `/api/categories/update` (the old name or colour) |
 | `link_plan` | a planned item of the month; its expenses with the words, not yet linked | the line, the count and first 8 | `/api/month-plan/links` with the old links kept (the old links) |
 | `set_trip_event` | see "Trips and events" below | each entry's trip before → after, the count and first 8; "Yes, put all N" over 10, refused over 200; a new trip with no entries: its name and days | `/api/trip-events/entries/set` with `addedBy: "ask"` (`/api/trip-events/undo` with the save's `undoId`); a new one alone: `/api/trip-events/save` (`/api/trip-events/delete` with the made trip's id) |
+| `describe_entry` | a few words about a quick payment (the pad's words box sends the entry in focus with `words: true`; or "the 85,000 was ramen" names it by the amount the person wrote, the newest quick payment of theirs still needing words, last 3 days); the words, a category and a person the person wrote; shares stated; never sharing with the payer themselves (a question back with the people; a person chip reads the words again with that person) | name (while it has the pad's own, else note), category (named, else the rules and everyday words), Splits "Half each with Joyce" (stated, else the usual share, else half, said as assumed) | `/api/entries/update`, then `/api/splits/expenses/add-usual` (`/api/splits/expenses/remove-added` with the save's ids, then `/api/entries/update` with the old values) |
 | `cannot_help` with `blocked` | one of: delete an entry, month or import, import a statement, undo an import, reconcile, accounts, people | a note with the app's reason, then the page opens | none |
 
 #### Trips and events
@@ -1391,7 +1392,8 @@ reminders". They are computed by fixed rules (no AI, no allowance, no model
 call) and read through `GET /api/reminders` once Ask is usable
 (`fetchRequiredQuery`, joining a kept answer for a minute); add mode and the
 Apple Pay Shortcut's card show none. A card's action opens its page with the
-view, month and scope Ask already carries (`goTo`); Later and Got it are kept
+view, month and scope Ask already carries (`goTo`), except "need a few
+words", which opens the quick pad's list here (`target.pad === "words"`); Later and Got it are kept
 on the device (`monies.reminders.v1`). While a card bill reminder shows,
 "Since you last looked" leaves out that bill's headline. The Ask tab's dot is
 the conversation dot, also lit by a reminder this device has not seen. Full
@@ -1429,9 +1431,10 @@ Ask does not own:
 
 - The + and receipt buttons open the card; the old forms stay reachable
   (`+ Add entry`, `+ Add expense`, Edit in form).
-- An empty new entry card's first chip is **Cash**: it opens the cash pad
-  (`docs/flows/cash-entry-flow.md`), which saves through its own command
-  and leaves the card as it was.
+- An empty new entry card's first chip is **Just paid**: it opens the quick
+  pad (`docs/flows/cash-entry-flow.md`; cash or a card, waiting Apple Pay
+  taps, a few words later), which saves through its own command and leaves
+  the card as it was.
 - Save stays disabled until the card has an amount, what it was (not for a
   transfer), a valid date, a wallet, a category and an owner, and a split
   group when Splits is on and more than one group can take it.

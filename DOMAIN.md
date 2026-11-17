@@ -1357,11 +1357,87 @@ Rules:
   a demo reseed clears it, because it names the people and accounts the
   reseed replaces. The Shortcut settings in the same table stay.
 
+### Quick Entry
+
+A payment logged at the till with only its amount, on the quick pad (the
+cash pad, labelled **Just paid**) or by the Log cash Shortcut, and described
+later in a few words (owner brief, 2026-11-17, "amount now, words later").
+It is a Cash Entry paid in cash or by one of the person's own cards.
+
+Canonical terms:
+- `quick entry`: an entry the pad or Log cash saved (external reference
+  `cash:<request id>`, for card payments too)
+- `paid with`: Cash, or one of the person's own active credit cards
+  (`owner_person_id` is the person), most recently used first (this trip's
+  days, else the last 7 days, `CARD_RECENT_DAYS`); the choice is kept on the
+  device for the rest of the day (`monies.padWay.v1`), never on the server
+- `words box`: the one text line after Save (and in the list below) whose
+  few words become a change card through Ask's turn route
+- `need a few words`: a quick entry still undescribed (below)
+
+Code:
+- `src/domain/quick-pad-config.ts` (every window and limit)
+- `src/domain/cash-entry.ts` (`orderPadCards`, `isUndescribedQuickEntry`,
+  `waitingTapForCard`), `src/domain/app-repository-cash-entries.ts`
+  (`loadUndescribedQuickEntries`, the card way and the tap offer in
+  `createCashEntry`), `src/server/cash-entry-route.ts` (`tapId`)
+- `src/domain/ask-describe-entry.ts` (the `describe_entry` Ask action and
+  its rules reader), `src/domain/reminders/quick-words-reminder.ts`
+- `src/client/cash-pad-sheet.jsx`, `quick-pad-words.jsx`
+
+Rules:
+- A card payment in the card's own currency is a plain entry on the card.
+  In another currency (the trip's) it is a Foreign Currency Estimate exactly
+  like an Apple Pay one: the card's currency at the day's rate,
+  `original_amount_minor` and `original_currency` kept, the note "Paid IDR
+  85,000. Saved as about SGD 6.30 ... Your card's SGD amount may differ.",
+  provisional. Its default name is "Card payment". The statement pairing
+  rule already pairs it: a row that prints the purchase's own foreign amount,
+  or a payment-app row ("AMAZE* KULA PADI") when it and the estimate are each
+  other's only fit; an ordinary row ("SHOPEE SG MP") is never taken for it
+  (`tests/quick-pad-api.test.mjs`, near-real Citi Bali rows). No rule change.
+- Another person's card, a card put away, or an account that is not a card
+  is refused (`wallet`); nothing is saved.
+- A waiting tap from the pad: the person's own taps (DOMAIN.md "Waiting
+  Tap") show above Again as "Periplus Bali, 14:02". One tap takes its shop
+  and card; Save sends `tapId` and the pad's amount, and the route finishes
+  the tap through `completeWaitingTapWithAmount` (`completed_by` `app`, the
+  tap's day, time, card, the card for other currencies, the estimate). A
+  retry or a second Save answers with the same entry, never a second one;
+  another person's tap is refused.
+- The tap offer: a card payment while one of the person's taps on that card
+  (or whose card for other currencies is that card) waits, received in the
+  last `TAP_OFFER_WINDOW_MINUTES` (60), saves nothing and answers 409
+  `offerTap`; the pad asks "Is this the Periplus Bali payment from 14:02?"
+  with **Yes, that one** (finishes the tap) and **No, a new payment**
+  (`newPayment: true`). Cash never asks.
+- Need a few words: a quick entry still has the pad's own name ("Cash" or
+  "Card payment"), is in Other (or no category), has no note of the
+  person's, and is from the last `QUICK_WORDS_DAYS` (3) days counting today
+  (`isUndescribedQuickEntry`). A category, a name or a note counts as
+  described.
+- Words later (`describe_entry`, Ask): the person's words become the name
+  while it still has the pad's own (else its note), the category the one
+  they named or the one the words point at (the household's rules, then the
+  everyday words), and "split with NAME" puts it on Splits with that person:
+  the share they stated, else the usual one for that kind of payment
+  (`suggestSplitForEntry`), else half each, said as assumed. One change
+  card, saved through `/api/entries/update` and
+  `/api/splits/expenses/add-usual`, Undo through `remove-added` and the
+  entry as it was. Never applied without Save (the hands-off safe set at
+  creation is unchanged).
+- Ask's reminder "3 payments from today need a few words" (kind
+  `quick_words`): one per person in view, keyed by the newest such entry so
+  a new one brings it back after Later; it opens the pad's list (amount,
+  time, card; no figure while money is hidden), each row with the words box.
+  No AI builds it, nothing is pushed.
+
 ### Cash Entry
 
 A cash payment logged with just an amount (owner brief, 2026-11-17): from
-the cash pad (Entries +, then **Cash** on Ask's new entry card) or the
-"Log cash" Shortcut. It is an ordinary expense entry on the person's cash
+the cash pad (Entries +, then **Just paid** on Ask's new entry card, called
+**Cash** until 17 Nov 2026) or the "Log cash" Shortcut. The same pad pays by
+card too (Quick Entry, above). It is an ordinary expense entry on the person's cash
 wallet; only how its fields are chosen is new. Everything is decided
 before the person types, so Save works with an amount alone.
 
@@ -1369,7 +1445,8 @@ Canonical terms:
 - `cash entry`: the expense the cash command saves (external reference
   `cash:<request id>`; not an Added by source, so it shows like a hand-made
   entry)
-- `cash pad`: the in-app number pad (design.md "Cash pad")
+- `cash pad`: the in-app number pad (design.md "Cash pad"), shown as
+  **Just paid** (the quick pad)
 - `Log cash`: the second Apple-signed Shortcut (`shortcuts/log-cash/`)
 - `waiting to send`: a cash payment kept on the device because its Save
   could not reach the server; it is not an entry until the server confirms
@@ -1824,8 +1901,9 @@ Canonical terms:
   `ask_clarification`, `cannot_help`, and Phase 2's changes to saved data:
   `edit_saved_entry`, `recategorise`, `edit_note`, `link_transfer`,
   `split_group`, `review_matches`, `set_payment_way`, `edit_category`,
-  `link_plan`; and `look_up`, a read-only lookup (see "Ask Habit") the route
-  runs before the real action
+  `link_plan`, `set_trip_event`, `add_usually_shared`, `describe_entry` (a
+  few words about a quick payment, DOMAIN.md "Quick Entry"); and `look_up`,
+  a read-only lookup (see "Ask Habit") the route runs before the real action
 - `change card` (`AskChange`, `src/domain/ask-turn-actions.ts`): a Phase 2
   change as the page shows it: each row that changes before and after, the
   entries it touches (count and first rows), the existing commands it saves
@@ -1839,8 +1917,9 @@ Canonical terms:
   group and plan line names, and the `focus`. Names only: no account, card,
   phone or ID number and no amount from the household's records
 - `focus`: what the message is about: the saved entry (the Apple Pay card,
-  a card saved in this conversation; loaded by id from the household's own
-  rows), the card being filled, the split group Ask was opened for, a
+  a card saved in this conversation, or a quick payment in the pad's words
+  box, `words: true`; loaded by id from the household's own rows), the card
+  being filled, the split group Ask was opened for, a
   Money insights line, or the Entries answer Ask showed last (its month,
   words and categories)
 - `turn reply`: the validated action as the page shows it: an `Entry
@@ -3929,9 +4008,13 @@ Canonical terms:
   (`card_bill:<account>:<statement month>`, `statement:<account>:<month>`,
   `splits:settle_up:<checkpoint>` or `splits:group:<group>:<oldest open
   date>`, `price:<period>|<payee>:<first new charge date>`,
-  `month_close:<month>`). Next month's statement is a new reminder.
-- five kinds: `card bill due`, `statement not imported yet`, `Splits balance
-  waiting`, `subscription price change`, `month ready to close`
+  `month_close:<month>`, `waiting_tap:<tap>`, `quick_words:<person>:<newest
+  entry>`). Next month's statement is a new reminder.
+- kinds: `card bill due`, `statement not imported yet`, `Splits balance
+  waiting`, `subscription price change`, `month ready to close`, `tax relief
+  room`, `waiting tap` (an Apple Pay amount missing) and `need a few words`
+  (quick payments of the last 3 days with only their amount, DOMAIN.md
+  "Quick Entry"; it opens the quick pad's list in Ask)
 - `Later`: put one reminder away until a day (Tomorrow, In 3 days, Next week
   (the coming Monday)), or for good with the kind's own words ("Not for this
   bill / statement / balance / month", "Paid from another account" on a card

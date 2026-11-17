@@ -692,29 +692,49 @@ split).
 
 ## Cash Pad
 
-The fastest way to log a cash payment (DOMAIN.md "Cash Entry";
+The fastest way to log a payment just made, in cash or by card: amount now,
+words later (DOMAIN.md "Cash Entry", "Quick Entry";
 `docs/flows/cash-entry-flow.md`). No new floating control: the Entries +
 opens Ask's new entry card as before, and the first chip of an empty card
-is **Cash** (`ask-chips.js`, `actions.cash`). It opens `cash-pad-sheet.jsx`,
+is **Just paid** (`ask-chips.js`, `actions.cash`; called **Cash** until the
+pad took cards too, when "Cash" no longer said what it does). Its sheet is
+titled **Just paid**. It opens `cash-pad-sheet.jsx`,
 part of Ask's lazy route chunk with its own `cash-pad.css` (a chunk of its own split the first screen's shared code into one more file).
 
 - Phone: a sheet over the whole screen (above the floating bars at 80/81,
   below the category list at 90/91 it can open). From the top: the title
   and close; one quiet line, everything already decided ("Tim's cash · IDR
-  · Today · Tim"), a 44 px button that opens the change panel (wallet,
-  currency, day, who paid, as chips); the amount, large, with the
-  currency's sign; the Again chips; then, anchored at the bottom under the
+  · Today · Tim", or the card's name when paid by card), a 44 px button that
+  opens the change panel (Paid with: Cash then the person's cards; Cash
+  from (only for cash); currency; day; who paid, as chips); the amount,
+  large, with the currency's sign; a chosen tap's or Again chip's line under
+  it; "Apple Pay missed the amount" with one chip per waiting tap ("Periplus
+  Bali, 14:02", no figure); the Again chips (hidden while a tap is chosen);
+  then, anchored at the bottom under the
   thumb, a 3x4 pad (keys at least 56 px, 60 px on a normal phone) and a
   60 px Save across the width. A zero-decimal currency's pad has "000"
   where the decimal key is.
 - Wide screen: the same sheet as a centred 420 px dialog; the keyboard's
   digits, Backspace, "." and Enter work.
+- The tap offer: a card payment while a tap on that card waits shows a
+  butter panel above the pad, "Is this the Periplus Bali payment from 14:02?
+  Apple Pay didn't send its amount.", with **Yes, that one** (accent tint)
+  and **No, a new payment**; the pad and Save stay where they are.
 - After Save: the pad gives way to the saved line on a mint wash
   ("Saved: Cash, Rp 35,000"; the name only while money is hidden), the
   chips (up to 3 categories in the guess order, More categories for the
-  one shared category list, Shared, Add a note), and Undo, Done and Add
-  another (filled) at the bottom. A chip that saved turns mint with a tick
-  and stays in place.
+  one shared category list, Shared), one words box ("What was it?", the
+  placeholder "Like: dinner, split with Joyce", Add) that replaced Add a
+  note, and Undo, Done and Add another (filled) at the bottom. A chip that
+  saved turns mint with a tick and stays in place. The words box's answer is
+  Ask's own change card (`AskChangeCard`, `quick-pad-words.jsx`) in place,
+  with Save and Not now; a question back shows its chips; a saved change
+  updates the saved line.
+- Need a few words: Ask's reminder opens the same sheet on a list (no quiet
+  line, no pad): an eyebrow "2 payments need a few words", one row per
+  payment ("Rp 85,000 · 14:02 · UOB One", the time and card only while money
+  is hidden) with "Add words" in accent; a row opens its words box; a saved
+  one shows "Has its words" in mint. At the bottom Done and Type a payment.
 - Waiting to send: a butter panel above the pad lists payments kept on the
   device, each with Remove, and Send now. Messages and errors are one line
   above it (errors on rose).

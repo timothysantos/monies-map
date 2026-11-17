@@ -1082,11 +1082,13 @@ const SHOTS = [
     }
   },
   {
-    // The cash pad (DOMAIN.md "Cash Entry"): Ethan's cash wallet, a trip in
-    // rupiah on today, an amount typed, then the chips after Save. The
-    // guide's Worker cannot fetch rates, so the save carries the test rate.
-    // Last, because it adds an account, a trip and an entry.
-    name: "phone-cash-pad", device: "phone", reseed: true, also: ["phone-cash-saved"],
+    // The quick pad (DOMAIN.md "Cash Entry", "Quick Entry"): Ethan's cash
+    // wallet, a trip in rupiah on today, an amount typed, the chips and the
+    // words box after Save, a few words read into a change card, then a card
+    // payment ("Paid with" his card). The guide's Worker cannot fetch rates,
+    // so the save carries the test rate. Last, because it adds an account, a
+    // trip and entries.
+    name: "phone-cash-pad", device: "phone", reseed: true, also: ["phone-cash-saved", "phone-quick-words", "phone-quick-pad-card"],
     run: async (page, capture) => {
       const wallet = await (await page.request.post("/api/accounts/create", { data: { name: "Ethan's cash", institution: "Cash", kind: "cash", currency: "SGD", ownerPersonId: "person-ethan" } })).json();
       await page.request.post("/api/settings/payment-ways/save", { data: { personId: "person-ethan", bankTransferAccountId: "", cashAccountId: wallet.accountId } });
@@ -1099,14 +1101,29 @@ const SHOTS = [
       await page.request.post("/api/trip-events/save", { data: { name: "Lombok trip", startDate: shift(-2), endDate: shift(5), currency: "IDR" } });
       await page.route("**/api/cash-entries/create", (route) => route.continue({ headers: { ...route.request().headers(), "x-cash-test-rate": "SGD/IDR=12500" } }));
       await open(page, `/ask?view=person-ethan&mode=add&from=entries`);
-      await page.getByRole("button", { name: "Cash", exact: true }).click();
-      const pad = page.getByRole("dialog", { name: "Cash" });
+      await page.getByRole("button", { name: "Just paid", exact: true }).click();
+      const pad = page.getByRole("dialog", { name: "Just paid" });
       await pad.locator(".cash-pad-line").filter({ hasText: "IDR" }).waitFor();
       for (const name of ["3", "5", "Three zeros"]) await pad.getByRole("button", { name, exact: true }).click();
       await page.waitForTimeout(400);
       await capture("phone-cash-pad");
       await pad.getByRole("button", { name: "Save", exact: true }).click();
       await pad.locator(".cash-pad-saved-line").waitFor();
+      await page.waitForTimeout(400);
+      await capture("phone-cash-saved");
+      await pad.getByRole("textbox", { name: "What was it?" }).fill("nasi goreng split with serene");
+      await pad.getByRole("button", { name: "Add", exact: true }).click();
+      await pad.locator('[data-change-draft="draft"]').waitFor();
+      await page.waitForTimeout(400);
+      await capture("phone-quick-words");
+      await pad.locator('[data-change-draft="draft"]').getByRole("button", { name: "Save", exact: true }).click();
+      await pad.locator('[data-change-draft="saved"]').waitFor();
+      await pad.getByRole("button", { name: "Add another" }).click();
+      await pad.locator(".cash-pad-line").click();
+      const way = pad.locator(".cash-pad-choice-row").filter({ hasText: "Paid with" });
+      await way.getByRole("button").nth(1).click();
+      await pad.getByRole("button", { name: "Done", exact: true }).click();
+      for (const name of ["8", "5", "Three zeros"]) await pad.getByRole("button", { name, exact: true }).click();
       await page.waitForTimeout(400);
     }
   }

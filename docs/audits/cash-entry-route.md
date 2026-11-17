@@ -65,3 +65,36 @@ The defaults read is bounded: one person, the household's accounts, the
 trips on today (LIMIT 20, tolerated missing), and at most 40 of the
 person's cash payments since the earlier of the trip's first day and 7 days
 ago, on the household-and-date index.
+
+## The quick pad: cards, waiting taps, words later (2026-11-17)
+
+Access and writes:
+- `way: "card"` saves only on one of the person's own active credit cards
+  (the card list is read from the household's accounts for that person; an
+  id from the body that is not in it is refused with nothing written). The
+  save is the same `createEntryRecord` batch; `tests/atomic-writes-cash-entries.test.mjs`
+  has a failing-statement test for it.
+- `tapId` finishes only the person's own waiting tap (the body's person must
+  be the tap's), through the waiting tap's own complete command, whose
+  entry and tap completion are one batch (failing-statement test in the same
+  file). A completed tap answers with its entry, never a second one.
+- The tap offer is a refusal (409, nothing written).
+- Words later writes nothing in the turn: the change card's Save posts
+  `/api/entries/update` and `/api/splits/expenses/add-usual`, both existing
+  commands in `ASK_CHANGE_PATHS`, and Undo their reverses.
+
+Privacy and AI:
+- The words box sends the person's words through the existing turn route:
+  the same redaction (`redactText`), the same context (names only, no
+  amounts: the entry in focus is described by name, category, card and
+  day), nothing stored. With AI off, over the allowance or failing, the
+  rules read it (`readDescribeRules`).
+- The waiting taps and cards the pad reads are names and times only; no
+  digits of any card (`tests/quick-pad-api.test.mjs`).
+
+Cost:
+- One allowance unit per words message with AI on (a repair adds one); none
+  with AI off. The pad's defaults read adds three bounded reads (the
+  person's cards' last use in the window, the waiting taps, the quick
+  entries of the last 3 days with LIMIT 48); the reminders read adds one
+  (`tests/page-load-scale-guard.test.mjs`, reminders 16 statements).

@@ -1,8 +1,10 @@
 # Cash entry flow
 
-How a cash payment is logged with an amount alone: the cash pad in the app
-and the "Log cash" Shortcut. Domain rules: DOMAIN.md "Cash Entry". Layout:
-design.md "Cash Pad".
+How a payment is logged with an amount alone: the quick pad in the app
+(**Just paid**: cash or one of the person's cards, and the Apple Pay taps
+that missed their amount) and the "Log cash" Shortcut; then, later, a few
+words about it. Domain rules: DOMAIN.md "Cash Entry", "Quick Entry".
+Layout: design.md "Cash Pad".
 
 ## Who it is for
 
@@ -42,7 +44,7 @@ question wording of other amounts show a no-cents currency in whole units
 After (the cash pad):
 
 1. Tap + (bottom right).
-2. Tap **Cash** (the first chip, at the bottom).
+2. Tap **Just paid** (the first chip, at the bottom; it was **Cash**).
 3. Tap 3, 5, 000 (the pad is already in rupiah, on the cash wallet, today,
    for Tim).
 4. Tap Save.
@@ -50,6 +52,72 @@ After (the cash pad):
 6 taps, no keyboard, no decision; everything under the thumb. With an
 Again chip ("Coffee 35,000") it is 4 taps: +, Cash, the chip, Save.
 From the Lock Screen with Log cash: run it, type 35000, Done.
+
+## Amount now, words later (17 Nov 2026)
+
+Tap counts on a phone, demo data, a Bali trip in IDR on today:
+
+| Payment | Taps | Keyboard |
+| --- | --- | --- |
+| Cash, 35,000 rupiah | 6: +, Just paid, 3, 5, 000, Save | none |
+| Card, first time today | 9: +, Just paid, the line, UOB One, Done, 8, 5, 000, Save | none |
+| Card, again the same day (Paid with is kept) | 6, as cash | none |
+| Apple Pay missed the amount | 4 + the amount: +, Just paid, "Periplus Bali, 14:02", the amount, Save (8 for 450,000) | none |
+| A card payment while a tap on that card waits | + 1: "Yes, that one" (finishes the tap) or "No, a new payment" | none |
+| Words later, right after Save | 2 + the words: the box, Add, Save | a few words, or the keyboard's microphone |
+| Words later, from Ask's reminder | 4 + the words: Add words, the payment, Add, Save | as above |
+
+## Paid with
+
+- The quiet line names how it was paid: the cash wallet, or the card's
+  name. Tap it: **Paid with** shows Cash, then the person's own cards (most
+  recently used on this trip, or in the last 7 days, first; names only).
+  The choice is kept on this phone for the rest of the day
+  (`monies.padWay.v1`); the next day it starts on Cash again.
+- A card payment sends `way: "card"` and `accountId`. In the trip's currency
+  it is saved like an Apple Pay foreign amount: the card's currency at the
+  day's rate, the rupiah kept, "Card payment" as its name, so the card's
+  statement row later replaces it (the estimate pairing rule, no change).
+- "Apple Pay missed the amount": the person's waiting taps, newest first,
+  as "Periplus Bali, 14:02". One tap takes its shop and card (the line names
+  the card; "Periplus Bali · UOB One" under the amount); the pad's amount and
+  Save send `tapId`, and the route finishes the tap with its own complete
+  command (`completed_by` `app`). A lost answer sent again, or a second Save,
+  answers with the same entry.
+- The tap offer: a card payment while a tap on that card waits (the last 60
+  minutes, `TAP_OFFER_WINDOW_MINUTES`) is refused with 409 `offerTap` and
+  nothing saved; the pad asks "Is this the Periplus Bali payment from
+  14:02?". A payment that waited offline and meets a tap later stays in
+  Waiting to send with that question as its reason; the person removes it
+  and types it again.
+
+## Words later
+
+- After Save the chips stay (categories, More categories, Shared) and one
+  words box replaces Add a note: "What was it?", for example "dinner ramen
+  split with joyce", typed or said with the keyboard's microphone.
+- Add sends it to `POST /api/ask/turn` with `focus: { kind: "saved_entry",
+  entryId, words: true }`. The model (or, with AI off, the rules) reports
+  only what was said; the server derives the name (the words, while the
+  entry still has the pad's own name, else the note), the category (named,
+  else the household's rules and the everyday words), the person and the
+  split (stated, else the usual one for that kind of payment, else half
+  each, said as assumed). The answer is Ask's change card in place: Save
+  posts `/api/entries/update` and then `/api/splits/expenses/add-usual`;
+  Undo takes both back. A question back ("Who did you share it with? The
+  people are Tim and Joyce.") shows its chips; a chip reads the words again
+  with that person.
+- Ask's reminder "3 payments from today need a few words" gathers the
+  person's quick payments of the last 3 days that still have only the
+  pad's name, Other and no note. **Add words** opens the pad on that list:
+  each row shows the amount, time and card (no figure while money is
+  hidden) and opens the same words box. Later and Not for these follow the
+  reminder rules; a new quick payment brings it back.
+- Typed straight into Ask: "the 85,000 was ramen with joyce" finds the
+  newest of the person's quick payments still needing words with exactly
+  that amount (as paid, in its currency) and drafts the same card; none
+  says "No payment of 85,000 from the last 3 days is waiting for a few
+  words."
 
 ## The pad
 
@@ -132,6 +200,17 @@ copies the same connection on the cash route.
 - `tests/cash-pad-client.test.mjs`: sends, waits, refusals, the queue, the
   view model (money hidden).
 - `tests/e2e/cash-pad.spec.js`: phone 390 and desktop: amount-only save in
-  rupiah, chips, Undo, Again, a lost answer sent once, thumb reach, keyboard,
-  no wallet. Browser tests add `x-cash-test-rate` because the test Worker
+  rupiah, chips, the words box, Undo, Again, a lost answer sent once, thumb
+  reach, keyboard, no wallet.
+- `tests/quick-pad-api.test.mjs`: the person's own cards and taps only, a
+  card estimate in rupiah, the card's rows replacing pad estimates (near-real
+  Citi Bali rows; an ordinary row never taken), the tap offer and New
+  payment, finishing a tap once, another person's tap refused, the words
+  rule and the reminder.
+- `tests/ask-describe-entry.test.mjs`: the words box with AI off and with
+  the model, Save and Undo through the commands, a partial word, an unknown
+  person and the payer asked back, a person chip, "the 85,000 was ...".
+- `tests/e2e/quick-pad.spec.js`: phone 390 and desktop: a card payment and
+  words later with Splits, a waiting tap finished once and offered before a
+  duplicate (and nothing over the pad), the reminder's list, money hidden. Browser tests add `x-cash-test-rate` because the test Worker
   cannot fetch rates.
