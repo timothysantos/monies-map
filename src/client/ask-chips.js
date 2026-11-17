@@ -2,7 +2,8 @@
 // the question line above it. Pure apart from the handlers it is given:
 // which chips show follows the page's mode and the card's state.
 //
-// - Chat mode, no card: Scan receipt, Paste, Add entry, Add expense.
+// - Chat mode, no card: Scan receipt, Add entry, Add expense (Paste is in
+//   the + menu).
 // - Add mode: "‹ Entries" (or Splits, Ask) first, back to where the person
 //   came from (on the phone's Ask page, where the header has its own back
 //   link, only while the card is untouched); then a pending question's answers, or what fits the card:
@@ -260,8 +261,9 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
       items: /** @type {AskChip[]} */ ([
         // The unsaved card New chat put aside (Ask audit A10), first.
         ...(asideCard ? [{ key: "bring-back", label: askCopy.chips.bringBack, primary: true, onClick: actions.bringBack }] : []),
+        // Paste lives in the message box's + menu: four chips did not fit a
+        // phone, and Add expense was cut off (Ask audit A18).
         { key: "scan", label: askCopy.chips.scanReceipt, onClick: actions.scanReceipt },
-        { key: "paste", label: askCopy.chips.paste, onClick: actions.paste },
         { key: "add-entry", label: askCopy.chips.addEntry, onClick: actions.addEntry },
         { key: "add-expense", label: askCopy.chips.addExpense, onClick: actions.addExpense }
       ]),

@@ -21,8 +21,8 @@ const labels = (result) => result.items.map((item) => item.label);
 const chat = { mode: "chat", from: "", savedEntryId: "", splitGroupId: "" };
 const add = { mode: "add", from: "entries", savedEntryId: "", splitGroupId: "" };
 
-test("chat mode with no card offers Scan receipt, Paste, Add entry, Add expense", () => {
-  assert.deepEqual(labels(buildAskChips({ intent: chat, card: null, context, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
+test("chat mode with no card offers Scan receipt, Add entry, Add expense", () => {
+  assert.deepEqual(labels(buildAskChips({ intent: chat, card: null, context, actions })), ["Scan receipt", "Add entry", "Add expense"]);
 });
 
 test("add mode: back to Entries first, then the empty card's chips, Edit in form last", () => {
@@ -216,14 +216,14 @@ test("a card brought back by Undo leads with Discard until it is changed", async
 test("Try again leads after no connection; Bring it back leads while a card is put aside", async () => {
   const { buildChipRow } = await import("../src/client/ask-chips.js");
   const retry = buildChipRow({ active: { kind: "retry", text: "Koufu dinner $18" }, intent: chat, card: null, context, actions });
-  assert.deepEqual(labels(retry), ["Try again", "Scan receipt", "Paste", "Add entry", "Add expense"]);
-  assert.deepEqual(retry.items.map((item) => Boolean(item.primary)), [true, false, false, false, false]);
+  assert.deepEqual(labels(retry), ["Try again", "Scan receipt", "Add entry", "Add expense"]);
+  assert.deepEqual(retry.items.map((item) => Boolean(item.primary)), [true, false, false, false]);
   assert.equal(retry.items[0].onClick(), "retry");
   const draft = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu lunch" }, context);
   assert.deepEqual(labels(buildChipRow({ active: { kind: "retry", text: "x" }, intent: chat, card: draft, context, actions })), ["Try again", "Back to the unsaved entry"]);
 
   const aside = buildChipRow({ active: null, intent: chat, card: null, context, asideCard: draft, actions });
-  assert.deepEqual(labels(aside), ["Bring it back", "Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.deepEqual(labels(aside), ["Bring it back", "Scan receipt", "Add entry", "Add expense"]);
   assert.equal(aside.items[0].primary, true);
   assert.equal(aside.items[0].onClick(), "bringBack");
   // Nothing put aside, or a card already on screen: no Bring it back.
@@ -253,7 +253,7 @@ test("an answer leads the chips with Open in Entries; a follow-up shows only its
   const base = buildAskChips({ intent: chat, card: null, context, actions });
 
   const answer = buildFilterChips({ focus: { kind: "answer", filter: {} }, base, actions });
-  assert.deepEqual(labels(answer), ["Open in Entries", "Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.deepEqual(labels(answer), ["Open in Entries", "Scan receipt", "Add entry", "Add expense"]);
   assert.equal(answer.items[0].primary, true);
   assert.ok(answer.items.slice(1).every((item) => !item.primary));
 
@@ -332,7 +332,7 @@ test("the card is active until the person says something else; a note after it (
   const asked = [...savedThread, { id: "m2", kind: "me", text: "Am I on track?" }, { id: "n2", kind: "note", text: "…" }];
   const none = findActiveItem({ thread: asked, card: saved, cardSlot: 1, pending: null });
   assert.equal(none, null);
-  assert.deepEqual(labels(buildChipRow({ active: none, intent: chat, card: saved, context, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.deepEqual(labels(buildChipRow({ active: none, intent: chat, card: saved, context, actions })), ["Scan receipt", "Add entry", "Add expense"]);
 
   // The same with an unsaved card: only the way back to it.
   const unsaved = findActiveItem({ thread: asked, card: ready, cardSlot: 1, pending: null });
@@ -356,7 +356,7 @@ test("an open follow-up or view change outranks the card; an answer for a month 
 
   const answer = { kind: "answer", filter: { month: "2031-01" } };
   assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card, context, canOpenAnswer: false, actions })), ["Back to the unsaved entry"]);
-  assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card: null, context, canOpenAnswer: false, actions })), ["Scan receipt", "Paste", "Add entry", "Add expense"]);
+  assert.deepEqual(labels(buildChipRow({ active: answer, intent: chat, card: null, context, canOpenAnswer: false, actions })), ["Scan receipt", "Add entry", "Add expense"]);
 });
 
 test("the note for a question Ask cannot answer says it finds and adds entries", async () => {

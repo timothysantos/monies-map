@@ -56,7 +56,7 @@ test.describe("the Ask page on a phone", () => {
     const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString("en-SG", { month: "short", year: "numeric", timeZone: "UTC" }).replace(/\bSept\b/, "Sep");
     await expect(page.locator(".ask-context")).toHaveText(`Tim · Direct + Shared · ${monthLabel}`);
     const chips = page.getByRole("group", { name: "Suggestions" }).getByRole("button");
-    await expect(chips).toHaveText(["Scan receipt", "Paste", "Add entry", "Add expense"]);
+    await expect(chips).toHaveText(["Scan receipt", "Add entry", "Add expense"]);
     // The tab bar stays; Ask is a page, not a sheet.
     await expect(page.locator("nav.tab-strip")).toBeVisible();
 

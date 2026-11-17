@@ -98,8 +98,8 @@ test("a money answer leads the chips with its links; an open check offers only i
   const active = findActiveItem({ thread, card: null });
   assert.deepEqual(active, { kind: "money-answer", itemId: "a1", links });
   const row = buildChipRow({ active, intent: chat, card: null, context, actions });
-  assert.deepEqual(labels(row), ["Open in Entries", "Open Month", "Scan receipt", "Paste", "Add entry", "Add expense"]);
-  assert.deepEqual(row.items.map((item) => Boolean(item.primary)), [true, false, false, false, false, false]);
+  assert.deepEqual(labels(row), ["Open in Entries", "Open Month", "Scan receipt", "Add entry", "Add expense"]);
+  assert.deepEqual(row.items.map((item) => Boolean(item.primary)), [true, false, false, false, false]);
   assert.deepEqual(row.items[1].onClick(), ["openAnswerLink", links[1]]);
 
   const check = { id: "c1", kind: "money-check", text: "why was May so expensive?", request: {}, candidate: settlementCandidate, status: "open" };

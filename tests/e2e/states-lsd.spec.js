@@ -228,7 +228,7 @@ test.describe("empty", () => {
     await page.goto("/ask?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const note = page.locator(".state-note[data-state='empty']");
     await expect(note.locator(".state-title")).toHaveText("Ask about your money, or add something.");
-    await expect(note.locator(".state-detail")).toHaveText("Type below, or tap a shortcut.");
+    await expect(note.locator(".state-detail")).toHaveText("Type below, or tap a button.");
     await expect(note.getByRole("button")).toHaveCount(0);
   });
 });

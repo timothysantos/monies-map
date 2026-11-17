@@ -73,7 +73,7 @@ export const askCopy = {
   threadLabel: "Conversation",
   newChat: "New chat",
   greeting: "Ask about your money, or add something.",
-  greetingHint: "Type below, or tap a shortcut.",
+  greetingHint: "Type below, or tap a button.",
   sinceLastLooked: "Since you last looked",
   briefHidden: "Reveal money totals to read these insights.",
   // An answer card while money is hidden, and the control beside it (the
