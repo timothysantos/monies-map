@@ -29,13 +29,24 @@ import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { askPlanCopy, formatMonthYear } from "./copy/ask-plan-copy";
-import { moneyInOwnCurrency } from "./formatters";
+import { isZeroDecimalCurrency } from "../domain/cash-entry";
+import { isMoneyPrivacyHidden, moneyWithCurrency } from "./formatters";
 
 /** @typedef {{ key: string, label: string, onClick: () => void, primary?: boolean, back?: boolean, disabled?: boolean }} AskChip */
 
 const MAX_OPTION_CHIPS = 4;
 const MAX_PLAN_OPTION_CHIPS = 6;
 const NOT_A_SPEND_CATEGORY = new Set(["Other", "Transfer", "Income", "Salary", "Other - Income", "Extra Income", "Savings", "Investments"]);
+
+// An amount the person wrote in a currency with no cents, in whole units:
+// "IDR 35,000", not "IDR 35,000.00" (cash-entry.ts ZERO_DECIMAL_CURRENCIES).
+// Any other amount is moneyWithCurrency's.
+function moneyInOwnCurrency(valueMinor, currency = "SGD") {
+  if (isMoneyPrivacyHidden() || !isZeroDecimalCurrency(currency) || valueMinor % 100 !== 0) {
+    return moneyWithCurrency(valueMinor, currency);
+  }
+  return `${String(currency).toUpperCase()} ${new Intl.NumberFormat("en-SG").format(valueMinor / 100)}`;
+}
 
 export function describeQuestion(question, context) {
   if (!question) {
