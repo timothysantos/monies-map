@@ -33,6 +33,7 @@ import {
   declineCardSuggestion,
   declineSplitSuggestion,
   isCardEmpty,
+  isUnchangedSinceUndo,
   markCardSaved,
   markCardSaveFailed,
   markCardSaving,
@@ -1903,6 +1904,7 @@ function AskConversation({
       editing_split_expense: card?.saved?.splitExpenseId
     }),
     undo: () => void undoSave(),
+    discard: () => discardCard(),
     // Try again after "No connection": the words in the message box (the
     // kept message, or what the person changed it to).
     // The unsaved card New chat put aside comes back as the newest item.
@@ -2011,7 +2013,8 @@ function AskConversation({
     composerRef.current?.focus();
   }
 
-  const showSave = Boolean(cardActive && card.status !== "saved" && !composerText.trim());
+  // After Undo the card waits with Send, not Save, until it is changed.
+  const showSave = Boolean(cardActive && card.status !== "saved" && !composerText.trim() && !isUnchangedSinceUndo(card));
   const canSave = Boolean(validation?.canSave) && !working;
   const title = !isAddMode
     ? askCopy.title

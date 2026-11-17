@@ -193,6 +193,24 @@ test("after a save from the Ask tab, Open this entry is the filled chip and ther
   assert.equal(buildAskChips({ intent: add, card: saved, context, actions }).items[0].label, "Back to Entries");
 });
 
+// Ask audit A11: after Undo the full card came back with Save as the big
+// button, inviting the entry straight back.
+test("a card brought back by Undo leads with Discard until it is changed", async () => {
+  const { markCardUndone, isUnchangedSinceUndo } = await import("../src/client/ask-card-model.js");
+  const ready = setCardField(createAskCard(context), { amountInput: "12.50", description: "Koufu lunch" }, context);
+  const undone = markCardUndone(markCardSaved(ready, { entryId: "txn-1" }));
+  assert.equal(isUnchangedSinceUndo(undone), true);
+  const result = buildAskChips({ intent: chat, card: undone, context, actions });
+  assert.equal(result.items[0].label, "Discard");
+  assert.equal(result.items[0].onClick(), "discard");
+  assert.equal(result.items.some((item) => item.primary), false);
+  // Any change and it is a card to save again.
+  const changed = setCardField(undone, { amountInput: "14" }, context);
+  assert.equal(isUnchangedSinceUndo(changed), false);
+  assert.equal(labels(buildAskChips({ intent: chat, card: changed, context, actions })).includes("Discard"), false);
+  assert.equal(isUnchangedSinceUndo(ready), false);
+});
+
 // Ask audit A8 and A10: no connection keeps the words with Try again; New
 // chat puts an unsaved card aside with Bring it back.
 test("Try again leads after no connection; Bring it back leads while a card is put aside", async () => {

@@ -29,7 +29,7 @@
 // thing in the conversation; findActiveItem and buildChipRow (below) pick
 // the row for whatever is newest.
 
-import { isCardEmpty, SHARED_OWNER } from "./ask-card-model";
+import { isCardEmpty, isUnchangedSinceUndo, SHARED_OWNER } from "./ask-card-model";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { askHabitsCopy } from "./copy/ask-habits-copy";
@@ -287,6 +287,10 @@ export function buildAskChips({ intent, card, context, splitGroups = [], entries
   // card nobody has started (docs/flows/ask-flow.md "Back to where you were").
   if (isAddMode && !(headerBack && (card.touched || card.origin))) {
     items.push({ key: "back", label: askCopy.chips.back(backLabel(intent)), back: true, onClick: actions.back });
+  }
+  // Brought back by Undo and not changed: Discard comes first (Ask audit A11).
+  if (isUnchangedSinceUndo(card)) {
+    items.push({ key: "discard", label: askCopy.card.discard, onClick: actions.discard });
   }
   let prompt = "";
   if (suggested) {

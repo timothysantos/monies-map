@@ -623,8 +623,17 @@ export function markCardSaved(card, result) {
 
 // Undo removed the entry: the card is a draft again with the same values,
 // so the person can change it and save once more, as a new entry (a new id).
+// The card comes back after Undo with what it had (`undoneFields` and
+// `undoneShare` are the same objects as its own, until anything changes).
 export function markCardUndone(card) {
-  return { ...card, clientId: newCardClientId(), status: "draft", saved: null, saveError: "" };
+  return { ...card, clientId: newCardClientId(), status: "draft", saved: null, saveError: "", undoneFields: card.fields, undoneShare: card.share };
+}
+
+// True while a card brought back by Undo is unchanged: the person undid it
+// on purpose, so the composer offers Send rather than Save and Discard
+// comes first (Ask audit A11). Every change makes new fields or share.
+export function isUnchangedSinceUndo(card) {
+  return Boolean(card?.status === "draft" && card.undoneFields && card.undoneFields === card.fields && card.undoneShare === card.share);
 }
 
 // A saved entry (the Apple Pay Shortcut opens Ask on one) as a card that is
