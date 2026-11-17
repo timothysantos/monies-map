@@ -1,5 +1,4 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, Delete, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -40,6 +39,19 @@ import "./cash-pad.css";
 // keeps the pad open. A Save that cannot reach the server waits on this
 // device (cash-queue.js) and sends itself later. Lazy: loaded only when the
 // person taps Cash.
+
+// The pad's three glyphs, drawn here (the lucide shapes) so this lazy chunk
+// shares no icon code with the first screen's chunks.
+function Glyph({ size, children }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+const Check = ({ size = 16 }) => <Glyph size={size}><path d="M20 6 9 17l-5-5" /></Glyph>;
+const X = ({ size = 16 }) => <Glyph size={size}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Glyph>;
+const Delete = ({ size = 16 }) => <Glyph size={size}><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" /><path d="m12 9 6 6" /><path d="m18 9-6 6" /></Glyph>;
 
 const PERSON_KEY = "monies.cashPerson.v1";
 const WALLET_KEY = "monies.cashWallet.v1";
@@ -345,7 +357,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             <Dialog.Title className="cash-pad-title">{copy.title}</Dialog.Title>
             <Dialog.Description id="cash-pad-description" className="sr-only">{copy.description}</Dialog.Description>
             <Dialog.Close className="cash-pad-close" aria-label={copy.close}>
-              <X size={20} aria-hidden="true" />
+              <X size={20}/>
             </Dialog.Close>
           </header>
 
@@ -402,15 +414,15 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             {saved ? (
               <div className="cash-pad-saved" role="status">
                 <p className="cash-pad-saved-line">
-                  <Check size={18} aria-hidden="true" />
+                  <Check size={18}/>
                   <span>{copy.saved(savedWhat({ description: saved.description, amountMinor: saved.paidAmountMinor, currency: saved.paidCurrency }, areTotalsVisible))}</span>
                 </p>
                 <div className="cash-pad-chips" aria-label={copy.categoryTitle}>
                   {categoryChips.map((name) => (name === after.category
-                    ? <span key={name} className="cash-pad-chip is-done"><Check size={14} aria-hidden="true" />{name}</span>
+                    ? <span key={name} className="cash-pad-chip is-done"><Check size={14}/>{name}</span>
                     : <button key={name} type="button" className="cash-pad-chip" disabled={after.busy} onClick={() => void changeCategory(name)}>{name}</button>))}
                   {after.category && !categoryChips.includes(after.category)
-                    ? <span className="cash-pad-chip is-done"><Check size={14} aria-hidden="true" />{after.category}</span>
+                    ? <span className="cash-pad-chip is-done"><Check size={14}/>{after.category}</span>
                     : null}
                   <CategoryPickerHost
                     open={pickerOpen}
@@ -426,11 +438,11 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                   />
                   {people.length > 1 ? (
                     after.shared
-                      ? <span className="cash-pad-chip is-done"><Check size={14} aria-hidden="true" />{copy.sharedDone}</span>
+                      ? <span className="cash-pad-chip is-done"><Check size={14}/>{copy.sharedDone}</span>
                       : <button type="button" className="cash-pad-chip" disabled={after.busy} onClick={() => void share()}>{copy.shared}</button>
                   ) : null}
                   {after.noteSaved
-                    ? <span className="cash-pad-chip is-done"><Check size={14} aria-hidden="true" />{copy.noteSaved}</span>
+                    ? <span className="cash-pad-chip is-done"><Check size={14}/>{copy.noteSaved}</span>
                     : (
                       <button
                         type="button"
@@ -528,7 +540,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                   : <button type="button" className="cash-pad-key" aria-label={copy.keys.point} onClick={() => press(".")}>.</button>}
                 <button type="button" className="cash-pad-key" onClick={() => press("0")}>0</button>
                 <button type="button" className="cash-pad-key" aria-label={copy.keys.back} onClick={() => press("back")}>
-                  <Delete size={24} aria-hidden="true" />
+                  <Delete size={24}/>
                 </button>
               </div>
               <button type="button" className="cash-pad-save" disabled={!canSave} onClick={() => void save()}>
