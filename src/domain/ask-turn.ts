@@ -57,6 +57,7 @@ import {
 } from "./ask-turn-actions";
 import { describeUsuallySharedAction, validateUsuallyShared } from "./ask-usually-shared";
 import { describeDescribeAction, validateDescribeEntry } from "./ask-describe-entry";
+import { readCommandIntent } from "./ask-rules-intent";
 import { describeTripEventAction, describeTripEvents, validateSetTripEvent, validateTripPage, validateTripQuestion, type AskTurnTrip } from "./ask-trip-events";
 import type { AccountDto, EntryDraftDto, EntryDraftField, EntryDraftFieldDto, EntryType } from "../types/dto";
 
@@ -880,6 +881,13 @@ function sourceAi<T>(value: T): EntryDraftFieldDto<T> {
 // assumption with one-tap alternatives; it is never a question back, because
 // the person sees the draft and fixes the one field.
 function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, ground: Ground, shared: boolean): AskTurnReply {
+  // "Serene paid me back $50", "delete the Koufu lunch", "open splits": never
+  // a new entry, whatever the model chose. The repair turn is told which
+  // action fits; the route falls back to the rules' reading of it.
+  const notEntry = readCommandIntent(context.text);
+  if (notEntry) {
+    return askBack({ code: "not_an_entry", field: "action", valid: [NOT_ENTRY_ACTION[notEntry.kind]] }, COPY.sayAgain);
+  }
   const raw = action.entry ?? {};
   const base = parseEntrySentence(context.text, context.entry);
   const fields: EntryDraftDto["fields"] = { ...base.fields };
@@ -1000,6 +1008,15 @@ function validateEntryDraft(action: AskTurnAction, context: AskTurnContext, grou
   const createBody = missing.length ? undefined : buildCreateBody(fields);
   return withAssumptions({ kind: "entry_draft", draft: createBody ? { ...draft, createBody } : draft, share }, assumptions);
 }
+
+// The action a message that is not an entry calls for, for the repair turn.
+const NOT_ENTRY_ACTION: Record<NonNullable<ReturnType<typeof readCommandIntent>>["kind"], AskTurnActionName> = {
+  blocked: "cannot_help",
+  paid_back: "draft_settlement",
+  settle_up: "split_group",
+  owes: "answer_question",
+  open_page: "open_page"
+};
 
 // Attach the assumptions a reply carries, when there are any.
 export function withAssumptions(reply: AskTurnReply, assumptions: readonly AskAssumption[]): AskTurnReply {

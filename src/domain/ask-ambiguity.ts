@@ -108,6 +108,9 @@ export const ASK_ERROR_CODES = [
   "search_empty",
   "field_missing",
   "nothing_to_change",
+  // A new entry drafted from a message that is not one: a payment back, a
+  // delete, an import, a page (ask-rules-intent.ts).
+  "not_an_entry",
   "other"
 ] as const;
 export type AskErrorCode = typeof ASK_ERROR_CODES[number];
@@ -130,6 +133,7 @@ export const ASK_REPAIRABLE_CODES: ReadonlySet<AskErrorCode> = new Set<AskErrorC
   "month_invalid",
   "plan_unreadable",
   "question_unclear",
+  "not_an_entry",
   "other"
 ]);
 

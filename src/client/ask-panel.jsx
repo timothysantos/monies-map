@@ -53,6 +53,7 @@ import { AskInsightAnswerCard } from "./ask-insight-answer-card";
 import { buildInsightAnswer, insightExplainBody, readInsightHandoff } from "./ask-insight-answer";
 import { skewCheckLabels } from "./ask-skew-check";
 import { readAnswerIntent } from "../domain/ask-answer-intent";
+import { readCommandIntent } from "../domain/ask-rules-intent";
 import { mentionsPlanOrMonth, readPlanRequest } from "../domain/plan-draft-reader";
 import { AskPlanDraftCard } from "./ask-plan-draft-card";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -1097,6 +1098,18 @@ function AskConversation({
   // The rules' reading (the offline backup): plan request, money question,
   // filter, then an entry draft, exactly as Ask read every message before.
   async function readSentenceByRules(text) {
+    // Never a new entry for a payment back, a delete, an import or a page
+    // (ask-rules-intent.ts). The turn route's rules read these; this is for
+    // when the route could not be reached at all.
+    const command = readCommandIntent(text);
+    if (command?.kind === "open_page") {
+      await showTurnReply(text, { kind: "open_page", page: command.page, params: ["summary", "month", "entries", "splits"].includes(command.page) ? { view: view.id, month: selectedMonth } : {} });
+      return;
+    }
+    if (command) {
+      appendThread(threadItem("note", { text: askCopy.notes.askNotReady }));
+      return;
+    }
     // A search or filter request. While a card is being filled, a plain
     // sentence is a change to it; a question, or a request naming a month,
     // someone's ("Serene's") or an amount limit, is still a search.
