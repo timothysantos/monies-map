@@ -139,6 +139,10 @@ function parseUobCreditCardTransactionRows(
   fileName?: string
 ) {
   const rows: Record<string, string>[] = [];
+  // UOB's export can repeat a block of transactions further down the sheet.
+  // A bank reference names one transaction, so a reference already read is
+  // the same purchase again. Rows without a reference are all kept.
+  const seenReferences = new Set<string>();
   for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRowIndex)) {
     const transactionDate = parseLongDateCell(cellString(row.values.get(0)));
     const postingDate = parseLongDateCell(cellString(row.values.get(1)));
@@ -151,6 +155,12 @@ function parseUobCreditCardTransactionRows(
     const amountMinor = Math.abs(signedAmountMinor);
     const isCredit = signedAmountMinor < 0;
     const descriptionParts = parseUobCardHistoryDescription(rawDescription);
+    if (descriptionParts.reference) {
+      if (seenReferences.has(descriptionParts.reference)) {
+        continue;
+      }
+      seenReferences.add(descriptionParts.reference);
+    }
     const description = descriptionParts.description;
     const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
     rows.push({
