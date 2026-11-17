@@ -312,6 +312,60 @@ used-up cap answers `{ mode: "rules", reason, notice: "demo_allowance" }`
 and the note reads "The demo's Claude allowance is used up for today, so
 Ask is using its built-in rules." instead.
 
+### Rules reading
+
+Audit 2026-11-17 (rules mode, a busy parent on a phone): the rules drafted
+"Serene paid me back $50" as a $50 expense one Save away, opened entry
+drafts for "delete…", "import…" and "settle up…", searched for "make it
+Transport" on a saved entry, offered to switch the whole app's view for
+"it's Serene's" on a card, and left Splits off for "dinner $80 split with
+Serene". Before the page's own readers, the route now reads these with
+`readTurnRules` (`src/domain/ask-turn-rules.ts`) into the action the model
+would send, checked by the same validators, and answers `{ mode: "rules",
+action, reply }` (the page shows it like the model's; `readRulesReply` in
+`ask-turn-api.js` lists the kinds it takes). A message none of these fit
+still answers `{ mode: "rules", reason }` at once, before any data work
+(`mayBeRulesTurn` is the cheap check).
+
+- **Never a new entry** (`readCommandIntent`, `src/domain/ask-rules-intent.ts`,
+  pure and shared with the page): a payment back ("Serene paid me back
+  $50", "I paid Joyce back 20", "repaid", "reimbursed") is
+  `draft_settlement` (naming one person puts "me" on the other side; with
+  neither known, the question "Who paid whom back?" offers the two whole
+  sentences as chips); "settle up (with X | <group>)" is `split_group`
+  settle, whose group question offers "Settle up <group>" chips; a balance
+  ("I owe Serene $20", the whole message) is the who-owes-whom answer;
+  delete, remove, import, upload, undo an import, reconcile, accounts and
+  people are `cannot_help` with `blocked` (the existing note and page);
+  "open | show | go to <page>" (plan is Month) is `open_page`. A verb that
+  starts a shop's name with an amount ("Delete Bistro $12") is still an
+  entry: it must be followed by the, my, this, it, last and the like. If
+  the route cannot be reached at all, the page's own rules check the same
+  reader before drafting: a page opens, anything else gets the "not
+  answered yet" note.
+- **The saved entry in focus**: "note: …" is `edit_note`; "make it | change
+  it to | it's <category>" is `recategorise`; an amount, a person's name or
+  a day there is `edit_saved_entry`. Each is the existing change card, saved
+  through `ASK_CHANGE_PATHS`. A change verb the rules cannot read gets "I
+  couldn't read that change, so nothing changed. Tap Open this entry to
+  change it yourself." A new entry typed after a save is still a new entry.
+- **The card being filled**: "<person>'s", "it's <person>'s", "for
+  <person>", "it's mine" is `edit_draft` with the owner; "split with",
+  "half with", "50/50" is `edit_draft` with the shares (stated, else half
+  each, said as assumed), so the Splits switch turns on.
+- **A new message** with an amount and "split with" or "half with" is
+  `draft_split_expense` (Splits on, the group chosen on the card as for the
+  model's); "make all <shop> <category>" is the bulk `recategorise` card.
+
+AI on gets the same guard: `validateEntryDraft` refuses a `draft_entry`,
+`draft_split_expense` (or `edit_draft` with no card) for a message
+`readCommandIntent` reads as a command, with the repairable code
+`not_an_entry` and the action that fits; if the repair turn does not fix it,
+the route answers with `readTurnRules`' reading. Tests:
+`tests/ask-rules-intent.test.mjs`, `tests/ask-turn-rules-route.test.mjs`,
+the eval bank's `notentry-*`, `saved-*`, `split-with-*` and `draft-its-*`
+messages, `tests/e2e/ask-rules-reading.spec.js` (390 px phone).
+
 ### Three principles
 
 Owner request, 2026-10-14: fix the class of failure, not the phrase. Every
