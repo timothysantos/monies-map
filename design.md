@@ -695,11 +695,39 @@ split).
 The fastest way to log a payment just made, in cash or by card: amount now,
 words later (DOMAIN.md "Cash Entry", "Quick Entry";
 `docs/flows/cash-entry-flow.md`). No new floating control: the Entries +
-opens Ask's new entry card as before, and the first chip of an empty card
-is **Just paid** (`ask-chips.js`, `actions.cash`; called **Cash** until the
+opens Ask's new entry card as before (on a phone with the pad already
+open, below), and the first chip of an empty card is **Just paid** (`ask-chips.js`, `actions.cash`; called **Cash** until the
 pad took cards too, when "Cash" no longer said what it does). Its sheet is
 titled **Just paid**. It opens `cash-pad-sheet.jsx`,
 part of Ask's lazy route chunk with its own `cash-pad.css` (a chunk of its own split the first screen's shared code into one more file).
+
+Amount first (17 Nov 2026; `new-entry-pad.js`, each part a switch in
+`quick-pad-config.ts` `NEW_ENTRY_PAD`, a test override
+`window.__MONIES_MAP_NEW_ENTRY_PAD__` outside production):
+
+- `openPadOnNewEntry`, phone: the Entries + puts `newEntryFromPlus` on its
+  history state (App.jsx, a literal, no import) and Ask opens the pad from
+  its first paint, then clears the mark so a reload or a way back shows the
+  entry. Only that plain +: a link to `/ask?mode=add`, Ask's Add entry, the
+  Splits receipt button, a receipt, an Apple Pay entry and a desktop never
+  open it. No new chunk: the + already loads Ask's.
+- The pad from a new entry has one quiet way out beside Close, **Type it
+  instead** (accent text link, 44 px): it closes the pad and focuses the
+  message box in the same tap (`flushSync`, and the dialog does not hand
+  focus back), so a phone's keyboard comes up; the receipt and paste chips
+  are there too. Not after Save, not on the words list.
+- `amountOpensPad`, phone: on an empty new expense (no words, no amount,
+  not filled from a message, receipt or saved entry; not the Splits
+  receipt button's expense) the card's $0.00 is a button
+  ("Amount, opens Just paid") drawn as the empty field, opening the pad.
+  With content, on income or a transfer, or on a desktop it is the field.
+- `justPaidFirst`: on an empty new entry **Just paid** is the first chip,
+  filled (`is-primary`, the accent), ahead of "‹ Entries".
+- `emptyEntryLow`, phone: the empty new entry's card sits just above the
+  chips (`is-entry-low`, an auto top margin inside the scrolling thread,
+  so an open keyboard only shortens the space above) and its detail rows
+  are left out; with content, once anything on it changes (a date chip), or
+  when a chip opens its row's picker, it is back at the top with its rows.
 
 - Phone: a sheet over the whole screen (above the floating bars at 80/81,
   below the category list at 90/91 it can open). From the top: the title

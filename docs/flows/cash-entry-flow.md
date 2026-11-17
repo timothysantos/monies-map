@@ -41,31 +41,65 @@ your card's currency?" and has no amount to save. The chip row and the
 question wording of other amounts show a no-cents currency in whole units
 ("IDR 35,000", not "IDR 35,000.00").
 
-After (the cash pad):
+After (the cash pad; since "Amount first" the + opens it at once):
 
-1. Tap + (bottom right).
-2. Tap **Just paid** (the first chip, at the bottom; it was **Cash**).
-3. Tap 3, 5, 000 (the pad is already in rupiah, on the cash wallet, today,
+1. Tap + (bottom right). The pad is open.
+2. Tap 3, 5, 000 (the pad is already in rupiah, on the cash wallet, today,
    for Tim).
-4. Tap Save.
+3. Tap Save.
 
-6 taps, no keyboard, no decision; everything under the thumb. With an
-Again chip ("Coffee 35,000") it is 4 taps: +, Cash, the chip, Save.
+5 taps (6 before Amount first, with a Just paid tap), no keyboard, no
+decision; everything under the thumb. With an Again chip ("Coffee 35,000")
+it is 3 taps: +, the chip, Save.
 From the Lock Screen with Log cash: run it, type 35000, Done.
 
 ## Amount now, words later (17 Nov 2026)
 
-Tap counts on a phone, demo data, a Bali trip in IDR on today:
+Tap counts on a phone, demo data, a Bali trip in IDR on today, after
+"Amount first" (below; before it each line had one more tap, Just paid):
 
 | Payment | Taps | Keyboard |
 | --- | --- | --- |
-| Cash, 35,000 rupiah | 6: +, Just paid, 3, 5, 000, Save | none |
-| Card, first time today | 9: +, Just paid, the line, UOB One, Done, 8, 5, 000, Save | none |
-| Card, again the same day (Paid with is kept) | 6, as cash | none |
-| Apple Pay missed the amount | 4 + the amount: +, Just paid, "Periplus Bali, 14:02", the amount, Save (8 for 450,000) | none |
+| Cash, 35,000 rupiah | 5: +, 3, 5, 000, Save (was 6) | none |
+| Card, first time today | 8: +, the line, UOB One, Done, 8, 5, 000, Save (was 9) | none |
+| Card, again the same day (Paid with is kept) | 5, as cash | none |
+| Apple Pay missed the amount | 3 + the amount: +, "Periplus Bali, 14:02", the amount, Save (7 for 450,000) | none |
 | A card payment while a tap on that card waits | + 1: "Yes, that one" (finishes the tap) or "No, a new payment" | none |
 | Words later, right after Save | 2 + the words: the box, Add, Save | a few words, or the keyboard's microphone |
 | Words later, from Ask's reminder | 4 + the words: Add words, the payment, Add, Save | as above |
+
+## Amount first (17 Nov 2026)
+
+Owner feedback: on a new entry "Just paid" was a small chip among others
+and did not read as the next step; the eye and thumb went to the big
+$0.00 at the top of the card, out of thumb reach. Now, on a phone, the new
+entry is three steps: amount, Save, a few words.
+
+- The + on Entries opens the new entry with **Just paid** already open.
+  Only that plain +: a link to a new entry, Ask's own Add entry, the Splits
+  receipt button, a receipt photo, an Apple Pay entry, an edit and the
+  desktop open the entry as before. A reload or coming back to the entry
+  does not open the pad again (the + marks its history state once).
+- The pad's one quiet way out, **Type it instead** beside Close, shows the
+  new entry with the message box focused (the keyboard comes up), for a
+  sentence, a receipt or pasted text. Close shows the same entry.
+- While the new entry is empty: **Just paid** is the first chip, filled,
+  ahead of "‹ Entries"; the card sits just above the chips with its detail
+  rows folded away; its $0.00 opens the pad. Once it has words or an
+  amount, everything is as before (the amount typed in place, the rows,
+  the card at the top).
+- Each part has its switch in `src/domain/quick-pad-config.ts`
+  (`NEW_ENTRY_PAD`: `openPadOnNewEntry`, `amountOpensPad`, `justPaidFirst`,
+  `emptyEntryLow`), all on; off brings back the earlier screen.
+- Desktop: the + opens the Ask panel with no pad, the $0.00 is typed in
+  place, and Just paid leads the chips (`justPaidFirst`).
+- Tests: `tests/new-entry-pad.test.mjs` (every way in, every switch),
+  `tests/ask-chips.test.mjs` (the chip order), `tests/e2e/amount-first.spec.js`
+  (phone 390 and desktop: the 5-tap cash payment, the way out and a typed
+  sentence saved, $0.00 on an empty and a filled entry, other ways in, the
+  switches off, nothing over the pad, card or Save with the keyboard open).
+  Browser tests that tap + and then type use `tapAddEntry` (helpers.js),
+  which takes the way out as a person does.
 
 ## Paid with
 

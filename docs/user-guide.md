@@ -1289,9 +1289,9 @@ only looks at your own past entries and never guesses from one purchase.
 With your hands full at the till, write down only the amount. Say what it
 was later, when you sit down.
 
-**At the till: just the amount.** Tap **+** on Entries, then **Just paid**,
-the first suggestion under the new entry. A number pad opens at the bottom
-of the screen, where your thumb is:
+**At the till: just the amount.** On your phone, tap **+** on Entries. The
+**Just paid** number pad opens straight away at the bottom of the screen,
+where your thumb is:
 
 1. Type what you paid, for example 3, 5, 000 for 35,000 rupiah.
 2. Tap **Save**.
@@ -1305,6 +1305,15 @@ money with no cents, such as rupiah, yen, won and dong, the pad has a
 **000** key and no decimal point.
 
 ![The pad in rupiah: Ethan's cash, IDR, Today, Ethan, with 35,000 typed](/faq/guide/phone/thumbs/phone-cash-pad.webp)
+
+Want to type a sentence or scan a receipt instead? Tap **Type it instead**
+at the top of the pad: the new entry shows, with the message box ready for
+your words. While the entry is still empty, **Just paid** is the first
+button above the message box, and tapping the **$0.00** on the entry opens
+the pad again. On a computer, **+** shows the new entry as before, and
+**Just paid** is its first button.
+
+![The empty new entry low on the screen, above the Just paid button and the message box](/faq/guide/phone/thumbs/phone-entries-add.webp)
 
 **Paid by card?** Tap the line, then your card under **Paid with**. The pad
 remembers it for the rest of the day. A card payment in the trip's money is
@@ -2158,7 +2167,9 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
    [Ask](#ask) (beside the page on a wide screen): type the amount and what
    it was (or say it in the message box, or use a receipt photo), check the
    rows under the card and select **Save**. To use the full form instead,
-   select **Edit in form**.
+   select **Edit in form**. On a phone the **+** opens the **Just paid**
+   number pad first ([Paying while travelling](#paying-while-travelling));
+   tap **Type it instead** for the new entry card.
 3. In the form, choose the **Category**, **Date**, **Wallet** (the account or
    card you paid with), **Owner** (who paid) and **Type** (Expense).
 4. Type the **Amount** and a **Description**. Use the merchant name, such as
@@ -2170,7 +2181,7 @@ Step-by-step recipes. Each assumes you start from the screen named in step 1.
 
 ![Adding an entry on Entries](/faq/guide/desktop/thumbs/entries-add.webp)
 
-![On a phone, the + button opens a new entry card on Ask](/faq/guide/phone/thumbs/phone-entries-add.webp)
+![On a phone, Type it instead shows the new entry card on Ask](/faq/guide/phone/thumbs/phone-entries-add.webp)
 
 Manual entries are marked **Manual provisional** until a bank file confirms
 them ([Record entries before the bank file arrives](#record-entries-before-the-bank-file-arrives)).

@@ -607,12 +607,15 @@ const SHOTS = [
     run: (page) => open(page, `/entries?view=person-ethan&month=${MONTH}`)
   },
   {
-    // The round + button opens the Ask page's new entry card.
+    // The round + button opens Just paid on the Ask page's new entry; its
+    // way out, Type it instead, shows the empty card low, above the chips.
     name: "phone-entries-add", device: "phone",
     run: async (page) => {
       await open(page, `/entries?view=person-ethan&month=${MONTH}`);
       await page.locator(".entries-fab:not(.splits-fab)").click();
+      await page.getByRole("dialog", { name: "Just paid" }).getByRole("button", { name: "Type it instead" }).click();
       await page.locator('[data-ask-card="draft"]').waitFor();
+      await page.locator(".ask-composer textarea, .ask-composer input").first().blur().catch(() => {});
       await page.waitForTimeout(600);
       await hideCaret(page);
     }
@@ -1100,8 +1103,9 @@ const SHOTS = [
       };
       await page.request.post("/api/trip-events/save", { data: { name: "Lombok trip", startDate: shift(-2), endDate: shift(5), currency: "IDR" } });
       await page.route("**/api/cash-entries/create", (route) => route.continue({ headers: { ...route.request().headers(), "x-cash-test-rate": "SGD/IDR=12500" } }));
-      await open(page, `/ask?view=person-ethan&mode=add&from=entries`);
-      await page.getByRole("button", { name: "Just paid", exact: true }).click();
+      // The + on Entries opens the pad at once on a phone.
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      await page.locator(".entries-fab:not(.splits-fab)").click();
       const pad = page.getByRole("dialog", { name: "Just paid" });
       await pad.locator(".cash-pad-line").filter({ hasText: "IDR" }).waitFor();
       for (const name of ["3", "5", "Three zeros"]) await pad.getByRole("button", { name, exact: true }).click();

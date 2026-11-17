@@ -1088,15 +1088,24 @@ flow; `docs/audits/cash-entry-route.md` the security notes.
   without recomputing it.
 - Every window and limit of the quick pad is in
   `src/domain/quick-pad-config.ts` (words reminder 3 days, list 12 rows, tap
-  offer 60 minutes, card order 7 days).
+  offer 60 minutes, card order 7 days), and so are the four switches of
+  "Amount first" (`NEW_ENTRY_PAD`: `openPadOnNewEntry`, `amountOpensPad`,
+  `justPaidFirst`, `emptyEntryLow`; `docs/flows/cash-entry-flow.md`).
+  Their decisions are pure functions in `src/client/new-entry-pad.js`
+  (`tests/new-entry-pad.test.mjs`). Outside production a browser test can
+  switch them with `window.__MONIES_MAP_NEW_ENTRY_PAD__ = { ... }` in an
+  init script. Because the phone's + opens the pad, browser tests that tap
+  + and then type use `tapAddEntry` (`tests/e2e/helpers.js`), which takes the
+  pad's own way out; `openJustPaid` returns the open pad on any width.
 - Words later: `src/domain/ask-describe-entry.ts` is the `describe_entry`
   Ask action (validator, change builder, rules reader); the pad's words box
   is `src/client/quick-pad-words.jsx`, which posts to `/api/ask/turn` with
   `focus.words` and shows `AskChangeCard`. The reminder is
   `src/domain/reminders/quick-words-reminder.ts` (one bounded read in
   `buildRemindersDto`, `loadUndescribedQuickEntries`).
-- The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by Ask's
-  **Just paid** chip, or by the "need a few words" reminder on its list
+- The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by the
+  phone's Entries + (history state `newEntryFromPlus`), the empty card's
+  $0.00 on a phone, Ask's **Just paid** chip, or by the "need a few words" reminder on its list
   (`startWith: "words"`). Waiting payments live in `src/client/cash-queue.js`
   (device storage key `monies.cashWaiting.v1`); `App.jsx` loads Ask's route chunk (which re-exports `flushCashQueue`)
   only when the key exists, once the screen is usable, and on `online`.
