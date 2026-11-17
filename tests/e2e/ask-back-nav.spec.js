@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, reseedDemo, tapAddEntry } from "./helpers";
 
 // Leaving Ask after the Entries + or the Splits receipt button opened it on
 // a phone (docs/flows/ask-flow.md "Back to where you were"): the header's
@@ -48,7 +48,7 @@ async function expectScrollNear(page, top) {
 }
 
 async function openAskFromEntries(page) {
-  await addButton(page).click();
+  await tapAddEntry(page);
   await expect(page).toHaveURL(/\/ask\?.*mode=add.*from=entries/);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
 }
@@ -78,7 +78,8 @@ test.describe("leaving Ask back to where the person was, on a phone", { tag: "@w
     expect(backBox.y + backBox.height).toBeLessThanOrEqual(titleBox.y + 2);
     expect(backBox.x).toBeLessThan(40);
     expect(backBox.height).toBeGreaterThanOrEqual(44);
-    await expect(suggestions(page).getByRole("button").first()).toHaveText("‹ Entries");
+    // Just paid leads the untouched card's chips, then "‹ Entries".
+    await expect(suggestions(page).getByRole("button").nth(1)).toHaveText("‹ Entries");
 
     await back.click();
     await expect(page).toHaveURL(before);
@@ -116,8 +117,8 @@ test.describe("leaving Ask back to where the person was, on a phone", { tag: "@w
     await openEntries(page);
     const before = page.url();
     await openAskFromEntries(page);
-    await page.getByRole("textbox", { name: "Amount" }).fill("23.40");
     await page.getByRole("textbox", { name: "What it was" }).fill("Half-filled kopi");
+    await page.getByRole("textbox", { name: "Amount" }).fill("23.40");
     // Once the card is started, the chip row drops "‹ Entries"; the header
     // link stays, far from Save.
     await expect(suggestions(page).getByRole("button", { name: "‹ Entries" })).toHaveCount(0);
@@ -155,6 +156,8 @@ test.describe("leaving Ask back to where the person was, on a phone", { tag: "@w
     await addButton(page).dispatchEvent("click");
     await expect(page).toHaveURL(/\/ask\?.*mode=add.*from=entries/);
     await expect(sheet).toHaveCount(0);
+    // The + opens the Just paid pad first; its way out shows the entry.
+    await page.getByRole("dialog", { name: "Just paid" }).getByRole("button", { name: "Type it instead" }).click();
 
     await headerBack(page, "Entries").click();
     await expect(page).toHaveURL(before);

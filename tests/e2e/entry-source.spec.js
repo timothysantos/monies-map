@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, postJson, reseedDemo, tapAddEntry } from "./helpers";
 
 // Added by (DOMAIN.md): an entry the Apple Pay Shortcut or Ask saved says so.
 // - The Entries page DTO carries `addedBy` ("apple_pay_shortcut" | "ask")
@@ -196,12 +196,12 @@ test.describe("entry source", { tag: "@webkit" }, () => {
 
   test("Ask's saved cards name the tool: Ask · provisional, Apple Pay · provisional", async ({ page }) => {
     await page.goto(`/entries?view=person-tim&month=${MONTH}`);
-    await page.locator(".entries-fab:not(.splits-fab)").tap();
+    await tapAddEntry(page, { tap: true });
     const draft = page.locator('[data-ask-card="draft"]');
     await expect(draft).toBeVisible({ timeout: 60_000 });
     await expect(draft.locator('[data-chip="state"]')).toHaveCount(0);
-    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
     await page.getByRole("textbox", { name: "What it was" }).fill(`Source saved ${Date.now()}`);
+    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
     await page.getByRole("button", { name: "Save", exact: true }).tap();
     const saved = page.locator('[data-ask-card="saved"]');
     await expect(saved).toBeVisible();

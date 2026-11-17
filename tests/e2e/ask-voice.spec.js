@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, reseedDemo, tapAddEntry } from "./helpers";
 
 // The Ask composer's mic on a phone (docs/flows/ask-flow.md, "Voice input").
 // The browser's speech recognition is replaced in the page by a stand-in the
@@ -59,7 +59,7 @@ function removeSpeechRecognition() {
 
 async function openAskAdd(page) {
   await gotoPageAfterApi(page, `/entries?view=person-tim&month=${MONTH}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
+  await tapAddEntry(page);
   await expect(page).toHaveURL(/\/ask\?.*mode=add/);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
 }

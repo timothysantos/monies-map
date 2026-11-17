@@ -333,11 +333,40 @@ export function leadFigures(page) {
   return { income, invested, spent, planned, savingsTarget: card("Savings target"), kept: income - spent - invested };
 }
 
+// The Entries + button. On a phone it opens the new entry with the Just paid
+// pad already open (src/client/new-entry-pad.js, "Amount first"): by default
+// this takes the pad's own way out, "Type it instead", to the typed new entry
+// as a person does; `pad: "keep"` returns the open pad. On a wide screen the
+// + opens the Ask panel with no pad, and this returns null.
+export async function tapAddEntry(page, { pad = "leave", tap = false } = {}) {
+  const fab = page.locator(".entries-fab:not(.splits-fab)");
+  await (tap ? fab.tap() : fab.click());
+  if ((page.viewportSize()?.width ?? 1280) > 760) return null;
+  const sheet = page.getByRole("dialog", { name: "Just paid" });
+  await expect(sheet).toBeVisible({ timeout: 30_000 });
+  if (pad === "keep") return sheet;
+  await sheet.getByRole("button", { name: "Type it instead" }).click();
+  await expect(sheet).toBeHidden();
+  return null;
+}
+
+// The Entries + to the Just paid pad: on a phone it is open already; on a
+// wide screen the new entry's Just paid chip opens it.
+export async function openJustPaid(page) {
+  const sheet = await tapAddEntry(page, { pad: "keep" });
+  if (!sheet) {
+    await page.getByRole("button", { name: "Just paid", exact: true }).click({ timeout: 60_000 });
+  }
+  const pad = page.getByRole("dialog", { name: "Just paid" });
+  await expect(pad).toBeVisible();
+  return pad;
+}
+
 // Opens the Entries page's new-entry form on a wide screen. The inline "+ Add
 // entry" button left the totals; the round + button opens Ask's new entry
 // card, whose "Edit in form" opens the form (the same route a person takes).
 export async function openEntryComposer(page) {
-  await page.locator(".entries-fab").click();
+  await tapAddEntry(page);
   await page.getByRole("button", { name: "Edit in form" }).click();
   await expect(page.locator(".entry-composer")).toBeVisible();
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
 
-import { gotoPageAfterApi, postJson } from "./helpers";
+import { gotoPageAfterApi, openJustPaid, postJson } from "./helpers";
 
 // The quick pad abroad (design.md "Cash pad"; docs/flows/cash-entry-flow.md;
 // DOMAIN.md "Quick Entry"): at the till only the amount, by cash or by one of
@@ -56,10 +56,7 @@ async function holdTap(page, description) {
 
 async function openPad(page) {
   await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
-  await page.getByRole("button", { name: "Just paid", exact: true }).click({ timeout: 60_000 });
-  const pad = page.getByRole("dialog", { name: "Just paid" });
-  await expect(pad).toBeVisible();
+  const pad = await openJustPaid(page);
   await expect(pad.locator(".cash-pad-line")).toContainText("IDR", { timeout: 30_000 });
   return pad;
 }

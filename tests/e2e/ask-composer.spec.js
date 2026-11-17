@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, reseedDemo, tapAddEntry } from "./helpers";
 
 // The Ask composer on a 375 px phone (design.md "Ask page", "Composer"):
 // one rounded field holding a + glyph, the message box and the mic glyph,
@@ -17,7 +17,7 @@ const RECEIPT_FIXTURE = path.resolve("tests/fixtures/ask/sample-receipt.png");
 
 async function openAskAdd(page) {
   await gotoPageAfterApi(page, `/entries?view=person-tim&month=${MONTH}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
+  await tapAddEntry(page);
   await expect(page).toHaveURL(/\/ask\?.*mode=add/);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
 }
@@ -111,10 +111,11 @@ test.describe("the Ask composer on a phone", () => {
     await openAskAdd(page);
     await expect(message).toHaveAttribute("placeholder", "Type or say it…");
     await check();
-    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
+    // On a phone the empty card's amount opens Just paid: words first.
+    await page.getByRole("textbox", { name: "What it was" }).fill(`Composer fit ${Date.now()}`);
     await expect(message).toHaveAttribute("placeholder", "Anything to change?");
     await check();
-    await page.getByRole("textbox", { name: "What it was" }).fill(`Composer fit ${Date.now()}`);
+    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
     await page.getByLabel("Date", { exact: true }).fill("2026-04-20");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();

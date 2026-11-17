@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
-import { gotoPageAfterApi, loadEntriesPage, loadReferenceData, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadReferenceData, loadSplitsPage, postJson, reseedDemo, tapAddEntry } from "./helpers";
 
 // The Ask page on a phone (docs/flows/ask-flow.md): the Entries + and the
 // Splits receipt buttons open its new entry card; a card filled by hand, by
@@ -19,7 +19,7 @@ const MONTH = "2026-04";
 
 async function openAskAdd(page, { view = "person-tim", month = MONTH } = {}) {
   await gotoPageAfterApi(page, `/entries?view=${view}&month=${month}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
+  await tapAddEntry(page);
   await expect(page).toHaveURL(/\/ask\?.*mode=add/);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
 }
@@ -82,11 +82,15 @@ test.describe("the Ask page on a phone", () => {
     await expect(page.getByRole("heading", { name: "New entry" })).toBeVisible();
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
-    await expect(page.getByRole("group", { name: "Suggestions" }).getByRole("button").first()).toHaveText("‹ Entries");
+    // Just paid leads an empty new entry, then the way back.
+    const firstChips = page.getByRole("group", { name: "Suggestions" }).getByRole("button");
+    await expect(firstChips.nth(0)).toHaveText("Just paid");
+    await expect(firstChips.nth(1)).toHaveText("‹ Entries");
 
-    await page.getByRole("textbox", { name: "Amount" }).fill("12.5");
-    await expect(save).toBeDisabled();
+    // The empty card's amount opens Just paid on a phone: words first.
     await page.getByRole("textbox", { name: "What it was" }).fill(description);
+    await expect(save).toBeDisabled();
+    await page.getByRole("textbox", { name: "Amount" }).fill("12.5");
     await page.getByLabel("Date", { exact: true }).fill("2026-04-20");
     await expect(save).toBeEnabled();
     // An expense reads as money out (rose), before and after the save.
@@ -113,8 +117,8 @@ test.describe("the Ask page on a phone", () => {
   test("a reload while Save is on its way brings the card back, and saving again shows the one entry already made", async ({ page }) => {
     const description = `Ask reload ${Date.now()}`;
     await openAskAdd(page);
-    await page.getByRole("textbox", { name: "Amount" }).fill("7.80");
     await page.getByRole("textbox", { name: "What it was" }).fill(description);
+    await page.getByRole("textbox", { name: "Amount" }).fill("7.80");
     await page.getByLabel("Date", { exact: true }).fill("2026-04-21");
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeEnabled();
@@ -435,8 +439,9 @@ test.describe("the Ask page on a phone", () => {
     await message.fill("");
     await expect(hint).toHaveCount(0);
 
-    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
     await page.getByRole("textbox", { name: "What it was" }).fill(`Ask long note ${Date.now()}`);
+
+    await page.getByRole("textbox", { name: "Amount" }).fill("4.20");
     await page.getByLabel("Date", { exact: true }).fill("2026-04-20");
     await page.getByRole("button", { name: /More details/ }).click();
     const note = page.getByPlaceholder("Add a note");

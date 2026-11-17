@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, postJson } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, postJson, tapAddEntry } from "./helpers";
 
 // A typed "coffee 35000 IDR cash" in Ask's new entry card on a phone, AI off
 // (the rules reader). The rupiah is never taken as dollars: with a saved rate
@@ -30,7 +30,7 @@ async function addCashWallet(page) {
 
 async function typeIntoAsk(page, text) {
   await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
+  await tapAddEntry(page);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
   await page.getByRole("textbox", { name: "Message" }).fill(text);
   await page.getByRole("button", { name: "Send" }).click();

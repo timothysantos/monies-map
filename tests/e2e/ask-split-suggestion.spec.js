@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, reseedDemo, tapAddEntry } from "./helpers";
 
 // The Ask card's split question (docs/flows/ask-flow.md "Split suggestion"):
 // "You usually split this with {name}. Add it to {group}?". The rule has its
@@ -35,10 +35,10 @@ async function stubSuggestion(page, partner, { suggestion = null } = {}) {
 
 async function openCard(page, description) {
   await gotoPageAfterApi(page, `/entries?view=person-tim&month=${MONTH}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
+  await tapAddEntry(page);
   await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
-  await page.getByRole("textbox", { name: "Amount" }).fill("31.40");
   await page.getByRole("textbox", { name: "What it was" }).fill(description);
+  await page.getByRole("textbox", { name: "Amount" }).fill("31.40");
   await page.getByLabel("Date", { exact: true }).fill("2025-10-16");
 }
 

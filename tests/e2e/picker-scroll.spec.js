@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, postJson, reseedDemo, tapAddEntry } from "./helpers";
 
 // The app's phone picker (ResponsiveSelect's sheet, also the Entries filter
 // multi-select) must scroll by touch when it holds more options than fit, so
@@ -212,9 +212,10 @@ test.describe("phone pickers scroll by touch", { tag: "@webkit" }, () => {
   test("Ask: the card's Wallet picker reaches and picks the last wallet", async ({ page, browserName }) => {
     await seedWallets(page);
     await gotoPageAfterApi(page, `/entries?view=person-tim&month=${MONTH}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-    await page.locator(".entries-fab:not(.splits-fab)").tap();
+    await tapAddEntry(page, { tap: true });
     await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
-    await page.locator('[data-ask-row="wallet"]').tap();
+    // The empty card's rows are folded on a phone; its wallet chip opens the row's picker.
+    await page.locator('[data-ask-card="draft"]').getByRole("button", { name: /^Change wallet, / }).tap();
     const label = await expectLastOptionReachable(page, browserName, "Wallet");
     await expect(page.locator('[data-ask-row="wallet"]')).toContainText(label.split(" - ")[0]);
   });

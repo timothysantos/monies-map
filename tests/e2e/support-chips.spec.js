@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, postJson, reseedDemo, tapAddEntry } from "./helpers";
 
 // Tappable Support chips (design.md, "Tappable chips"): a chip for a field
 // you can change opens the same picker or editor as its Detail row (date →
@@ -172,7 +172,7 @@ test.describe("tappable Support chips on a phone", { tag: "@webkit" }, () => {
 
   test("Ask: the draft card's date, wallet and owner chips open their rows' pickers", async ({ page }) => {
     await page.goto(`/entries?view=person-tim&month=${MONTH}`);
-    await page.locator(".entries-fab:not(.splits-fab)").tap();
+    await tapAddEntry(page, { tap: true });
     const card = page.locator('[data-ask-card="draft"]');
     await expect(card).toBeVisible({ timeout: 60_000 });
 

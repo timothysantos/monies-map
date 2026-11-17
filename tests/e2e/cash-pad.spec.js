@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, openJustPaid, postJson, reseedDemo } from "./helpers";
 
 // The cash pad (design.md "Cash pad"; docs/flows/cash-entry-flow.md): from
 // the Entries + button, Just paid opens a number pad already set to Tim's cash
@@ -38,11 +38,7 @@ async function withTestRate(page) {
 
 async function openPad(page, { phone = true } = {}) {
   await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-  await page.locator(".entries-fab:not(.splits-fab)").click();
-  const chip = page.getByRole("button", { name: "Just paid", exact: true });
-  await chip.click({ timeout: 60_000 });
-  const pad = page.getByRole("dialog", { name: "Just paid" });
-  await expect(pad).toBeVisible();
+  const pad = await openJustPaid(page);
   // The defaults have arrived: the quiet line names the wallet.
   await expect(pad.locator(".cash-pad-line")).toContainText("Tim's cash", { timeout: 30_000 });
   if (phone) {
@@ -229,9 +225,7 @@ test.describe("Cash pad on a wide screen", () => {
   test("with no cash wallet the pad asks which wallet, cash first, and saves on the one chosen", async ({ page }) => {
     const spare = await postJson(page, "/api/accounts/create", { name: "Spare cash", institution: "Cash", kind: "cash", currency: "SGD", ownerPersonId: TIM });
     await gotoPageAfterApi(page, `/entries?view=${TIM}&month=${today().slice(0, 7)}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-    await page.locator(".entries-fab:not(.splits-fab)").click();
-    await page.getByRole("button", { name: "Just paid", exact: true }).click({ timeout: 60_000 });
-    const pad = page.getByRole("dialog", { name: "Just paid" });
+    const pad = await openJustPaid(page);
     await expect(pad.locator(".cash-pad-line")).toContainText("Choose a wallet");
     await page.keyboard.type("7");
     await page.keyboard.press("Enter");

@@ -366,7 +366,10 @@ test.describe("desktop Ask", () => {
       // The page beside it did not move.
       expect(page.url()).toBe(before);
       await expect(page.locator(".entry-row").first()).toBeVisible();
-      await expect(suggestions(page).getByRole("button").first()).toHaveText("‹ Entries");
+      // Just paid leads the empty card's chips, filled, then "‹ Entries".
+      await expect(suggestions(page).getByRole("button").first()).toHaveText("Just paid");
+      await expect(suggestions(page).getByRole("button").first()).toHaveClass(/is-primary/);
+      await expect(suggestions(page).getByRole("button").nth(1)).toHaveText("‹ Entries");
 
       await page.getByRole("textbox", { name: "What it was" }).fill(description);
       await page.getByRole("textbox", { name: "Amount" }).fill("12.50");

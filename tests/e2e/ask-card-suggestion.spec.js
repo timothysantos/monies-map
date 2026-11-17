@@ -1,6 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadEntriesPage, loadSettingsPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadSettingsPage, postJson, reseedDemo, tapAddEntry } from "./helpers";
 
 // The Ask card's card question (docs/flows/ask-flow.md "Card suggestion"):
 // "Past {shop} entries were on {card}. Was this on that card too?". The rule
@@ -42,10 +42,10 @@ test.describe("the Ask card's card question on a phone", () => {
     });
     const description = `Card question ${Date.now()}`;
     await gotoPageAfterApi(page, `/entries?view=person-tim&month=${MONTH}`, "/api/entries-page", () => page.locator(".entries-fab:not(.splits-fab)"));
-    await page.locator(".entries-fab:not(.splits-fab)").click();
+    await tapAddEntry(page);
     await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
-    await page.getByRole("textbox", { name: "Amount" }).fill("9.90");
     await page.getByRole("textbox", { name: "What it was" }).fill(description);
+    await page.getByRole("textbox", { name: "Amount" }).fill("9.90");
     await page.getByLabel("Date", { exact: true }).fill("2025-10-16");
 
     await expect(page.locator(".ask-question")).toContainText(`Past ${description} entries were on UOB Lady's. Was this on that card too?`);
