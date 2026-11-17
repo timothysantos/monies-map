@@ -9,7 +9,7 @@
 // food" is food, not a taxi.
 
 const GROUPS: Array<{ categories: string[]; words: string[] }> = [
-  { categories: ["Food & Drinks", "Food and Drinks", "Food & Drink", "Food & Beverage", "Dining", "Eating Out", "Food"], words: ["grab food", "grabfood", "coffee", "kopi", "teh", "latte", "cappuccino", "espresso", "tea", "boba", "bubble tea", "breakfast", "brunch", "lunch", "dinner", "supper", "snack", "snacks", "meal", "food", "drink", "drinks", "cafe", "restaurant", "hawker", "takeaway", "bakery", "beer", "wine", "foodpanda", "deliveroo"] },
+  { categories: ["Food & Drinks", "Food and Drinks", "Food & Drink", "Food & Beverage", "Dining", "Eating Out", "Food"], words: ["grab food", "grabfood", "coffee", "kopi", "teh", "latte", "cappuccino", "espresso", "tea", "boba", "bubble tea", "breakfast", "brunch", "lunch", "dinner", "supper", "snack", "snacks", "meal", "food", "drink", "drinks", "cafe", "restaurant", "hawker", "takeaway", "bakery", "beer", "wine", "foodpanda", "deliveroo", "chicken rice", "tonkotsu", "noodles", "sushi", "pizza", "burger", "laksa", "nasi lemak", "dim sum", "prata", "bak kut teh", "kaya toast"] },
   { categories: ["Groceries", "Grocery", "Supermarket"], words: ["groceries", "grocery", "supermarket", "ntuc", "vegetables", "fruit", "fruits", "milk", "eggs"] },
   { categories: ["Taxi", "Transport", "Transportation", "Ride Hailing"], words: ["grab", "gojek", "taxi", "cab", "uber", "ride", "tada", "comfortdelgro"] },
   { categories: ["Public Transport", "Transport", "Transportation"], words: ["mrt", "bus", "ezlink", "ez-link", "train", "transit"] },

@@ -586,6 +586,11 @@
   color: var(--muted);
 }
 
+/* Hidden money shows no sign: "−$••••" would still say it was spent. */
+html[data-money-privacy="hidden"] .ask-card-amount-sign {
+  display: none;
+}
+
 .ask-card-amount-input {
   min-width: 3ch;
   padding: 0;

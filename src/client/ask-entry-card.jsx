@@ -147,7 +147,11 @@ export function AskEntryCard({
       ) : isEditable ? (
         <label htmlFor={amountId} className={`ask-card-amount-field${card.fields.amountMinor > 0 ? "" : " is-empty"}`}>
           <span className="ask-sr-only">{askCopy.card.amountLabel}</span>
-          <span className="ask-card-amount-prefix" aria-hidden="true">{sign}{currency === "SGD" ? "$" : `${currency} `}</span>
+          <span className="ask-card-amount-prefix" aria-hidden="true">
+            {/* Hidden money shows no sign (ask-route.css), so its direction stays hidden too. */}
+            {sign ? <span className="ask-card-amount-sign">{sign}</span> : null}
+            {currency === "SGD" ? "$" : `${currency} `}
+          </span>
           <input
             id={amountId}
             ref={amountRef}

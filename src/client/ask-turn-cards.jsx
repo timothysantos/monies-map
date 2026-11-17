@@ -120,11 +120,18 @@ export function AskSettlementDraftCard({ item, busy = false, settled = false, on
 
 const changeCopy = copy.change;
 const DATE_FIELDS = new Set(["date"]);
+const SIGNS = { expense: "−", income: "+", transfer: "" };
 
-function changeValue(row, side) {
+// An entry's amount signed as the entry card signs it ("−$7.00" for money
+// out). Hidden money hides the sign with the figure (PrivateMoney).
+function signedAmount(entryType, minor, currency) {
+  return `${SIGNS[entryType] ?? ""}${moneyWithCurrency(minor, currency)}`;
+}
+
+function changeValue(row, side, entryType) {
   const minor = side === "before" ? row.beforeMinor : row.afterMinor;
   if (Number.isInteger(minor)) {
-    return <PrivateMoney className="money-neutral">{moneyWithCurrency(minor, row.currency)}</PrivateMoney>;
+    return <PrivateMoney className="money-neutral">{signedAmount(entryType, minor, row.currency)}</PrivateMoney>;
   }
   const text = row[side];
   if (row.field === "colour" && text) {
@@ -176,7 +183,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
         category={{ colorHex: NEUTRAL_BUBBLE_COLOUR, icon: change.type === "trip_event" || change.type === "trip_event_create" ? Plane : change.type === "usually_shared" ? Users : change.type === "link_transfer" || change.type === "plan_link" ? Link2 : PencilLine }}
         title={<strong className="lsd-title ask-plan-title">{change.title}</strong>}
         subtitle={<span className="ask-plan-subtitle">{subtitleOf(change, choiceId)}</span>}
-        amount={amount ? moneyWithCurrency(amount.amountMinor, amount.currency) : undefined}
+        amount={amount ? signedAmount(amount.entryType, amount.amountMinor, amount.currency) : undefined}
         tone="neutral"
         amountCaption={amount ? formatDay(amount.date) : undefined}
         chips={change.type === "month_note" ? <MetaChip>{formatMonthYear(change.month)}</MetaChip> : undefined}
@@ -190,9 +197,9 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
             label={changeCopy.fields[row.field] ?? row.field}
             value={(
               <span className="ask-plan-change">
-                {hasBefore(row) ? <span className="ask-plan-before ask-change-before">{changeValue(row, "before")}</span> : null}
+                {hasBefore(row) ? <span className="ask-plan-before ask-change-before">{changeValue(row, "before", firstEntry?.entryType)}</span> : null}
                 {hasBefore(row) ? <span aria-hidden="true">→</span> : null}
-                <span className="ask-change-after">{changeValue(row, "after")}</span>
+                <span className="ask-change-after">{changeValue(row, "after", firstEntry?.entryType)}</span>
               </span>
             )}
           />
@@ -211,7 +218,7 @@ export function AskChangeCard({ item, busy = false, settled = false, onSave, onD
                   <span className="ask-change-entry-meta">{[formatDay(entry.date), entry.trip ? tripMove(entry.trip) : entry.detail ?? entry.accountName ?? entry.categoryName].filter(Boolean).join(" · ")}</span>
                 </span>
               )}
-              value={<PrivateMoney className="money-neutral">{moneyWithCurrency(entry.amountMinor, entry.currency)}</PrivateMoney>}
+              value={<PrivateMoney className="money-neutral">{signedAmount(entry.entryType, entry.amountMinor, entry.currency)}</PrivateMoney>}
             />
           ))}
           {change.count > change.entries.length ? <DetailRow readOnly label={changeCopy.more(change.count - change.entries.length)} /> : null}

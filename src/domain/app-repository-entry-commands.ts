@@ -444,7 +444,9 @@ export async function updateEntryNoteRecord(
       entityType: "transaction",
       entityId: input.entryId,
       action: "entry_note_updated",
-      detail: "Updated entry note from linked split note sync."
+      // One command for every note change (Entries, Ask, a linked split's
+      // note), so the line names none of them.
+      detail: "Updated entry note."
     })
   ]);
 
