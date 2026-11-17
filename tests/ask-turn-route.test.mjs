@@ -263,7 +263,8 @@ test("negative: without the demo's visitor cap the allowance note stays producti
   await db.prepare("INSERT INTO ai_assist_daily_usage (household_id, usage_day, used_units) VALUES ('household-default', ?, 4)").bind(new Date().toISOString().slice(0, 10)).run();
   const { payload } = await turn(db, { text: "lunch 12" }, { ai, vars: { AI_ASSIST_DAILY_LIMIT: "4" }, headers: visitor("198.51.100.4") });
   assert.equal(payload.mode, "rules");
-  assert.equal(payload.notice, undefined);
+  // Production's own used-up note (Ask audit 2, B31), never the demo's.
+  assert.equal(payload.notice, "allowance_used");
   assert.match(payload.reason, /optional AI allowance/);
   assert.deepEqual(await rows(db, "SELECT household_id FROM ai_assist_daily_usage WHERE household_id LIKE 'demo-visitor:%'"), []);
 });
