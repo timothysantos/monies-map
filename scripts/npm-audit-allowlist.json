@@ -1,0 +1,12 @@
+{
+  "comment": "Advisories the merge gate tolerates. Only for unfixable dev-tooling advisories; see docs/developer-guide.md, 'The npm audit allowlist'. scripts/check-npm-audit.mjs enforces every rule.",
+  "entries": [
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "reason": "picomatch ReDoS, dev build tooling only, no patched release exists; npm audit --omit=dev is clean",
+      "added": "2026-11-18",
+      "reviewBy": "2026-12-18"
+    }
+  ]
+}

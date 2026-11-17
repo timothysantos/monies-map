@@ -210,19 +210,37 @@ hashed files under `/assets/` immutable.
 
 ## Which gates must pass before a merge?
 
-`npm run verify` is the local merge gate: `npm audit`, strict TypeScript for
+`npm run verify` is the local merge gate: the dependency audit
+(`npm run audit`, see below), strict TypeScript for
 the Worker and the client, lint, unit and parser contracts, the production
 build, the first-screen bundle budget (`npm run check:bundle`) and the smoke
 bundle. Run the full browser suite (`npm run test:e2e:sharded`) before merging
 a change to shared route, settings, import, entry, month or split behaviour.
 The house rules are in `AGENTS.md`.
 
+### The npm audit allowlist
+
+`npm run audit` runs `npm audit` and fails on any high or critical advisory.
+The one exception is `scripts/npm-audit-allowlist.json`: a short list of
+advisories nobody can fix yet, each with a reason, the date it was added and a
+review-by date 30 days later. It is only for dev-tooling advisories with no
+patched release; never use it to wave through something that can be upgraded.
+The script prints every advisory it allowed, and why, on each run. It still
+fails when:
+
+- an advisory on the list now has a non-breaking fix: upgrade, then remove the entry;
+- the review-by date has passed: look again, then fix it or extend the date with a new reason;
+- the advisory reaches an app dependency: `npm audit --omit=dev` is checked with no allowlist at all.
+
+To remove an entry, delete it from the `entries` list in the JSON file and run
+`npm run audit`. The decision rules are tested in `tests/check-npm-audit.test.mjs`.
+
 ## How does CI run?
 
 GitHub Actions (`.github/workflows/verify.yml`) runs the same checks as
 `npm run verify` plus the full browser suite, split into parallel jobs:
 
-- **audit, types, lint, build, bundle**: `npm audit`, both typechecks, lint,
+- **audit, types, lint, build, bundle**: `npm run audit`, both typechecks, lint,
   the production build and the bundle budget.
 - **unit 1/3 to 3/3**: the unit and contract tests split by file (the
   `npm run test:unit` runner script with `--test-shard`), two files at a
