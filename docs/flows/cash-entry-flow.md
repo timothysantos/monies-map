@@ -79,7 +79,7 @@ entry is three steps: amount, Save, a few words.
   Only that plain +: a link to a new entry, Ask's own Add entry, the Splits
   receipt button, a receipt photo, an Apple Pay entry, an edit and the
   desktop open the entry as before. A reload or coming back to the entry
-  does not open the pad again (the + marks its history state once).
+  does not open the pad again (Ask marks that history entry once shown).
 - The pad's one quiet way out, **Type it instead** beside Close, shows the
   new entry with the message box focused (the keyboard comes up), for a
   sentence, a receipt or pasted text. Close shows the same entry.

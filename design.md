@@ -705,12 +705,14 @@ Amount first (17 Nov 2026; `new-entry-pad.js`, each part a switch in
 `quick-pad-config.ts` `NEW_ENTRY_PAD`, a test override
 `window.__MONIES_MAP_NEW_ENTRY_PAD__` outside production):
 
-- `openPadOnNewEntry`, phone: the Entries + puts `newEntryFromPlus` on its
-  history state (App.jsx, a literal, no import) and Ask opens the pad from
-  its first paint, then clears the mark so a reload or a way back shows the
-  entry. Only that plain +: a link to `/ask?mode=add`, Ask's Add entry, the
+- `openPadOnNewEntry`, phone: Ask knows the plain + by the place it kept
+  (`askOrigin` with `from: "entries"` on the history entry; only the
+  phone's Entries + hands one from Entries), opens the pad from its first
+  paint, then marks the entry (`newEntryPadShown`) so a reload or a way
+  back shows the entry. A link to `/ask?mode=add`, Ask's Add entry, the
   Splits receipt button, a receipt, an Apple Pay entry and a desktop never
-  open it. No new chunk: the + already loads Ask's.
+  open it. App.jsx and the first screen are unchanged; the + already loads
+  Ask's chunk.
 - The pad from a new entry has one quiet way out beside Close, **Type it
   instead** (accent text link, 44 px): it closes the pad and focuses the
   message box in the same tap (`flushSync`, and the dialog does not hand

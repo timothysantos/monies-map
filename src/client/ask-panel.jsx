@@ -99,7 +99,7 @@ import "./ask-route.css";
 // The cash pad (design.md "Cash pad") ships in Ask's lazy chunk: a chunk of
 // its own split the first screen's shared code into one more file.
 import CashPadSheet from "./cash-pad-sheet";
-import { amountOpensPad, emptyEntrySitsLow, FROM_PLUS_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "./new-entry-pad";
+import { amountOpensPad, emptyEntrySitsLow, PAD_SHOWN_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "./new-entry-pad";
 import { isMobileLayout, useIsMobileLayout } from "./use-viewport";
 
 // Waiting cash payments are sent from App.jsx through this chunk.
@@ -286,13 +286,13 @@ function AskConversation({
   // How the quick pad opens: on the number pad, or (from the "need a few
   // words" reminder) on that person's list of payments to describe.
   const [cashPadStart, setCashPadStart] = useState({ startWith: "pad", personId: "" });
-  // The + mark is used once: cleared from this history entry, so a reload or
+  // The + opens the pad once: this history entry is marked, so a reload or
   // coming back to it shows the entry, not the pad again.
   useEffect(() => {
     if (!arrivalOpensPad) return;
     setCashPadStart({ startWith: "pad", personId: "" });
     setCashPadOpen(true);
-    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: { ...location.state, [FROM_PLUS_STATE]: false } });
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: { ...location.state, [PAD_SHOWN_STATE]: true } });
   }, [arrivalOpensPad, location, navigate]);
   const [openPicker, setOpenPicker] = useState("");
   const [savedPicker, setSavedPicker] = useState(false);

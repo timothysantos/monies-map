@@ -1104,7 +1104,7 @@ flow; `docs/audits/cash-entry-route.md` the security notes.
   `src/domain/reminders/quick-words-reminder.ts` (one bounded read in
   `buildRemindersDto`, `loadUndescribedQuickEntries`).
 - The pad (`src/client/cash-pad-sheet.jsx`) is a lazy chunk opened by the
-  phone's Entries + (history state `newEntryFromPlus`), the empty card's
+  phone's Entries + (its kept place `askOrigin.from` "entries"), the empty card's
   $0.00 on a phone, Ask's **Just paid** chip, or by the "need a few words" reminder on its list
   (`startWith: "words"`). Waiting payments live in `src/client/cash-queue.js`
   (device storage key `monies.cashWaiting.v1`); `App.jsx` loads Ask's route chunk (which re-exports `flushCashQueue`)

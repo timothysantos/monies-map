@@ -19,15 +19,18 @@ export function newEntryPadConfig() {
   return { ...NEW_ENTRY_PAD, ...(override && typeof override === "object" ? override : {}) };
 }
 
-// The history state the Entries + puts on its way to Ask. Only that plain +
-// carries it: a quick-entry link, a shared receipt, pasted text, Ask's own
-// Add entry and an edit all reach Ask without it.
-export const FROM_PLUS_STATE = "newEntryFromPlus";
+// How Ask knows the plain + from Entries brought it: the place the + kept
+// rides on the history entry as `askOrigin` with `from: "entries"`
+// (App.jsx openAskFromPage, ask-origin.js), and only the phone's Entries +
+// hands one from Entries. A link to a new entry, a shared receipt, pasted
+// text, Ask's own Add entry and an edit all reach Ask without it, so the
+// first screen carries nothing new. Ask then marks the entry with
+// PAD_SHOWN_STATE, so a reload or a way back does not open the pad again.
+export const PAD_SHOWN_STATE = "newEntryPadShown";
 
 /**
  * Whether Ask opens the pad as the new entry appears: a phone, the plain +
- * from Entries (Ask clears the mark once used, so a reload or a way back
- * does not open it again), a new entry nobody has started, and the switch
+ * from Entries not yet used, a new entry nobody has started, and the switch
  * on.
  * @param {{ intent: { mode: string, from: string, savedEntryId?: string }, state: any, card: any, isPhone: boolean, config: NewEntryPadConfig }} input
  */
@@ -39,7 +42,8 @@ export function shouldOpenPadOnArrival({ intent, state, card, isPhone, config })
     && intent.mode === "add"
     && intent.from === "entries"
     && !intent.savedEntryId
-    && state?.[FROM_PLUS_STATE] === true
+    && state?.askOrigin?.from === "entries"
+    && state?.[PAD_SHOWN_STATE] !== true
   );
 }
 

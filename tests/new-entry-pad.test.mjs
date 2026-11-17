@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { NEW_ENTRY_PAD } from "../src/domain/quick-pad-config.ts";
 import { createAskCard, setCardField, setCardVariant } from "../src/client/ask-card-model.js";
-import { amountOpensPad, emptyEntrySitsLow, FROM_PLUS_STATE, justPaidLeads, newEntryPadConfig, shouldOpenPadOnArrival } from "../src/client/new-entry-pad.js";
+import { amountOpensPad, emptyEntrySitsLow, justPaidLeads, PAD_SHOWN_STATE, newEntryPadConfig, shouldOpenPadOnArrival } from "../src/client/new-entry-pad.js";
 
 const context = {
   today: "2026-11-17",
@@ -19,7 +19,7 @@ const context = {
 const on = { openPadOnNewEntry: true, amountOpensPad: true, justPaidFirst: true, emptyEntryLow: true };
 const off = { openPadOnNewEntry: false, amountOpensPad: false, justPaidFirst: false, emptyEntryLow: false };
 const plus = { mode: "add", from: "entries", savedEntryId: "", splitGroupId: "" };
-const plusState = { askOrigin: { id: "1" }, [FROM_PLUS_STATE]: true };
+const plusState = { askOrigin: { id: "1", from: "entries", path: "/entries?view=person-tim" } };
 
 test("every switch is on by default and the config reads them as set", () => {
   assert.deepEqual({ ...NEW_ENTRY_PAD }, on);
@@ -31,15 +31,17 @@ test("only the plain + from Entries on a phone opens the pad on arrival", () => 
   const card = createAskCard(context);
   const base = { intent: plus, state: plusState, card, isPhone: true, config: on };
   assert.equal(shouldOpenPadOnArrival(base), true);
-  // Desktop, the mark already used (Ask sets it to false), an entry the
+  // Desktop, the entry already marked (Ask marks it once shown), an entry the
   // person had started before leaving, the switch off.
   assert.equal(shouldOpenPadOnArrival({ ...base, isPhone: false }), false);
-  assert.equal(shouldOpenPadOnArrival({ ...base, state: { ...plusState, [FROM_PLUS_STATE]: false } }), false);
+  assert.equal(shouldOpenPadOnArrival({ ...base, state: { ...plusState, [PAD_SHOWN_STATE]: true } }), false);
   assert.equal(shouldOpenPadOnArrival({ ...base, card: setCardField(card, { description: "Taxi" }, context) }), false);
   assert.equal(shouldOpenPadOnArrival({ ...base, card: { ...card, status: "saved" } }), false);
   assert.equal(shouldOpenPadOnArrival({ ...base, config: { ...on, openPadOnNewEntry: false } }), false);
-  // A quick-entry link or a shared receipt: same intent, no + state.
-  assert.equal(shouldOpenPadOnArrival({ ...base, state: { askOrigin: { id: "1" } } }), false);
+  // A link straight to a new entry: same intent, no place kept by the +;
+  // the Splits receipt button keeps one from Splits.
+  assert.equal(shouldOpenPadOnArrival({ ...base, state: {} }), false);
+  assert.equal(shouldOpenPadOnArrival({ ...base, state: { askOrigin: { id: "1", from: "splits" } } }), false);
   assert.equal(shouldOpenPadOnArrival({ ...base, state: null }), false);
   // Ask's own Add entry (from: ask), the Splits receipt button, an Apple Pay
   // entry opened from its notification, and the chat.
@@ -49,12 +51,13 @@ test("only the plain + from Entries on a phone opens the pad on arrival", () => 
   assert.equal(shouldOpenPadOnArrival({ ...base, intent: { ...plus, mode: "chat" } }), false);
 });
 
-test("the Entries + is the one place that marks its way to Ask (App.jsx keeps the key as a literal, off the first screen's imports)", async () => {
+test("only the Entries + hands Ask a place kept from Entries, and App.jsx needs nothing new for it", async () => {
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("../src/client/App.jsx", import.meta.url), "utf8");
-  assert.equal(app.split(`${FROM_PLUS_STATE}: true`).length - 1, 1);
-  assert.match(app, new RegExp(`\\{ mode: "add", from: "entries" \\}\\), "entries", \\{ ${FROM_PLUS_STATE}: true \\}`));
-  assert.doesNotMatch(app, /from "\.\/new-entry-pad"/);
+  const calls = app.match(/openAskFromPage\([^;]*\);/g) ?? [];
+  assert.equal(calls.filter((call) => call.endsWith(', "entries");')).length, 1);
+  assert.match(calls.find((call) => call.endsWith(', "entries");')), /\{ mode: "add", from: "entries" \}/);
+  assert.doesNotMatch(app, /new-entry-pad|newEntryPad/);
 });
 
 test("the $0.00 opens the pad only on an empty new expense on a phone", () => {
