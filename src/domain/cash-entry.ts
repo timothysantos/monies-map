@@ -318,6 +318,75 @@ export function buildCashAgainChips(rows: readonly CashAgainSource[]): CashAgain
   return chips;
 }
 
+// ---------------------------------------------------------------------------
+// Card payments and quick entries (DOMAIN.md "Quick Entry")
+
+// The name an amount-only card payment is saved with, until the person says
+// what it was.
+export const CARD_DEFAULT_DESCRIPTION = "Card payment";
+
+// Whether a description is one of the pad's own names (nothing said yet).
+export function isPadDefaultDescription(description: string | null | undefined) {
+  return description === CASH_DEFAULT_DESCRIPTION || description === CARD_DEFAULT_DESCRIPTION;
+}
+
+export interface PadCardFact {
+  id: string;
+  name: string;
+  currency: string;
+}
+
+// The person's cards for "Paid with", most recently used first (the day of
+// their last payment on it in the window, `lastUsed`), then by name. Cards
+// with no payment in the window keep their name order after the used ones.
+export function orderPadCards(cards: readonly PadCardFact[], lastUsed: ReadonlyMap<string, string>): PadCardFact[] {
+  return [...cards].sort((left, right) => {
+    const leftDay = lastUsed.get(left.id) ?? "";
+    const rightDay = lastUsed.get(right.id) ?? "";
+    return rightDay.localeCompare(leftDay) || left.name.localeCompare(right.name);
+  });
+}
+
+export interface QuickEntryFact {
+  date: string;
+  description: string;
+  categoryName: string | null;
+  // The note the person wrote (without the line a foreign amount adds).
+  personNote: string | null;
+  // transactions.external_reference: a quick entry's starts with "cash:".
+  reference: string | null;
+}
+
+// A quick entry still waiting for a few words: made on the pad (or by Log
+// cash), still the pad's own name, still in Other, no note of the person's,
+// and from the last `days` days counting today.
+export function isUndescribedQuickEntry(entry: QuickEntryFact, today: string, days: number) {
+  return Boolean(entry.reference?.startsWith(CASH_REFERENCE_PREFIX))
+    && isPadDefaultDescription(entry.description)
+    && (!entry.categoryName || entry.categoryName === "Other")
+    && !entry.personNote?.trim()
+    && entry.date <= today
+    && entry.date >= addDays(today, -(days - 1));
+}
+
+export interface PadTapFact {
+  id: string;
+  accountId: string;
+  otherCurrencyAccountId: string;
+  receivedAt: string;
+}
+
+// The waiting tap a card payment typed on the pad may be: the newest one on
+// that card (or whose card for other currencies is that card) received in
+// the last `windowMinutes`. Null when none.
+export function waitingTapForCard<T extends PadTapFact>(taps: readonly T[], input: { cardId: string; now: string; windowMinutes: number }): T | null {
+  const since = new Date(new Date(input.now).getTime() - input.windowMinutes * 60_000).toISOString();
+  const fits = taps.filter((tap) => (tap.accountId === input.cardId || tap.otherCurrencyAccountId === input.cardId)
+    && tap.receivedAt >= since && tap.receivedAt <= input.now);
+  fits.sort((left, right) => right.receivedAt.localeCompare(left.receivedAt));
+  return fits[0] ?? null;
+}
+
 // The Shortcut's reply notification: "Saved: Coffee, Rp 35,000 cash".
 export function describeSavedCash(input: { description: string; amountMinor: number; currency: string }) {
   return `Saved: ${input.description}, ${formatCashAmount(input.amountMinor, input.currency)} cash`;

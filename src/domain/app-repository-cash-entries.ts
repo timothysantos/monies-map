@@ -18,10 +18,18 @@ import {
   FxRateUnavailableError
 } from "./foreign-currency";
 import { PAYMENT_WAYS_SETTINGS_KEY, parseStoredPaymentWays } from "./payment-ways";
+import { readWaitingTapRows } from "./waiting-tap-statements";
+import { CARD_RECENT_DAYS, QUICK_WORDS_DAYS, QUICK_WORDS_LIST_LIMIT, TAP_OFFER_WINDOW_MINUTES } from "./quick-pad-config";
+import { entryTimeInAppTimeZone } from "../lib/entry-time";
 import {
   addDays,
   buildCashAgainChips,
+  CARD_DEFAULT_DESCRIPTION,
   CASH_DEFAULT_DESCRIPTION,
+  isUndescribedQuickEntry,
+  orderPadCards,
+  waitingTapForCard,
+  type PadCardFact,
   CASH_NOTE_MAX_LENGTH,
   CASH_RECENT_DAYS,
   cashEntryReference,
@@ -40,6 +48,15 @@ import { todayInAppTimeZone } from "../lib/app-calendar";
 export { FxRateUnavailableError };
 
 const CASH_RECENT_ROW_LIMIT = 40;
+
+// A card payment typed while an Apple Pay tap on that card waits for its
+// amount: nothing is saved, and the pad offers the tap first (DOMAIN.md
+// "Quick Entry"). The person may still save it as a new payment.
+export class WaitingTapOfferError extends Error {
+  constructor(readonly tap: PadWaitingTap) {
+    super(`Is this the ${tap.merchant} payment from ${tap.time}?`);
+  }
+}
 
 export class CashEntryRefusedError extends Error {
   constructor(message: string, readonly code: "person" | "amount" | "currency" | "wallet" | "category" | "request" | "note") {
@@ -78,6 +95,39 @@ export interface CashEntryDefaultsDto {
   // The person's most used categories on cash lately, for the chips after
   // Save (most used first).
   usualCategories: string[];
+  // "Paid with": the person's own active cards, most recently used on this
+  // trip (or in the last 7 days) first. Names only, never digits.
+  cards: PadCardFact[];
+  // The person's Apple Pay taps still waiting for their amount, newest first.
+  waitingTaps: PadWaitingTap[];
+  // The person's quick entries still waiting for a few words, newest first.
+  undescribed: QuickEntryToDescribe[];
+}
+
+export interface PadWaitingTap {
+  id: string;
+  merchant: string;
+  date: string;
+  // The household's clock time the tap arrived, "HH:MM".
+  time: string;
+  accountId: string;
+  accountName: string;
+  otherCurrencyAccountId: string;
+  receivedAt: string;
+}
+
+export interface QuickEntryToDescribe {
+  entryId: string;
+  personId: string;
+  date: string;
+  // "HH:MM" when the entry has a time, else "".
+  time: string;
+  // What was paid, in the currency paid.
+  amountMinor: number;
+  currency: string;
+  accountName: string;
+  description: string;
+  categoryName: string;
 }
 
 interface AccountRow {
@@ -207,6 +257,116 @@ function personNote(note: string | null) {
   return lines.join("\n") || null;
 }
 
+// The person's own active cards (credit cards they own), most recently
+// used by them since `since` first.
+async function loadPadCards(db: D1Database, accounts: AccountRow[], personId: string, since: string, today: string) {
+  const cards = accounts
+    .filter((row) => row.is_active && row.account_kind === "credit_card" && row.owner_person_id === personId)
+    .map((row) => ({ id: row.id, name: row.account_name, currency: row.currency.toUpperCase() }));
+  if (!cards.length) return [];
+  const used = await db
+    .prepare(`
+      SELECT account_id, MAX(transaction_date) AS last_date
+      FROM transactions
+      WHERE household_id = ? AND owner_person_id = ? AND entry_type = 'expense'
+        AND transaction_date BETWEEN ? AND ?
+        AND account_id IN (${cards.map(() => "?").join(", ")})
+      GROUP BY account_id
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, personId, since, today, ...cards.map((card) => card.id))
+    .all<{ account_id: string; last_date: string }>();
+  return orderPadCards(cards, new Map(used.results.map((row) => [row.account_id, row.last_date])));
+}
+
+// The person's waiting taps, newest first, with the card's name.
+async function loadPadWaitingTaps(db: D1Database, accounts: AccountRow[], personId: string): Promise<PadWaitingTap[]> {
+  const rows = (await readWaitingTapRows(db)).filter((row) => row.person_id === personId);
+  return rows
+    .map((row) => ({
+      id: row.id,
+      merchant: row.merchant,
+      date: row.tap_date,
+      time: entryTimeInAppTimeZone(new Date(row.received_at)) ?? "",
+      accountId: row.account_id,
+      accountName: accounts.find((account) => account.id === row.account_id)?.account_name ?? "",
+      otherCurrencyAccountId: row.other_currency_account_id ?? "",
+      receivedAt: row.received_at
+    }))
+    .sort((left, right) => right.receivedAt.localeCompare(left.receivedAt));
+}
+
+interface QuickEntryRow {
+  id: string;
+  owner_person_id: string | null;
+  transaction_date: string;
+  transaction_time: string | null;
+  description: string;
+  amount_minor: number;
+  currency: string;
+  original_amount_minor: number | null;
+  original_currency: string | null;
+  note: string | null;
+  external_reference: string | null;
+  category_name: string | null;
+  account_name: string;
+}
+
+/**
+ * Quick entries still waiting for a few words (DOMAIN.md "Quick Entry"):
+ * made on the pad or by Log cash, still the pad's own name, in Other, no
+ * note of the person's, from the last QUICK_WORDS_DAYS days. Newest first,
+ * at most QUICK_WORDS_LIST_LIMIT, for the given people (all when empty).
+ * Read only; bounded by the date window and a LIMIT.
+ */
+export async function loadUndescribedQuickEntries(
+  db: D1Database,
+  input: { personIds?: string[]; today?: string }
+): Promise<QuickEntryToDescribe[]> {
+  const today = input.today ?? todayInAppTimeZone();
+  const since = addDays(today, -(QUICK_WORDS_DAYS - 1));
+  const people = input.personIds ?? [];
+  const result = await db
+    .prepare(`
+      SELECT transactions.id, transactions.owner_person_id, transactions.transaction_date, transactions.transaction_time,
+        transactions.description, transactions.amount_minor, transactions.currency, transactions.original_amount_minor,
+        transactions.original_currency, transactions.note, transactions.external_reference,
+        categories.name AS category_name, accounts.account_name
+      FROM transactions
+      INNER JOIN accounts ON accounts.id = transactions.account_id
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      WHERE transactions.household_id = ?
+        AND transactions.transaction_date BETWEEN ? AND ?
+        AND transactions.entry_type = 'expense'
+        AND transactions.external_reference LIKE 'cash:%'
+        AND transactions.description IN (?, ?)
+        ${people.length ? `AND transactions.owner_person_id IN (${people.map(() => "?").join(", ")})` : ""}
+      ORDER BY transactions.transaction_date DESC, transactions.created_at DESC, transactions.id DESC
+      LIMIT ${QUICK_WORDS_LIST_LIMIT * 4}
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, since, today, CASH_DEFAULT_DESCRIPTION, CARD_DEFAULT_DESCRIPTION, ...people)
+    .all<QuickEntryRow>();
+  return result.results
+    .filter((row) => isUndescribedQuickEntry({
+      date: row.transaction_date,
+      description: row.description,
+      categoryName: row.category_name,
+      personNote: personNote(row.note),
+      reference: row.external_reference
+    }, today, QUICK_WORDS_DAYS))
+    .slice(0, QUICK_WORDS_LIST_LIMIT)
+    .map((row) => ({
+      entryId: row.id,
+      personId: row.owner_person_id ?? "",
+      date: row.transaction_date,
+      time: row.transaction_time ?? "",
+      amountMinor: Number(row.original_amount_minor ?? row.amount_minor),
+      currency: String(row.original_currency ?? row.currency).toUpperCase(),
+      accountName: row.account_name,
+      description: row.description,
+      categoryName: row.category_name ?? "Other"
+    }));
+}
+
 export async function loadCashEntryDefaults(
   db: D1Database,
   input: { personId: string; today?: string }
@@ -242,6 +402,12 @@ export async function loadCashEntryDefaults(
     walletCurrency: wallet?.currency ?? "SGD"
   });
   const againRows = trip ? paid : paid.filter((row) => row.date >= recentSince);
+  const cardSince = trip?.startDate && trip.startDate < recentSince ? trip.startDate : addDays(today, -CARD_RECENT_DAYS);
+  const [cards, waitingTaps, undescribed] = await Promise.all([
+    loadPadCards(db, accounts, person.id, cardSince, today),
+    loadPadWaitingTaps(db, accounts, person.id),
+    loadUndescribedQuickEntries(db, { personIds: [person.id], today })
+  ]);
   const counts = new Map<string, number>();
   for (const row of paid) {
     if (row.categoryName && row.categoryName !== "Other") counts.set(row.categoryName, (counts.get(row.categoryName) ?? 0) + 1);
@@ -256,7 +422,10 @@ export async function loadCashEntryDefaults(
     trip: choice.trip,
     today,
     again: buildCashAgainChips(againRows),
-    usualCategories: [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])).slice(0, 3).map(([name]) => name)
+    usualCategories: [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])).slice(0, 3).map(([name]) => name),
+    cards,
+    waitingTaps,
+    undescribed
   };
 }
 
@@ -270,8 +439,16 @@ export interface CashEntryInput {
   description?: string | null;
   categoryName?: string | null;
   note?: string | null;
-  // Only when the person has no cash wallet: the account they chose.
+  // "cash" (the default): the person's cash wallet. "card": one of the
+  // person's own cards, named by accountId; a payment in another currency
+  // is then a Foreign Currency Estimate, as an Apple Pay one is.
+  way?: "cash" | "card" | null;
+  // Cash: only when the person has no cash wallet, the account they chose.
+  // Card: the card.
   accountId?: string | null;
+  // A card payment saved although a tap on that card waits (the person
+  // said it is a new payment, not that tap).
+  newPayment?: boolean;
   // Left out: today. The pad sends the day it was typed, so an entry that
   // waited on the phone overnight keeps its day.
   date?: string | null;
@@ -299,7 +476,7 @@ export interface CashEntrySaved {
   storedNote: string | null;
 }
 
-async function loadSavedCashEntry(db: D1Database, reference: string): Promise<CashEntrySaved | null> {
+async function loadSavedCashEntry(db: D1Database, reference: string, by: "reference" | "id" = "reference"): Promise<CashEntrySaved | null> {
   const row = await db
     .prepare(`
       SELECT transactions.id, transactions.transaction_date, transactions.description, transactions.amount_minor, transactions.currency,
@@ -309,7 +486,7 @@ async function loadSavedCashEntry(db: D1Database, reference: string): Promise<Ca
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN categories ON categories.id = transactions.category_id
       LEFT JOIN people ON people.id = transactions.owner_person_id
-      WHERE transactions.household_id = ? AND transactions.external_reference = ?
+      WHERE transactions.household_id = ? AND ${by === "id" ? "transactions.id" : "transactions.external_reference"} = ?
       LIMIT 1
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, reference)
@@ -338,6 +515,12 @@ async function loadSavedCashEntry(db: D1Database, reference: string): Promise<Ca
   };
 }
 
+// An entry the pad finished another way (a waiting tap completed from the
+// pad), in the shape the pad shows after Save.
+export function loadPadSavedEntry(db: D1Database, entryId: string) {
+  return loadSavedCashEntry(db, entryId, "id");
+}
+
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 // Saves one cash payment. A request id already saved returns that entry
@@ -346,7 +529,7 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export async function createCashEntry(
   db: D1Database,
   input: CashEntryInput,
-  options: { offlineRates?: boolean; today?: string } = {}
+  options: { offlineRates?: boolean; today?: string; now?: string } = {}
 ): Promise<CashEntrySaved> {
   const reference = cashEntryReference(input.requestId);
   const replay = await loadSavedCashEntry(db, reference);
@@ -379,8 +562,27 @@ export async function createCashEntry(
     throw new CashEntryRefusedError(`Keep the note to ${CASH_NOTE_MAX_LENGTH} letters or fewer.`, "note");
   }
 
-  let wallet = defaults.wallet;
-  if (input.accountId) {
+  const byCard = input.way === "card";
+  let wallet = byCard ? null : defaults.wallet;
+  if (byCard) {
+    // Only one of the person's own cards: another person's card, or a card
+    // put away, is never paid with from this pad.
+    const card = defaults.cards.find((row) => row.id === input.accountId);
+    if (!card) {
+      throw new CashEntryRefusedError("Choose one of your own cards.", "wallet");
+    }
+    wallet = { id: card.id, name: card.name, currency: card.currency, kind: "credit_card" };
+    if (!input.newPayment) {
+      const tap = waitingTapForCard(defaults.waitingTaps, {
+        cardId: card.id,
+        now: options.now ?? new Date().toISOString(),
+        windowMinutes: TAP_OFFER_WINDOW_MINUTES
+      });
+      if (tap) {
+        throw new WaitingTapOfferError(tap);
+      }
+    }
+  } else if (input.accountId) {
     const { accounts } = await loadAccountsAndWays(db);
     const chosen = accounts.find((row) => row.id === input.accountId && row.is_active);
     if (!chosen) {
@@ -392,7 +594,7 @@ export async function createCashEntry(
     throw new CashWalletMissingError(defaults.personName, defaults.walletChoices);
   }
 
-  const description = tidyCashDescription(input.description) || CASH_DEFAULT_DESCRIPTION;
+  const description = tidyCashDescription(input.description) || (byCard ? CARD_DEFAULT_DESCRIPTION : CASH_DEFAULT_DESCRIPTION);
   let categoryName = typeof input.categoryName === "string" ? input.categoryName.trim() : "";
   if (categoryName) {
     const known = await db
@@ -403,12 +605,14 @@ export async function createCashEntry(
       throw new CashEntryRefusedError("Choose one of the household's categories.", "category");
     }
   } else {
-    const guess = description === CASH_DEFAULT_DESCRIPTION ? null : await buildCategoryGuess(db, { description });
+    const guess = description === CASH_DEFAULT_DESCRIPTION || description === CARD_DEFAULT_DESCRIPTION ? null : await buildCategoryGuess(db, { description });
     categoryName = guess?.categoryName ?? "Other";
   }
 
-  // Cash in another currency is saved like any foreign amount: the wallet's
-  // currency at the day's rate, the amount paid kept beside it.
+  // Cash or a card in another currency is saved like any foreign amount (a
+  // Foreign Currency Estimate): the wallet's or card's currency at the day's
+  // rate, the amount paid kept beside it, so the card's statement row later
+  // replaces the estimate instead of adding a second entry.
   let savedAmountMinor = input.amountMinor;
   let foreignNote = "";
   let original: { amountMinor: number; currency: string } | undefined;
@@ -426,7 +630,7 @@ export async function createCashEntry(
       originalCurrency: currency,
       accountCurrency: wallet.currency,
       conversion,
-      cash: true
+      cash: !byCard
     });
   }
 

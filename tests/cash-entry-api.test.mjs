@@ -63,7 +63,11 @@ test("the pad opens in the trip's currency on the person's cash wallet", async (
     trip: { id: tripId, name: "Bali trip" },
     today,
     again: [],
-    usualCategories: []
+    usualCategories: [],
+    // Paid with: Tim's own card; no tap waiting, nothing to describe yet.
+    cards: [{ id: "acct-uob-one", name: "UOB One", currency: "SGD" }],
+    waitingTaps: [],
+    undescribed: []
   });
   await rows(db, "SELECT 1");
 });
