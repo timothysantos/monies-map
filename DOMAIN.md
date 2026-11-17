@@ -3266,6 +3266,19 @@ Code and storage:
 Important distinctions:
 - The account's currency stays the ledger's currency; an entry is never saved
   in a currency its account does not use.
+- A typed or spoken amount in another currency ("coffee 35000 IDR cash", in
+  Ask or the entry reader) is a Foreign Currency Estimate too:
+  `applyForeignEstimate` (`src/domain/entry-draft-foreign.ts`) turns it into
+  the wallet's currency at the day's rate for the draft, the card keeps what
+  was paid and its note, and `/api/entries/create` stores
+  `original_amount_minor` and `original_currency` with the entry. The
+  amount or wallet edited by hand drops the estimate. With no rate (none
+  saved in the last 14 days and the sources down) the draft has no amount
+  and one `foreign_currency` question that names the figure, with no chip:
+  the foreign number is never shown or saved as the account's currency.
+  The same holds for the AI turn, whose own figure is never used for it.
+  In a conflicting-amount question a figure in another currency than the
+  wallet's is not offered as a choice.
 - The estimate is provisional like any manual entry. The card's statement
   carries the exact amount: a statement or activity-export row on the same
   account can be the estimate's purchase when its amount is at most 5% over

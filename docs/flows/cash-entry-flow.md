@@ -30,7 +30,14 @@ Before (Entries +, Ask's new entry card):
 
 About 5 taps, 25 keystrokes, a currency sum done in the head, the amount
 control at the top of the screen, and the rupiah amount is not kept. Taking
-the chip saves the wrong amount (flagged separately).
+the chip saved the wrong amount. Fixed 17 Nov 2026: the reader no longer
+offers the rupiah as a chip. With a saved rate the card shows about $2.80,
+says "Paid IDR 35,000 cash. Saved as about SGD 2.80 at 1 SGD = 12,500 IDR
+(date)." in the conversation and the note, and Save keeps the rupiah beside
+it; with no rate the card asks "That was IDR 35,000. What did it cost in
+your card's currency?" and has no amount to save. The chip row and the
+question wording of other amounts show a no-cents currency in whole units
+("IDR 35,000", not "IDR 35,000.00").
 
 After (the cash pad):
 

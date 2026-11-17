@@ -3121,6 +3121,10 @@ and use **Time** under **More details** (**Clear time** removes it).
 Paying abroad in another currency (for example with an Amaze card in Bali)
 also works: the purchase is saved in the card's currency at the day's
 exchange rate, and its note keeps what you paid, such as "Paid IDR 159,000".
+The same goes for a message you type in Ask, such as "coffee 35000 IDR
+cash": the card shows the amount in your wallet's currency and says what
+you paid and the rate it used. If no exchange rate can be found, the card
+asks you to type the amount in your wallet's currency instead of guessing.
 Your card's own amount may differ a little. When you import the card's
 activity export, each of these purchases is matched to the card's row and
 takes its current amount; a later export updates it again if the amount
