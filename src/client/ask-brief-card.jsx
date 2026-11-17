@@ -13,7 +13,7 @@ import { money, unmaskedMoney } from "./formatters";
 import { useSummaryInsights } from "./money-insights-loader";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { moneyToneClass } from "./money-tone-class";
-import { summaryMonthSpendJob } from "./money-jobs-model";
+import { summaryMonthSpendJob } from "./ask-brief-model";
 import { reminderDeviceState } from "./reminders-device-state";
 import { coveredSignalKeys } from "./reminders-model";
 import { useCachedReminders } from "./use-reminders";

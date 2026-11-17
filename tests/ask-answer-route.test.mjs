@@ -104,7 +104,7 @@ test("why was March so expensive: the Month page's figures, plan, Spending Mix a
 // reads the same spend job as the answer and the Month lead, for every view.
 test("Ask's Since you last looked and the plan answer give one spend and one plan for a month", async (t) => {
   const { api } = await openSeededDatabase(t, showcase);
-  const { summaryMonthSpendJob } = await import("../src/client/money-jobs-model.js");
+  const { summaryMonthSpendJob } = await import("../src/client/ask-brief-model.js");
   for (const viewId of ["household", ETHAN, SERENE]) {
     for (const month of ["2026-03", "2026-05"]) {
       const payload = await ask(api, "how am I doing against the plan?", { viewId, month });

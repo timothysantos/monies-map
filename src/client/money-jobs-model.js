@@ -1,4 +1,4 @@
-import { isInvestmentsCategoryName, isSavingsCategoryName, splitMoneyUse as splitMoneyUseInDomain } from "../domain/money-jobs";
+import { splitMoneyUse as splitMoneyUseInDomain } from "../domain/money-jobs";
 
 // Whole dollars: the bar's lines and the job rows are read at a glance and
 // have to fit one line on a phone; the cents are on the figures above.
@@ -14,37 +14,6 @@ const atLeastZero = (minor) => Math.max(0, minor ?? 0);
 /** @param {Parameters<typeof splitMoneyUseInDomain>[0]} input */
 export function splitMoneyUse(input) {
   return splitMoneyUseInDomain(input);
-}
-
-// One month of a Summary page DTO (summary-projection.ts) as its spend job
-// reads it: spending without the money filed under Investments or Savings
-// (the month's category share), against the plan without the savings target
-// and the Investments plan rows (`plannedInvestByMonth`). The Month and
-// Summary lead and Ask's plan answer ("of $X plan") say these, so Ask's
-// "Since you last looked" does too (Ask audit A15: it used the whole plan,
-// savings and investing included, and showed a second, larger plan for the
-// same month). Null when the page has no row for the month.
-export function summaryMonthSpendJob(summaryPage, monthKey) {
-  const month = summaryPage?.months?.find((item) => item.month === monthKey);
-  if (!month) {
-    return null;
-  }
-  let investedMinor = 0;
-  let savedMovedMinor = 0;
-  for (const slice of summaryPage.categoryShareByMonth?.find((item) => item.month === monthKey)?.data ?? []) {
-    if (isInvestmentsCategoryName(slice.label)) investedMinor += slice.valueMinor;
-    else if (isSavingsCategoryName(slice.label)) savedMovedMinor += slice.valueMinor;
-  }
-  const figures = splitMoneyUseInDomain({
-    incomeMinor: month.actualIncomeMinor ?? 0,
-    spentMinor: month.realExpensesMinor ?? 0,
-    investedMinor,
-    savedMovedMinor,
-    plannedSpendMinor: month.estimatedExpensesMinor ?? 0,
-    savingsTargetMinor: month.savingsGoalMinor ?? 0,
-    plannedInvestMinor: summaryPage.plannedInvestByMonth?.find((item) => item.month === monthKey)?.plannedInvestMinor ?? 0
-  });
-  return { spentMinor: figures.spending, planMinor: figures.spendPlan };
 }
 
 // The jobs the plan gives the money, as plain numbers (labels and statuses
