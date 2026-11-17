@@ -76,6 +76,10 @@ export const askCopy = {
   greetingHint: "Type below, or tap a shortcut.",
   sinceLastLooked: "Since you last looked",
   briefHidden: "Reveal money totals to read these insights.",
+  // An answer card while money is hidden, and the control beside it (the
+  // header eye's own words, money-privacy.jsx).
+  answerHidden: "The amounts are hidden.",
+  showTotals: "Show money totals",
   monthSpent: (monthKey) => `${formatLongMonth(monthKey)} spent`,
   ofPlan: (amount) => `of ${amount} plan`,
   chipsLabel: "Suggestions",

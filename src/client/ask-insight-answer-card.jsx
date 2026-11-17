@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAskEntriesPage } from "./ask-data";
 import { summarizeFilterAnswer } from "./ask-filter-answer";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { AskHiddenTotals } from "./ask-hidden-totals";
 import { buildEntryRowDisplay } from "./entry-row-display";
 import { CheckInChip } from "./financial-insight";
 import { moneyWithCurrency } from "./formatters";
@@ -80,7 +81,7 @@ export function AskInsightAnswerCard({ id = undefined, answer, explanation = nul
           ) : null}
         </>
       ) : (
-        <p className="ask-brief-hidden">{askCopy.briefHidden}</p>
+        <AskHiddenTotals text={askCopy.answerHidden} />
       )}
     </LeadCard>
   );

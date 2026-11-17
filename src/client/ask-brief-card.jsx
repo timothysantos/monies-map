@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { spendTone } from "../domain/money-tone";
 import { applyCheckInAction } from "./check-in-action";
 import { askCopy } from "./copy/ask-copy";
+import { AskHiddenTotals } from "./ask-hidden-totals";
 import { useCachedSummary } from "./ask-data";
 // The check-in's own composer, kind chip and styles (money-checkin.css).
 import { composeCheckInHeadline } from "./check-in-headline";
@@ -93,7 +94,7 @@ export function AskBriefCard({ queryClient, view, scope, month, accounts, params
       <p className="ask-k">{askCopy.sinceLastLooked}</p>
       <section className="ask-brief" aria-label={askCopy.sinceLastLooked}>
         {!areTotalsVisible ? (
-          <p className="ask-brief-hidden">{askCopy.briefHidden}</p>
+          <AskHiddenTotals />
         ) : (
           <>
             {headline?.kind ? <CheckInChip kind={headline.kind} /> : null}

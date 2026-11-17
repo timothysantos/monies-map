@@ -158,6 +158,37 @@
   color: var(--muted);
 }
 
+/* With money hidden: the line, then the show/hide money control in reach
+   (ask-hidden-totals.jsx), styled like the card's other quiet actions. */
+.ask-brief-hidden-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 10px;
+}
+
+.ask-show-totals {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-left: -10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ask-show-totals:focus-visible {
+  outline: 2px solid rgb(var(--accent-strong-rgb) / 0.55);
+  outline-offset: 2px;
+}
+
 .ask-brief-month {
   display: grid;
   gap: 8px;

@@ -2,6 +2,7 @@ import { ArrowRight, Banknote, ChartPie, PiggyBank, Plane, Receipt, Scale, Spark
 
 import { skewCountedKind } from "./ask-skew-check";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
+import { AskHiddenTotals } from "./ask-hidden-totals";
 import { moneyWithCurrency } from "./formatters";
 import { splitMoneyUse } from "./money-jobs-model";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
@@ -134,7 +135,7 @@ export function AskMoneyAnswerCard({ id = undefined, answer, wording, intent, se
           ) : null}
         </>
       ) : (
-        <p className="ask-brief-hidden">{askCopy.briefHidden}</p>
+        <AskHiddenTotals text={askCopy.answerHidden} />
       )}
     </LeadCard>
   );
