@@ -109,6 +109,14 @@ test("B14 negative: no category in the words is a question with categories to ta
   assert.ok(reply.options.every((option) => !/Other|Transfer/.test(option)));
 });
 
+test("B14: a shop word that points nowhere still offers spending categories, never income or savings", () => {
+  const context = makeContext({ text: "make all zqshop", entry: { ...makeContext().entry, categoryNames: ["Income", "Savings", "Investments", ...CATEGORIES] } });
+  const reply = validateAskTurnAction(act("recategorise", { recategorise: { category: null, words: "zqshop" } }), context);
+  assert.equal(reply.kind, "clarify");
+  assert.ok(reply.options.length > 0);
+  assert.ok(reply.options.every((option) => /^Move all zqshop to /.test(option) && !/Income|Savings|Investments/.test(option)), JSON.stringify(reply.options));
+});
+
 test("B14: a category that is no category asks with chips, whole messages when the shop is known", () => {
   const reply = validateAskTurnAction(act("recategorise", { recategorise: { category: "Rides", words: "grab" } }), makeContext({ text: "make all grab Rides" }));
   assert.equal(reply.kind, "clarify");

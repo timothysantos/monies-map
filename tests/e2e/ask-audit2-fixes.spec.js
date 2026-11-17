@@ -70,7 +70,7 @@ test("B14: the model leaves the category out: the bulk card; with none said, cat
   await openAsk(page);
   const ids = [];
   for (const amountMinor of [1_850, 2_240]) {
-    ids.push(await createEntry(page, { description: "ZQGRAB* RIDE", amountMinor }));
+    ids.push(await createEntry(page, { description: "ZQGRAB* RIDE", categoryName: "Other", amountMinor }));
   }
   const seen = await stubModel(page, [
     { action: "recategorise", recategorise: { category: null, words: "zqgrab" } },
@@ -82,25 +82,30 @@ test("B14: the model leaves the category out: the bulk card; with none said, cat
   await send(page, "make all zqgrab rides");
   const question = page.locator(".ask-note, .ask-question").filter({ hasText: "Which category should it go in?" });
   await expect(question.first()).toBeVisible();
-  const chip = page.getByRole("button", { name: "Move all zqgrab to Taxi" });
-  await expect(chip).toBeVisible();
+  const offered = page.getByRole("group", { name: "Suggestions" }).getByRole("button").filter({ hasText: /^Move all zqgrab to / });
+  await expect(offered.first()).toBeVisible();
+  const labels = await offered.allTextContents();
+  // Spending categories only: never income or savings for a shop's payments.
+  expect(labels.some((label) => /Income|Savings|Investments/.test(label))).toBe(false);
   await shot(page, "B14-after-2-category-chips.png");
 
-  await chip.click();
+  const chosen = labels[0];
+  const category = chosen.replace("Move all zqgrab to ", "");
+  await offered.first().click();
   await expect.poll(() => seen.length).toBe(2);
-  expect(seen[1].text).toBe("Move all zqgrab to Taxi");
+  expect(seen[1].text).toBe(chosen);
   const card = page.locator('[data-change-draft="draft"][data-change-type="recategorise_bulk"]');
   await expect(card).toBeVisible();
   await expect(card).toContainText("2 entries change category");
-  await expect(card.locator('[data-change-field="category"]')).toContainText("Taxi");
+  await expect(card.locator('[data-change-field="category"]')).toContainText(category);
   await card.evaluate((element) => element.scrollIntoView({ block: "center" }));
   await shot(page, "B14-after-1-bulk-card.png");
-  expect((await entryById(page, ids[0])).categoryName).toBe("Food & Drinks");
+  expect((await entryById(page, ids[0])).categoryName).toBe("Other");
 
   await card.getByRole("button", { name: "Change 2 entries" }).click();
   await expect(page.locator('[data-change-draft="saved"]')).toBeVisible();
   for (const id of ids) {
-    await expect.poll(async () => (await entryById(page, id)).categoryName).toBe("Taxi");
+    await expect.poll(async () => (await entryById(page, id)).categoryName).toBe(category);
   }
 });
 
@@ -151,6 +156,8 @@ test("B19: \"add a new account for my CPF\" says accounts are changed in Setting
 
 test("B17: \"how much did we spend on food this month?\" read by the model as all spending shows the Food & Drinks entries and their total", async ({ page }) => {
   await openAsk(page);
+  await createEntry(page, { description: "Koufu lunch", amountMinor: 1_250 });
+  await createEntry(page, { description: "Grab ride", categoryName: "Taxi", amountMinor: 1_800 });
   await stubModel(page, [{ action: "answer_question", question: { topic: "spending_where", month: "this month" } }]);
   await page.goto(`/ask?view=person-tim&month=${await todayMonth(page)}`);
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible({ timeout: 60_000 });
@@ -158,6 +165,8 @@ test("B17: \"how much did we spend on food this month?\" read by the model as al
   const answer = page.locator(".ask-answer");
   await expect(answer).toBeVisible();
   await expect(answer.locator(".ask-answer-title")).toHaveText("Food & Drinks");
+  // Only the food entry counts, not the taxi.
+  await expect(answer.locator(".ask-answer-amount")).toHaveText("$12.50");
   await shot(page, "B17-after-1-food-answer.png");
 });
 
