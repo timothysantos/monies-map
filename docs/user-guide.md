@@ -500,6 +500,10 @@ over plan.
   **Earned vs spent** takes the place of Plan vs actual: one row
   per month, newest first, with what you kept (or overspent), what you
   earned and spent, and a thin bar; the month's name opens that month.
+  It starts with the newest 3 months; **Show all** (with the number of
+  months) under them opens the rest, and **Show fewer** folds them again.
+  On a computer, **What changed** beside it shows as many of its rows as
+  fit next to it, with its own **Show all** when some are left out.
   When Summary covers two or more months, a chart sits above those rows (see
   **The chart above the months** below).
   Money insights leave out the ones about your plan. Until you choose,
