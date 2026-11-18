@@ -461,6 +461,10 @@ export function applyEntryDraft(card, draft, context) {
   // no cash wallet): the wallet is asked in place, never a card filled in
   // silently (Ask audit B8).
   const walletAsked = (draft.questions ?? []).some((question) => question.field === "accountId");
+  // Whose cash it was, when the wallet is asked for a cash payment: after
+  // the save, "Remember this for cash" (ask-chips.js) can keep the wallet
+  // picked as that person's cash wallet.
+  const cashFor = (draft.questions ?? []).find((question) => question.field === "accountId" && question.paymentWay?.kind === "cash")?.paymentWay.personId ?? "";
   if (!counts("accountId") && walletAsked && !isFollowUp) {
     fields.accountId = "";
     fields.accountName = "";
@@ -496,6 +500,7 @@ export function applyEntryDraft(card, draft, context) {
     origin: next.origin ?? "message",
     touched: true,
     saveError: "",
+    cashFor: cashFor || (isFollowUp ? next.cashFor ?? "" : ""),
     // A follow-up ("it was yesterday") says nothing about the amount or what
     // it was; the card already has them, so "How much was it?" is not asked.
     questions: (draft.questions ?? [])

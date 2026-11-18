@@ -864,6 +864,7 @@ export default {
         personId?: unknown;
         bankTransferAccountId?: unknown;
         cashAccountId?: unknown;
+        only?: unknown;
       }>().catch(() => null);
       const text = (value: unknown) => (typeof value === "string" ? value : "");
       try {
@@ -872,7 +873,9 @@ export default {
           ...(await savePaymentWay(env.DB, {
             personId: text(body?.personId),
             bankTransferAccountId: text(body?.bankTransferAccountId),
-            cashAccountId: text(body?.cashAccountId)
+            cashAccountId: text(body?.cashAccountId),
+            // "Remember this for cash": the cash wallet alone.
+            ...(body?.only === "cash" ? { only: "cash" as const } : {})
           }))
         });
       } catch (error) {

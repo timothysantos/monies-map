@@ -15,6 +15,7 @@ import {
   linkSavedTransfer,
   requestReceiptRead,
   resolveSkewCandidate,
+  rememberCashWallet,
   saveCardEntry,
   undoSavedEntry,
   updateSavedEntryCard,
@@ -1933,6 +1934,18 @@ function AskConversation({
       editing_split_expense: card?.saved?.splitExpenseId
     }),
     undo: () => void undoSave(),
+    // "Remember this for cash": that wallet becomes the person's cash
+    // wallet (Payment ways, cash only); the chip turns into the line that
+    // says so. No AI call, no allowance.
+    rememberCash: (personId, account) => {
+      void rememberCashWallet({ personId, cashAccountId: account.id }).then((result) => {
+        if (result.ok) {
+          setCard((current) => (current?.status === "saved" ? { ...current, cashRemembered: account.name } : current));
+        } else {
+          appendThread(threadItem("note", { text: cashPadCopy.followUpFailed }));
+        }
+      });
+    },
     discard: () => discardCard(),
     // Try again after "No connection": the words in the message box (the
     // kept message, or what the person changed it to).

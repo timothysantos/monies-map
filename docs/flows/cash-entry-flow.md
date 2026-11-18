@@ -179,6 +179,24 @@ entry is three steps: amount, Save, a few words.
   remembered on the device for that person. Done or the quiet line puts the
   question away: a wallet picked in a panel opened from the line only
   changes the line, never saves (`nextCashDetails`, `cash-pad-model.js`).
+- Remember this for cash (owner-approved, 2026-11-18): after a save whose
+  wallet the person picked to answer that question, and only when it is
+  their own active cash account or a joint one (`canRememberCash`; a bank
+  account picked for cash is never offered), the after-save screen shows
+  one chip, **Remember this for cash**, between the category chips and the
+  words box, so it never slows the save. A tap posts
+  `/api/settings/payment-ways/save` `{ personId, cashAccountId, only:
+  "cash" }` (`rememberCashWallet`, ask-api.js): the existing Payment ways
+  command writes the cash wallet alone (the PayNow choice is kept, the
+  default while never chosen), checks the wallet is the person's own or
+  joint, and audits it in the same batch. The chip becomes "Cash will use
+  {wallet} from now on. Change it in Settings, Payment ways." with an Undo
+  link that posts the same with `""` (no cash wallet; the chip comes back).
+  The payment's own Undo / Done / Add another stay. Not tapping changes
+  nothing and it is offered again the next time Save asks; it never sets
+  anything by itself. Once a cash wallet is set the defaults name it and
+  Save no longer asks (tests/remember-cash.test.mjs,
+  tests/e2e/remember-cash.spec.js).
 
 ## Waiting to send
 

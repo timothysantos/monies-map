@@ -113,7 +113,10 @@ export function readEntryDraftResponse(body) {
           reason: String(question.reason ?? "missing"),
           options: Array.isArray(question.options) ? question.options : [],
           // A foreign_currency question names the figure as typed.
-          ...(question.foreignAmount && typeof question.foreignAmount.amountMinor === "number" ? { foreignAmount: question.foreignAmount } : {})
+          ...(question.foreignAmount && typeof question.foreignAmount.amountMinor === "number" ? { foreignAmount: question.foreignAmount } : {}),
+          // A cash payment with no cash wallet: whose cash it was, for
+          // "Remember this for cash" after the save.
+          ...(question.paymentWay?.kind === "cash" && typeof question.paymentWay.personId === "string" ? { paymentWay: { kind: "cash", personId: question.paymentWay.personId } } : {})
         }))
       : [],
     ai: body.ai ?? { requested: false, available: false }
@@ -303,6 +306,14 @@ async function postJson(path, body, fallbackError, fetchImpl) {
   } catch {
     return { ok: false, error: fallbackError };
   }
+}
+
+// "Remember this for cash" (the Just paid pad and Ask): the person's cash
+// wallet through the Payment ways command in its cash-only form, so their
+// PayNow choice is left as it was. "" (its Undo) is no cash wallet again.
+// No AI and no allowance: a plain settings write.
+export function rememberCashWallet({ personId, cashAccountId }, { fetchImpl = fetch } = {}) {
+  return postJson("/api/settings/payment-ways/save", { personId, cashAccountId, only: "cash" }, "That didn't save.", fetchImpl);
 }
 
 // Undo after a save: one delete that removes the entry and the split the

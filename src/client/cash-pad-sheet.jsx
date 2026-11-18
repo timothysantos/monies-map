@@ -23,9 +23,9 @@ import {
   sendCashEntry,
   subscribeCashQueue
 } from "./cash-queue";
-import { DETAILS_CLOSED, againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, nextCashDetails, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "./cash-pad-model";
+import { DETAILS_CLOSED, againChipLabel, buildCashBody, canRememberCash, cashCategoryChips, describeCashLine, nextCashDetails, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "./cash-pad-model";
 import { cashPadCopy as copy } from "./copy/cash-pad-copy";
-import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
+import { addSavedEntryToSplits, rememberCashWallet, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
 import { CategoryPickerHost } from "./category-picker-host";
 import { useMoneyPrivacy } from "./money-privacy";
 import { todayInAppTimeZone } from "./app-dates";
@@ -145,6 +145,9 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(/** @type {any} */ (null));
   const [after, setAfter] = useState(EMPTY_AFTER);
+  // "Remember this for cash": offered after a save whose cash wallet the
+  // person picked when Save asked; { wallet, state: "offer" | "busy" | "done" }.
+  const [remember, setRemember] = useState(/** @type {any} */ (null));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [waiting, setWaiting] = useState(() => readCashQueue());
   // The list of payments that need a few words (Ask's reminder opens it).
@@ -220,6 +223,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     setError("");
     setSaved(null);
     setAfter(EMPTY_AFTER);
+    setRemember(null);
     requestIdRef.current = newCashRequestId();
   }, []);
 
@@ -262,6 +266,10 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
       setTap(null);
       setAskWallet(false);
       reportSent(result.entry);
+      // The wallet picked to answer "Which wallet did the cash come from?":
+      // offer to keep it, never set by itself.
+      const picked = pickedWalletId ? personAccounts.find((account) => account.id === pickedWalletId) : null;
+      setRemember(!card && canRememberCash(picked, personId) ? { wallet: picked, personId, state: "offer" } : null);
       return;
     }
     if (result.kind === "waiting") {
@@ -383,6 +391,22 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
       setDescribed((current) => ({ ...current, [entryId]: false }));
     }
     onChanged(change.month);
+  }
+
+  // One tap: that wallet is the person's cash wallet (the Payment ways
+  // command, cash only). Undo puts back none, so cash asks again.
+  async function rememberWallet(keep) {
+    if (!remember || remember.state === "busy") return;
+    const before = remember;
+    setRemember({ ...before, state: "busy" });
+    const result = await rememberCashWallet({ personId: before.personId, cashAccountId: keep ? before.wallet.id : "" });
+    if (result.ok) {
+      setRemember({ ...before, state: keep ? "done" : "offer" });
+      setSentCount((count) => count + 1);
+    } else {
+      setRemember(before);
+      setError(copy.followUpFailed);
+    }
   }
 
   async function undo() {
@@ -619,6 +643,18 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                       : <button type="button" className="cash-pad-chip" disabled={after.busy} onClick={() => void share()}>{copy.shared}</button>
                   ) : null}
                 </div>
+                {remember ? (
+                  remember.state === "done" ? (
+                    <p className="cash-pad-remember" role="status" data-remember-cash="done">
+                      <span>{copy.rememberedCash(remember.wallet.name)}</span>
+                      <button type="button" className="cash-pad-link" onClick={() => void rememberWallet(false)}>{copy.undo}</button>
+                    </p>
+                  ) : (
+                    <div className="cash-pad-chips" data-remember-cash="offer">
+                      <button type="button" className="cash-pad-chip" disabled={remember.state === "busy"} onClick={() => void rememberWallet(true)}>{copy.rememberCash}</button>
+                    </div>
+                  )
+                ) : null}
                 <QuickPadWords
                   key={saved.entryId}
                   entryId={saved.entryId}

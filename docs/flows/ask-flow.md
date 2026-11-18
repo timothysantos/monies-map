@@ -1350,7 +1350,20 @@ hold them.
   figure paid (`originalAmountMinor`, `originalCurrency`) through Save.
 - **No silent wallet.** A payment word the household has no wallet for
   ("kopi 2.40 cash" with no cash wallet) leaves the wallet empty with the
-  wallet question and its chips; Save waits for the choice.
+  wallet question and its chips; Save waits for the choice. The question
+  carries whose cash it was (`paymentWay: { kind: "cash", personId }` on
+  the `accountId` question, entry-draft.ts; the card keeps it as
+  `cashFor`). After the save, when the wallet picked is that person's own
+  active cash account or a joint one (`canRememberCash`,
+  cash-pad-model.js), the chip row offers **Remember this for cash** before
+  Undo (`rememberCashChip`, ask-chips.js). The tap posts
+  `/api/settings/payment-ways/save` with `only: "cash"` (the existing
+  Payment ways command, cash only: no AI call, no allowance, never applied
+  by itself) and the row then says "Cash will use {wallet} from now on.
+  Change it in Settings, Payment ways." in place of the chip; the entry's
+  own Undo stays. With AI off the rules read the message the same way, so
+  the offer is the same (tests/e2e/remember-cash.spec.js). Once a cash
+  wallet is set, "cash" fills it in and nothing is asked.
 - **Bulk changes stay on one shop.** "make all Grab rides …" never moves a
   line whose shop name only starts with the word (GRAB*GRABFOOD, GRABPAY);
   the card lists the names it moves, and no rule is offered on words that

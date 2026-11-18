@@ -12,8 +12,10 @@ export type PaymentWayKind = "bank_transfer" | "cash";
 // What app_settings keeps under PAYMENT_WAYS_SETTINGS_KEY. A person with no
 // entry has never chosen: their PayNow account is the default below. A
 // person with an entry keeps exactly what they chose, "" (none) included.
+// An entry with no PayNow choice at all (only a cash wallet, from "Remember
+// this for cash") has never chosen PayNow: the default applies.
 export interface StoredPaymentWays {
-  people: Record<string, { bankTransferAccountId: string; cashAccountId: string }>;
+  people: Record<string, { bankTransferAccountId?: string; cashAccountId: string }>;
 }
 
 export const PAYMENT_WAYS_SETTINGS_KEY = "payment_ways";
@@ -58,9 +60,11 @@ export function resolvePaymentWays(
     const cash = chosen.cashAccountId ? byId.get(chosen.cashAccountId) : undefined;
     return {
       personId: person.id,
-      bankTransferAccountId: !chosen.bankTransferAccountId
-        ? ""
-        : bank && isBankTransferAccount(bank) ? bank.id : defaultBank,
+      bankTransferAccountId: chosen.bankTransferAccountId === undefined
+        ? defaultBank
+        : !chosen.bankTransferAccountId
+          ? ""
+          : bank && isBankTransferAccount(bank) ? bank.id : defaultBank,
       cashAccountId: cash && isCashWalletAccount(cash) ? cash.id : ""
     };
   });
@@ -88,7 +92,7 @@ export function parseStoredPaymentWays(value?: string | null): StoredPaymentWays
         }
         const record = entry as { bankTransferAccountId?: unknown; cashAccountId?: unknown };
         people[personId] = {
-          bankTransferAccountId: typeof record.bankTransferAccountId === "string" ? record.bankTransferAccountId : "",
+          ...(typeof record.bankTransferAccountId === "string" ? { bankTransferAccountId: record.bankTransferAccountId } : {}),
           cashAccountId: typeof record.cashAccountId === "string" ? record.cashAccountId : ""
         };
       }

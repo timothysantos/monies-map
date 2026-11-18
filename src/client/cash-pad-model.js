@@ -22,6 +22,20 @@ export function describeCashLine({ walletName, currency, date, today, personName
 export const DETAILS_CLOSED = Object.freeze({ open: false, saveOnPick: false });
 
 /**
+ * Whether "Remember this for cash" may be offered for the wallet a person
+ * just picked for a cash payment: an active cash account of their own or a
+ * joint one, the wallets the Payment ways command accepts for it (`only:
+ * "cash"`, app-repository-payment-ways.ts). A bank account picked for cash
+ * is never offered: cash means a cash account.
+ * @param {{ kind?: string, isActive?: boolean, ownerPersonId?: string, isJoint?: boolean } | null | undefined} account
+ * @param {string} personId
+ */
+export function canRememberCash(account, personId) {
+  return Boolean(account && personId && account.isActive !== false && account.kind === "cash"
+    && (account.ownerPersonId === personId || account.isJoint));
+}
+
+/**
  * The details panel behind the quiet line, and whether a wallet picked in
  * it saves the payment. Save asking which wallet ("asked") opens it ready to
  * save on the pick: the person already said Save, and Undo follows. The

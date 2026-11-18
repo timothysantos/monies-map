@@ -388,6 +388,22 @@
   display: block;
 }
 
+/* "Cash will use … from now on." and its Undo, after Remember this for cash. */
+.cash-pad-remember {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.cash-pad-remember > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .cash-pad-link {
   min-height: 44px;
   padding: 0 4px;

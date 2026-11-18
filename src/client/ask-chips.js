@@ -31,6 +31,8 @@
 // the row for whatever is newest.
 
 import { isCardEmpty, isUnchangedSinceUndo, SHARED_OWNER } from "./ask-card-model";
+import { canRememberCash } from "./cash-pad-model";
+import { cashPadCopy } from "./copy/cash-pad-copy";
 import { formatSuggestedShare } from "./ask-split-suggestion";
 import { askCopy, formatCardDate } from "./copy/ask-copy";
 import { askHabitsCopy } from "./copy/ask-habits-copy";
@@ -177,6 +179,18 @@ function habitChips({ habitSuggestion, actions, busy }) {
   ]);
 }
 
+// "Remember this for cash" under a saved card whose wallet the person picked
+// when Ask asked where the cash came from ("kopi 2.40 cash" with no cash
+// wallet; card.cashFor is whose cash): one chip, never applied by itself.
+// Once tapped, the line says what it did instead of the chip.
+function rememberCashChip(card, context, actions) {
+  if (!card.cashFor || !actions.rememberCash) return null;
+  const account = (context.accounts ?? []).find((item) => item.id === card.fields.accountId);
+  if (card.cashRemembered) return { prompt: cashPadCopy.rememberedCash(card.cashRemembered), chip: null };
+  if (!canRememberCash(account, card.cashFor)) return null;
+  return { prompt: "", chip: { key: "remember-cash", label: cashPadCopy.rememberCash, onClick: () => actions.rememberCash(card.cashFor, account) } };
+}
+
 // The saved card's chips. The filled "Back to Entries" or "Back to Splits"
 // is for a card the + opened there; from the Ask tab itself, Open this
 // entry is the filled one (Ask audit A25).
@@ -184,12 +198,15 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   /** @type {AskChip[]} */
   const items = [];
   let prompt = "";
+  const remember = rememberCashChip(card, context, actions);
+  if (remember?.prompt) prompt = remember.prompt;
   const habit = habitChips({ habitSuggestion, actions, busy: habitBusy });
   if (habit) {
     items.push(...habit, { key: "open-entry", label: askCopy.chips.openEntry, onClick: actions.openEntry });
     if (card.saved?.splitExpenseId) {
       items.push({ key: "open-splits", label: askCopy.chips.openOnSplits, onClick: actions.openOnSplits });
     }
+    if (remember?.chip) items.push(remember.chip);
     if (!intent.savedEntryId && !card.saved?.transferLinkedEntryId) {
       items.push({ key: "undo", label: askCopy.chips.undo, onClick: actions.undo });
     }
@@ -243,6 +260,7 @@ function savedChips({ intent, card, context, splitGroups, entries, splitSuggesti
   if (card.saved?.splitExpenseId) {
     items.push({ key: "open-splits", label: askCopy.chips.openOnSplits, onClick: actions.openOnSplits });
   }
+  if (remember?.chip) items.push(remember.chip);
   // Undo removes the new entry; a transfer already linked to its other side
   // would leave that side changed, so it has no Undo here.
   if (!card.saved?.transferLinkedEntryId) {

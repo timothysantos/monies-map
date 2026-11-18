@@ -1318,7 +1318,9 @@ Code:
   `savePaymentWay`)
 - `PaymentWayDto` in `src/types/dto.ts`; `settingsPage.paymentWays`
 - `POST /api/settings/payment-ways/save` with
-  `{ personId, bankTransferAccountId, cashAccountId }` ("" = none)
+  `{ personId, bankTransferAccountId, cashAccountId }` ("" = none), or
+  `{ personId, cashAccountId, only: "cash" }` for "Remember this for cash"
+  (the cash wallet alone)
 
 Rules:
 - Payment words: PayNow ("paynow", "pay now"), FAST, GIRO, NETS (a debit
@@ -1348,6 +1350,14 @@ Rules:
   account). Cash must be an active `cash` account. A save naming anything
   else (a card, an archived or unknown account, a person outside the
   household) is refused before anything is written.
+- Remember this for cash: after the person picks the wallet a cash payment
+  came from (the Just paid pad's question, or Ask's for "kopi 2.40 cash"),
+  one tap sets it as their cash wallet through the same command with
+  `only: "cash"`. Only the cash wallet is written; a stored entry with no
+  PayNow choice keeps the PayNow default. The wallet must be an active
+  `cash` account the person owns or a joint one (another person's wallet,
+  another household's, a bank account or an archived wallet is refused).
+  It is offered, never applied by itself; "" with it is its Undo.
 - Default: a person who has never chosen gets their own first bank account
   in Default account priority (never a joint one), else none, and no cash
   wallet. A choice is kept as made, none included. A chosen account that is

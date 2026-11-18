@@ -1629,6 +1629,9 @@ export interface EntryDraftQuestionDto {
   options: EntryDraftQuestionOptionDto[];
   // A foreign_currency question: the figure as typed, in its own currency.
   foreignAmount?: { amountMinor: number; currency: string };
+  // An accountId question for a cash payment with no cash wallet: whose
+  // cash it was ("Remember this for cash" after the save).
+  paymentWay?: { kind: "cash"; personId: string };
 }
 
 // Exactly the /api/entries/create body, set only when nothing is missing.

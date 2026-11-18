@@ -689,7 +689,9 @@ test("negative: cash with no cash wallet set is asked, never put on a card, offe
       { accountId: "acct-ocbc-365", accountName: "OCBC 365 Card" },
       { accountId: "acct-uob-prvi", accountName: "UOB PRVI Miles Card" },
       { accountId: "acct-uob-one", accountName: "UOB One Account" }
-    ]
+    ],
+    // Whose cash it was, for "Remember this for cash" after the save.
+    paymentWay: { kind: "cash", personId: "person-serene" }
   }]);
   assert.equal(draft.createBody, undefined);
 
@@ -708,7 +710,8 @@ test("negative: cash with no cash wallet set is asked, never put on a card, offe
       { accountId: "acct-ethan-cash", accountName: "Ethan's Wallet" },
       { accountId: "acct-citi-cash-back", accountName: "Citi Cash Back Card" },
       { accountId: "acct-ocbc-360", accountName: "OCBC 360 Account" }
-    ]
+    ],
+    paymentWay: { kind: "cash", personId: "person-ethan" }
   }]);
 });
 

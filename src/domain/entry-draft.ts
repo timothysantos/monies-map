@@ -220,7 +220,10 @@ export function parseEntrySentence(
         account = { value: paymentAccount, source: "rule" };
       } else if (paymentWay && (paymentWay === "cash" || !chosen || chosen.kind === "credit_card")) {
         const candidates = paymentWayCandidates(priorityAccounts, paymentWay, paymentOwnerId);
-        questions.push(accountQuestion("missing", candidates, candidates));
+        const question = accountQuestion("missing", candidates, candidates);
+        // Whose cash it was, so the page can offer "Remember this for cash"
+        // once the person has picked the wallet (DOMAIN.md "Payment Way").
+        questions.push(paymentWay === "cash" && paymentOwnerId ? { ...question, paymentWay: { kind: "cash", personId: paymentOwnerId } } : question);
       } else if (chosen) {
         account = fallback(chosen);
       } else {

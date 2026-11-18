@@ -36,13 +36,21 @@ export async function loadPaymentWays(
 // batch, after checking them. The person's entry is merged into the stored
 // JSON inside the statement (json_patch), so two people saved at once
 // cannot overwrite each other.
+//
+// `only: "cash"` is "Remember this for cash" (the Just paid pad and Ask,
+// after the person picked the wallet a cash payment came from; DOMAIN.md
+// "Payment Way"): only the cash wallet is written, so the PayNow choice
+// stays as it was (the default while never chosen), and the wallet must be
+// one the person may use, their own or a joint one, as the pad offers.
+// "" with it is that tap's Undo: no cash wallet again.
 export async function savePaymentWay(
   db: D1Database,
-  input: { personId: string; bankTransferAccountId?: string; cashAccountId?: string }
-): Promise<{ updated: true; paymentWay: PaymentWayDto }> {
+  input: { personId: string; bankTransferAccountId?: string; cashAccountId?: string; only?: "cash" }
+): Promise<{ updated: true; paymentWay: PaymentWayDto } | { updated: true; cashWallet: { personId: string; cashAccountId: string } }> {
   await ensureAppSettingsTable(db);
+  const cashOnly = input.only === "cash";
   const personId = input.personId.trim();
-  const bankTransferAccountId = input.bankTransferAccountId?.trim() ?? "";
+  const bankTransferAccountId = cashOnly ? "" : input.bankTransferAccountId?.trim() ?? "";
   const cashAccountId = input.cashAccountId?.trim() ?? "";
 
   const person = personId
@@ -58,12 +66,12 @@ export async function savePaymentWay(
   const accountRows = chosenIds.length
     ? (await db
       .prepare(`
-        SELECT id, account_name, account_kind, is_active
+        SELECT id, account_name, account_kind, is_active, owner_person_id, is_joint
         FROM accounts
         WHERE household_id = ? AND id IN (${chosenIds.map(() => "?").join(", ")})
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...chosenIds)
-      .all<{ id: string; account_name: string; account_kind: string; is_active: number }>()).results
+      .all<{ id: string; account_name: string; account_kind: string; is_active: number; owner_person_id: string | null; is_joint: number }>()).results
     : [];
   const accountFor = (accountId: string) => accountRows.find((row) => row.id === accountId);
   const bankAccount = bankTransferAccountId ? accountFor(bankTransferAccountId) : undefined;
@@ -74,8 +82,12 @@ export async function savePaymentWay(
   if (cashAccountId && !(cashAccount && cashAccount.is_active && cashAccount.account_kind === "cash")) {
     throw new Error("Choose an active cash account for cash.");
   }
+  if (cashOnly && cashAccount && !(cashAccount.owner_person_id === person.id || cashAccount.is_joint)) {
+    throw new Error("Choose a cash wallet of your own or a joint one.");
+  }
 
-  const patch = JSON.stringify({ people: { [person.id]: { bankTransferAccountId, cashAccountId } } });
+  const patch = JSON.stringify({ people: { [person.id]: cashOnly ? { cashAccountId } : { bankTransferAccountId, cashAccountId } } });
+
   await db.batch([
     db
       .prepare(`
@@ -90,9 +102,13 @@ export async function savePaymentWay(
       entityType: "settings",
       entityId: PAYMENT_WAYS_SETTINGS_KEY,
       action: "payment_way_updated",
-      detail: `Payment ways for ${person.display_name}: PayNow and bank transfers from ${bankAccount?.account_name ?? "none"}; cash from ${cashAccount?.account_name ?? "none"}.`
+      detail: cashOnly
+        ? `Payment ways for ${person.display_name}: cash from ${cashAccount?.account_name ?? "none"}.`
+        : `Payment ways for ${person.display_name}: PayNow and bank transfers from ${bankAccount?.account_name ?? "none"}; cash from ${cashAccount?.account_name ?? "none"}.`
     })
   ]);
 
-  return { updated: true, paymentWay: { personId: person.id, bankTransferAccountId, cashAccountId } };
+  return cashOnly
+    ? { updated: true, cashWallet: { personId: person.id, cashAccountId } }
+    : { updated: true, paymentWay: { personId: person.id, bankTransferAccountId, cashAccountId } };
 }

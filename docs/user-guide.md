@@ -1415,6 +1415,13 @@ and the payment is saved with it; **Undo** is right there if you picked
 the wrong one. Choose a cash wallet in Settings, Payment ways, and it won't
 ask again.
 
+After that save, when the wallet you picked is a cash account of yours (or
+a shared one), the pad offers **Remember this for cash**. Tap it and that
+wallet becomes your cash wallet: the pad says "Cash will use … from now
+on. Change it in Settings, Payment ways." with an **Undo** beside it, and
+cash stops asking. Leave it and nothing changes; it is offered again the
+next time the pad asks.
+
 Tapping the line at the top also shows these choices in place of the
 number keys. Picking one there only changes the line; tap **Done** to get
 the number keys back.
@@ -3404,7 +3411,10 @@ The word you typed ("paynow", "cash") is left out of the description. The
 person is the one you name ("Serene paid by paynow"), or you when you say
 "mine" or name no one. If you name an account ("paynow from POSB joint"),
 that account is used. If that person has no cash wallet chosen, the app
-asks which account the cash came from instead of putting it on a card. If
+asks which account the cash came from instead of putting it on a card;
+after you save with a cash account of yours, **Remember this for cash**
+under the entry makes it your cash wallet, so the next "cash" is not
+asked. If
 no PayNow account is chosen, the entry goes to the first account in
 **Default account**, unless that is a credit card; then it asks
 too. It never uses someone else's account. Words like "fast food", "badminton nets"

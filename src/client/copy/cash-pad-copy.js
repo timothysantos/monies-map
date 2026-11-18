@@ -32,6 +32,11 @@ export const cashPadCopy = Object.freeze({
   cash: "Cash",
   walletQuestion: "Which wallet did the cash come from?",
   walletHint: "Set a cash wallet in Settings, Payment ways, and this won't ask again.",
+  // After a save whose wallet the person just picked for cash (the pad's
+  // question, or Ask's): one tap makes it their cash wallet, so cash stops
+  // asking. Shared with Ask (ask-chips.js).
+  rememberCash: "Remember this for cash",
+  rememberedCash: (walletName) => `Cash will use ${walletName} from now on. Change it in Settings, Payment ways.`,
   // Apple Pay taps that reached the app without their amount.
   taps: {
     title: "Apple Pay missed the amount",
