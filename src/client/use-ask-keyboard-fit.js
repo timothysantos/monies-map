@@ -24,7 +24,17 @@ export function useAskKeyboardFit(pageRef, threadRef, enabled) {
     const observer = new ResizeObserver(() => {
       const height = thread.clientHeight;
       if (height < lastHeight) {
-        thread.scrollTop += lastHeight - height;
+        const focused = document.activeElement;
+        if (focused instanceof HTMLElement && focused !== thread && thread.contains(focused)) {
+          // A field being typed in on a card ("What it was" under a receipt
+          // preview) stays in sight rather than the conversation's end.
+          const field = focused.getBoundingClientRect();
+          const box = thread.getBoundingClientRect();
+          if (field.top < box.top) thread.scrollTop -= box.top - field.top + 8;
+          else if (field.bottom > box.bottom) thread.scrollTop += Math.min(field.bottom - box.bottom + 8, field.top - box.top - 8);
+        } else {
+          thread.scrollTop += lastHeight - height;
+        }
       }
       lastHeight = height;
     });

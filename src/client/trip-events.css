@@ -354,15 +354,25 @@
   color: var(--accent-strong);
 }
 
+/* A long name wraps, and the Now tag goes under it when there is no room
+   beside it, so neither runs under the figures on a small phone. */
 .trip-sheet-name {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+  min-width: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.trip-sheet-row .trip-pick-text {
+  flex: 1 1 auto;
 }
 
 .trip-sheet-figures {
   display: inline-flex;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-end;
   margin-left: auto;

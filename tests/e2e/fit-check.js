@@ -205,7 +205,7 @@ function fitProblemsInPage({ root: rootSelector, ignore, notChoosers, mustSee, m
     }
     // Squeezed: a long name or field pushed into a column a few letters wide.
     const fontSize = parseFloat(style.fontSize) || 16;
-    const textLength = (element.value ?? element.textContent ?? "").trim().length;
+    const textLength = String(typeof element.value === "string" ? element.value : element.textContent ?? "").trim().length;
     if (textLength > 12 && box.width < fontSize * 4 && box.height > fontSize * 4) {
       report(element, `squeezed: ${describe(element)} is ${Math.round(box.width)}px wide for ${textLength} letters`);
     }

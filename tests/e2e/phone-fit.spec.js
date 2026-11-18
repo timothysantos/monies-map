@@ -1,7 +1,12 @@
 import { devices, expect, test } from "@playwright/test";
+import path from "node:path";
 
 import { expectFits, fakeKeyboard, setKeyboard } from "./fit-check.js";
 import { STRESS, addWaitingTaps, seedStressHousehold } from "./fit-stress-fixture.js";
+import { postJson } from "./helpers.js";
+import { LADYS_CARD, writeStatementPdf } from "./uob-wrong-card-statement.js";
+
+const RECEIPT_FIXTURE = path.resolve("tests/fixtures/ask/sample-receipt.png");
 
 // Phone fit (docs/code-spec.md "Phone fit check"): Ask and Entries states
 // with the heavy household (fit-stress-fixture.js) at small phone sizes, with
@@ -33,6 +38,17 @@ async function stubModel(page, replies) {
     const response = await route.fetch({ headers: { ...route.request().headers(), ...(reply ? { "x-ask-turn-test-reply": JSON.stringify(reply) } : {}) } });
     await route.fulfill({ response });
   });
+}
+
+// A 390 x 844 screenshot for the owner's review, only when FIT_SHOTS names a
+// folder (the follow-up's before/after shots).
+async function shot(page, name, { phone = { width: 390, height: 844 } } = {}) {
+  if (!process.env.FIT_SHOTS) return;
+  const before = page.viewportSize();
+  await page.setViewportSize(phone);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.screenshot({ path: `${process.env.FIT_SHOTS}/${name}.png` });
+  if (before) await page.setViewportSize(before);
 }
 
 async function send(page, text) {
@@ -81,6 +97,15 @@ test.describe("phone fit", () => {
 
     await send(page, "the family dinner");
     await expect(page.locator(".ask-question")).toBeVisible({ timeout: 30_000 });
+    // F12: all four options are chips; the long ones shortened at a word
+    // (they used to be dropped, leaving one chip).
+    await shot(page, "F12-question-chips");
+    await expect(page.locator(".ask-chips .ask-chip")).toHaveText([
+      "The family dinner at the roastery…",
+      "The lunch with the grandparents…",
+      "Something else earlier this month",
+      "None of these, I will type it again"
+    ]);
     // On each phone, with the question in sight at the end of the conversation:
     // the keyboard comes up and a long message grows the box, and the
     // question, the box and Send all stay in sight above the keyboard.
@@ -175,6 +200,108 @@ test.describe("phone fit", () => {
     await page.locator(".settings-section-toggle").filter({ hasText: "What Ask remembers" }).click();
     await expect(page.getByRole("switch", { name: "Let Ask handle safe things" })).toBeVisible({ timeout: 30_000 });
     await page.getByRole("switch", { name: "Let Ask handle safe things" }).scrollIntoViewIfNeeded();
+    await expectFitsOnPhones(page);
+  });
+
+  // Ask audit B22: a plan change neither the model nor the rules could read
+  // asks with the household's plan lines as chips, each a whole message.
+  test("Ask: an unread plan change asks with plan-line chips that fit", async ({ page }) => {
+    await stubModel(page, [
+      { action: "plan_change", plan: { month: null, copy_from: null, ops: [] } },
+      { action: "plan_change", plan: { month: null, copy_from: null, ops: [] } }
+    ]);
+    for (const [label, categoryName] of [["Shopping", "Shopping"], ["Groceries", "Groceries"]]) {
+      await postJson(page, "/api/month-plan/save", {
+        rowId: `fit-plan-${label.toLowerCase()}`, month: STRESS.month, sectionKey: "budget_buckets", categoryName, label,
+        plannedMinor: 30_000, planDate: null, accountName: "", note: "", ownershipType: "direct", ownerName: STRESS.tim
+      });
+    }
+    await page.goto(`/ask?view=person-tim&month=${STRESS.month}`);
+    await expect(message(page)).toBeVisible({ timeout: 60_000 });
+    await send(page, "take 50 off shoping and give it to groceries this month");
+    await expect(page.locator(".ask-question")).toHaveText("Which plan line, how much, and for which month?", { timeout: 30_000 });
+    await shot(page, "B22-plan-question");
+    const chips = page.locator(".ask-chips .ask-chip");
+    await expect(chips.first()).toHaveText(/^Move \$50 from .+ this month$/);
+    await expectFitsOnPhones(page, { typing: () => message(page), mustSee: [".ask-send"] });
+  });
+
+  test("Splits: the new split expense sheet fits with the keyboard up", async ({ page }) => {
+    await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+    // On a phone, Splits' + Add expense opens Ask's new entry card with
+    // Splits on (the desktop has its own dialog, dialog-fit.spec.js).
+    await page.getByRole("button", { name: "+ Add expense" }).click({ timeout: 60_000 });
+    const card = page.locator('[data-ask-card="draft"]');
+    await expect(card).toBeVisible({ timeout: 30_000 });
+    const what = card.getByRole("textbox", { name: "What it was" });
+    await what.fill(STRESS.longShop);
+    await card.getByRole("textbox", { name: "Amount" }).fill("123456.78");
+    await shot(page, "S7a-splits-add-expense");
+    await expectFitsOnPhones(page, { typing: () => what });
+    await expectFitsOnPhones(page, { typing: () => card.getByRole("textbox", { name: "Amount" }) });
+  });
+
+  test("Imports: the sticky bar with its blockers fits over a statement in review", async ({ page }, testInfo) => {
+    const ladys = (await postJson(page, "/api/accounts/create", { name: LADYS_CARD, institution: "UOB", kind: "credit_card", currency: "SGD", openingBalanceMinor: -1250, ownerPersonId: "person-tim", isJoint: false })).accountId;
+    for (const [date, description, amountMinor] of [["2026-04-20", "OpenAI", 2949], ["2026-05-05", "Buyandship", 1313]]) {
+      await postJson(page, "/api/entries/create", { accountId: ladys, date, description, amountMinor, categoryName: "Shopping", entryType: "expense", ownershipType: "direct", ownerName: STRESS.tim });
+    }
+    const pdf = testInfo.outputPath("eStatement_UOB_Cards_12May2026.pdf");
+    await writeStatementPdf(page, pdf);
+    await page.goto("/imports");
+    await page.locator("input[type=file]").setInputFiles([pdf]);
+    const bar = page.getByRole("navigation", { name: "Import progress" });
+    await bar.locator(".import-file-chip").first().click({ timeout: 60_000 });
+    await expect(page.locator(".statement-review")).toBeVisible({ timeout: 30_000 });
+    await expect(bar.locator(".import-blockers")).toContainText("Before you can commit:");
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight / 2, behavior: "instant" }));
+    await shot(page, "S7b-imports-sticky-blockers");
+    await expectFitsOnPhones(page);
+  });
+
+  test("Entries: the Trips & events sheet fits with a long trip name", async ({ page }) => {
+    await page.goto(`/entries?view=household&month=${STRESS.month}`);
+    await expect(page.locator(".entry-row").first()).toBeVisible({ timeout: 60_000 });
+    await page.locator(".entries-totals .lsd-rows").getByRole("button", { name: /^Filters/ }).click();
+    const context = page.getByRole("dialog", { name: "View and scope" });
+    await context.locator("[data-trip-filter]").click();
+    const sheet = page.getByRole("dialog", { name: "Trips & events" });
+    await expect(sheet).toContainText(STRESS.trip);
+    await shot(page, "S7c-trips-sheet");
+    await expectFitsOnPhones(page);
+  });
+
+  test("Ask: a receipt photo's preview on the card fits", async ({ page }) => {
+    await page.route("**/api/ai-assist/receipt-read", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, ai: { available: true }, receipt: {
+        source: "ai", merchant: { value: STRESS.longShop, confidence: "high" }, date: { value: STRESS.today, confidence: "high" },
+        total: { amountMinor: 12_345_678, currency: "SGD", confidence: "high" }, cardLast4: null, lineItems: [], questions: []
+      } })
+    }));
+    await page.goto(`/ask?view=person-tim&month=${STRESS.month}&mode=add`);
+    await expect(page.locator('[data-ask-card="draft"]')).toBeVisible({ timeout: 60_000 });
+    await page.locator(".ask-file-input").nth(1).setInputFiles(RECEIPT_FIXTURE);
+    await expect(page.locator(".ask-receipt-thumb img")).toBeVisible({ timeout: 30_000 });
+    await page.locator(".ask-receipt-thumb").evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await shot(page, "S7d-ask-receipt-preview");
+    await expectFitsOnPhones(page, { typing: () => page.getByRole("textbox", { name: "What it was" }) });
+  });
+
+  test("Ask: the Done for you log with an automatic change fits", async ({ page }) => {
+    const entryId = (await postJson(page, "/api/entries/create", {
+      date: STRESS.today, description: STRESS.longShop, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 12_345_678, entryType: "expense", ownershipType: "direct", ownerName: STRESS.tim
+    })).entryId;
+    await stubModel(page, [{ action: "edit_note", note_edit: { target: "entry", text: "birthday dinner with the grandparents and all the cousins" } }]);
+    await page.goto(`/ask?saved_entry=${entryId}&month=${STRESS.month}&view=person-tim&from=shortcut`);
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
+    await send(page, "note: birthday dinner with the grandparents and all the cousins");
+    const list = page.locator("[data-ask-done-list]");
+    await list.getByRole("button", { name: /Done for you/ }).click({ timeout: 30_000 });
+    await expect(list.locator('[data-done-kind="note"]')).toBeVisible();
+    await list.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await shot(page, "S7e-done-for-you");
     await expectFitsOnPhones(page);
   });
 });
