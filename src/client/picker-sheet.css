@@ -9,6 +9,9 @@
 /* The list keeps a little air under its last option, above the bar. */
 .is-picker-sheet .mobile-select-options {
   padding-bottom: 14px;
+  /* One column as wide as the sheet: a long name (a wallet) ends in an
+     ellipsis instead of pushing every option past the screen's edge. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .is-picker-sheet .mobile-select-head {
