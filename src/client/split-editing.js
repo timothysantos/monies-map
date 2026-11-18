@@ -85,9 +85,9 @@ export function useSplitEditState({ categoryOptions, people }) {
     setExpenseDialogSnapshot(null);
   }, [categoryOptions, people]);
 
-  const openNewSettlementDialog = useCallback(({ activeGroup, groupBalanceMinor }) => {
+  const openNewSettlementDialog = useCallback(({ activeGroup, groupBalanceMinor, viewId = "" }) => {
     setFormError("");
-    setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
+    setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people, viewId }));
     setSettlementDialogSnapshot(null);
   }, [people]);
 

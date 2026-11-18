@@ -1051,7 +1051,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
   function handleCheckInAction(action) {
     if (action.id === "settle-group" && activeGroup) {
-      openNewSettlementDialog({ activeGroup, groupBalanceMinor });
+      openNewSettlementDialog({ activeGroup, groupBalanceMinor, viewId: view.id });
     } else if (action.id === "review-matches") {
       openMatchesView();
     } else if (action.id === "show-entries" && action.entryIds?.length) {
@@ -1321,7 +1321,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     showSimplify: useMobileSplitSheet && !isHouseholdView && !activeCheckpoint,
     showAddExpense: !useMobileSplitSheet,
     isCheckpointing,
-    onSettle: () => openNewSettlementDialog({ activeGroup, groupBalanceMinor }),
+    onSettle: () => openNewSettlementDialog({ activeGroup, groupBalanceMinor, viewId: view.id }),
     onSimplify: () => void simplifySettlement()
   };
   const formatCheckpointMoney = (amountMinor, currency) => formatService.moneyWithCurrency(amountMinor, currency ?? "SGD");

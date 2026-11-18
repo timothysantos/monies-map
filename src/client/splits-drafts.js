@@ -93,13 +93,21 @@ export function buildNewExpenseDraft({ activeGroup, categoryOptions, people, vie
   };
 }
 
-export function buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }) {
+// Settle group pays off the group's balance: the one who owes pays the one
+// owed. `groupBalanceMinor` is the viewer's (positive: owed to them); the
+// household view reads the first person's side. A payment the wrong way
+// round would double what is owed, and a payment only settles the group at
+// zero (DOMAIN.md "Split Settlement").
+export function buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people, viewId = "" }) {
+  const viewer = people.find((person) => person.id === viewId) ?? people[0];
+  const other = people.find((person) => person !== viewer && person.id !== viewer?.id);
+  const viewerOwes = groupBalanceMinor < 0;
   return {
     groupId: activeGroup?.id ?? "split-group-none",
     currency: activeGroup?.currency ?? "SGD",
     date: todayInAppTimeZone(),
-    fromPersonName: people[1]?.name ?? "",
-    toPersonName: people[0]?.name ?? "",
+    fromPersonName: (viewerOwes ? viewer?.name : other?.name) ?? "",
+    toPersonName: (viewerOwes ? other?.name : viewer?.name) ?? "",
     amountMinor: Math.abs(groupBalanceMinor),
     note: "",
     paymentMethod: "cash",
