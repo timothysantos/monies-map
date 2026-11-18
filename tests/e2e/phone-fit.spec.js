@@ -310,10 +310,10 @@ test.describe("phone fit", () => {
     await send(page, "add to splits");
     const card = page.locator("[data-split-proposal]").last();
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(`It was paid from ${STRESS.wallets[0]}, which is ${STRESS.tim}'s`)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add to Splits, Joyce paid" })).toBeVisible();
     await card.evaluate((element) => element.scrollIntoView({ block: "center" }));
     await shot(page, "B28-paid-from-wallet");
+    await expect(page.getByText(`It was paid from ${STRESS.wallets[0]}, which is ${STRESS.tim}'s`)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add to Splits, Joyce paid" })).toBeVisible();
     await expectFitsOnPhones(page);
   });
 
@@ -333,8 +333,9 @@ test.describe("phone fit", () => {
     await page.goto(`/ask?view=person-tim&month=${STRESS.month}`);
     await expect(message(page)).toBeVisible({ timeout: 60_000 });
     await send(page, "take 50 off shoping and give it to groceries this month");
-    await expect(page.locator(".ask-question")).toHaveText("Which plan line, how much, and for which month?", { timeout: 30_000 });
+    await expect(page.getByText("Which plan line, how much, and for which month?")).toBeVisible({ timeout: 30_000 });
     await shot(page, "B22-plan-question");
+    await expect(page.locator(".ask-question")).toHaveText("Which plan line, how much, and for which month?");
     const chips = page.locator(".ask-chips .ask-chip");
     await expect(chips.first()).toHaveText(/^Move \$50 from .+ this month$/);
     await expectFitsOnPhones(page, { typing: () => message(page), mustSee: [".ask-send"] });

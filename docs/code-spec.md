@@ -436,7 +436,12 @@ not presence:
 - Sizes: 320x568, 375x667-110 (375x557: an in-app browser toolbar) and
   390x844, and for anything with a text field the same with the keyboard
   up (`fakeKeyboard` + `setKeyboard` in `tests/e2e/fit-check.js`: the
-  visual viewport shrinks by 260-336 px, as on iPhone Safari).
+  visual viewport shrinks by 260-336 px, as on iPhone Safari). The
+  smallest (fit audit F11): 320x458 (an SE under a toolbar) and 288x429
+  (375x557 at 130% text) with the keyboard up, for Ask, the Splits sheets
+  and the category list (`SMALL_PHONES` in `tests/e2e/phone-fit.spec.js`).
+  On a screen under 520 px tall with the keyboard up a sheet's whole body
+  scrolls as one under its fixed bar (owner decision 2026-11-18).
 - Data: the heavy demo household in `tests/e2e/fit-stress-fixture.js` (12
   wallets with long names, long people names, 40 categories, 60+ letter
   shop names, some with no spaces, -$123,456.78 and long rupiah amounts,
