@@ -53,8 +53,6 @@ async function seedMixedPayers(page, stamp) {
   return { onTim, onJoyce };
 }
 
-const MIXED_CHOICES = ["Half each", "The one who didn't pay owes it all", "All on the one who paid"];
-
 // The three choices by name, the line for each, and no name anywhere.
 async function checkMixedSheet(page, scope, count) {
   const preview = scope.locator("[data-pick-splits-preview]");
