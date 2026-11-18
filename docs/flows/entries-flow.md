@@ -34,7 +34,9 @@ answers):
   (`applyEntriesDayRange`). Another month picked in the header drops it
   (the last day must be in `month`, `readEntriesDayRange`), as do Reset,
   the chip's ✕ and a trip view; setting it drops `entry_from`/`entry_to`
-  and `entry_trip`. At most 24 months long. The lead's eyebrow and the chip
+  and `entry_trip`. On a wide screen the two fields wrap onto a row of their
+  own under the search; the older filters keep the widths they had before
+  them (`tests/e2e/entries-filter-bar-fit.spec.js`). At most 24 months long. The lead's eyebrow and the chip
   at the top of the list say the days ("Spent · 9 to 15 Nov"; the year
   only when the days are not all this year);
 - `from_ask=1`: the filters came from an Ask answer's `Open in Entries`.
