@@ -1447,3 +1447,16 @@ body[data-entry-inline-editor] > .entries-ask-chip {
     padding: 0 14px;
   }
 }
+
+/* The phone entry sheet with the keyboard up (use-keyboard-inset.js): the
+   stacked Cancel and Save sit side by side, so the form keeps room above
+   the keyboard on a small phone (the fit check, docs/code-spec.md). */
+.entry-mobile-sheet[data-keyboard] .entry-mobile-sheet-actions {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.entry-mobile-sheet[data-keyboard] .entry-inline-actions {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}

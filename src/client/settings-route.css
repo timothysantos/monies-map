@@ -432,6 +432,9 @@
    group, and an open section's body ends the run before it. */
 .settings-list {
   display: block;
+  /* A grid item: without this a long status (two long names) widens the
+     page's column past a phone screen instead of ending in an ellipsis. */
+  min-width: 0;
 }
 
 .settings-list > .settings-section > .settings-section-toggle {
@@ -496,6 +499,7 @@
 }
 
 .settings-section-status {
+  min-width: 0;
   overflow: hidden;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -1133,6 +1137,13 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--text) 18%, var(--paper));
   cursor: pointer;
+}
+
+/* A 46 x 28 switch with a 44 px tall reach for a thumb (the fit check). */
+.settings-switch::before {
+  content: "";
+  position: absolute;
+  inset: -8px -2px;
 }
 
 .settings-switch::after {
