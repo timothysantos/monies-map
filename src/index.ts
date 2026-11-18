@@ -1846,6 +1846,7 @@ export default {
         paymentMethod?: "cash" | "card" | "bank" | "other";
         paymentStatus?: "recorded" | "awaiting_statement" | "certified";
         note?: string;
+        requestId?: unknown;
       }>();
 
       if (!body.date || !body.fromPersonName || !body.toPersonName || typeof body.amountMinor !== "number") {
@@ -1865,7 +1866,8 @@ export default {
             currency: body.currency,
             fxRateBasisPoints: body.fxRateBasisPoints,
             paymentMethod: body.paymentMethod,
-            paymentStatus: body.paymentStatus
+            paymentStatus: body.paymentStatus,
+            ...(body.requestId === undefined || body.requestId === null ? {} : { requestId: String(body.requestId) })
           }))
         });
       } catch (error) {

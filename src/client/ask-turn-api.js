@@ -437,6 +437,15 @@ export function saveSplitProposal(proposal, { fetchImpl = fetch } = {}) {
   }, "The entry could not be added to Splits.", fetchImpl);
 }
 
+// A settle-up payment draft gets its own request id when it is shown, so
+// every Record payment of that card (a retry after a lost answer too) is
+// the same request and the server records it once (Ask audit B26).
+export function withSettlementRequestId(settlement) {
+  if (!settlement || typeof settlement !== "object" || settlement.requestId) return settlement;
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return { ...settlement, requestId: uuid ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}` };
+}
+
 // Save of a settle-up payment draft: the existing command.
 export function saveSettlementDraft(settlement, { fetchImpl = fetch } = {}) {
   return postJson("/api/splits/settlements/create", {
@@ -445,7 +454,8 @@ export function saveSettlementDraft(settlement, { fetchImpl = fetch } = {}) {
     fromPersonName: settlement.fromPersonName,
     toPersonName: settlement.toPersonName,
     amountMinor: settlement.amountMinor,
-    currency: settlement.currency
+    currency: settlement.currency,
+    ...(typeof settlement.requestId === "string" && settlement.requestId ? { requestId: settlement.requestId } : {})
   }, "The payment could not be recorded.", fetchImpl);
 }
 

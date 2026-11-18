@@ -47,7 +47,7 @@ import {
 } from "./ask-card-model";
 import { AskAnswerCard } from "./ask-answer-card";
 import { ASK_SPLIT_DRAFT_STATE_KEY, buildAskSplitFormDraft } from "./ask-split-form-handoff";
-import { buildTurnFocus, buildTurnHistory, effectiveChange, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal, selectedChoiceId } from "./ask-turn-api";
+import { buildTurnFocus, buildTurnHistory, effectiveChange, linkTurnMatch, removeSplitExpense, requestAskTurn, runChangeSteps, saveChangeRule, saveSettlementDraft, saveSplitProposal, selectedChoiceId, withSettlementRequestId } from "./ask-turn-api";
 import { AskChangeCard, AskMatchesCard, AskSettlementDraftCard, AskSplitProposalCard, openPageOf } from "./ask-turn-cards";
 import { AskMoneyAnswerCard, AskSkewCheckCard } from "./ask-money-answer-card";
 import { AskInsightAnswerCard } from "./ask-insight-answer-card";
@@ -827,7 +827,7 @@ function AskConversation({
     } else if (reply.kind === "split_proposal") {
       appendThread(threadItem("split-proposal", { proposal: reply.proposal, status: "draft" }));
     } else if (reply.kind === "settlement_draft") {
-      appendThread(threadItem("settlement-draft", { settlement: reply.settlement, status: "draft" }));
+      appendThread(threadItem("settlement-draft", { settlement: withSettlementRequestId(reply.settlement), status: "draft" }));
     } else if (reply.kind === "plan") {
       showPlanReading(reply.text, reply.request, reply.reading);
     } else if (reply.kind === "question") {

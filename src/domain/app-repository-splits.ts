@@ -1133,13 +1133,26 @@ export async function createSplitSettlementRecord(
     fxRateBasisPoints?: number | null;
     paymentMethod?: SplitSettlementDto["paymentMethod"];
     paymentStatus?: SplitSettlementDto["paymentStatus"];
+    // The caller's retry key (Ask's Record payment, Ask audit B26). The
+    // payment's id is made from it, so the same request twice finds the row
+    // already recorded (the primary key also stops two at once) and answers
+    // with it: a retry after a lost answer never records it twice.
+    requestId?: string;
   }
 ) {
+  if (input.requestId !== undefined && !SETTLEMENT_REQUEST_ID.test(input.requestId)) {
+    throw new Error("Missing or invalid requestId. Nothing was recorded.");
+  }
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
-  const id = newSplitRecordId("split-settlement");
   const groupId = input.groupId || null;
+  const id = input.requestId ? `split-settlement-request-${input.requestId}` : newSplitRecordId("split-settlement");
+  const replay = () => input.requestId
+    ? findSettlementReplay(db, id, { groupId, date: input.date, fromPersonId, toPersonId, amountMinor: input.amountMinor, currency })
+    : Promise.resolve(null);
+  const replayed = await replay();
+  if (replayed) return replayed;
   const batch = await resolveActiveSplitBatch(db, { groupId, date: input.date });
   // A payment settles the group only when nothing is owed either way after
   // it. Paying more or less than is owed leaves the rest open, owed the
@@ -1153,34 +1166,74 @@ export async function createSplitSettlementRecord(
     ? await buildCloseSplitBatchStatement(db, { batchId: batch.id, groupId, closedOn: input.date })
     : null;
 
-  await db.batch([
-    ...batch.statements,
-    db
-      .prepare(`
-        INSERT INTO split_settlements (
-          id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
-          settlement_date, amount_minor, currency, fx_rate_basis_points, payment_method, payment_status, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      .bind(
-        id,
-        DEFAULT_HOUSEHOLD_ID,
-        groupId,
-        batch.id,
-        fromPersonId,
-        toPersonId,
-        input.date,
-        input.amountMinor,
-        currency,
-        input.fxRateBasisPoints ?? null,
-        input.paymentMethod ?? "cash",
-        input.paymentStatus ?? "recorded",
-        input.note ?? null
-      ),
-    ...(closeStatement ? [closeStatement] : [])
-  ]);
+  try {
+    await db.batch([
+      ...batch.statements,
+      db
+        .prepare(`
+          INSERT INTO split_settlements (
+            id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
+            settlement_date, amount_minor, currency, fx_rate_basis_points, payment_method, payment_status, note
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          id,
+          DEFAULT_HOUSEHOLD_ID,
+          groupId,
+          batch.id,
+          fromPersonId,
+          toPersonId,
+          input.date,
+          input.amountMinor,
+          currency,
+          input.fxRateBasisPoints ?? null,
+          input.paymentMethod ?? "cash",
+          input.paymentStatus ?? "recorded",
+          input.note ?? null
+        ),
+      ...(closeStatement ? [closeStatement] : []),
+      // Its history line commits with it (Ask audit B27).
+      buildAuditEventStatement(db, {
+        entityType: "split_settlement",
+        entityId: id,
+        action: "split_settlement_created",
+        detail: `Recorded a ${currency} settle-up payment on Splits.`
+      })
+    ]);
+  } catch (error) {
+    // The same request at the same moment: the first one recorded it.
+    const raced = await replay();
+    if (raced) return raced;
+    throw error;
+  }
 
   return { settlementId: id, owedBeforeMinor: owedBefore?.owedMinor ?? 0, owedAfterMinor: owedAfter, settled: owedAfter === 0 };
+}
+
+const SETTLEMENT_REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
+
+// A payment already recorded under this request id: the same payment
+// answers with its id; different facts under the same id are refused.
+async function findSettlementReplay(
+  db: D1Database,
+  id: string,
+  expected: { groupId: string | null; date: string; fromPersonId: string; toPersonId: string; amountMinor: number; currency: string }
+) {
+  const row = await db
+    .prepare("SELECT split_group_id, settlement_date, from_person_id, to_person_id, amount_minor, currency FROM split_settlements WHERE id = ? AND household_id = ?")
+    .bind(id, DEFAULT_HOUSEHOLD_ID)
+    .first<{ split_group_id: string | null; settlement_date: string; from_person_id: string; to_person_id: string; amount_minor: number; currency: string }>();
+  if (!row) return null;
+  const same = (row.split_group_id ?? null) === expected.groupId
+    && row.settlement_date === expected.date
+    && row.from_person_id === expected.fromPersonId
+    && row.to_person_id === expected.toPersonId
+    && Number(row.amount_minor) === expected.amountMinor
+    && row.currency === expected.currency;
+  if (!same) {
+    throw new Error("This request already recorded a different payment. Nothing was recorded.");
+  }
+  return { settlementId: id, replayed: true as const };
 }
 
 export async function updateSplitExpenseRecord(
@@ -2132,6 +2185,13 @@ export async function createSplitExpenseFromEntryRecord(
       sharePeople,
       splitBasisPoints: input.splitBasisPoints ?? 5000,
       splitAmountMinor: input.splitAmountMinor
+    }),
+    // Its history line commits with it (Ask audit B27).
+    buildAuditEventStatement(db, {
+      entityType: "split_expense",
+      entityId: id,
+      action: "split_expense_added_from_entry",
+      detail: "Added an entry to Splits."
     }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
   ]);

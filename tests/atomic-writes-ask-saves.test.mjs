@@ -326,3 +326,95 @@ test("B9: a payment that fails on its row writes no batch, no settlement and clo
   assert.notEqual(paid.status, 200);
   assertSameDatabase(await dumpDatabase(db), before);
 });
+
+// ---------------------------------------------------------------- B26
+
+// Ask's Record payment sends the card's own request id, so a retry after a
+// lost answer (the server saved, the phone never heard) answers with the
+// payment already recorded and never records it twice.
+function payment(who, overrides = {}) {
+  return {
+    groupId: null, date: DATE, fromPersonName: who.joyce.display_name, toPersonName: who.tim.display_name,
+    amountMinor: 4_000, currency: "SGD", requestId: "b26-retry-0000-0001", ...overrides
+  };
+}
+
+test("B26: the same Record payment request twice records one payment and answers with it both times", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const who = await people(db);
+  await nonGroupDinner(api, db, 9_600);
+  const owedBefore = (await owedByGroup(db, who.joyce.id, who.tim.id)).none;
+
+  const first = await api("/api/splits/settlements/create", payment(who));
+  assert.equal(first.status, 200, JSON.stringify(first.payload));
+  const again = await api("/api/splits/settlements/create", payment(who));
+  assert.equal(again.status, 200, JSON.stringify(again.payload));
+
+  assert.equal(again.payload.settlementId, first.payload.settlementId);
+  assert.equal(again.payload.replayed, true);
+  assert.deepEqual(await rows(db, "SELECT from_person_id, to_person_id, amount_minor, settlement_date FROM split_settlements WHERE id = ?", first.payload.settlementId), [
+    { from_person_id: who.joyce.id, to_person_id: who.tim.id, amount_minor: 4_000, settlement_date: DATE }
+  ]);
+  assert.equal((await rows(db, "SELECT COUNT(*) AS count FROM split_settlements WHERE amount_minor = 4000 AND settlement_date = ?", DATE))[0].count, 1);
+  // Balances moved once, by exactly the payment.
+  assert.equal((await owedByGroup(db, who.joyce.id, who.tim.id)).none, owedBefore - 4_000);
+  assert.equal((await rows(db, "SELECT COUNT(*) AS count FROM audit_events WHERE entity_id = ? AND action = 'split_settlement_created'", first.payload.settlementId))[0].count, 1);
+});
+
+test("B26: a request id is never reused for a different payment, and a bad one is refused", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const who = await people(db);
+  const first = await api("/api/splits/settlements/create", payment(who));
+  assert.equal(first.status, 200, JSON.stringify(first.payload));
+  const before = await dumpDatabase(db);
+
+  const different = await api("/api/splits/settlements/create", payment(who, { amountMinor: 4_500 }));
+  assert.equal(different.status, 400);
+  const malformed = await api("/api/splits/settlements/create", payment(who, { requestId: "x" }));
+  assert.equal(malformed.status, 400);
+  assertSameDatabase(await dumpDatabase(db), before);
+
+  // Without a request id each Record payment is its own (the Splits sheet).
+  const plainOne = await api("/api/splits/settlements/create", payment(who, { requestId: undefined }));
+  const plainTwo = await api("/api/splits/settlements/create", payment(who, { requestId: undefined }));
+  assert.equal(plainOne.status, 200);
+  assert.notEqual(plainOne.payload.settlementId, plainTwo.payload.settlementId);
+});
+
+test("B26/B27: a Record payment that fails on its history line writes nothing, and its retry then records it once", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const who = await people(db);
+  await nonGroupDinner(api, db, 9_600);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO audit_events/);
+  const failed = await api("/api/splits/settlements/create", payment(who), { database: faulty.db });
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(failed.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+
+  const retried = await api("/api/splits/settlements/create", payment(who));
+  assert.equal(retried.status, 200, JSON.stringify(retried.payload));
+  assert.equal(retried.payload.replayed, undefined);
+  assert.equal((await rows(db, "SELECT COUNT(*) AS count FROM split_settlements WHERE id = ?", retried.payload.settlementId))[0].count, 1);
+});
+
+// ---------------------------------------------------------------- B27
+
+test("B27: Add to Splits writes its history line in the same batch, and a failing history line keeps the entry off Splits", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entry = await api("/api/entries/create", { date: DATE, description: "Koufu lunch", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 1_280, entryType: "expense", ownershipType: "direct", ownerName: "Tim", externalReference: "ask:b27-add-0001" });
+  assert.equal(entry.status, 200, JSON.stringify(entry.payload));
+
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO audit_events/);
+  const failed = await api("/api/splits/expenses/from-entry", { entryId: entry.payload.entryId, splitGroupId: null, splitBasisPoints: 5000 }, { database: faulty.db });
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(failed.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+
+  const added = await api("/api/splits/expenses/from-entry", { entryId: entry.payload.entryId, splitGroupId: null, splitBasisPoints: 5000 });
+  assert.equal(added.status, 200, JSON.stringify(added.payload));
+  assert.deepEqual(await rows(db, "SELECT entity_type, action FROM audit_events WHERE entity_id = ?", added.payload.splitExpenseId), [
+    { entity_type: "split_expense", action: "split_expense_added_from_entry" }
+  ]);
+});

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ASK_CHANGE_PATHS, buildTurnFocus, buildTurnHistory, linkTurnMatch, readAskTurnResponse, requestAskTurn, runChangeSteps, saveSplitProposal } from "../src/client/ask-turn-api.js";
+import { ASK_CHANGE_PATHS, buildTurnFocus, buildTurnHistory, linkTurnMatch, readAskTurnResponse, requestAskTurn, runChangeSteps, saveSettlementDraft, saveSplitProposal, withSettlementRequestId } from "../src/client/ask-turn-api.js";
 import { ASK_CHANGE_PATHS as SERVER_CHANGE_PATHS } from "../src/domain/ask-turn-actions.ts";
 
 function change(overrides = {}) {
@@ -207,4 +207,21 @@ test("Add to Splits posts the existing command with the proposal's share", async
   assert.deepEqual(result, { ok: true, splitExpenseId: "split-1" });
   const refused = await saveSplitProposal({ entryId: "txn-1", splitBasisPoints: 0 }, { fetchImpl: async () => new Response(JSON.stringify({ ok: false, error: "This entry is already linked to a split expense." }), { status: 400 }) });
   assert.deepEqual(refused, { ok: false, error: "This entry is already linked to a split expense." });
+});
+
+test("B26: a settle-up draft gets one request id when shown, and every Record payment of it sends that same id", async () => {
+  const draft = withSettlementRequestId({ groupId: null, date: "2026-11-18", fromPersonName: "Serene", toPersonName: "Ethan", amountMinor: 4_800, currency: "SGD" });
+  assert.match(draft.requestId, /^[A-Za-z0-9-]{8,64}$/);
+  // Already has one (a stored card): kept as it is.
+  assert.equal(withSettlementRequestId(draft), draft);
+  const { calls, fetchImpl } = recordingFetch([{ ok: false, error: "Network" }, { ok: true, settlementId: "s-1" }]);
+  await saveSettlementDraft(draft, { fetchImpl });
+  await saveSettlementDraft(draft, { fetchImpl });
+  assert.deepEqual(calls.map((call) => call.path), ["/api/splits/settlements/create", "/api/splits/settlements/create"]);
+  assert.deepEqual(calls[0].body, { groupId: null, date: "2026-11-18", fromPersonName: "Serene", toPersonName: "Ethan", amountMinor: 4_800, currency: "SGD", requestId: draft.requestId });
+  assert.equal(calls[1].body.requestId, draft.requestId);
+  // A card stored before request ids sends none (the server then records it as before).
+  const { calls: oldCalls, fetchImpl: oldFetch } = recordingFetch();
+  await saveSettlementDraft({ groupId: "g", date: "2026-11-18", fromPersonName: "Serene", toPersonName: "Ethan", amountMinor: 100, currency: "SGD" }, { fetchImpl: oldFetch });
+  assert.equal("requestId" in oldCalls[0].body, false);
 });
