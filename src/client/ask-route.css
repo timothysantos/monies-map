@@ -576,6 +576,8 @@
 .ask-card-amount-field {
   display: inline-flex;
   align-items: baseline;
+  /* A thumb-sized target, like the phone's amount button below. */
+  min-height: 44px;
   padding: 0 2px;
   border-bottom: 2px solid transparent;
   cursor: text;
@@ -706,6 +708,13 @@ html[data-money-privacy="hidden"] .ask-card-amount-sign {
   border-radius: 999px;
   background: color-mix(in srgb, var(--text) 18%, var(--paper));
   cursor: pointer;
+}
+
+/* A 46 x 28 switch with a 44 px tall reach for a thumb (the fit check). */
+.ask-switch::before {
+  content: "";
+  position: absolute;
+  inset: -8px -2px;
 }
 
 .ask-switch::after {
@@ -1125,9 +1134,11 @@ html[data-money-privacy="hidden"] .ask-card-amount-sign {
 /* A phone: Ask is a full page above the tab bar, with no header bar. The
    conversation scrolls; the chips and composer stay above the tabs. */
 @media (max-width: 760px) {
+  /* With the keyboard up (use-ask-keyboard-fit.js) the bottom edge sits on
+     the keyboard instead of the tabs, which the keyboard covers. */
   .ask-page {
     position: fixed;
-    inset: 0 0 calc(78px + env(safe-area-inset-bottom, 0px)) 0;
+    inset: 0 0 max(calc(78px + env(safe-area-inset-bottom, 0px)), var(--keyboard-inset, 0px)) 0;
     z-index: 45;
     min-height: 0;
     padding: 18px 16px 0;
@@ -1142,6 +1153,17 @@ html[data-money-privacy="hidden"] .ask-card-amount-sign {
     overscroll-behavior: contain;
     margin: 0 -16px;
     padding: 2px 16px 12px;
+  }
+
+  /* While the keyboard is up the title and context step aside, so a small
+     phone keeps the latest reply in sight above the message box; they are
+     back when the keyboard goes down. */
+  .ask-page[data-keyboard] > .ask-head {
+    display: none;
+  }
+
+  .ask-page[data-keyboard] {
+    padding-top: 8px;
   }
 
   .ask-bottom {

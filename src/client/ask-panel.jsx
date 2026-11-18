@@ -96,6 +96,7 @@ import { AskTransferMatchRows } from "./ask-transfer-choices";
 import { NO_OTHER_SIDE, transferLinkBody } from "./ask-transfer-match";
 import { buildTripAnswer, tripAnswerPageParams } from "./ask-trip-answer";
 import { forgetTripEvents } from "./trip-events-api";
+import { useAskKeyboardFit } from "./use-ask-keyboard-fit";
 // The Ask page's styles ship with its route, never with the first screen.
 import "./ask-route.css";
 
@@ -2201,6 +2202,7 @@ function AskConversation({
   // beside it; the docked panel, a fixture beside the page, closes only
   // when focus is inside it. Focus then goes back to the Ask field.
   const articleRef = useRef(/** @type {HTMLElement | null} */ (null));
+  useAskKeyboardFit(articleRef, threadBoxRef, !inDock);
   useEffect(() => {
     if (!inDock) return undefined;
     const onKeyDown = (event) => {
