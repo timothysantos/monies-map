@@ -882,6 +882,22 @@
     min-width: 0;
   }
 
+  /* The day is never cut (fit audit F13, larger text on a small phone): it
+     keeps its whole width, and the day's net moves under it, at the right,
+     when both do not fit on one line. */
+  .entries-date-head {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .entries-date-head > strong {
+    min-width: min-content;
+  }
+
+  .entries-date-actions {
+    margin-left: auto;
+  }
+
   /* A 68 px row: the icon, then the quiet category over the merchant (the
      amount on its line), the wallet, and the chips. */
   .entry-row-main {
@@ -919,10 +935,13 @@
     line-height: 1.2;
   }
 
+  /* The time keeps its words together: beside a long wallet name it moves
+     to the next line whole instead of a narrow column (fit audit F13). */
   .entry-row-transfer {
     grid-area: sub;
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 0 6px;
     min-width: 0;
     color: var(--muted);
   }
@@ -940,8 +959,10 @@
 
   .entry-row-time-inline {
     display: inline;
+    flex: 0 0 auto;
     font-size: 0.8rem;
     line-height: 1.2;
+    white-space: nowrap;
   }
 
   .entry-row-time-inline::before {
@@ -1353,8 +1374,24 @@ body[data-entry-inline-editor] > .entries-ask-chip {
 }
 
 .entry-chip.entry-chip-trip > span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The trip chip reaches 44 px for a thumb with no change to its look (fit
+   audit F10): its name clips itself, so the chip can let an invisible layer
+   reach past its edges. */
+.entry-chip.entry-chip-trip {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+}
+
+.entry-chip.entry-chip-trip::before {
+  content: "";
+  position: absolute;
+  inset: -12px -2px;
 }
 
 .entry-chip.entry-chip-trip.is-suggestion {

@@ -102,3 +102,33 @@
 .is-category-sheet[data-keyboard] .category-pick-options {
   padding-bottom: 8px;
 }
+
+/* The smallest phones (fit audit F11, owner decision 2026-11-18): on a short
+   screen with the keyboard up the whole sheet scrolls as one, the title
+   too, under the search box, which stays at the top; the list gets the
+   room instead of a slit of two rows. */
+@media (max-height: 520px) {
+  .mobile-select-dialog.is-picker-sheet.is-category-sheet[data-keyboard] {
+    overflow-y: auto;
+  }
+
+  .is-category-sheet[data-keyboard] .category-pick {
+    flex: 0 0 auto;
+  }
+
+  .is-category-sheet[data-keyboard] .category-pick-options {
+    flex: 0 0 auto;
+    overflow: visible;
+    overflow-x: clip;
+  }
+
+  .is-category-sheet[data-keyboard] .category-pick.is-sheet .category-pick-listbox {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .is-category-sheet[data-keyboard] .category-pick-search {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+}

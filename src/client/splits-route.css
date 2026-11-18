@@ -989,3 +989,28 @@ button.split-activity-card:hover {
     display: none;
   }
 }
+
+/* The smallest phones (fit audit F11, owner decision 2026-11-18): a short
+   screen (an iPhone SE under an in-app browser toolbar, or larger text) with
+   the keyboard up scrolls the whole sheet body, title too, as one under its
+   fixed bar of buttons, instead of a slit of form between them. */
+@media (max-width: 760px) and (max-height: 520px) {
+  .split-dialog-content[data-keyboard] > form {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* A field brought into view stops above the bar, not under it. */
+    scroll-padding-bottom: 96px;
+  }
+
+  .split-dialog-content[data-keyboard] > form > .split-dialog-scroll {
+    flex: 0 0 auto;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .split-dialog-content[data-keyboard] > form > .dialog-actions {
+    position: sticky;
+    bottom: 0;
+    margin-top: auto;
+  }
+}

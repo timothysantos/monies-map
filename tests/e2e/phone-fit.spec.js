@@ -22,12 +22,21 @@ const PHONES = [
   { width: 375, height: 557, keyboard: 291 },
   { width: 390, height: 844, keyboard: 336 }
 ];
+// The smallest (F11): an iPhone SE under an in-app browser toolbar, and a
+// 375 x 557 phone at 130% text (its CSS pixels divided by 1.3), each with
+// its keyboard. Checked with the keyboard up.
+const SMALL_PHONES = [
+  { width: 320, height: 458, keyboard: 260 },
+  { width: 288, height: 429, keyboard: 224 }
+];
 const { defaultBrowserType: _browser, viewport: _viewport, ...iPhone13 } = devices["iPhone 13"];
 
-// Nothing is skipped as an older small target any more: the sheet close X
-// and the money eye in forms reach 44 px (fit audit F10, styles.css), and the
-// Entries row's category label and trip chip already did.
-const OLDER_SMALL_TARGETS = [];
+// The sheet close X, the money eye in forms and a row's trip chip reach
+// 44 px (fit audit F10). One older target is still skipped: the Entries
+// row's category label sits on a row that is itself the target, between the
+// row's clipped top edge and the shop name; a taller reach would take taps
+// from the shop name, which opens the entry (left for the owner).
+const OLDER_SMALL_TARGETS = [".entry-row-category-button"];
 
 const message = (page) => page.getByRole("textbox", { name: "Message" });
 
@@ -209,6 +218,102 @@ test.describe("phone fit", () => {
     await page.locator(".settings-section-toggle").filter({ hasText: "What Ask remembers" }).click();
     await expect(page.getByRole("switch", { name: "Let Ask handle safe things" })).toBeVisible({ timeout: 30_000 });
     await page.getByRole("switch", { name: "Let Ask handle safe things" }).scrollIntoViewIfNeeded();
+    await expectFitsOnPhones(page);
+  });
+
+  // F11: the smallest phones with the keyboard up: an iPhone SE under an
+  // in-app browser toolbar, and 375 x 557 at 130% text (288 x 429 at 100%).
+  // The sheet's whole body scrolls under its fixed bar, so what is typed,
+  // the bar and enough of a list stay in sight.
+  test("smallest phones, keyboard up: Ask, Record settlement and the category list keep what is typed and the bar in sight", async ({ page }) => {
+    const check = async (typing, options = {}) => {
+      for (const phone of SMALL_PHONES) {
+        await page.setViewportSize({ width: phone.width, height: phone.height });
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        // In Ask, the person is looking at the latest reply.
+        await page.locator(".ask-thread").evaluateAll((threads) => threads.forEach((thread) => { thread.scrollTop = thread.scrollHeight; }));
+        await typing().focus();
+        await setKeyboard(page, phone.keyboard);
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        if (options.shot) await shot(page, `${options.shot}-${phone.width}x${phone.height}`, { phone: { width: phone.width, height: phone.height } });
+        await expectFits(page, { ignore: OLDER_SMALL_TARGETS, mustSee: [":focus", ...(options.mustSee ?? [])], notChoosers: options.notChoosers ?? [] });
+        await setKeyboard(page, 0);
+        await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+      }
+    };
+
+    await stubModel(page, [{
+      action: "ask_clarification",
+      clarify: { question: "Which of these did you mean?", options: ["The family dinner at the roastery and bakery", "The lunch with the grandparents", "Something else", "None of these"] }
+    }]);
+    await page.goto(`/ask?view=person-tim&month=${STRESS.month}`);
+    await expect(message(page)).toBeVisible({ timeout: 60_000 });
+    await send(page, "the family dinner");
+    await expect(page.locator(".ask-question")).toBeVisible({ timeout: 30_000 });
+    await check(() => message(page), { mustSee: [".ask-send", ".ask-question"], shot: "F11-ask" });
+
+    await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+    await page.locator(".splits-lead").getByRole("button", { name: "Settle group" }).click({ timeout: 60_000 });
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toContainText("Record payment for this group only");
+    await check(() => sheet.locator("input.lsd-amount-input"), { notChoosers: [".split-dialog-scroll"], shot: "F11-settlement" });
+    await page.keyboard.press("Escape");
+
+    await page.goto(`/entries?view=household&month=${STRESS.month}`);
+    await page.locator(".entry-row-category-button").first().click({ timeout: 60_000 });
+    const search = page.getByRole("combobox", { name: "Search categories" });
+    await expect(search).toBeVisible();
+    await check(() => search, { shot: "F11-category-list" });
+  });
+
+  // F13: on a phone the time beside a long wallet name stays on one line,
+  // and the day header is not cut at 130% text.
+  test("Entries: a row's time stays whole beside a long wallet name, and the day header fits at 130% text", async ({ page }) => {
+    await page.goto(`/entries?view=household&month=${STRESS.month}`);
+    const row = page.locator(".entry-row").filter({ hasText: STRESS.longShop }).first();
+    await expect(row).toBeVisible({ timeout: 60_000 });
+    if (process.env.FIT_SHOTS) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.mouse.move(195, 400);
+      await page.mouse.wheel(0, 760);
+      await page.waitForTimeout(400);
+      await shot(page, "F13-row-long-wallet");
+      await page.mouse.wheel(0, 900);
+      await page.waitForTimeout(400);
+      await shot(page, "F13-row-normal");
+    }
+    for (const phone of [...PHONES, ...SMALL_PHONES]) {
+      await page.setViewportSize({ width: phone.width, height: phone.height });
+      await row.locator(".entry-row-main").evaluate((element) => element.scrollIntoView({ block: "start" }));
+      const time = row.locator(".entry-row-time-inline");
+      const box = await time.boundingBox();
+      expect(box, `time shown at ${phone.width}`).not.toBeNull();
+      expect(box.height, `time on one line at ${phone.width}x${phone.height}`).toBeLessThan(22);
+      const head = page.locator(".entries-date-head strong").first();
+      expect(await head.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), `day header whole at ${phone.width}`).toBe(true);
+      // This row's chip line can sit beside the floating bars; the trip
+      // chip's reach is checked in full view by the F10 test above.
+      await expectFits(page, { ignore: [...OLDER_SMALL_TARGETS, ".entry-chip-trip"] });
+    }
+    await shot(page, "F13-date-head-130", { phone: { width: 288, height: 429 } });
+  });
+
+  // Ask audit B28: Joyce's entry on Tim's own wallet goes on Splits with Tim
+  // as the payer; the card says so, with one chip for Joyce, and fits.
+  test("Ask: Add to Splits on someone else's wallet says who paid, with one chip, and fits", async ({ page }) => {
+    const entryId = (await postJson(page, "/api/entries/create", {
+      date: STRESS.today, description: STRESS.longShop, accountName: STRESS.wallets[0], categoryName: "Food & Drinks", amountMinor: 12_345_678, entryType: "expense", ownershipType: "direct", ownerName: STRESS.joyce
+    })).entryId;
+    await stubModel(page, [{ action: "add_entry_to_splits", split: { payer: null, group: null, shares: [] } }]);
+    await page.goto(`/ask?saved_entry=${entryId}&month=${STRESS.month}&view=person-tim&from=shortcut`);
+    await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
+    await send(page, "add to splits");
+    const card = page.locator("[data-split-proposal]").last();
+    await expect(card).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(`It was paid from ${STRESS.wallets[0]}, which is ${STRESS.tim}'s`)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add to Splits, Joyce paid" })).toBeVisible();
+    await card.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await shot(page, "B28-paid-from-wallet");
     await expectFitsOnPhones(page);
   });
 
