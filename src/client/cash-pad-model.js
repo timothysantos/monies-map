@@ -19,6 +19,25 @@ export function describeCashLine({ walletName, currency, date, today, personName
   return [walletName || cashPadCopy.chooseWallet, currency, day, personName].filter(Boolean);
 }
 
+export const DETAILS_CLOSED = Object.freeze({ open: false, saveOnPick: false });
+
+/**
+ * The details panel behind the quiet line, and whether a wallet picked in
+ * it saves the payment. Save asking which wallet ("asked") opens it ready to
+ * save on the pick: the person already said Save, and Undo follows. The
+ * quiet line ("line") and Done ("done") open and close it by hand, and a
+ * panel touched by hand never saves on a pick. A finished save ("sent":
+ * saved, waiting, or refused for another reason) closes it, so what
+ * happened shows where the keys were.
+ * @param {{ open: boolean, saveOnPick: boolean }} details
+ * @param {"asked" | "line" | "done" | "sent"} event
+ */
+export function nextCashDetails(details, event) {
+  if (event === "asked") return { open: true, saveOnPick: true };
+  if (event === "line") return { open: !details.open, saveOnPick: false };
+  return DETAILS_CLOSED;
+}
+
 /**
  * "Paid with": Cash first, then the person's own cards as the server
  * ordered them (most recently used first). Names only.

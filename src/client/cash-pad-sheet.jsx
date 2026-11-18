@@ -23,7 +23,7 @@ import {
   sendCashEntry,
   subscribeCashQueue
 } from "./cash-queue";
-import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "./cash-pad-model";
+import { DETAILS_CLOSED, againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, nextCashDetails, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "./cash-pad-model";
 import { cashPadCopy as copy } from "./copy/cash-pad-copy";
 import { addSavedEntryToSplits, requestSplitSuggestion, undoSavedEntry, updateSavedEntryCategory } from "./ask-api";
 import { CategoryPickerHost } from "./category-picker-host";
@@ -134,7 +134,11 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   const [tap, setTap] = useState(/** @type {any} */ (null));
   const [offer, setOffer] = useState(/** @type {any} */ (null));
   const [again, setAgain] = useState(/** @type {any} */ (null));
-  const [changeOpen, setChangeOpen] = useState(false);
+  // The details panel, and whether a wallet picked in it saves
+  // (nextCashDetails: only when Save asked which wallet).
+  const [detailsState, setDetailsState] = useState(/** @type {{ open: boolean, saveOnPick: boolean }} */ (DETAILS_CLOSED));
+  const changeOpen = detailsState.open;
+  const moveDetails = (event) => setDetailsState((current) => nextCashDetails(current, event));
   const [askWallet, setAskWallet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -226,8 +230,9 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   }, [activeCurrency]);
 
   // `answer`: the person's choice when a tap on this card waits ("tap": it
-  // is that tap; "new": a separate payment).
-  async function save(answer = "") {
+  // is that tap; "new": a separate payment). `pickedWalletId`: the wallet
+  // just picked to answer Save's wallet question.
+  async function save(answer = "", pickedWalletId = "") {
     if (saving) return;
     const asTap = tap ?? (answer === "tap" ? offer : null);
     const body = buildCashBody({
@@ -236,7 +241,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
       padText,
       currency: activeCurrency,
       date,
-      accountId: chosenWallet?.id ?? "",
+      accountId: pickedWalletId || chosenWallet?.id || "",
       again: asTap ? null : again,
       cardId: card?.id ?? "",
       tapId: asTap?.id ?? "",
@@ -251,6 +256,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     const result = await sendCashEntry(body);
     setSaving(false);
     writeStored(PERSON_KEY, personId);
+    if (!(result.kind === "refused" && result.needsWallet)) moveDetails("sent");
     if (result.kind === "saved") {
       setSaved(result.entry);
       setTap(null);
@@ -274,7 +280,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     }
     if (result.needsWallet) {
       setAskWallet(true);
-      setChangeOpen(true);
+      moveDetails("asked");
       setError(copy.walletQuestion);
       return;
     }
@@ -298,6 +304,8 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
     writeStored(WALLET_KEY, { ...stored, [personId]: id });
     setAskWallet(false);
     setError("");
+    // Save asked for this wallet: the payment saves with it.
+    if (detailsState.saveOnPick) void save("", id);
   }
 
   // "Paid with": Cash or a card, remembered for the rest of today here.
@@ -421,13 +429,38 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   const undescribed = defaults?.personId === personId ? defaults?.undescribed ?? [] : [];
   const month = (saved?.date ?? today).slice(0, 7);
   const otherName = people.find((item) => item.id !== personId)?.name ?? "";
+  // The details panel takes the keys' place (design.md "Cash pad"): the
+  // number keys and the amount's shortcuts step aside, and the amount stays
+  // as one compact line above Save.
+  const details = changeOpen && !listOpen && !saved;
+  const askingWallet = details && askWallet && error === copy.walletQuestion;
+  const amountText = groupCashPadText(padText);
+  const wayRow = cards.length ? (
+    <ChoiceRow
+      name="way"
+      label={copy.change.way}
+      choices={payWayChoices(cards)}
+      value={card?.id ?? "cash"}
+      onChoose={chooseWay}
+    />
+  ) : null;
+  const walletRow = card ? null : (
+    <ChoiceRow
+      name="wallet"
+      label={copy.change.wallet}
+      choices={personAccounts.map((account) => ({ value: account.id, label: account.name }))}
+      value={wallet?.id ?? ""}
+      onChoose={chooseWallet}
+      disabled={saving}
+    />
+  );
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="cash-pad-backdrop" />
         <Dialog.Content
-          className="cash-pad"
+          className={`cash-pad${details ? " is-details" : ""}`}
           aria-describedby="cash-pad-description"
           onKeyDown={onKeyDown}
           onOpenAutoFocus={(event) => {
@@ -464,7 +497,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
               className="cash-pad-line"
               aria-expanded={changeOpen}
               aria-label={`${copy.changeLine}: ${line.join(", ")}`}
-              onClick={() => setChangeOpen((current) => !current)}
+              onClick={() => moveDetails("line")}
             >
               {line.map((part, index) => (
                 <span key={`${index}-${part}`} className={!wallet && !card && !tap && index === 0 ? "cash-pad-line-ask" : undefined}>{part}</span>
@@ -475,24 +508,23 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
 
           {changeOpen && !listOpen ? (
             <div className="cash-pad-change" role="group" aria-label={copy.changeLine}>
-              {askWallet ? <p className="cash-pad-hint">{copy.walletHint}</p> : null}
-              {cards.length ? (
-                <ChoiceRow
-                  label={copy.change.way}
-                  choices={payWayChoices(cards)}
-                  value={card?.id ?? "cash"}
-                  onChoose={chooseWay}
-                />
-              ) : null}
-              {card ? null : (
-                <ChoiceRow
-                  label={copy.change.wallet}
-                  choices={personAccounts.map((account) => ({ value: account.id, label: account.name }))}
-                  value={wallet?.id ?? ""}
-                  onChoose={chooseWallet}
-                />
+              {askingWallet ? (
+                <>
+                  {/* Save's question, right above the wallets it asks about. */}
+                  <p className="cash-pad-error" role="alert">{error}</p>
+                  <p className="cash-pad-hint">{copy.walletHint}</p>
+                  {walletRow}
+                  {wayRow}
+                </>
+              ) : (
+                <>
+                  {askWallet ? <p className="cash-pad-hint">{copy.walletHint}</p> : null}
+                  {wayRow}
+                  {walletRow}
+                </>
               )}
               <ChoiceRow
+                name="currency"
                 label={copy.change.currency}
                 choices={currencyChoices.map((code) => ({ value: code, label: code }))}
                 value={activeCurrency}
@@ -502,6 +534,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                 }}
               />
               <ChoiceRow
+                name="day"
                 label={copy.change.day}
                 choices={[{ value: today, label: copy.today }, { value: addDays(today, -1), label: copy.yesterday }]}
                 value={date}
@@ -509,13 +542,16 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
               />
               {people.length > 1 ? (
                 <ChoiceRow
+                  name="person"
                   label={copy.change.person}
                   choices={people.map((item) => ({ value: item.id, label: item.name }))}
                   value={personId}
                   onChoose={choosePerson}
                 />
               ) : null}
-              <button type="button" className="cash-pad-change-done" onClick={() => setChangeOpen(false)}>{copy.change.done}</button>
+              <div className="cash-pad-change-foot">
+                <button type="button" className="cash-pad-change-done" onClick={() => moveDetails("done")}>{copy.change.done}</button>
+              </div>
             </div>
           ) : null}
 
@@ -597,7 +633,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
               <>
                 <output className="cash-pad-amount" aria-label={copy.amountLabel} aria-live="polite">
                   <span className="cash-pad-amount-sign">{formatCashAmount(0, activeCurrency).replace(/[\d.,\s]/g, "")}</span>
-                  <span className={`cash-pad-amount-figure${padText ? "" : " is-empty"}`}>{groupCashPadText(padText)}</span>
+                  <span className={`cash-pad-amount-figure${padText ? "" : " is-empty"}${amountText.length > 12 ? " is-longer" : amountText.length > 9 ? " is-long" : ""}`}>{amountText}</span>
                 </output>
                 {tap ? <p className="cash-pad-again-chosen">{copy.taps.chosen(tap.merchant, tap.accountName)}</p> : null}
                 {again && !tap ? <p className="cash-pad-again-chosen">{again.description}{again.categoryName ? ` · ${again.categoryName}` : ""}</p> : null}
@@ -610,7 +646,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                     </div>
                   </div>
                 ) : null}
-                {taps.length && !offer ? (
+                {taps.length && !offer && !details ? (
                   <div className="cash-pad-again" role="group" aria-label={copy.taps.title}>
                     <span className="cash-pad-eyebrow">{copy.taps.title}</span>
                     <div className="cash-pad-chips">
@@ -628,7 +664,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                     </div>
                   </div>
                 ) : null}
-                {defaults?.again?.length && !tap && !offer ? (
+                {defaults?.again?.length && !tap && !offer && !details ? (
                   <div className="cash-pad-again" role="group" aria-label={copy.again}>
                     <span className="cash-pad-eyebrow">{copy.again}</span>
                     <div className="cash-pad-chips">
@@ -653,7 +689,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
               </>
             )}
             {message ? <p className="cash-pad-message" role="status">{message}</p> : null}
-            {error ? <p className="cash-pad-error" role="alert">{error}</p> : null}
+            {error && !askingWallet ? <p className="cash-pad-error" role="alert">{error}</p> : null}
             {waiting.length && !listOpen ? (
               <section className="cash-pad-waiting" aria-label={copy.waitingTitle}>
                 <p className="cash-pad-eyebrow">{copy.waitingTitle}</p>
@@ -687,7 +723,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
             </div>
           ) : (
             <div className="cash-pad-keys">
-              <div className="cash-pad-grid">
+              {details ? null : <div className="cash-pad-grid">
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((key) => (
                   <button key={key} type="button" className="cash-pad-key" onClick={() => press(key)}>{key}</button>
                 ))}
@@ -698,7 +734,7 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
                 <button type="button" className="cash-pad-key" aria-label={copy.keys.back} onClick={() => press("back")}>
                   <Delete size={24}/>
                 </button>
-              </div>
+              </div>}
               <button type="button" className="cash-pad-save" disabled={!canSave} onClick={() => void save()}>
                 {saving ? copy.saving : copy.save}
               </button>
@@ -710,9 +746,9 @@ export default function CashPadSheet({ open, onOpenChange, people, accounts, cat
   );
 }
 
-function ChoiceRow({ label, choices, value, onChoose }) {
+function ChoiceRow({ name, label, choices, value, onChoose, disabled = false }) {
   return (
-    <div className="cash-pad-choice-row">
+    <div className="cash-pad-choice-row" data-choice={name}>
       <span className="cash-pad-eyebrow">{label}</span>
       <div className="cash-pad-chips">
         {choices.map((choice) => (
@@ -721,6 +757,7 @@ function ChoiceRow({ label, choices, value, onChoose }) {
             type="button"
             className={`cash-pad-chip${choice.value === value ? " is-on" : ""}`}
             aria-pressed={choice.value === value}
+            disabled={disabled}
             onClick={() => onChoose(choice.value)}
           >
             {choice.label}

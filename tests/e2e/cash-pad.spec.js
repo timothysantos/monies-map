@@ -232,9 +232,11 @@ test.describe("Cash pad on a wide screen", () => {
     await expect(pad.getByRole("alert")).toHaveText("Which wallet did the cash come from?");
     const walletRow = pad.locator(".cash-pad-choice-row").filter({ hasText: "Cash from" });
     await expect(walletRow.getByRole("button").first()).toHaveText("Spare cash");
-    await walletRow.getByRole("button", { name: "Spare cash" }).click();
+    // The person already said Save: the wallet picked saves it, with Undo.
     const saved = page.waitForResponse((response) => response.url().includes("/api/cash-entries/create") && response.ok());
-    await pad.getByRole("button", { name: "Save", exact: true }).click();
+    await walletRow.getByRole("button", { name: "Spare cash" }).click();
     expect((await (await saved).json()).entry.accountId).toBe(spare.accountId);
+    await expect(pad.locator(".cash-pad-saved-line")).toHaveText("Saved: Cash, $7.00");
+    await expect(pad.getByRole("button", { name: "Undo" })).toBeVisible();
   });
 });

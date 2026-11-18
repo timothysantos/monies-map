@@ -2,7 +2,9 @@
    Phone: a sheet over the whole screen, the keys and Save at the bottom
    under the thumb, each key at least 56px tall. Wide screen: a centred
    dialog of the same shape. Above the floating bars (80/81), below the
-   category list it can open (90/91). */
+   category list it can open (90/91). With the details panel open
+   (.is-details) the panel takes the keys' place and the amount is one
+   compact line above Save; nothing overlaps the amount in any state. */
 
 .cash-pad-backdrop {
   position: fixed;
@@ -20,9 +22,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 100dvh;
-  min-height: min(100dvh, 620px);
-  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  min-height: min(calc(100dvh - env(safe-area-inset-top, 0px)), 620px);
+  padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   background: var(--page);
   color: var(--text);
   border-radius: var(--sheet-radius, 20px) var(--sheet-radius, 20px) 0 0;
@@ -47,6 +49,7 @@
 }
 
 .cash-pad-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -94,6 +97,7 @@
   font-size: var(--type-small, 0.92rem);
   text-align: left;
   cursor: pointer;
+  flex: 0 0 auto;
 }
 
 .cash-pad-line span + span::before {
@@ -120,19 +124,36 @@
   content: none;
 }
 
+/* The details panel, in the keys' place: as tall as its choices, and
+   scrolling inside itself only when the screen is shorter than that. */
 .cash-pad-change {
+  flex: 0 1 auto;
+  min-height: 0;
   display: grid;
+  align-content: start;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 12px 0;
   border-radius: var(--radius-group, 16px);
   background: var(--card);
   border: 1px solid var(--card-border);
-  max-height: 46dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  /* A choice brought into view stops above Done, not under it. */
+  scroll-padding-bottom: 64px;
+}
+
+/* Done stays in reach at the panel's foot while its choices scroll. */
+.cash-pad-change-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 -12px;
+  padding: 6px 12px 10px;
+  background: var(--card);
 }
 
 .cash-pad-change-done {
-  justify-self: end;
   min-height: 44px;
   padding: 0 18px;
   border: 0;
@@ -158,13 +179,24 @@
   text-transform: uppercase;
 }
 
+/* The amount and what goes with it, low above the keys. A first child's
+   auto margin (not align-content: end) keeps the top reachable when it
+   scrolls. */
 .cash-pad-middle {
-  display: grid;
-  align-content: end;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+
+.cash-pad-middle > :first-child {
+  margin-top: auto;
+}
+
+.cash-pad-middle > * {
+  flex: 0 0 auto;
 }
 
 .cash-pad-amount {
@@ -190,6 +222,43 @@
 
 .cash-pad-amount-figure.is-empty {
   color: var(--muted);
+}
+
+/* A long amount (rupiah, won) stays on one line across the screen. */
+.cash-pad-amount-figure.is-long {
+  font-size: clamp(2.2rem, 10.5vw, 3rem);
+}
+
+.cash-pad-amount-figure.is-longer {
+  font-size: clamp(1.7rem, 8.5vw, 2.4rem);
+}
+
+.cash-pad-amount-sign,
+.cash-pad-amount-figure {
+  white-space: nowrap;
+}
+
+/* The details panel is open: the amount is one compact line above Save,
+   kept in view while anything under it scrolls. */
+.cash-pad.is-details .cash-pad-middle {
+  flex: 1 1 0;
+  min-height: 3rem;
+}
+
+.cash-pad.is-details .cash-pad-amount {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 2px 0;
+  background: var(--page);
+}
+
+.cash-pad.is-details .cash-pad-amount-sign {
+  font-size: 1.1rem;
+}
+
+.cash-pad.is-details .cash-pad-amount-figure {
+  font-size: 1.9rem;
 }
 
 .cash-pad-again-chosen {
@@ -333,6 +402,7 @@
 }
 
 .cash-pad-keys {
+  flex: 0 0 auto;
   display: grid;
   gap: 10px;
 }
@@ -392,6 +462,7 @@
 }
 
 .cash-pad-after-actions {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr 1.6fr;
   gap: 8px;

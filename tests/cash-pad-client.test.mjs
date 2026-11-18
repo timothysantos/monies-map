@@ -13,7 +13,7 @@ import {
   removeWaitingCash,
   sendCashEntry
 } from "../src/client/cash-queue.js";
-import { againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "../src/client/cash-pad-model.js";
+import { DETAILS_CLOSED, againChipLabel, buildCashBody, cashCategoryChips, describeCashLine, nextCashDetails, payWayChoices, quickRowLabel, savedWhat, tapButtonLabel } from "../src/client/cash-pad-model.js";
 
 function memoryStorage(initial = {}) {
   const map = new Map(Object.entries(initial));
@@ -154,6 +154,23 @@ test("the Save body: the pad's amount, and an Again chip's name, category and no
 test("the quiet line names the wallet, currency, day and person, or asks for a wallet", () => {
   assert.deepEqual(describeCashLine({ walletName: "Tim's cash", currency: "IDR", date: "2026-11-17", today: "2026-11-17", personName: "Tim" }), ["Tim's cash", "IDR", "Today", "Tim"]);
   assert.deepEqual(describeCashLine({ walletName: null, currency: "SGD", date: "2026-11-16", today: "2026-11-17", personName: "Joyce" }), ["Choose a wallet", "SGD", "Yesterday", "Joyce"]);
+});
+
+test("the details panel: Save's wallet question opens it to save on the pick; the quiet line and Done never save; a finished save closes it", () => {
+  // Save asked which wallet: open, and the wallet picked saves.
+  const asked = nextCashDetails(DETAILS_CLOSED, "asked");
+  assert.deepEqual(asked, { open: true, saveOnPick: true });
+  // A finished save (saved, waiting, refused for another reason) closes it.
+  assert.deepEqual(nextCashDetails(asked, "sent"), { open: false, saveOnPick: false });
+  // Done puts the question away: the wallet picked later does not save.
+  assert.deepEqual(nextCashDetails(asked, "done"), { open: false, saveOnPick: false });
+  // Opened from the quiet line: a pick only changes the line, never saves.
+  const fromLine = nextCashDetails(DETAILS_CLOSED, "line");
+  assert.deepEqual(fromLine, { open: true, saveOnPick: false });
+  // The line again closes it; the question's panel closed by the line does
+  // not save when reopened from the line either.
+  assert.deepEqual(nextCashDetails(fromLine, "line"), { open: false, saveOnPick: false });
+  assert.deepEqual(nextCashDetails(nextCashDetails(asked, "line"), "line"), { open: true, saveOnPick: false });
 });
 
 test("Paid with: Cash first, then the person's cards by name; the Save body for a card, a waiting tap, and a new payment", () => {
