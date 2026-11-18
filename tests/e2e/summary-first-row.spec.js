@@ -6,10 +6,12 @@ import { postJson, reseedDemo } from "./helpers";
 
 // Summary's row of "Earned vs spent" and "What changed" (owner request,
 // 2026-11-18; design.md "Summary first card row"): the month list starts with
-// the newest 3 months and "Show all N ›" opens the rest in place ("Show
+// the newest 3 months and "Show all N" opens the rest in place ("Show
 // fewer" folds them); beside it, What changed shows as many whole rows as fit
-// the height of the folded month card, at least 3, with "Show all N ›" only
-// while some are left out. A phone keeps What changed's first 3 rows.
+// the height of the folded month card, at least 3, with "Show all N" only
+// while some are left out. A phone keeps What changed's first 3 rows. Both
+// folds look like Spending mix's (owner request, 2026-11-18): the words, then
+// a down chevron, turned up while open.
 
 // Simple is the default lead; the default spec storage pins Plan.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -50,9 +52,20 @@ async function openSummary(page, start = null) {
 
 const months = (page) => page.locator("[data-earned-spent] .earned-spent-row");
 const shownMonths = (page) => page.locator("[data-earned-spent] .earned-spent-row:visible");
-const monthFold = (page) => page.locator("[data-earned-spent]").getByRole("button", { name: /^(Show all \d+ ›|Show fewer)$/ });
+const monthFold = (page) => page.locator("[data-earned-spent]").getByRole("button", { name: /^(Show all \d+|Show fewer)$/ });
 const changedRows = (page) => page.locator(".chg-card .chg-row:visible");
-const changedFold = (page) => page.locator(".chg-card").getByRole("button", { name: /^Show all \d+ ›$/ });
+const changedFold = (page) => page.locator(".chg-card").getByRole("button", { name: /^Show all \d+$/ });
+const changedFewer = (page) => page.locator(".chg-card").getByRole("button", { name: "Show fewer", exact: true });
+
+// The fold's chevron: one svg after the words, turned (180deg) only while open.
+function chevronTurn(button) {
+  return button.evaluate((element) => {
+    const icon = element.querySelector("svg");
+    if (!icon || element.lastElementChild !== icon) return "missing";
+    return getComputedStyle(icon).transform;
+  });
+}
+const TURNED_UP = "matrix(-1, 0, 0, -1, 0, 0)";
 
 // The geometry of the row: each card's box and the bottom of each shown row of What changed.
 function rowGeometry(page) {
@@ -94,14 +107,16 @@ test.describe("Summary's first card row", () => {
     }
 
     const fold = monthFold(page);
-    await expect(fold).toHaveText(`Show all ${total} ›`);
+    await expect(fold).toHaveText(`Show all ${total}`);
     await expect(fold).toHaveAttribute("aria-expanded", "false");
+    expect(await chevronTurn(fold)).toBe("none");
     await fold.evaluate((button) => button.scrollIntoView({ block: "center", behavior: "instant" }));
     const scrollBefore = await page.evaluate(() => window.scrollY);
     await fold.click();
     await expect(shownMonths(page)).toHaveCount(total);
     await expect(fold).toHaveText("Show fewer");
     await expect(fold).toHaveAttribute("aria-expanded", "true");
+    expect(await chevronTurn(fold)).toBe(TURNED_UP);
     // Focus moves to the first month that appeared; the page does not jump.
     await expect(page.locator(`[data-earned-spent] [data-month="${monthsAgo(3)}"] .summary-month-link`)).toBeFocused();
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollBefore)).toBeLessThanOrEqual(2);
@@ -134,7 +149,7 @@ test.describe("Summary's first card row", () => {
       expect(shape.rowBottoms.length).toBeGreaterThanOrEqual(3);
       expect(shape.rowBottoms.length).toBeLessThan(CHANGED_ROWS);
       for (const bottom of shape.rowBottoms) expect(bottom).toBeLessThanOrEqual(shape.right.bottom);
-      await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS} ›`);
+      await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS}`);
       // As many as fit: the room left under the list is less than a row.
       expect(shape.right.bottom - shape.list.bottom).toBeLessThan(shape.smallestRow + 18);
       const fewer = shape.rowBottoms.length;
@@ -150,7 +165,7 @@ test.describe("Summary's first card row", () => {
         await expect(changedRows(page)).toHaveCount(CHANGED_ROWS);
         await expect(changedFold(page)).toHaveCount(0);
       } else if (shape.rowBottoms.length < CHANGED_ROWS) {
-        await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS} ›`);
+        await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS}`);
         expect(shape.right.bottom - shape.list.bottom).toBeLessThan(shape.smallestRow + 18);
       } else {
         await expect(changedFold(page)).toHaveCount(0);
@@ -168,14 +183,24 @@ test.describe("Summary's first card row", () => {
     });
   }
 
-  test("1280x800: Show all on What changed opens every row", async ({ page }) => {
+  test("1280x800: Show all on What changed opens every row and Show fewer folds them", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openSummary(page, monthsAgo(1));
+    const folded = await changedRows(page).count();
+    expect(folded).toBeLessThan(CHANGED_ROWS);
+    await expect(changedFold(page)).toHaveAttribute("aria-expanded", "false");
+    expect(await chevronTurn(changedFold(page))).toBe("none");
     await changedFold(page).click();
     await expect(changedRows(page)).toHaveCount(CHANGED_ROWS);
     await expect(changedFold(page)).toHaveCount(0);
     // Every amount still opens its entries.
     await expect(page.locator(".chg-card .chg-meta [data-fig]")).toHaveCount(CHANGED_ROWS * 2);
+    // The fold stays as "Show fewer", its chevron turned up, and folds back.
+    await expect(changedFewer(page)).toHaveAttribute("aria-expanded", "true");
+    expect(await chevronTurn(changedFewer(page))).toBe(TURNED_UP);
+    await changedFewer(page).click();
+    await expect(changedRows(page)).toHaveCount(folded);
+    await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS}`);
   });
 
   test("phone: What changed keeps its first 3 rows and the month list its newest 3", async ({ page }) => {
@@ -183,9 +208,9 @@ test.describe("Summary's first card row", () => {
     await openSummary(page);
     await expect(changedRows(page)).toHaveCount(3);
     await expect(page.locator(".chg-card .chg-row")).toHaveCount(3);
-    await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS} ›`);
+    await expect(changedFold(page)).toHaveText(`Show all ${CHANGED_ROWS}`);
     await expect(shownMonths(page)).toHaveCount(3);
-    await expect(monthFold(page)).toHaveText(`Show all ${await months(page).count()} ›`);
+    await expect(monthFold(page)).toHaveText(`Show all ${await months(page).count()}`);
   });
 });
 
@@ -207,6 +232,7 @@ test("phone fit: Summary's first card row, folded and open", async ({ page }) =>
     await monthFold(page).click();
     await changedFold(page).click();
     await expect(changedFold(page)).toHaveCount(0);
+    await expect(changedFewer(page)).toBeVisible();
     for (const card of ["plan", "changed"]) await expectFits(page, { root: `[data-summary-card="${card}"]`, ignore: ROW_NAME });
   }
 });

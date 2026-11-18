@@ -2124,10 +2124,12 @@ words in `copy/summary-changed-copy.js`).
   "$610 so far" and "$370 at this point last month", each an openable figure
   (`data-fig="spent"` with exact ids and its own month). A tap on the row
   (or its name) opens "Shops behind it": each shop, "up $90" and its "so far"
-  figure. On a phone the first 3 rows show, then "Show all N ›".
+  figure. On a phone the first 3 rows show, then "Show all N" with a down
+  chevron, and "Show fewer" (chevron up) folds them again: Spending mix's
+  fold look (`.summary-mix-more`), owner request 2026-11-18.
 - Beside another card (owner request, 2026-11-18; "Summary first card
   row"): as many whole rows as fit the content height of the card(s) on its
-  grid row, at least 3, and "Show all N ›" only while some are left out.
+  grid row, at least 3, and "Show all N" only while some are left out.
 - Quiet: one line, "Nothing has moved much so far this month."
 - Hidden money: names only, A to Z, no amounts, no up or down, no mark.
 - Colours: tokens only; money is not toned (it lists what moved).
@@ -2341,9 +2343,12 @@ change.
   tall to reach the cards below). Earned vs spent's month list
   (`summary-earned-spent.js`) starts with the newest 3 months; the rest stay
   in the page with `hidden` (the chart's month marks still find them) and
-  "Show all N ›" (What changed's words and link look, a button with
-  `aria-expanded`) opens them, focus moving to the first month that appeared;
-  "Show fewer" (the accounts card's words) folds them. Folded on every visit;
+  "Show all N" with a down chevron (Spending mix's fold look,
+  `.summary-mix-more`: centred, bold, accent ink; owner request 2026-11-18,
+  shared with What changed's fold; a button with `aria-expanded`) opens
+  them, focus moving to the first month that appeared; "Show fewer", the
+  chevron turned up, folds them. The chevron is drawn inline in the lazy
+  chunk, so the first screen gains no icon. Folded on every visit;
   no control at 3 months or fewer. What changed (`useRowFit` in
   `summary-changed-section.jsx`), when a ResizeObserver finds another card on
   its grid row, shows as many whole rows as fit that card's content height

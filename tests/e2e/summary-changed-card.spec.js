@@ -70,7 +70,7 @@ test.describe("What changed this month", () => {
     await expect(page.locator(".entries-totals, .entries-lead, main").first()).toContainText("$890.00");
   });
 
-  test("phone: one block, the first 3 rows, then Show all", async ({ page }) => {
+  test("phone: one block, the first 3 rows, then Show all and Show fewer", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     // Two more categories that rose, so there are more than 3 rows.
     for (const [description, category] of [["SP SERVICES", "Bills"], ["NETFLIX.COM", "Subscriptions MO"]]) {
@@ -78,8 +78,16 @@ test.describe("What changed this month", () => {
     }
     const card = await openSummary(page);
     await expect(card.locator(".chg-row")).toHaveCount(3);
-    await card.getByRole("button", { name: /^Show all \d+ ›$/ }).click();
+    const showAll = card.getByRole("button", { name: /^Show all \d+$/ });
+    await expect(showAll).toHaveAttribute("aria-expanded", "false");
+    await showAll.click();
     expect(await card.locator(".chg-row").count()).toBeGreaterThan(3);
+    // Folding back, as Spending mix does.
+    const fewer = card.getByRole("button", { name: "Show fewer", exact: true });
+    await expect(fewer).toHaveAttribute("aria-expanded", "true");
+    await fewer.click();
+    await expect(card.locator(".chg-row")).toHaveCount(3);
+    await expect(showAll).toBeVisible();
   });
 
   test("with money hidden the card shows no amounts, no up or down and no more than usual mark", async ({ page }) => {

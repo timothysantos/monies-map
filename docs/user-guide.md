@@ -338,7 +338,8 @@ over plan.
   of the same days of up to 6 recent months) carries a small **more than
   usual** mark. Click a category (on a phone, tap it) to see the shops
   behind the change, and click any amount for exactly those entries. On a
-  phone it shows three rows, then **Show all**. When nothing has moved much
+  phone it shows three rows, then **Show all** with a down arrow (**Show
+  fewer** folds them again). When nothing has moved much
   it says so in one line. It only appears when the range ends in this month,
   it follows the person and range you chose, you can move or hide it with
   **Arrange cards**, and with money hidden it lists the names only. It only says what has happened; it never guesses ahead.
@@ -501,9 +502,10 @@ over plan.
   per month, newest first, with what you kept (or overspent), what you
   earned and spent, and a thin bar; the month's name opens that month.
   It starts with the newest 3 months; **Show all** (with the number of
-  months) under them opens the rest, and **Show fewer** folds them again.
-  On a computer, **What changed** beside it shows as many of its rows as
-  fit next to it, with its own **Show all** when some are left out.
+  months and a down arrow) under them opens the rest, and **Show fewer**
+  folds them again. On a computer, **What changed** beside it shows as many
+  of its rows as fit next to it, with its own **Show all** and **Show
+  fewer** when some are left out.
   When Summary covers two or more months, a chart sits above those rows (see
   **The chart above the months** below).
   Money insights leave out the ones about your plan. Until you choose,

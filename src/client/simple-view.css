@@ -90,26 +90,36 @@
   display: none;
 }
 
-/* "Show all N ›" / "Show fewer" under the months: What changed's fold link
-   (summary-changed.css .chg-fold-button), flush with the month names. It is
-   never the browser's scroll anchor, or opening would scroll the page to keep
-   it still and push the new months above the screen. */
+/* "Show all N" / "Show fewer" under the months, with a chevron: Spending
+   mix's fold (spending-mix-list.css .summary-mix-more), centred under the
+   list, the chevron turned up while open. It is never the browser's scroll
+   anchor, or opening would scroll the page to keep it still and push the new
+   months above the screen. */
 .earned-spent-more {
   overflow-anchor: none;
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   min-height: 44px;
   padding: 10px 0;
   border: 0;
   border-top: 1px solid var(--line);
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-strong);
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  text-align: left;
+  font-size: 0.94rem;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.earned-spent-more-chevron {
+  flex: 0 0 auto;
+}
+
+.earned-spent-more-chevron.is-up {
+  transform: rotate(180deg);
 }
 
 /* The month name opens the month. Its base style (summary-intent-outcome.css)

@@ -16,5 +16,8 @@ export const summaryChangedCopy = {
   lastMonth: "at this point last month",
   shopsBehind: "Shops behind it",
   openRow: (name) => `${name}: shops behind the change`,
-  showAll: (count) => `Show all ${count} ›`
+  // The fold, worded and drawn as Spending mix's own (a down chevron,
+  // turned up while every row shows).
+  showAll: (count) => `Show all ${count}`,
+  showFewer: "Show fewer"
 };

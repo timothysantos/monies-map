@@ -16,9 +16,10 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 // amount and the kept or overspent word.
 //
 // The list starts with the newest GLANCE months (owner request, 2026-11-18:
-// the row beside What changed stays short); "Show all N ›", the words and
-// look of What changed's own way to the rest, opens the others in place and
-// "Show fewer" folds them again. The folded rows stay in the page, hidden, so
+// the row beside What changed stays short); "Show all N" with a down
+// chevron, the words and look of Spending mix's own way to the rest (owner
+// request, 2026-11-18), opens the others in place and "Show fewer", the
+// chevron turned up, folds them again. The folded rows stay in the page, hidden, so
 // the chart's month marks still find them. Folded is the start of every visit.
 //
 // It loads only when Simple is shown, and imports no React (`h` is the
@@ -83,8 +84,19 @@ export function EarnedSpent({ h, months, categoryShareByMonth, investmentMovesBy
           requestAnimationFrame(() => (showAll ? button.scrollIntoView({ block: "nearest" }) : button.previousSibling.children[GLANCE]?.querySelector("button")?.focus({ preventScroll: true })));
         }
       },
-      showAll ? copy.showFewer : copy.showAll(rows.length)
+      showAll ? copy.showFewer : copy.showAll(rows.length),
+      foldChevron(h, showAll)
     ) : null
+  );
+}
+
+// Spending mix's fold chevron (category-visuals.jsx, lucide's ChevronDown),
+// drawn here so this chunk imports no icon library; turned up while open.
+function foldChevron(h, open) {
+  return h(
+    "svg",
+    { className: open ? "earned-spent-more-chevron is-up" : "earned-spent-more-chevron", width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" },
+    h("path", { d: "m6 9 6 6 6-6" })
   );
 }
 

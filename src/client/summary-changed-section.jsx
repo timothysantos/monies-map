@@ -1,6 +1,7 @@
 import "./summary-changed.css";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 
 import { summaryChangedCopy as copy } from "./copy/summary-changed-copy";
 import { money } from "./formatters";
@@ -26,7 +27,7 @@ import { CardHead, cardTitle } from "./summary-card-head";
 // no amount, no up or down, no "more than usual".
 
 const PHONE_ROWS = 3;
-// "Show all N ›" when it is the list's last row (a 44 px button).
+// "Show all N" when it is the list's last row (a 44 px button).
 const FOLD_HEIGHT = 44;
 
 // A box's own content height, even when the grid stretches it taller: from
@@ -41,7 +42,7 @@ function contentHeight(box) {
 
 // Beside another card on Summary's grid (owner request, 2026-11-18), the card
 // shows as many whole rows as fit the height of the cards beside it, at least
-// PHONE_ROWS, and keeps "Show all N ›" while any is left out. Alone on its
+// PHONE_ROWS, and keeps "Show all N" while any is left out. Alone on its
 // row (a phone, a stacked tablet, Month wrap-up) it keeps the first
 // PHONE_ROWS. Returns { count, height }: count 0 means not beside another card.
 //
@@ -243,10 +244,13 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery, month
               spare={index >= shown.length}
             />
           ))}
-          {phone && !showAll && rows.length > shown.length ? (
+          {phone && (showAll || rows.length > shown.length) ? (
             <li className="chg-fold">
-              <button type="button" className="chg-fold-button" onClick={() => setShowAll(true)}>
-                <span>{copy.showAll(rows.length)}</span>
+              {/* Spending mix's fold: "Show all N" with a down chevron, then
+                  "Show fewer" with it turned up. */}
+              <button type="button" className="chg-fold-button" aria-expanded={showAll} onClick={() => setShowAll((current) => !current)}>
+                <span>{showAll ? copy.showFewer : copy.showAll(rows.length)}</span>
+                <ChevronDown size={16} aria-hidden="true" className={showAll ? "chg-fold-up" : undefined} />
               </button>
             </li>
           ) : null}

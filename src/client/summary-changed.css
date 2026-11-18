@@ -156,20 +156,28 @@
   color: var(--muted);
 }
 
+/* "Show all N" / "Show fewer" with a chevron: Spending mix's fold
+   (spending-mix-list.css .summary-mix-more), centred, the chevron turned up
+   while every row shows. */
 .chg-fold-button {
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   min-height: 44px;
   padding: 10px 14px;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-strong);
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  text-align: left;
+  font-size: 0.94rem;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.chg-fold-button .chg-fold-up {
+  transform: rotate(180deg);
 }
 
 /* The change as a bar from a centre line: up grows right in rose, down grows
