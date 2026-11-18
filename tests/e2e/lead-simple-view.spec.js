@@ -116,7 +116,8 @@ async function expectSimple(page, { summary, earned, spent }) {
 async function expectFlatMonthRows(page) {
   // The month name is a flat row link, not a native grey button: no fill,
   // no border, and every row lines up in two columns (name left, result right).
-  const rows = await page.locator("[data-earned-spent] .earned-spent-row").evaluateAll((items) => items.map((item) => {
+  // The months past the newest 3 are folded (hidden) until Show all.
+  const rows = await page.locator("[data-earned-spent] .earned-spent-row:not([hidden])").evaluateAll((items) => items.map((item) => {
     const button = item.querySelector(".summary-month-link");
     const result = item.querySelector(".earned-spent-result");
     const style = getComputedStyle(button);
