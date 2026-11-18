@@ -425,6 +425,43 @@ rendering"):
   with `node scripts/compare-performance.mjs --interaction <before> <after>`
   over several runs per side.
 
+## Phone fit check
+
+Phone tests used to check that a control appears, at a roomy phone size
+with light demo data. That let a wallet list open in a tiny scroll box over
+the Just paid amount on a real iPhone (about 10 wallets, no cash wallet).
+Any new or changed sheet, card or chooser is therefore checked for fit,
+not presence:
+
+- Sizes: 320x568, 375x667-110 (375x557: an in-app browser toolbar) and
+  390x844, and for anything with a text field the same with the keyboard
+  up (`fakeKeyboard` + `setKeyboard` in `tests/e2e/fit-check.js`: the
+  visual viewport shrinks by 260-336 px, as on iPhone Safari).
+- Data: the heavy demo household in `tests/e2e/fit-stress-fixture.js` (12
+  wallets with long names, long people names, 40 categories, 60+ letter
+  shop names, some with no spaces, -$123,456.78 and long rupiah amounts,
+  25 rows for a bulk change), plus the empty household where it applies.
+- Check: `expectFits(page, { mustSee })` fails on sideways page scroll,
+  text or a control cut off with no scroll to reach it, a squeezed column,
+  two controls overlapping, a control covered by a fixed bar or sheet part
+  that no scroll moves clear, a phone target a finger reaches across less
+  than 40 px, a chooser (a list in a sheet, dialog, menu or listbox)
+  showing fewer than 2.5 of its rows, any other scroll box squashed under
+  48 px, and anything
+  in `mustSee` (the focused field, Send or Save, the latest reply) out of
+  sight. Ignores are CSS selectors passed explicitly, each with its reason
+  beside it.
+- Look as well: a screenshot at 375x557 and 390x844. The check reads
+  boxes, not pixels; it cannot see an awkward order, a question far from its
+  choices or wasted space.
+- The standing proof is `tests/e2e/phone-fit.spec.js` (Ask and Entries
+  states, keyboard up and down); a new sheet, card or chooser adds its
+  states there or in its own spec.
+- A fixed phone layer with a text field lifts itself above the keyboard
+  through `--keyboard-inset` (`use-keyboard-inset.js`); Ask does it with
+  `use-ask-keyboard-fit.js`, which also keeps the conversation's bottom
+  edge put when it gets shorter.
+
 ## Optional AI Contract
 
 AI belongs outside the normal query and mutation graph, and every AI action

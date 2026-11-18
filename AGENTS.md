@@ -510,6 +510,12 @@ Details and the reasons are in `docs/code-spec.md` and
   `tests/openable-figures.test.mjs`), Open plan for plan figures, Open
   Splits for split balances, and Ask about this. The menu stays in the lazy
   `figure-menu.js`; the first screen carries only the attributes.
+- Every new or changed sheet, card or chooser passes the phone fit check
+  (`docs/code-spec.md` "Phone fit check"): `expectFits` from
+  `tests/e2e/fit-check.js` at 320x568, 375x557 and 390x844 with the heavy
+  household (`tests/e2e/fit-stress-fixture.js`), and with the keyboard up
+  for anything with a text field. A test that only checks a control
+  appears is not proof it fits.
 - Every place a category is chosen opens the one category list (design.md
   "Category list": a search, the best guess first, then A to Z; `ResponsiveSelect`
   or `PickerRow` with `categoryPick`, `FilterMultiSelect` for a filter). Never
