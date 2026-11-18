@@ -1,7 +1,7 @@
 import { simpleViewCopy as copy } from "./copy/simple-view-copy";
 import { wholeMoney } from "./money-jobs-model";
 import { buildSimpleMetrics } from "./simple-metrics-model";
-import { renderEarnedSpent } from "./summary-earned-spent";
+import { EarnedSpent } from "./summary-earned-spent";
 
 // The Simple view's parts that load only when Simple is shown (design.md
 // "Plan or Simple"): `part: "metrics"` is the facts under the savings bar,
@@ -10,7 +10,7 @@ import { renderEarnedSpent } from "./summary-earned-spent";
 // ui/spend-lead-group.jsx), so the chunk leans only on the first screen's
 // own chunks and adds no first-screen file, as money-jobs-detail.js does.
 export function renderSimpleDetail(h, props) {
-  return props.part === "months" ? renderEarnedSpent(h, props) : renderSimpleMetrics(h, props);
+  return props.part === "months" ? h(EarnedSpent, { ...props, h }) : renderSimpleMetrics(h, props);
 }
 
 // "Daily spend $56", then "Top spending" with the three biggest categories

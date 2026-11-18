@@ -15,12 +15,22 @@ import { buildEarnedSpentMonths } from "./summary-earned-spent-model";
 // keeps the bar (in greys) and the share of income spent, and drops every
 // amount and the kept or overspent word.
 //
+// The list starts with the newest GLANCE months (owner request, 2026-11-18:
+// the row beside What changed stays short); "Show all N ›", the words and
+// look of What changed's own way to the rest, opens the others in place and
+// "Show fewer" folds them again. The folded rows stay in the page, hidden, so
+// the chart's month marks still find them. Folded is the start of every visit.
+//
 // It loads only when Simple is shown, and imports no React (`h` is the
-// page's createElement, `MonthIcon` its chevron, `chart` the column +
-// line chart above the rows), so its chunk leans only
+// page's createElement, `useState` its hook, `MonthIcon` its chevron, `chart`
+// the column + line chart above the rows), so its chunk leans only
 // on the first screen's own chunks, as money-jobs-detail.js does.
-export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon, head, chart = null }) {
+const GLANCE = 3;
+
+export function EarnedSpent({ h, months, categoryShareByMonth, investmentMovesByMonth, hidden, onOpenMonth, MonthIcon, head, chart = null, useState }) {
   const rows = buildEarnedSpentMonths(months, categoryShareByMonth, investmentMovesByMonth);
+  const [showAll, setShowAll] = useState(false);
+  const folds = rows.length > GLANCE;
   return h(
     "section",
     { className: "chart-card summary-earned-spent", "data-earned-spent": "" },
@@ -34,9 +44,9 @@ export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentM
     // The column + line chart (earned-spent-chart.js), handed in by the
     // page, which owns its lazy chunk; nothing when there is one month.
     chart,
-    h("ul", { className: "earned-spent-months" }, rows.map((row) => h(
+    h("ul", { className: "earned-spent-months", id: "earned-spent-months" }, rows.map((row, index) => h(
       "li",
-      { key: row.month, className: "earned-spent-row motion-row", "data-month": row.month, "data-fig-period": `${row.month}:${row.month}` },
+      { key: row.month, className: "earned-spent-row motion-row", "data-month": row.month, "data-fig-period": `${row.month}:${row.month}`, hidden: !showAll && index >= GLANCE },
       h(
         "button",
         { type: "button", className: "summary-month-link", onClick: () => onOpenMonth(row.month) },
@@ -57,7 +67,24 @@ export function renderEarnedSpent(h, { months, categoryShareByMonth, investmentM
         "data-segment": part.key,
         style: { width: `${part.widthPercent}%` }
       })))
-    )))
+    ))),
+    folds ? h(
+      "button",
+      {
+        type: "button",
+        className: "earned-spent-more",
+        "aria-expanded": showAll,
+        "aria-controls": "earned-spent-months",
+        onClick: (event) => {
+          const button = event.currentTarget;
+          setShowAll(!showAll);
+          // Opening: focus moves to the first month that appeared, where the
+          // button was, so nothing scrolls. Folding: the button stays in view.
+          requestAnimationFrame(() => (showAll ? button.scrollIntoView({ block: "nearest" }) : button.previousSibling.children[GLANCE]?.querySelector("button")?.focus({ preventScroll: true })));
+        }
+      },
+      showAll ? copy.showFewer : copy.showAll(rows.length)
+    ) : null
   );
 }
 

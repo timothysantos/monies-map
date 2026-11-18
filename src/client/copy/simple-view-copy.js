@@ -9,6 +9,10 @@ export const simpleViewCopy = {
   kept: "Kept",
   overspent: "Overspent",
   hiddenShare: (percent) => `Spent · ${percent}% of earned`,
+  // The month list's fold: What changed's words for its own, and the
+  // accounts card's for folding back.
+  showAll: (count) => `Show all ${count} ›`,
+  showFewer: "Show fewer",
   // The facts under the bar (simple-metrics.js).
   metricsLabel: "This period at a glance",
   dailySpend: (amount, soFar) => `${soFar ? "Daily spend so far" : "Daily spend"} ${amount}`,

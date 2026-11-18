@@ -86,6 +86,32 @@
   border-top: 0;
 }
 
+.earned-spent-row[hidden] {
+  display: none;
+}
+
+/* "Show all N ›" / "Show fewer" under the months: What changed's fold link
+   (summary-changed.css .chg-fold-button), flush with the month names. It is
+   never the browser's scroll anchor, or opening would scroll the page to keep
+   it still and push the new months above the screen. */
+.earned-spent-more {
+  overflow-anchor: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
 /* The month name opens the month. Its base style (summary-intent-outcome.css)
    is not loaded with the Simple view, so the flat row-link look is set here:
    no native button fill or border, the label then its chevron at the start

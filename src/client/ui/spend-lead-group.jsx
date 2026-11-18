@@ -1,6 +1,6 @@
 import "../summary-lead.css";
 import { ChevronRight } from "lucide-react";
-import { createElement, lazy, Suspense } from "react";
+import { createElement, lazy, Suspense, useState } from "react";
 
 import { messages } from "../copy/en-SG";
 import { PrivateMoney, useMoneyPrivacy } from "../money-privacy";
@@ -155,11 +155,11 @@ function MoneyUse({ model, period, simple, categoryShare, children }) {
 // The Simple view's parts that load only when Simple is shown: its facts
 // under the bar here, and Summary's "Earned vs spent by month"
 // (summary-panel.jsx). The module imports no React (simple-detail.js), so it
-// is handed createElement and the chevron and adds no first-screen file.
+// is handed createElement, useState and the chevron and adds no first-screen file.
 export const SimpleDetail = lazy(() => import("../simple-detail.js").then(({ renderSimpleDetail }) => ({
   default: function SimpleDetailPart(props) {
     const { areTotalsVisible } = useMoneyPrivacy();
-    return renderSimpleDetail(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight });
+    return renderSimpleDetail(createElement, { ...props, hidden: !areTotalsVisible, MonthIcon: ChevronRight, useState });
   }
 })));
 
