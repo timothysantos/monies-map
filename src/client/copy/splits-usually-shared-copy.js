@@ -15,12 +15,14 @@ export const usuallySharedCopy = {
   sheetHint: "Past purchases at shops you usually split. Untick any you paid for alone, then add the rest.",
   close: "Close",
   entriesCount: entries,
-  // "Usually half each with Joyce in Baby River." / "Usually Tim 70% and Joyce 30% in Baby River."
+  // The small tag on a shop's card: who paid.
+  paid: (name) => `${name} paid`,
+  // "Usually half each in Baby River." / "Usually Tim 70% and Joyce 30% in Baby River."
+  // Half each names no one: the card's tag says who paid.
   usually: ({ ownerName, otherPersonName, groupName, basisPoints, inGroup }) => {
     const percent = Math.round(basisPoints / 100);
     const share = percent === 50 ? "half each" : `${ownerName} ${percent}% and ${otherPersonName} ${100 - percent}%`;
-    const withWho = percent === 50 ? ` with ${otherPersonName}` : "";
-    return `Usually ${share}${withWho}${inGroup ? ` in ${groupName}` : ""}.`;
+    return `Usually ${share}${inGroup ? ` in ${groupName}` : ""}.`;
   },
   evidence: ({ evidenceCount, matchedCount, matchedBy }) => (
     matchedBy === "category"

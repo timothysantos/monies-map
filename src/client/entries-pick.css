@@ -197,5 +197,24 @@ body:has(> .entries-pick-bar) .mobile-context-sticky-wrap.is-desktop-visible {
 }
 
 .pick-splits-sheet .pick-splits-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   padding: 0 16px 8px;
+}
+
+/* On a short phone the group and share choices scroll above the Add bar
+   instead of running behind it (the sheet itself clips). */
+.pick-splits-body {
+  display: grid;
+  gap: 4px;
+}
+
+.pick-splits-sheet .pick-splits-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }

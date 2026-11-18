@@ -16,10 +16,22 @@ export const pickSplitsCopy = {
   // "Joyce owes all of it": the person who paid is owed the whole amount.
   otherOwesAll: (otherName) => `${otherName} owes all of it`,
   allPayers: (payerName) => `All ${payerName}'s`,
+  // The picked rows were paid by different people, so no one is named: the
+  // choices say "the one who paid" and the line has no "with ...".
+  mixedPayers: {
+    otherOwesAll: "The one who didn't pay owes it all",
+    allPayers: "All on the one who paid",
+    shareWords: {
+      half: "half each",
+      otherOwesAll: "the one who didn't pay owes it all",
+      allPayers: "all on the one who paid"
+    }
+  },
   otherPersonFallback: "the other person",
   payerFallback: "the payer",
-  // "12 entries to Splits with Joyce, half each, in Okaeri"
-  preview: ({ count, otherName, share, groupName }) => `${entries(count)} to Splits with ${otherName}, ${share}${groupName ? `, in ${groupName}` : ""}`,
+  // "12 entries to Splits with Joyce, half each, in Okaeri"; with mixed payers
+  // (otherName empty): "12 entries to Splits, half each, in Okaeri"
+  preview: ({ count, otherName, share, groupName }) => `${entries(count)} to Splits${otherName ? ` with ${otherName}` : ""}, ${share}${groupName ? `, in ${groupName}` : ""}`,
   shareWords: {
     half: "half each",
     otherOwesAll: (otherName) => `${otherName} owes all of it`,

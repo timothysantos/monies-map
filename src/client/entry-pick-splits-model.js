@@ -70,11 +70,19 @@ export function splitPeopleFor(payerNames, people) {
     const payer = payerNames[0] === first.name ? first : payerNames[0] === second.name ? second : null;
     if (payer) return { payerName: payer.name, otherName: payer === first ? second.name : first.name };
   }
-  return { payerName: copy.payerFallback, otherName: copy.otherPersonFallback };
+  return { payerName: copy.payerFallback, otherName: copy.otherPersonFallback, mixedPayers: true };
 }
 
 /** The share choices as labelled pills: [{ basisPoints, label, words }]. */
-export function shareChoicesFor({ payerName, otherName }) {
+export function shareChoicesFor({ payerName, otherName, mixedPayers = false }) {
+  if (mixedPayers) {
+    const mixed = copy.mixedPayers;
+    return [
+      { basisPoints: SHARE_HALF, label: copy.halfEach, words: mixed.shareWords.half },
+      { basisPoints: SHARE_OTHER_OWES_ALL, label: mixed.otherOwesAll, words: mixed.shareWords.otherOwesAll },
+      { basisPoints: SHARE_ALL_PAYERS, label: mixed.allPayers, words: mixed.shareWords.allPayers }
+    ];
+  }
   return [
     { basisPoints: SHARE_HALF, label: copy.halfEach, words: copy.shareWords.half },
     { basisPoints: SHARE_OTHER_OWES_ALL, label: copy.otherOwesAll(otherName), words: copy.shareWords.otherOwesAll(otherName) },
@@ -86,7 +94,8 @@ export function shareChoicesFor({ payerName, otherName }) {
 export function previewLine({ count, people, shareBasisPoints, group }) {
   const choice = shareChoicesFor(people).find((candidate) => candidate.basisPoints === shareBasisPoints) ?? shareChoicesFor(people)[0];
   const inGroup = group && group.id !== NON_GROUP_SPLIT_ID ? group.name : "";
-  return copy.preview({ count, otherName: people.otherName, share: choice.words, groupName: inGroup });
+  // Mixed payers: no one is named, so no "with ...".
+  return copy.preview({ count, otherName: people.mixedPayers ? "" : people.otherName, share: choice.words, groupName: inGroup });
 }
 
 /** More than 10 entries need the person's "Yes, add all N" first. */

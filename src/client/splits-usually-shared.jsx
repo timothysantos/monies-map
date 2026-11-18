@@ -216,7 +216,7 @@ function UsuallySharedGroup({ group, unticked, confirming, busy, onToggle, onAdd
           <strong>{group.shopName}</strong>
           <span>{copy.entriesCount(group.entries.length)}</span>
         </div>
-        <MetaChip person={group.payerName}>{group.payerName}</MetaChip>
+        <MetaChip person={group.payerName}>{copy.paid(group.payerName)}</MetaChip>
         <span
           className="split-usually-total"
           data-fig="spent"

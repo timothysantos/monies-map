@@ -48,8 +48,8 @@ test("the group starts on the one used last, else the default, else the first; o
 test("one payer is named with the other person; two payers say 'the other person'", () => {
   assert.deepEqual(splitPeopleFor(["Tim"], people), { payerName: "Tim", otherName: "Joyce" });
   assert.deepEqual(splitPeopleFor(["Joyce"], people), { payerName: "Joyce", otherName: "Tim" });
-  assert.deepEqual(splitPeopleFor(["Tim", "Joyce"], people), { payerName: "the payer", otherName: "the other person" });
-  assert.deepEqual(splitPeopleFor(["Someone"], people), { payerName: "the payer", otherName: "the other person" });
+  assert.deepEqual(splitPeopleFor(["Tim", "Joyce"], people), { payerName: "the payer", otherName: "the other person", mixedPayers: true });
+  assert.deepEqual(splitPeopleFor(["Someone"], people), { payerName: "the payer", otherName: "the other person", mixedPayers: true });
 });
 
 test("the share choices are the payer's 50%, 0% and 100%, in plain words", () => {
@@ -67,10 +67,30 @@ test("the preview line names the count, the other person, the share and the grou
   assert.equal(previewLine({ count: 12, people: who, shareBasisPoints: 5000, group }), "12 entries to Splits with Joyce, half each, in Okaeri");
   assert.equal(previewLine({ count: 1, people: who, shareBasisPoints: 0, group }), "1 entry to Splits with Joyce, Joyce owes all of it, in Okaeri");
   assert.equal(previewLine({ count: 3, people: who, shareBasisPoints: 10000, group: { id: "split-group-none", name: "Non-group" } }), "3 entries to Splits with Joyce, all Tim's");
-  assert.equal(
-    previewLine({ count: 4, people: { payerName: "the payer", otherName: "the other person" }, shareBasisPoints: 5000, group }),
-    "4 entries to Splits with the other person, half each, in Okaeri"
-  );
+});
+
+test("mixed payers: no one is named in the choices or the line, every choice starts with a capital", () => {
+  const mixed = { payerName: "the payer", otherName: "the other person", mixedPayers: true };
+  const group = { id: "g1", name: "Okaeri" };
+  const choices = shareChoicesFor(mixed);
+  assert.deepEqual(choices.map((choice) => [choice.basisPoints, choice.label]), [
+    [5000, "Half each"],
+    [0, "The one who didn't pay owes it all"],
+    [10000, "All on the one who paid"]
+  ]);
+  assert.ok(choices.every((choice) => /^[A-Z]/.test(choice.label)));
+  assert.deepEqual([5000, 0, 10000].map((shareBasisPoints) => previewLine({ count: 2, people: mixed, shareBasisPoints, group })), [
+    "2 entries to Splits, half each, in Okaeri",
+    "2 entries to Splits, the one who didn't pay owes it all, in Okaeri",
+    "2 entries to Splits, all on the one who paid, in Okaeri"
+  ]);
+  // Negative: nothing in a mixed line says "with" or the fallback names.
+  for (const shareBasisPoints of [5000, 0, 10000]) {
+    assert.doesNotMatch(previewLine({ count: 2, people: mixed, shareBasisPoints, group }), /with|other person|the payer/);
+  }
+  // One payer keeps the named wording exactly.
+  assert.equal(previewLine({ count: 4, people: { payerName: "Joyce", otherName: "Tim" }, shareBasisPoints: 10000, group }), "4 entries to Splits with Tim, all Joyce's, in Okaeri");
+  assert.deepEqual(shareChoicesFor({ payerName: "Joyce", otherName: "Tim" }).map((choice) => choice.label), ["Half each", "Tim owes all of it", "All Joyce's"]);
 });
 
 test("more than 10 need Yes, add all N; the body carries the confirmed count only then", () => {
@@ -127,8 +147,8 @@ test("rows with different payers say 'the payer' and 'the other person', never o
   ]);
   assert.deepEqual(plan.payerNames.sort(), ["Joyce", "Tim"]);
   const mixed = splitPeopleFor(plan.payerNames, people);
-  assert.deepEqual(mixed, { payerName: "the payer", otherName: "the other person" });
-  assert.equal(previewLine({ count: 3, people: mixed, shareBasisPoints: 5000, group: null }), "3 entries to Splits with the other person, half each");
+  assert.deepEqual(mixed, { payerName: "the payer", otherName: "the other person", mixedPayers: true });
+  assert.equal(previewLine({ count: 3, people: mixed, shareBasisPoints: 5000, group: null }), "3 entries to Splits, half each");
   // Two rows both on Tim's wallet, one of them Joyce's own entry: Tim paid both.
   assert.deepEqual(splitsPlanFor([row("d", { accountOwnerLabel: "Tim" }), row("e", { ownerName: "Joyce", accountOwnerLabel: "Tim" })]).payerNames, ["Tim"]);
 });

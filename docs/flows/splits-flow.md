@@ -230,9 +230,10 @@ and renders nothing until the list has an entry. The list is the sweep in
 
 - Wide screens: the Review matches callout pattern, "You usually share these:
   N entries at M shops." with Review (Hide when open); open, one white card per
-  shop: the shop, who paid (a person chip), the group's amount as an openable
+  shop: the shop, who paid (a person chip reading "Joyce paid"), the group's amount as an openable
   figure (`data-fig="spent"` over the group's entry ids), "Usually half each
-  with Joyce in Baby River. Shared 8 of 9 times.", a tick per entry (all
+  in Baby River. Shared 8 of 9 times." (an uneven habit names both shares:
+  "Usually Tim 70% and Joyce 30%"), a tick per entry (all
   ticked), and "Add N".
 - Phones: the same count row; Review opens a bottom sheet with the same cards
   and Close at the bottom.

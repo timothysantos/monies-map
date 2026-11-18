@@ -85,7 +85,11 @@ test("Undo posts the split ids the Add returned, nothing else", () => {
 });
 
 test("the words are plain: half each says so, other shares name both people, a group is named only when there is one", () => {
-  assert.equal(copy.usually({ ownerName: "Tim", otherPersonName: "Joyce", groupName: "Baby River", basisPoints: 5000, inGroup: true }), "Usually half each with Joyce in Baby River.");
+  assert.equal(copy.usually({ ownerName: "Tim", otherPersonName: "Joyce", groupName: "Baby River", basisPoints: 5000, inGroup: true }), "Usually half each in Baby River.");
+  assert.equal(copy.usually({ ownerName: "Tim", otherPersonName: "Joyce", groupName: "Non-group expenses", basisPoints: 5000, inGroup: false }), "Usually half each.");
+  assert.equal(copy.usually({ ownerName: "Joyce", otherPersonName: "Tim", groupName: "Baby River", basisPoints: 3000, inGroup: true }), "Usually Joyce 30% and Tim 70% in Baby River.");
+  assert.equal(copy.paid("Joyce"), "Joyce paid");
+  assert.doesNotMatch(copy.usually({ ownerName: "Tim", otherPersonName: "Joyce", groupName: "Baby River", basisPoints: 5000, inGroup: true }), /with/);
   assert.equal(copy.usually({ ownerName: "Tim", otherPersonName: "Joyce", groupName: "Non-group expenses", basisPoints: 7000, inGroup: false }), "Usually Tim 70% and Joyce 30%.");
   assert.equal(copy.evidence({ evidenceCount: 8, matchedCount: 9, matchedBy: "description" }), "Shared 8 of 9 times.");
   assert.equal(copy.evidence({ evidenceCount: 5, matchedCount: 6, matchedBy: "category" }), "Shared 5 of 6 similar purchases.");

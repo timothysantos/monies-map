@@ -1,5 +1,6 @@
 import { devices, expect, test } from "@playwright/test";
 
+import { expectFits } from "./fit-check";
 import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 
 // "Add to Splits" in the picked rows' bar on Entries (design.md "Picking
@@ -42,6 +43,34 @@ const bar = (page) => page.locator("[data-pick-bar]");
 const note = (page) => page.locator("[data-trip-note]");
 const choice = (page) => page.locator("[data-pick-splits]");
 const addToSplits = (bar_) => bar_.getByRole("button", { name: "Add to Splits" });
+
+// One entry on Tim's own card and one on Joyce's own account: two different
+// people paid, so the sheet names no one (DOMAIN.md "Split Payer").
+async function seedMixedPayers(page, stamp) {
+  await postJson(page, "/api/accounts/create", { name: `Joyce Wallet ${stamp}`, institution: "DBS", kind: "bank", currency: "SGD", openingBalanceMinor: 0, ownerPersonId: "person-joyce" });
+  const onTim = await makeEntry(page, `Tims ${stamp}`, "06", 2_400);
+  const onJoyce = await makeEntry(page, `Joyces ${stamp}`, "06", 1_600, { accountName: `Joyce Wallet ${stamp}` });
+  return { onTim, onJoyce };
+}
+
+const MIXED_CHOICES = ["Half each", "The one who didn't pay owes it all", "All on the one who paid"];
+
+// The three choices by name, the line for each, and no name anywhere.
+async function checkMixedSheet(page, scope, count) {
+  const preview = scope.locator("[data-pick-splits-preview]");
+  const lines = [
+    ["Half each", `${count} entries to Splits, half each, in Okaeri`],
+    ["The one who didn't pay owes it all", `${count} entries to Splits, the one who didn't pay owes it all, in Okaeri`],
+    ["All on the one who paid", `${count} entries to Splits, all on the one who paid, in Okaeri`]
+  ];
+  await scope.getByRole("radio", { name: /Okaeri/ }).click();
+  for (const [label, line] of lines) {
+    await scope.getByRole("radio", { name: label, exact: true }).click();
+    await expect(preview).toHaveText(line);
+  }
+  await expect(scope.getByRole("radio", { name: "the other person owes all of it" })).toHaveCount(0);
+  await expect(scope.getByRole("radio", { name: /^All the payer/ })).toHaveCount(0);
+}
 
 async function splitRowOf(page, entryId) {
   const response = await page.request.get(`/api/entries-page?view=person-tim&month=${MONTH}`);
@@ -136,6 +165,20 @@ test.describe("desktop", () => {
     for (const id of ids) {
       await expect.poll(async () => (await splitRowOf(page, id))?.linkedSplitExpenseId ?? "").not.toBe("");
     }
+  });
+
+  test("rows paid by different people: the choices say who paid, not a name, and the line has no 'with'", async ({ page }) => {
+    await reseedDemo(page);
+    const stamp = `px${Date.now()}`;
+    await seedMixedPayers(page, stamp);
+    await openEntries(page, stamp, `Tims ${stamp}`);
+    await page.getByRole("button", { name: "Pick", exact: true }).click();
+    await page.locator(`[data-pick-day="${MONTH}-06"]`).click();
+    await expect(bar(page)).toContainText("2 picked");
+    await addToSplits(bar(page)).click();
+    await expect(choice(page)).toBeVisible();
+    await checkMixedSheet(page, choice(page), 2);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/mixed-desktop-choice.png` });
   });
 
   test("everything picked is already on Splits or is income: the bar says so and opens nothing", async ({ page }) => {
@@ -240,5 +283,46 @@ test.describe("phone", () => {
     await note(page).getByRole("button", { name: "Undo" }).tap();
     await expect(note(page)).toContainText("Undone");
     await expect.poll(async () => (await splitRowOf(page, first))?.linkedSplitExpenseId ?? "").toBe("");
+  });
+
+  test("rows paid by different people: the sheet fits at 320x568 and 390x844 and names no one", async ({ page }) => {
+    await showMoney(page);
+    await reseedDemo(page);
+    const stamp = `py${Date.now()}`;
+    await seedMixedPayers(page, stamp);
+    await openEntries(page, stamp, `Tims ${stamp}`);
+    const target = rowMain(page, `Tims ${stamp}`).locator(".entry-row-description > strong");
+    await target.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    let box = await target.boundingBox();
+    await expect.poll(async () => {
+      const previous = box;
+      box = await target.boundingBox();
+      return Math.abs(box.y - previous.y) < 1 && box.y > 120 && box.y < page.viewportSize().height - 240;
+    }).toBe(true);
+    const cdp = await page.context().newCDPSession(page);
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+    await page.waitForTimeout(700);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await rowMain(page, `Joyces ${stamp}`).tap();
+    await expect(bar(page)).toContainText("2 picked");
+    await addToSplits(bar(page)).tap();
+    const sheet = page.getByRole("dialog", { name: "Add 2 entries to Splits" });
+    await expect(sheet).toBeVisible();
+    await checkMixedSheet(page, sheet, 2);
+    for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(size.width);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      // A short phone scrolls the choices above the Add bar: the line is read at the end of that scroll.
+      await sheet.locator("[data-pick-splits-preview]").scrollIntoViewIfNeeded();
+      if (SHOTS) await page.screenshot({ path: `${SHOTS}/mixed-phone-${size.width}.png` });
+      await expectFits(page, { mustSee: ["[data-pick-splits-preview]"] });
+      // The longest choice shows whole: its text is not cut off by its pill.
+      const longest = sheet.getByRole("radio", { name: "The one who didn't pay owes it all", exact: true });
+      await longest.scrollIntoViewIfNeeded();
+      expect(await longest.evaluate((element) => element.scrollWidth <= element.clientWidth + 1 && element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+      if (SHOTS && size.width === 390) await page.screenshot({ path: `${SHOTS}/mixed-phone-sheet.png` });
+    }
   });
 });

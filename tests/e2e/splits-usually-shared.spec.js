@@ -62,7 +62,10 @@ test("a shop usually shared is listed, ticks choose the entries, Add puts them o
 
   const card = section.locator(`[data-usually-shop="${SHOP}"]`);
   await expect(card).toBeVisible();
-  await expect(card.getByText("Usually half each with Joyce.")).toBeVisible();
+  await expect(card.getByText("Usually half each.")).toBeVisible();
+  // The tag says who paid; the line names no one.
+  await expect(card.locator(".split-usually-head").getByText("Tim paid", { exact: true })).toBeVisible();
+  await expect(card.getByText("Usually half each with")).toHaveCount(0);
   await expect(card.getByText("Shared 3 of 4 times.")).toBeVisible();
   // The group's amount is an openable figure over exactly its entries.
   const figure = card.locator("[data-fig='spent']");
@@ -143,6 +146,9 @@ test("on a phone the section is one count row that opens a sheet", async ({ page
   const sheet = page.getByRole("dialog", { name: "Usually shared" });
   await expect(sheet).toBeVisible();
   await expect(sheet.locator(`[data-usually-shop="${SHOP}"]`)).toBeVisible();
+  await expect(sheet.getByText("Tim paid", { exact: true })).toBeVisible();
+  await expect(sheet.getByText("Usually half each.")).toBeVisible();
+  if (process.env.BULK_SHOTS_DIR) await page.screenshot({ path: `${process.env.BULK_SHOTS_DIR}/usually-shared-phone.png` });
   await sheet.getByRole("button", { name: "Add 2" }).click();
   await expect(sheet.getByText("Added 2 entries to Splits.")).toBeVisible();
   await sheet.getByRole("button", { name: "Close" }).click();

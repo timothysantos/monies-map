@@ -917,7 +917,9 @@ them:
   10 the bar asks **Yes, add all …** first. Whoever's own card or account an
   entry was paid from is the one who paid on Splits (for a joint account, the
   entry's owner). If the entries were paid by different people, the box says
-  "the payer" and "the other person" instead of a name. Entries already on Splits, and income or
+  the box names no one: the choices are **Half each**, **The one who didn't
+  pay owes it all** and **All on the one who paid**, and the line reads
+  "2 entries to Splits, half each, in Okaeri". Entries already on Splits, and income or
   transfers, are left alone and the note says how many ("2 were already on
   Splits"). The note has **Undo**, which takes them all back off Splits.
 - **Cancel** (or Esc) stops picking. You can change up to 200 entries at a
@@ -3160,9 +3162,10 @@ entries at how many shops.
 
 1. Open **Splits** and select **Review** on that row. On a phone it opens a
    sheet.
-2. Each shop has its own card: the shop, who paid (whoever's own card or
-   account it was paid from), the total, and a line such
-   as "Usually half each with Joyce in Baby River. Shared 8 of 9 times." That
+2. Each shop has its own card: the shop, a small tag saying who paid
+   (whoever's own card or account it was paid from, such as "Joyce paid"),
+   the total, and a line such
+   as "Usually half each in Baby River. Shared 8 of 9 times." That
    line is why it is here: Splits looks at what you did with that shop's
    purchases in the last year, and only offers it when most of them were
    shared the same way. A shop you share now and then is never offered.

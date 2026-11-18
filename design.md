@@ -4029,7 +4029,7 @@ shadow): per shop the name and entry count, a person chip for who paid (the
 Entries person colour), the group's amount as an openable figure
 (`data-fig="spent"` with the group's entry ids and months, the figure's menu
 offers View entries whose Spent total is the amount to the cent), one plain
-line ("Usually half each with Joyce in Baby River. Shared 8 of 9 times."), a
+line ("Usually half each in Baby River. Shared 8 of 9 times."; the payer chip reads "Joyce paid", so half each names no one), a
 tick per entry (all ticked, so the person unticks the ones paid for alone) and
 one primary "Add N". Over ten the button asks "Yes, add all N" with Cancel,
 inline, never a browser confirm. After an Add a mint notice ("Added 2 entries
@@ -4210,8 +4210,9 @@ passive, and the page keeps the URL's view, month and scope for the way back.
   style) holds the split group (the one used last on Splits, else the
   default, else the first; the only group when there is one), the share
   (the payer's half each, 0% or 100%, worded "Half each", "Joyce owes all of
-  it", "All Tim's"; with two payers among the picked rows "the other person"
-  and "the payer") and a plain preview ("12 entries to Splits with Joyce,
+  it", "All Tim's"; with two payers among the picked rows no one is named:
+  "Half each", "The one who didn't pay owes it all", "All on the one who
+  paid") and a plain preview ("12 entries to Splits with Joyce,
   half each, in Okaeri"). "Add N" posts the rows that can go (expenses not
   on Splits; the rest are counted, not sent) to `POST
   /api/splits/expenses/add-chosen`, the bulk add command Usually shared

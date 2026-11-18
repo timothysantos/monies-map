@@ -2601,7 +2601,7 @@ wins. Used by Add to Splits from Ask and from Entries
 (`createSplitExpenseFromEntryRecord`), by Ask's focus, and, one entry at a
 time, by the picked-rows bar and Usually shared (`addEntriesToSplitsRecord`),
 by the picked-rows bar's wording (`splitsPlanFor` names the payer by the same
-function; rows with different payers say "the payer" and "the other person"),
+function; rows with different payers name no one: "The one who didn't pay owes it all", "All on the one who paid"),
 and by Ask's habits (a habit holds the payer's own share, learned and applied
 with the payer this rule picks, so a habit learned from Tim paying does not
 speak for an entry on Joyce's own card). Usually shared keeps the usual split

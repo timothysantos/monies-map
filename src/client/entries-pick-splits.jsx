@@ -116,6 +116,7 @@ function PickSplitsForm({ count, groups, people, initialGroupId, onChoose, onClo
   );
   return (
     <div className="pick-splits-form" data-pick-splits="">
+      <div className="pick-splits-body">
       {groups.length > 1 ? (
         <fieldset className="entry-split-picker-field" disabled={pending}>
           <legend>{copy.groupLegend}</legend>
@@ -162,6 +163,7 @@ function PickSplitsForm({ count, groups, people, initialGroupId, onChoose, onClo
         {previewLine({ count, people, shareBasisPoints, group })}
       </p>
       {error ? <p className="entries-pick-bar-message" role="alert">{error}</p> : null}
+      </div>
       {sheet ? (
         <BottomActions className="is-sheet-bar" primary={addButton} secondary={<button type="button" className="lsd-quiet" onClick={onClose}>{copy.close}</button>} />
       ) : (
