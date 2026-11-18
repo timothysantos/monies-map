@@ -217,12 +217,6 @@
   font-weight: 500;
 }
 
-@media (min-width: 761px) {
-  .state-pill {
-    top: calc(max(8px, env(safe-area-inset-top)) + 96px);
-  }
-}
-
 @media (max-width: 760px) {
   /* The phone's floating money-privacy button sits at the right edge of the
      page; a card's action stays out of that column, as the money insights

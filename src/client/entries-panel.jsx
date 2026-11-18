@@ -1672,8 +1672,13 @@ export function EntriesPanel({
         <EntriesFilterStack {...filterStackProps} isPicking={pick.picking} onTogglePicking={togglePicking} />
       ) : null}
 
-      {isEntriesPageLoading ? (
-        <AppLoadingOverlay className="entries-page-loading" />
+      {/* Beside the shell's pill, not in the card: the card's backdrop blur makes
+          it the containing block of a fixed child, which put this pill over the
+          card's own buttons. Hidden while the shell's pill shows
+          (entries-route.css). */}
+      {isEntriesPageLoading ? createPortal(
+        <AppLoadingOverlay className="entries-page-loading" />,
+        document.querySelector(".app-route-grid") ?? document.body
       ) : null}
 
       {showEntryComposer && !useMobileEntrySheet ? (

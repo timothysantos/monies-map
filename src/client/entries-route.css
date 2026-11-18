@@ -300,9 +300,10 @@
   }
 }
 
-.entries-page-loading {
-  top: max(14px, env(safe-area-inset-top));
-  right: max(14px, env(safe-area-inset-right));
+/* The Entries page's own loading pill sits exactly where the shell's does
+   (.state-pill) and gives way to it, so one notice shows at a time. */
+.app-route-grid:has(> .app-loading-overlay:not(.entries-page-loading)) > .entries-page-loading {
+  display: none;
 }
 
 /* The Entries list's base rules (moved from the first-screen stylesheet;

@@ -3776,10 +3776,14 @@ Colours are tokens only (`data-tone`: `rose`, `sky`, `butter`, `mint`).
   They never take their own height from data: heights are fixed per block so
   the page replaces them without a jump.
 - Loading, later: while a route fetches with the previous page still on screen,
-  `AppLoadingOverlay` is one sky pill (`.state-pill`) centred under the header
-  (clear of the period picker), with percent, detail and seconds in its
-  tooltip; only a problem is spelled out. The Entries page's own refresh uses
-  the same pill (`entries-page-loading`).
+  `AppLoadingOverlay` is one sky pill (`.state-pill`) at the right just under
+  the header (clear of the period picker and of the Entries card's Combined
+  button), with percent, detail and seconds in its tooltip; only a problem is
+  spelled out. The Entries page's own refresh uses the same pill
+  (`entries-page-loading`), rendered into the same route grid (not inside the
+  card, whose backdrop blur would make it the containing block) and hidden by
+  CSS while the shell's pill shows, so at most one notice is visible
+  (`tests/e2e/loading-notice.spec.js`).
 
 A page load that fails after the person navigated shows the page
 `ErrorPanel` inside the shell, and hides the previous page. Otherwise the
