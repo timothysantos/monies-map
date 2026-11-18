@@ -176,7 +176,8 @@ test("Record settlement is a lead card with an amount in place, Detail rows and 
   await expect(dialog).toBeVisible();
 
   const lead = dialog.locator(".lsd-card");
-  await expect(lead.locator(".lsd-title")).toHaveText("Joyce paid Tim");
+  // Tim owes Joyce in Non-group, so the payment that settles it is his.
+  await expect(lead.locator(".lsd-title")).toHaveText("Tim paid Joyce");
   await expect(lead.locator(".lsd-subtitle")).toHaveText("Non-group expenses");
   const amount = dialog.getByRole("textbox", { name: "Amount" });
   await expect(amount).toHaveValue("260.25");
@@ -306,7 +307,7 @@ test.describe("on a phone", () => {
     const sheet = page.getByRole("dialog", { name: "Record settlement" });
     await expect(sheet).toBeVisible();
     await expect(sheet.locator(".sheet-drag-handle")).toBeVisible();
-    await expect(sheet.locator(".lsd-card .lsd-title")).toHaveText("Joyce paid Tim");
+    await expect(sheet.locator(".lsd-card .lsd-title")).toHaveText("Tim paid Joyce");
     await expect(sheet.getByRole("textbox", { name: "Amount" })).toHaveValue("260.25");
     // A choice opens the app's picker sheet, as on the other cards.
     await sheet.locator('[data-row="to"]').click();
