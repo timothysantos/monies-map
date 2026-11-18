@@ -144,6 +144,12 @@ test("the Entries URL: days in place of the month, read back the same, and dropp
   for (const [from, to] of [["2026-11-10", "2026-11-03"], ["2026-02-30", "2026-03-02"], ["2024-01-01", "2026-11-02"], ["nope", "2026-11-02"]]) {
     assert.equal(readEntriesDayRange(new URLSearchParams({ entry_day_from: from, entry_day_to: to }), "2026-11"), null, `${from}..${to}`);
   }
+  // Days that are not on the calendar, in the page's own month: 31 Feb, a
+  // 13th month, 30 Feb in a leap year, 31 Apr. A real 29 Feb still reads.
+  for (const [from, to, month] of [["2026-02-01", "2026-02-31", "2026-02"], ["2026-13-01", "2026-13-02", "2026-13"], ["2024-02-01", "2024-02-30", "2024-02"], ["2026-04-01", "2026-04-31", "2026-04"]]) {
+    assert.equal(readEntriesDayRange(new URLSearchParams({ entry_day_from: from, entry_day_to: to }), month), null, `${from}..${to}`);
+  }
+  assert.deepEqual(readEntriesDayRange(new URLSearchParams({ entry_day_from: "2024-02-28", entry_day_to: "2024-02-29" }), "2024-02"), { from: "2024-02-28", to: "2024-02-29" });
 });
 
 test("From and To: one end sets a one-day range, the other moves with it, clearing either clears both", () => {

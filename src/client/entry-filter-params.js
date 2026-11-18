@@ -37,6 +37,7 @@
 // - from_ask=1: the filters came from an Ask answer, so the page shows the
 //   "From Ask" chip that clears them or goes back to Ask
 
+import { addDaysToIsoDate } from "./app-dates";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
 
 export const ENTRY_TYPES = Object.freeze(["expense", "income", "transfer"]);
@@ -111,7 +112,7 @@ export function readEntriesDayRange(searchParams, month) {
   if (!DAY_KEY.test(from) || !DAY_KEY.test(to) || from > to || !month || to.slice(0, 7) !== month) {
     return null;
   }
-  const real = (day) => new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+  const real = (day) => addDaysToIsoDate(day, 0) === day;
   if (!real(from) || !real(to) || monthsSpanned(from.slice(0, 7), month) > MAX_ENTRY_RANGE_MONTHS) {
     return null;
   }
