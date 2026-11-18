@@ -24,11 +24,10 @@ const PHONES = [
 ];
 const { defaultBrowserType: _browser, viewport: _viewport, ...iPhone13 } = devices["iPhone 13"];
 
-// Older controls the fit check reports that this work did not change, each
-// listed in the fit audit as left for the owner (34-36 px, in first-screen
-// CSS); the Entries row's category label is a second target on a row that
-// is itself the target.
-const OLDER_SMALL_TARGETS = [".totals-visibility-toggle--form", ".icon-action.subtle-cancel", ".entry-row-category-button", ".entry-chip-trip", ".entries-date-refresh-button"];
+// Nothing is skipped as an older small target any more: the sheet close X
+// and the money eye in forms reach 44 px (fit audit F10, styles.css), and the
+// Entries row's category label and trip chip already did.
+const OLDER_SMALL_TARGETS = [];
 
 const message = (page) => page.getByRole("textbox", { name: "Message" });
 
@@ -171,6 +170,16 @@ test.describe("phone fit", () => {
     // With the keyboard up, Cancel and Save share one row so the form keeps
     // room above the keyboard (stacked, a 375 x 557 phone kept 2 rows).
     await expectFitsOnPhones(page, { typing: () => sheet.locator("input:visible, textarea:visible").first() });
+  });
+
+  // F10: a row's category label and trip chip reach 44 px for a thumb.
+  test("Entries: a row with its category label and trip chip fits and both are full-size targets", async ({ page }) => {
+    await page.goto(`/entries?view=household&month=${STRESS.month}`);
+    const chip = page.locator(".entry-chip-trip").first();
+    await expect(chip).toBeVisible({ timeout: 60_000 });
+    await chip.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await shot(page, "F10-entries-row-targets");
+    await expectFitsOnPhones(page);
   });
 
   test("Entries: the edit sheet of a rupiah card payment fits, keyboard up and down", async ({ page }) => {

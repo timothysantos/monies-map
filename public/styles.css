@@ -2224,6 +2224,26 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   height: 36px;
 }
 
+/* A sheet's close X and money eye keep their look and reach 44 px for a
+   thumb (phone fit audit F10): the X's box grows by padding its margin takes
+   back, the eye's reach is an invisible layer, each stopping short of the
+   other. The lead and import row sheets already draw a 44 px round X. */
+.entry-composer-head-actions .icon-action.subtle-cancel:not(.is-lead-sheet *, .import-row-sheet *) {
+  box-sizing: content-box;
+  padding: 10px 12px 10px 5px;
+  margin: -10px -12px -10px -5px;
+}
+
+.totals-visibility-toggle--form {
+  position: relative;
+}
+
+.totals-visibility-toggle--form::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
 .responsive-select-trigger {
   display: flex;
   align-items: center;
