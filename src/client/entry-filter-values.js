@@ -16,5 +16,6 @@ export function countActiveEntryFilters(entryFilters) {
     + (entryFilters.search ? 1 : 0)
     + (entryFilters.figure ? 1 : 0)
     + (entryFilters.tripEventId ? 1 : 0)
+    + (entryFilters.dayFrom ? 1 : 0)
     + (Number.isFinite(entryFilters.minAmountMinor) || Number.isFinite(entryFilters.maxAmountMinor) ? 1 : 0);
 }

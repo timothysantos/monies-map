@@ -30,7 +30,10 @@ export function EntriesFilterStack({
   onOpenTrips = undefined,
   // Picking many rows: a wide screen's "Pick" starts (and stops) it.
   isPicking = false,
-  onTogglePicking = undefined
+  onTogglePicking = undefined,
+  // From and To: a run of days in place of the month (entry-filter-params.js
+  // applyEntriesDayRange). Absent, the two fields are not shown.
+  onChangeDays = undefined
 }) {
   const isOpen = hideToggle ? true : showMobileFilters;
   const stackRef = useRef(null);
@@ -114,6 +117,30 @@ export function EntriesFilterStack({
             onChange={(value) => onChangeFilter("type", value)}
           />
         </div>
+        {onChangeDays ? (
+          <div className="entries-filter-target entries-filter-days" data-filter-target="days">
+            <label className="entries-filter">
+              <span className="entries-filter-label">{entriesMessages.dayFrom}</span>
+              <input
+                type="date"
+                className="table-edit-input"
+                value={entryFilters.dayFrom ?? ""}
+                max={entryFilters.dayTo || undefined}
+                onChange={(event) => onChangeDays({ from: event.target.value })}
+              />
+            </label>
+            <label className="entries-filter">
+              <span className="entries-filter-label">{entriesMessages.dayTo}</span>
+              <input
+                type="date"
+                className="table-edit-input"
+                value={entryFilters.dayTo ?? ""}
+                min={entryFilters.dayFrom || undefined}
+                onChange={(event) => onChangeDays({ to: event.target.value })}
+              />
+            </label>
+          </div>
+        ) : null}
         {onOpenTrips ? (
           <div className="entries-filter-target" data-filter-target="trip">
             <div className="entries-filter">

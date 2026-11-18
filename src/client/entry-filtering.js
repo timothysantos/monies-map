@@ -110,6 +110,10 @@ export function getFilteredEntries({ entries: listedEntries, entryFilters, selec
     if (!entryMatchesAmountRange(entry, viewId, entryFilters)) {
       return false;
     }
+    // A run of days (entry_day_from, entry_day_to), both ends included.
+    if (entryFilters.dayFrom && !(entry.date >= entryFilters.dayFrom && entry.date <= entryFilters.dayTo)) {
+      return false;
+    }
     return true;
   });
 }

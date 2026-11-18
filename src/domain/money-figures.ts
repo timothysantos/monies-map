@@ -255,6 +255,24 @@ export function taxReliefFigureMinor(ids: readonly string[], entries: FigureEntr
 }
 
 /**
+ * Spent over a run of days (DOMAIN.md "Day Range"): an Ask answer such as
+ * "what did I spend last week", or Entries with the Filters' From and To.
+ * It is the Entries Spent lead over the rows dated from the first day to the
+ * last, both included: each expense adds, a payback takes away
+ * (category-offset.ts spendingMinor). It opens as Entries with
+ * entry_day_from and entry_day_to (and the answer's other filters), over
+ * the months the days cover, whose Spent total is this sum to the cent.
+ */
+export function dayRangeSpentMinor(
+  entries: Array<{ date: string; amountMinor: number; entryType: string; categoryName?: string | null; transferPurpose?: { role?: string } | null }>,
+  range: { from: string; to: string }
+): number {
+  return entries
+    .filter((entry) => entry.date >= range.from && entry.date <= range.to)
+    .reduce((sum, entry) => sum + spendingMinor(entry), 0);
+}
+
+/**
  * Usually shared on Splits (DOMAIN.md "Usually Shared"): each group's amount
  * is the exact entries the server named, at the view's amounts. It opens as
  * `spent` narrowed to those entry ids over the months they fall in, so the

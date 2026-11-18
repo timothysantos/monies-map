@@ -4,6 +4,8 @@
 // $50") is not a balance, so money privacy does not mask it.
 
 import { unmaskedMoney } from "../formatters";
+import { formatDayRange } from "../../domain/ask-day-range";
+import { todayInAppTimeZone } from "../app-dates";
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const SCOPE_WORDS = { direct: "Direct", shared: "Shared", direct_plus_shared: "Direct + Shared" };
@@ -66,8 +68,11 @@ function amountPart(minAmountMinor, maxAmountMinor) {
  */
 export function describeFilterParts(filter, { accounts = [], people = [], withContext = false } = {}) {
   const parts = [];
+  // A run of days ("9 to 15 Nov") stands in for the month.
+  const days = filter.dayFrom && filter.dayTo ? formatDayRange({ from: filter.dayFrom, to: filter.dayTo }, todayInAppTimeZone()) : "";
+  if (days) parts.push({ key: "days", label: days });
   if (withContext) {
-    const month = formatFilterMonth(filter.month);
+    const month = days ? "" : formatFilterMonth(filter.month);
     if (month) parts.push({ key: "month", label: month });
     const view = formatFilterView(filter, people);
     if (view) parts.push({ key: "view", label: view });

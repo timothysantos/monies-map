@@ -28,7 +28,7 @@ import { todayInAppTimeZone } from "./app-dates";
 import { getPersonColourVars } from "./person-colour";
 import { formatShortMonth } from "./copy/ask-copy";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
-import { clearAskFilterParams, hasAskFilterChip, readEntriesFilterParams, readEntriesRangeStart } from "./entry-filter-params";
+import { applyEntriesDayRange, clearAskFilterParams, clearEntriesDayRange, hasAskFilterChip, readEntriesFilterParams, readEntriesRangeStart } from "./entry-filter-params";
 import { EntriesAskChip, EntriesFigureChip } from "./entries-ask-chip";
 import { figureCopy } from "./copy/figure-copy";
 import { splitShareCopy } from "./copy/split-share-copy";
@@ -630,11 +630,13 @@ export function EntriesPanel({
       entryNetMinor,
       month: entryView.monthPage.month,
       rangeStartMonth: entriesPage.monthPage.rangeStartMonth ?? "",
+      dayFrom: entryFilters.dayFrom,
+      dayTo: entryFilters.dayTo,
       personLabel: entryView.label,
       figure: entryFilters.figure,
       figureMinor
     }),
-    [entriesPage.monthPage.rangeStartMonth, entryFilters.figure, entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month, figureMinor]
+    [entriesPage.monthPage.rangeStartMonth, entryFilters.dayFrom, entryFilters.dayTo, entryFilters.figure, entryGrossOutflowMinor, entryNetMinor, entryOutflowMinor, entryTotals, entryView.label, entryView.monthPage.month, figureMinor]
   );
   // The check-in reads the whole month's list for the view and scope, not
   // the current search or filter, so it says the same whatever is shown.
@@ -1355,6 +1357,12 @@ export function EntriesPanel({
     });
   }, [setSearchParams]);
 
+  // From and To: a run of days in place of the month (the header month moves
+  // to the last day's; entry-filter-params.js applyEntriesDayRange).
+  const updateEntryDays = useCallback((change) => {
+    setSearchParams((current) => applyEntriesDayRange(current, change));
+  }, [setSearchParams]);
+
   const updateEntrySearch = useCallback((value) => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -1381,6 +1389,8 @@ export function EntriesPanel({
       next.delete("entry_max");
       next.delete("entry_figure");
       next.delete("entry_trip");
+      next.delete("entry_day_from");
+      next.delete("entry_day_to");
       // Only the phone island's Clear resets the period too. Existing Reset
       // callers pass an event (or nothing) and keep their desktop behavior.
       if (clearPeriod === true) {
@@ -1403,7 +1413,7 @@ export function EntriesPanel({
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       ["entry_figure", "entry_from", "entry_to"].forEach((key) => next.delete(key));
-      return next;
+      return clearEntriesDayRange(next);
     });
   }, [setSearchParams]);
   const returnToAsk = useCallback(() => {
@@ -1470,6 +1480,7 @@ export function EntriesPanel({
     hideRefresh: useMobileEntrySheet,
     onToggleMobileFilters: toggleMobileFilters,
     onChangeFilter: updateEntryFilter,
+    onChangeDays: updateEntryDays,
     onChangeSearch: updateEntrySearch,
     onResetFilters: resetEntryFilters,
     onRefresh: refreshEntriesFilters,
@@ -1487,6 +1498,7 @@ export function EntriesPanel({
     entrySearchSuggestions,
     showMobileFilters,
     toggleMobileFilters,
+    updateEntryDays,
     updateEntryFilter,
     updateEntrySearch,
     useMobileEntrySheet,
@@ -1542,7 +1554,7 @@ export function EntriesPanel({
         </div>
       </div>
 
-      {!showAskChip && (entryFilters.figure || entriesPage.monthPage.rangeStartMonth) ? (
+      {!showAskChip && (entryFilters.figure || entriesPage.monthPage.rangeStartMonth || entryFilters.dayFrom) ? (
         <EntriesFigureChip
           label={figureCopy.chipLabel([entryFilters.figure ? figureCopy.names[entryFilters.figure] : "", totalsModel.month].filter(Boolean))}
           clearLabel={figureCopy.clear}
@@ -2257,11 +2269,11 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   const walletFilterKey = read.entryFilters.wallets.join("\u0000");
   const categoryFilterKey = read.entryFilters.categories.join("\u0000");
   const entryIdFilterKey = read.entryFilters.entryIds.join("\u0000");
-  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn, figure, tripEventId } = read.entryFilters;
+  const { type, search: searchQuery, minAmountMinor, maxAmountMinor, investmentMovesIn, figure, tripEventId, dayFrom, dayTo } = read.entryFilters;
   const entryFilters = useMemo(
     () => read.entryFilters,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryFilterKey, entryIdFilterKey, figure, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, tripEventId, type, walletFilterKey]
+    [categoryFilterKey, dayFrom, dayTo, entryIdFilterKey, figure, investmentMovesIn, maxAmountMinor, minAmountMinor, searchQuery, tripEventId, type, walletFilterKey]
   );
 
   return {

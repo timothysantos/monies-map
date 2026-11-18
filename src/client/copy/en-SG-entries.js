@@ -8,6 +8,9 @@ export const entriesMessages = {
   category: "By category",
   person: "By people",
   resetFilters: "Reset filters",
+  // The Filters' run of days (entry_day_from, entry_day_to).
+  dayFrom: "From",
+  dayTo: "To",
   allWallets: "All wallets",
   allCategories: "All categories",
   searchPlaceholder: "Merchant, note, wallet, amount...",

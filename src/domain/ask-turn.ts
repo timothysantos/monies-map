@@ -24,6 +24,7 @@ import { ASK_LOOKUP_TOOL_NAMES } from "./ask-lookup-spec";
 import { readAnswerIntent, type AskAnswerIntentKind } from "./ask-answer-intent";
 import { categoryFromDescription } from "./category-keywords";
 import { buildCreateBody, parseEntrySentence, type EntryDraftContext } from "./entry-draft";
+import { findDayRangeIn, formatDayRange, readDayRange, type DayRange } from "./ask-day-range";
 import { parsePlanAiReading, readPlanRequest, type PlanRequest } from "./plan-draft-reader";
 import { ASK_MESSAGE_MAX_LENGTH } from "./request-limits";
 import { assumption, type AskAssumption, type AskValidatorError } from "./ask-ambiguity";
@@ -243,6 +244,7 @@ export const ASK_TURN_SCHEMA = {
       wallets: { type: "array", items: { type: "string" } },
       person: nullableString,
       month: nullableString,
+      days: nullableString,
       type: nullableEnum(["expense", "income", "transfer"]),
       min_amount: nullableAmount,
       max_amount: nullableAmount
@@ -466,6 +468,10 @@ export interface AskSettlementDraft {
 
 export interface AskTurnFilter {
   month: string;
+  // A run of days ("last week": the Monday to Sunday before this week),
+  // worked out by the server (ask-day-range.ts); month is the last day's.
+  dayFrom?: string;
+  dayTo?: string;
   viewId: string;
   scope: string;
   search: string;
@@ -1666,9 +1672,15 @@ function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: 
     }
   }
   const raw = action.search ?? {};
-  const month = readMonth(raw.month, context);
+  // Days before months: "last week" is a run of days, never a month. The
+  // person's own words first, else the words the model passed on; the
+  // dates are always worked out here (ask-day-range.ts).
+  const days = readSearchDays(raw.days, context);
+  if (days === "unreadable") return askBack({ code: "date_invalid", field: "search.days" }, COPY.whichDays, [...COPY.dayChips]);
+  const month = days ? { ok: true as const, month: days.to.slice(0, 7) } : readMonth(raw.month, context);
   if (!month.ok) return askBack({ code: "month_invalid", field: "search.month" }, COPY.whichMonth);
   const assumptions: AskAssumption[] = [];
+  if (days) assumptions.push(assumption(COPY.assumed.days(days.phrase, formatDayRange(days, context.today))));
   const found = findPerson(raw.person, context);
   const person = found === "unknown" ? null : found;
   if (found === "unknown") assumptions.push(assumption(COPY.assumed.noPersonView(String(raw.person))));
@@ -1700,7 +1712,7 @@ function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: 
   const max = groundedAmount(raw.max_amount, ground);
   if ((min.given && min.minor === null) || (max.given && max.minor === null)) return askBack({ code: "amount_not_stated", field: "search.amount" }, COPY.amountQuestion);
   const type = raw.type === "expense" || raw.type === "income" || raw.type === "transfer" ? raw.type : "";
-  if (!search && !categories.length && !wallets.length && !type && !min.given && !max.given && !month.month && !person) {
+  if (!search && !categories.length && !wallets.length && !type && !min.given && !max.given && !month.month && !person && !days) {
     return askBack({ code: "search_empty", field: "search" }, COPY.searchWhat);
   }
   const viewId = person ? person.id : context.viewId;
@@ -1715,9 +1727,23 @@ function validateSearch(action: AskTurnAction, context: AskTurnContext, ground: 
       wallets,
       type,
       minAmountMinor: min.given ? min.minor : null,
-      maxAmountMinor: max.given ? max.minor : null
+      maxAmountMinor: max.given ? max.minor : null,
+      ...(days ? { dayFrom: days.from, dayTo: days.to } : {})
     }
   }, assumptions);
+}
+
+// The run of days a search names: the person's own words ("last week",
+// "since monday"), else what the model reported in search.days. Null when
+// neither names one; "unreadable" when the model passed on days this cannot
+// read and the message names none either (the turn asks back).
+function readSearchDays(value: unknown, context: AskTurnContext): (DayRange & { phrase: string }) | null | "unreadable" {
+  const said = findDayRangeIn(context.text, context.today);
+  if (said) return said;
+  if (value === null || value === undefined || value === "") return null;
+  const phrase = String(value).replace(/\s+/g, " ").trim().slice(0, 60);
+  const range = readDayRange(phrase, context.today);
+  return range ? { ...range, phrase } : "unreadable";
 }
 
 function validatePage(action: AskTurnAction, context: AskTurnContext): AskTurnReply {
@@ -1880,6 +1906,8 @@ export const COPY = {
   },
   questionUnclear: "What would you like to know? For example: where did my money go in September?",
   whichMonth: "Which month do you mean?",
+  whichDays: "Which days do you mean?",
+  dayChips: ["This week", "Last week", "Last 7 days"],
   usualWhat: "More than usual for what?",
   usualThisMonth: "This month's spending",
   futureMonth: "That month hasn't happened yet, so there's nothing recorded to answer from.",
@@ -1912,6 +1940,8 @@ export const COPY = {
   // ask-flow.md, "Three principles"). Names are the person's own words,
   // scrubbed. Each line may come with chips that send the other reading.
   assumed: {
+    // "Last week: 9 to 15 Nov".
+    days: (said: string, range: string) => `${said.charAt(0).toUpperCase()}${said.slice(1).toLowerCase()}: ${range}`,
     evenSplit: "You didn't say how to split it, so I split it evenly.",
     readAsAmount: (number: number, money: string, name: string) => `I read ${number} as ${money} for ${scrubName(name)}, and the rest goes to the other person.`,
     readAsPercent: (number: number, name: string) => `I read ${number} as ${number}% for ${scrubName(name)}.`,

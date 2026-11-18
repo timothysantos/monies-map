@@ -816,6 +816,19 @@ phone, so the card stays here. Save again when the connection is back."
 
 ### Search and filter
 
+With AI on, the model reports days as said in `search.days` ("last week",
+"since monday"); the server works them out (`readSearchDays` in
+ask-turn.ts: the person's own words first, else the model's), puts them on
+the filter as `dayFrom`/`dayTo` with the last day's month, and says them in
+the reply's `assumptions` ("Last week: 9 to 15 Nov"). Days it cannot read
+ask back with This week, Last week and Last 7 days (`date_invalid`, so the
+model gets one repair turn first). The answer card reads the months the
+days cover (`answerFromMonth`, ask-data.js) and its chips name the days
+("9 to 15 Nov") in place of the month; Open in Entries carries
+`entry_day_from`/`entry_day_to`, and the Entries Spent total equals the
+answer's to the cent (money-figures.ts `dayRangeSpentMinor`,
+tests/openable-figures.test.mjs).
+
 A typed request is read on the device by the filter reader
 (`ask-filter-reader.js`): no request and no AI. It uses the people, wallets
 (active ones) and categories already loaded, and the view, scope and month
@@ -824,6 +837,16 @@ Ask is looking at:
 - month words: this month, last month, a month name ("sep", "september",
   "Sep 2026", "2026-09"; a month later than this one means last year's),
   "today" and "yesterday" (that day's date as search words);
+- days (Ask audit B25; `src/domain/ask-day-range.ts`, the same reader the
+  turn route uses): "last week", "this week", "this weekend", "since
+  monday", "past 7 days", "between 3 and 10 nov", "3-10 nov", "28 oct to 3
+  nov". Weeks start on Monday; last week is the Monday to Sunday before
+  this one; this weekend is this week's Saturday and Sunday once it has
+  started, else the one just gone. The days replace the month
+  (`dayFrom`, `dayTo`; the month is the last day's), and the words never
+  become search words. "between" or "since" with days the reader cannot
+  read asks "Which days do you mean?" with This week, Last week and Last 7
+  days;
 - people ("serene's") and the household; scope words (shared, direct or
   personal, direct and shared); entry type words (income, transfers,
   spending, spent);

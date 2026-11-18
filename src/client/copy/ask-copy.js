@@ -537,6 +537,7 @@ export const askCopy = {
   filter: {
     questions: {
       month: "Which month? Entries shows one month at a time.",
+      days: "Which days do you mean?",
       wallet: "Which card or account?",
       category: "Which category?",
       person: "Whose entries?"

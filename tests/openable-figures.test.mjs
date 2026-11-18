@@ -29,7 +29,7 @@ import { buildEarnedSpentMonths } from "../src/client/summary-earned-spent-model
 import { buildChartMonths, chartSeries, pointFigure } from "../src/client/earned-spent-chart-model.js";
 import { buildSavingsBarModel } from "../src/client/savings-bar-model.js";
 import { buildSimpleMetrics } from "../src/client/simple-metrics-model.js";
-import { bankFeesFigureMinor, cardRewardSpendFigureMinor, changedFigureMinor, monthWrapUpFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
+import { bankFeesFigureMinor, cardRewardSpendFigureMinor, changedFigureMinor, dayRangeSpentMinor, monthWrapUpFigureMinor, taxReliefFigureMinor, investmentPutInFigure, investmentPutInFigureMinor, MONEY_FIGURES, repeatingFigureMinor, usuallySharedFigureMinor } from "../src/domain/money-figures.ts";
 import { buildInvestmentsOverTimeDto } from "../src/domain/pages/investments-over-time.ts";
 import { buildTaxReliefsDto } from "../src/domain/pages/tax-reliefs.ts";
 import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscriptions-model.js";
@@ -38,6 +38,8 @@ import { addMonths } from "../src/domain/money-signals/format.ts";
 import { buildTripEventLeadModel } from "../src/client/trip-event-lead-model.js";
 import { projectEntriesForView } from "../src/client/entry-row-projection.js";
 import { entriesRangeMonths } from "../src/domain/pages/entries-page.ts";
+import { buildEntriesFilterSearch } from "../src/client/entry-filter-params.js";
+import { summarizeFilterAnswer } from "../src/client/ask-filter-answer.js";
 
 const TIM = "person-tim";
 const MAY = "2026-05";
@@ -110,7 +112,7 @@ async function openEntries(api, location, accounts) {
     pinnedEntryIds: [],
     investmentAccountIds: getInvestmentAccountIds(accounts)
   });
-  const model = buildEntriesTotalsModel({ ...derived, month: page.monthPage.month, rangeStartMonth: page.monthPage.rangeStartMonth ?? "", personLabel: page.label, figure: entryFilters.figure, figureMinor: derived.figureMinor });
+  const model = buildEntriesTotalsModel({ ...derived, month: page.monthPage.month, rangeStartMonth: page.monthPage.rangeStartMonth ?? "", dayFrom: entryFilters.dayFrom, dayTo: entryFilters.dayTo, personLabel: page.label, figure: entryFilters.figure, figureMinor: derived.figureMinor });
   return { page, derived, model, params };
 }
 
@@ -1004,4 +1006,42 @@ test("Month wrap-up: Other, estimates and What changed open exactly their entrie
     }
   }
   assert.ok(checked >= 8, `checked ${checked} figures`);
+});
+
+// A run of days (money-figures.ts dayRangeSpentMinor; Ask audit B25): an
+// Ask answer such as "what did I spend last week" over a week that crosses
+// a month, its "Open in Entries" link, and the Entries Spent lead there are
+// the same figure to the cent, in the household and a person's view, with a
+// payback inside the week and spending just outside it on both sides.
+test("A run of days: the Ask answer's total equals the Entries total for the days it opens", async (t) => {
+  const { api } = await openSeededDatabase(t, template);
+  const { accounts } = await get(api, "/api/reference-data");
+  // Monday 27 April to Sunday 3 May 2026.
+  const week = { dayFrom: "2026-04-27", dayTo: "2026-05-03" };
+  await createEntry(api, { date: "2026-04-26", description: "Day before figure", categoryName: "Groceries", amountMinor: 9_999 });
+  await createEntry(api, { date: "2026-04-27", description: "Week start figure", categoryName: "Groceries", amountMinor: 1_111 });
+  await createEntry(api, { date: "2026-04-30", description: "Month end figure", categoryName: "Food & Drinks", amountMinor: 2_345 });
+  await createEntry(api, { date: "2026-05-02", description: "Payback figure", categoryName: "Food & Drinks", entryType: "income", amountMinor: 500 });
+  await createEntry(api, { date: "2026-05-03", description: "Week end figure", categoryName: "Groceries", amountMinor: 3_210 });
+  await createEntry(api, { date: "2026-05-04", description: "Day after figure", categoryName: "Groceries", amountMinor: 8_888 });
+  let checked = 0;
+  for (const view of [{ viewId: "household", scope: "direct_plus_shared" }, { viewId: TIM, scope: "direct_plus_shared" }]) {
+    const filter = { month: MAY, viewId: view.viewId, scope: view.scope, search: "", categories: [], wallets: [], type: "", minAmountMinor: null, maxAmountMinor: null, ...week };
+    // Ask: the answer card reads the page of the months the days cover.
+    const page = await get(api, `/api/entries-page?view=${view.viewId}&month=${MAY}&from=${APRIL}`);
+    const answer = summarizeFilterAnswer(page, filter, { accounts });
+    // Entries: the answer's link, read the way the Entries page reads it.
+    const params = buildEntriesFilterSearch(filter);
+    const { model, derived } = await openEntries(api, { pathname: "/entries", search: `?${params}` }, accounts);
+    assert.equal(model.month, "27 Apr to 3 May", `${view.viewId} header`);
+    assert.equal(model.spent.amountMinor, answer.lead.amountMinor, `${view.viewId}: Entries = Ask`);
+    assert.deepEqual(derived.filteredEntries.map((entry) => entry.id).sort(), [...answer.entryIds].sort(), `${view.viewId}: same rows`);
+    assert.ok(derived.filteredEntries.every((entry) => entry.date >= week.dayFrom && entry.date <= week.dayTo));
+    // The rule, over every row of the view the page holds, at whole amounts.
+    const rows = projectEntriesForView(page.monthPage.entries, view.viewId).aggregateEntries;
+    assert.equal(dayRangeSpentMinor(rows, { from: week.dayFrom, to: week.dayTo }), answer.lead.amountMinor, `${view.viewId} (rule)`);
+    assert.ok(answer.lead.amountMinor >= 1_111 + 2_345 + 3_210 - 500, `${view.viewId}: the seeded week counts`);
+    checked += 1;
+  }
+  assert.equal(checked, 2);
 });

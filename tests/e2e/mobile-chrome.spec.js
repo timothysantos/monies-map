@@ -208,11 +208,14 @@ test.describe("phone chrome in the Lead · Support · Detail hierarchy", { tag: 
 
     // Detail: the filters as quiet rows, one group of 44 px rows.
     const rows = sheet.locator(".mobile-context-filters .entries-filter");
-    await expect(rows).toHaveCount(5);
+    await expect(rows).toHaveCount(7);
     await expect(rows.nth(1)).toContainText("All wallets");
     await expect(rows.nth(2)).toContainText("All categories");
     await expect(rows.nth(3)).toContainText("All types");
-    await expect(rows.nth(4)).toContainText("All trips & events");
+    // From and To: a run of days in place of the month.
+    await expect(rows.nth(4)).toContainText("From");
+    await expect(rows.nth(5)).toContainText("To");
+    await expect(rows.nth(6)).toContainText("All trips & events");
     for (const row of await rows.all()) {
       expect((await row.boundingBox()).height).toBeGreaterThanOrEqual(44);
     }

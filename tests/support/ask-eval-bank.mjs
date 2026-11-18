@@ -71,6 +71,13 @@ export function fill(value, dates, extra = {}) {
       if (name === "today") return dates.today;
       if (name === "yesterday") return shiftDay(dates.today, -1);
       if (name === "daysAgo") return shiftDay(dates.today, -Number(arg));
+      // Weeks start on Monday (ask-day-range.ts): this week's Monday, and
+      // last week's Monday and Sunday.
+      if (name === "thisMonday" || name === "lastWeekFrom" || name === "lastWeekTo") {
+        const weekday = new Date(`${dates.today}T00:00:00Z`).getUTCDay();
+        const monday = shiftDay(dates.today, -((weekday + 6) % 7));
+        return name === "thisMonday" ? monday : name === "lastWeekFrom" ? shiftDay(monday, -7) : shiftDay(monday, -1);
+      }
       if (name === "month") return dates.month;
       if (name === "monthLabel") return `${MONTH_NAMES[Number(dates.month.slice(5)) - 1]} ${dates.month.slice(0, 4)}`;
       if (name in extra) return String(extra[name]);

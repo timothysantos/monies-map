@@ -271,6 +271,34 @@ Important distinctions:
   where something moved), so "Earned vs spent" splits each month
   the way its Month lead does.
 
+### Day Range
+
+A run of days, both ends included, said as words ("last week", "this
+weekend", "since monday", "between 3 and 10 nov") or picked as **From**
+and **To** on Entries. Weeks start on Monday: "last week" is the Monday to
+Sunday before this week; "this week" is this Monday to today; "this
+weekend" is this week's Saturday and Sunday once it has started, else the
+one just gone. A day with no year is the latest one not after today.
+
+Canonical term:
+- `day range` (UI: **From**, **To**; the answer says "Last week: 9 to 15
+  Nov")
+
+Code:
+- `src/domain/ask-day-range.ts` (`readDayRange`, `findDayRangeIn`,
+  `formatDayRange`; pure, shared by the turn route and the rules reader)
+- `entry_day_from`, `entry_day_to` in `src/client/entry-filter-params.js`;
+  `AskTurnFilter.dayFrom`/`dayTo`; `search.days` in the turn schema
+- `dayRangeSpentMinor` in `src/domain/money-figures.ts`
+
+Rules:
+- A day range replaces the month: the month is the last day's, and the
+  months back to the first day's are read (at most 24).
+- The model only reports the words; the server works out the dates. Words
+  that cannot be read are asked back, never guessed.
+- Its Spent total in Ask equals the Entries Spent total for the same days
+  to the cent.
+
 ### Money Figure
 
 A figure a card shows, named by the rule that produces it, so the entries

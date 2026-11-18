@@ -25,6 +25,12 @@
 // - entry_from, entry_to: a period of months (YYYY-MM) in place of the one
 //   month, when entry_to is the page's month: a Summary range's figure
 //   lists the whole range. Another month picked in the header drops it.
+// - entry_day_from, entry_day_to: a run of days (YYYY-MM-DD, both ends
+//   included), from the Filters' From and To or an Ask answer ("last
+//   week"). It replaces the month: the page's month is entry_day_to's and
+//   the months back to entry_day_from's are listed (the same period
+//   request entry_from makes), so another month picked in the header
+//   drops it. At most MAX_ENTRY_RANGE_MONTHS long.
 // - entry_trip: a trip or event's id (DOMAIN.md "Trip or Event"): the trip
 //   view, every entry on it across its months, whatever the month
 // - entries_scope: direct | shared | direct_plus_shared
@@ -51,6 +57,8 @@ export const ASK_FILTER_PARAM_KEYS = Object.freeze([
   "entry_figure",
   "entry_from",
   "entry_to",
+  "entry_day_from",
+  "entry_day_to",
   "entry_trip",
   "from_ask"
 ]);
@@ -70,6 +78,11 @@ export const MAX_ENTRY_RANGE_MONTHS = 24;
  * MAX_ENTRY_RANGE_MONTHS long.
  */
 export function readEntriesRangeStart(searchParams, month) {
+  // A run of days reaching back past its last day's month lists those months.
+  const days = readEntriesDayRange(searchParams, month);
+  if (days) {
+    return days.from.slice(0, 7) < month ? days.from.slice(0, 7) : "";
+  }
   const from = searchParams.get("entry_from") ?? "";
   const to = searchParams.get("entry_to") ?? "";
   if (!MONTH_KEY.test(from) || to !== month || !(from < month)) {
@@ -77,6 +90,71 @@ export function readEntriesRangeStart(searchParams, month) {
   }
   const span = (Number(month.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(month.slice(5, 7)) - Number(from.slice(5, 7)) + 1;
   return span <= MAX_ENTRY_RANGE_MONTHS ? from : "";
+}
+
+const DAY_KEY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+function monthsSpanned(fromMonth, toMonth) {
+  return (Number(toMonth.slice(0, 4)) - Number(fromMonth.slice(0, 4))) * 12 + Number(toMonth.slice(5, 7)) - Number(fromMonth.slice(5, 7)) + 1;
+}
+
+/**
+ * The run of days Entries lists (entry_day_from, entry_day_to), or null:
+ * both days real, the first not after the last, the last in `month` (the
+ * page's month; another month picked in the header drops the range), and
+ * at most MAX_ENTRY_RANGE_MONTHS long.
+ * @returns {{ from: string, to: string } | null}
+ */
+export function readEntriesDayRange(searchParams, month) {
+  const from = searchParams.get("entry_day_from") ?? "";
+  const to = searchParams.get("entry_day_to") ?? "";
+  if (!DAY_KEY.test(from) || !DAY_KEY.test(to) || from > to || !month || to.slice(0, 7) !== month) {
+    return null;
+  }
+  const real = (day) => new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+  if (!real(from) || !real(to) || monthsSpanned(from.slice(0, 7), month) > MAX_ENTRY_RANGE_MONTHS) {
+    return null;
+  }
+  return { from, to };
+}
+
+/**
+ * The URL change the Filters' From or To makes: both days set together (an
+ * empty other end takes the same day, so one day is a range of one), the
+ * page's month moved to the last day's, and any period of months, figure
+ * or trip view it replaces dropped. Clearing either end clears the range.
+ * @param {URLSearchParams} current
+ * @param {{ from?: string, to?: string }} change
+ */
+export function applyEntriesDayRange(current, change) {
+  const next = new URLSearchParams(current);
+  for (const key of ["entry_from", "entry_to", "entry_trip"]) next.delete(key);
+  const from = change.from ?? next.get("entry_day_from") ?? "";
+  const to = change.to ?? next.get("entry_day_to") ?? "";
+  if ((change.from !== undefined && !change.from) || (change.to !== undefined && !change.to) || (!from && !to)) {
+    next.delete("entry_day_from");
+    next.delete("entry_day_to");
+    return next;
+  }
+  let first = from || to;
+  let last = to || from;
+  // A To before the From (or a From after the To) moves the other end with it.
+  if (first > last) {
+    if (change.from !== undefined) last = first;
+    else first = last;
+  }
+  next.set("entry_day_from", first);
+  next.set("entry_day_to", last);
+  next.set("month", last.slice(0, 7));
+  return next;
+}
+
+/** Drops the run of days (the chip's ✕, Reset). */
+export function clearEntriesDayRange(current) {
+  const next = new URLSearchParams(current);
+  next.delete("entry_day_from");
+  next.delete("entry_day_to");
+  return next;
 }
 
 function readMultiValues(searchParams, key) {
@@ -104,6 +182,7 @@ export function formatAmountParam(amountMinor) {
 export function readEntriesFilterParams(searchParams, defaultScope = "direct_plus_shared") {
   const type = searchParams.get("entry_type") ?? "";
   const figure = searchParams.get("entry_figure") ?? "";
+  const days = readEntriesDayRange(searchParams, searchParams.get("month") ?? "");
   return {
     selectedScope: searchParams.get("entries_scope") ?? defaultScope,
     entryFilters: {
@@ -116,7 +195,9 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
       maxAmountMinor: readAmountParam(searchParams.get("entry_max")),
       investmentMovesIn: searchParams.get("entry_invest_moves") === "1",
       figure: ENTRY_FIGURES.includes(figure) ? figure : "",
-      tripEventId: searchParams.get("entry_trip") ?? ""
+      tripEventId: searchParams.get("entry_trip") ?? "",
+      dayFrom: days?.from ?? "",
+      dayTo: days?.to ?? ""
     }
   };
 }
@@ -126,9 +207,13 @@ export function readEntriesFilterParams(searchParams, defaultScope = "direct_plu
  * shows the same rows.
  * `fromMonth` lists the months from it to `month` (entry_from, entry_to);
  * `figure` narrows to the rows behind one figure (entry_figure).
- * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean, figure?: string, fromMonth?: string, tripEventId?: string }} filter
+ * `dayFrom` and `dayTo` list a run of days ("last week"): the month is the
+ * last day's, and the days are entry_day_from and entry_day_to.
+ * @param {{ month: string, viewId: string, scope: string, search?: string, categories?: string[], wallets?: string[], type?: string, minAmountMinor?: number | null, maxAmountMinor?: number | null, entryIds?: string[], investmentMovesIn?: boolean, figure?: string, fromMonth?: string, tripEventId?: string, dayFrom?: string, dayTo?: string }} rawFilter
  */
-export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
+export function buildEntriesFilterSearch(rawFilter, { fromAsk = true } = {}) {
+  const hasDays = Boolean(rawFilter.dayFrom && rawFilter.dayTo && rawFilter.dayFrom <= rawFilter.dayTo);
+  const filter = hasDays ? { ...rawFilter, month: rawFilter.dayTo.slice(0, 7), fromMonth: "" } : rawFilter;
   const params = new URLSearchParams();
   const viewId = filter.viewId || "household";
   const scope = viewId === "household" ? "direct_plus_shared" : (ENTRY_SCOPES.includes(filter.scope) ? filter.scope : "direct_plus_shared");
@@ -150,6 +235,10 @@ export function buildEntriesFilterSearch(filter, { fromAsk = true } = {}) {
   if (Number.isFinite(filter.maxAmountMinor)) params.set("entry_max", formatAmountParam(filter.maxAmountMinor));
   for (const entryId of filter.entryIds ?? []) params.append("entry_id", entryId);
   if (filter.tripEventId) params.set("entry_trip", filter.tripEventId);
+  if (hasDays) {
+    params.set("entry_day_from", filter.dayFrom);
+    params.set("entry_day_to", filter.dayTo);
+  }
   if (fromAsk) params.set("from_ask", "1");
   return params;
 }
@@ -165,7 +254,9 @@ export function readAskFilterFromParams(searchParams) {
     type: ENTRY_TYPES.includes(entryFilters.type) ? entryFilters.type : "",
     minAmountMinor: entryFilters.minAmountMinor,
     maxAmountMinor: entryFilters.maxAmountMinor,
-    entryIds: entryFilters.entryIds
+    entryIds: entryFilters.entryIds,
+    dayFrom: entryFilters.dayFrom,
+    dayTo: entryFilters.dayTo
   };
 }
 
@@ -175,7 +266,7 @@ export function hasAskFilterChip(searchParams) {
   }
   const filter = readAskFilterFromParams(searchParams);
   return Boolean(filter.search || filter.wallets.length || filter.categories.length || filter.type
-    || filter.minAmountMinor !== null || filter.maxAmountMinor !== null || filter.entryIds.length);
+    || filter.minAmountMinor !== null || filter.maxAmountMinor !== null || filter.entryIds.length || filter.dayFrom);
 }
 
 export function clearAskFilterParams(searchParams) {

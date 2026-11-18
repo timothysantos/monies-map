@@ -437,6 +437,31 @@
   .entries-filter-bar {
     grid-template-columns: auto minmax(190px, 1.5fr) repeat(4, minmax(0, 1fr)) auto;
   }
+
+  /* With From and To: their own wider column, so both dates read whole. */
+  .entries-filter-bar:has(> .entries-filter-days) {
+    grid-template-columns: auto minmax(170px, 1.3fr) repeat(3, minmax(0, 1fr)) minmax(17rem, 1.4fr) minmax(0, 1fr) auto;
+  }
+}
+
+/* Narrower wide screens: From and To take two columns of the grid. From
+   961 to 1,099 px they sit on the search's row (the search keeps two
+   columns, room to read what is typed), so the bar stays two rows. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .entries-filter-bar .entries-filter-days {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1099px) {
+  .entries-filter-bar:has(> .entries-filter-days) .search-filter {
+    grid-column: 1 / 3;
+  }
+
+  .entries-filter-bar .entries-filter-days {
+    grid-column: 3 / 5;
+    grid-row: 1;
+  }
 }
 
 @media (min-width: 961px) and (max-width: 1099px) {
@@ -1406,6 +1431,20 @@ body[data-entry-inline-editor] > .entries-ask-chip {
 }
 
 /* The filter bar's "Trip or event" control (entries-filter-stack.jsx). */
+/* From and To: two date fields side by side, each a 44 px target. */
+.entries-filter-days {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.entries-filter-days .table-edit-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
 .entries-filter-trip-button {
   display: inline-flex;
   align-items: center;

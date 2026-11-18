@@ -16,11 +16,12 @@
 // tests/ask-filter-reader.test.mjs the scenarios.
 
 import { addDaysToIsoDate } from "./app-dates";
+import { findDayRangeIn, readDayRange } from "../domain/ask-day-range";
 
 /**
- * @typedef {{ month: string, viewId: string, scope: string, search: string, categories: string[], wallets: string[], type: "" | "expense" | "income" | "transfer", minAmountMinor: number | null, maxAmountMinor: number | null }} EntriesFilter
+ * @typedef {{ month: string, viewId: string, scope: string, search: string, categories: string[], wallets: string[], type: "" | "expense" | "income" | "transfer", minAmountMinor: number | null, maxAmountMinor: number | null, dayFrom?: string, dayTo?: string }} EntriesFilter
  * @typedef {{ key: string, label: string, patch: Partial<EntriesFilter> }} FilterOption
- * @typedef {{ field: "month" | "wallet" | "category" | "person", reason?: string, word?: string, options: FilterOption[] }} FilterQuestion
+ * @typedef {{ field: "month" | "days" | "wallet" | "category" | "person", reason?: string, word?: string, options: FilterOption[] }} FilterQuestion
  * @typedef {{ kind: "none" } | { kind: "filter", filter: EntriesFilter } | { kind: "question", filter: EntriesFilter, questions: FilterQuestion[] } | { kind: "view", viewId: string, scope: string } | { kind: "unknown", reason: "category", word: string }} FilterReading
  */
 
@@ -239,6 +240,24 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
     signals.strong = true;
   }
 
+  // A run of days ("last week", "since monday", "between 3 and 10 nov"),
+  // read the same way as the turn route reads it (ask-day-range.ts): it
+  // stands in for the month, and its words are used up.
+  const dayRange = findDayRangeIn(text, context.today);
+  if (dayRange) {
+    const words = tokenize(dayRange.phrase).map((token) => token.text);
+    for (let index = 0; index + words.length <= tokens.length; index += 1) {
+      if (words.every((word, offset) => tokens[index + offset].text === word && !tokens[index + offset].used)) {
+        markUsed(tokens, index, words.length);
+        break;
+      }
+    }
+    signals.strong = true;
+  }
+  // Days said in a way that cannot be read ("between the 3rd and whenever"):
+  // asked back with the usual runs of days.
+  const unreadDays = !dayRange && /\b(?:between|since)\b/.test(String(text).toLowerCase()) && minAmountMinor === null && maxAmountMinor === null;
+
   // Months and days.
   const months = new Set();
   let dateSearch = "";
@@ -394,6 +413,7 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
   if (fullCategories.length || categoryCandidates.length || unknownCategory || scopeWord || namedPeople.some((person) => tokens.some((token) => token.possessive && token.text === nameWords(person.name)[0]))) {
     signals.strong = true;
   }
+  if (unreadDays) signals.strong = true;
   if (fullWallets.length || walletCandidates.length || searchWords.length || dateSearch) {
     signals.other = true;
   }
@@ -464,13 +484,18 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
     return { kind: "none" };
   }
 
-  // Months: one, or ask which.
+  // Months: one, or ask which. A run of days decides the month itself.
   let month = context.month || context.today.slice(0, 7);
   const monthList = [...months].sort();
-  if (monthList.length === 1) {
+  if (dayRange) {
+    month = dayRange.to.slice(0, 7);
+  } else if (monthList.length === 1) {
     month = monthList[0];
   } else if (monthList.length > 1) {
     questions.push({ field: "month", options: monthList.map((key) => ({ key, label: formatMonth(key), patch: { month: key } })) });
+  }
+  if (unreadDays && !monthList.length) {
+    questions.push({ field: "days", options: dayOptions(context.today) });
   }
 
   // Wallets: full names are sure; one brand word that fits several asks.
@@ -510,7 +535,10 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
   }
 
   const search = [...(dateSearch ? [dateSearch] : []), ...searchWords.map((token) => token.text)].join(" ");
-  const filter = { ...baseFilter(), month, viewId, scope, search, categories: categoryNames, wallets, type, minAmountMinor, maxAmountMinor };
+  const filter = {
+    ...baseFilter(), month, viewId, scope, search, categories: categoryNames, wallets, type, minAmountMinor, maxAmountMinor,
+    ...(dayRange ? { dayFrom: dayRange.from, dayTo: dayRange.to } : {})
+  };
   return questions.length ? { kind: "question", filter, questions } : { kind: "filter", filter };
 
   function baseFilter() {
@@ -526,6 +554,14 @@ export function readFilterRequest(text, context, { cardOpen = false } = {}) {
       maxAmountMinor: null
     };
   }
+}
+
+// The runs of days a "which days?" question offers (ask-turn.ts dayChips).
+function dayOptions(today) {
+  return [["this week", "This week"], ["last week", "Last week"], ["past 7 days", "Last 7 days"]].map(([words, label]) => {
+    const range = readDayRange(words, today);
+    return { key: words, label, patch: { dayFrom: range?.from ?? "", dayTo: range?.to ?? "", month: (range?.to ?? today).slice(0, 7) } };
+  });
 }
 
 // One chip per match, then "All of them" (the filter takes several). A

@@ -2,7 +2,7 @@ import { CreditCard, Search } from "lucide-react";
 import { useMemo } from "react";
 
 import { summarizeFilterAnswer } from "./ask-filter-answer";
-import { useAskEntriesPage } from "./ask-data";
+import { answerFromMonth, useAskEntriesPage } from "./ask-data";
 import { askCopy } from "./copy/ask-copy";
 import { describeFilterParts } from "./copy/entry-filter-copy";
 import { flowTone } from "../domain/money-tone";
@@ -24,7 +24,7 @@ export function AskAnswerCard({ filter, settled = false, queryClient, fetchEntri
   // A month the household has no entries for has no Entries page: the
   // server would answer with the nearest month, so nothing is read.
   const tracked = !trackedMonths?.length || trackedMonths.includes(filter.month);
-  const entriesPage = useAskEntriesPage({ queryClient, fetchEntriesPage, viewId: filter.viewId, month: filter.month, enabled: tracked });
+  const entriesPage = useAskEntriesPage({ queryClient, fetchEntriesPage, viewId: filter.viewId, month: filter.month, fromMonth: answerFromMonth(filter), enabled: tracked });
   const page = tracked && entriesPage.page?.monthPage?.month === filter.month ? entriesPage.page : null;
   const noMonth = !tracked || Boolean(entriesPage.page && !page);
   const summary = useMemo(() => (page ? summarizeFilterAnswer(page, filter) : null), [page, filter]);

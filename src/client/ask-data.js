@@ -35,8 +35,10 @@ function useQueryCacheValue(queryClient, queryKey) {
 // cache has none; `refresh` re-reads it from the server after a save.
 // `fetchEntriesPage(params, { bypassCache, signal })` is the shell's
 // required read for that page.
-export function useAskEntriesPage({ queryClient, fetchEntriesPage, viewId, month, enabled }) {
-  const params = useMemo(() => buildEntriesPageParams({ viewId, month }), [month, viewId]);
+export function useAskEntriesPage({ queryClient, fetchEntriesPage, viewId, month, fromMonth = "", enabled }) {
+  // A run of days that starts in an earlier month reads those months too,
+  // the same request (and cache entry) the Entries page makes for it.
+  const params = useMemo(() => withFromMonth(buildEntriesPageParams({ viewId, month }), fromMonth, month), [fromMonth, month, viewId]);
   const queryKey = useMemo(() => queryKeys.entriesPage(params), [params]);
   const page = useQueryCacheValue(queryClient, queryKey);
   const [status, setStatus] = useState("idle");
@@ -61,12 +63,23 @@ export function useAskEntriesPage({ queryClient, fetchEntriesPage, viewId, month
   return { page, status: page ? "ready" : status, refresh };
 }
 
+function withFromMonth(params, fromMonth, month) {
+  if (fromMonth && fromMonth < month) params.set("from", fromMonth);
+  return params;
+}
+
+/** The first month an answer's run of days reaches back to, or "". */
+export function answerFromMonth(filter) {
+  const from = String(filter?.dayFrom ?? "").slice(0, 7);
+  return filter?.dayTo && from && from < filter.month ? from : "";
+}
+
 // The one entry an Entries answer showed, from the same cached page and the
 // same selector the answer card used, or "" when it showed none or several
 // (or its page is not cached).
 export function onlyEntryOfAnswer(queryClient, filter, accounts = []) {
   if (!filter?.month) return "";
-  const page = queryClient.getQueryData(queryKeys.entriesPage(buildEntriesPageParams({ viewId: filter.viewId, month: filter.month })));
+  const page = queryClient.getQueryData(queryKeys.entriesPage(withFromMonth(buildEntriesPageParams({ viewId: filter.viewId, month: filter.month }), answerFromMonth(filter), filter.month)));
   if (!page?.monthPage || page.monthPage.month !== filter.month) return "";
   const { entryIds } = summarizeFilterAnswer(page, filter, { accounts });
   return entryIds.length === 1 ? entryIds[0] : "";

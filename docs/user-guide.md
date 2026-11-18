@@ -791,8 +791,8 @@ and the month's name opens **Pick a month**.
   **View and scope**, where the filters are.
 - **Money insights**.
 - **Filters** (on a wide screen): refresh, Search, By wallet, By category, By
-  type and **Reset filters**. Whose entries you see follows the view at the
-  top left.
+  type, **From** and **To**, and **Reset filters**. Whose entries you see
+  follows the view at the top left.
 - **Days**: entries grouped by date, newest first, with each day's net at
   the right of a thin line.
 
@@ -3625,7 +3625,16 @@ be forgotten. Adding one does not change any balance.
    right (on a phone, use the buttons by the View and scope bar).
 2. Type in **Search**: merchant, note, wallet or amount.
 3. Narrow with **By wallet**, **By category** and **By type**.
-4. Select **Reset filters** to see everything again.
+4. To see some days rather than a month, pick **From** and **To** (one of
+   them alone shows that one day). The days can run across months; the
+   top says them ("27 Apr to 3 May") and a chip at the top of the list
+   with **✕** goes back to the month. Picking another month does too.
+5. Select **Reset filters** to see everything again.
+
+In Ask you can say the days: "what did I spend last week", "groceries since
+monday", "between 3 and 10 nov". Weeks start on Monday, so last week is
+Monday to Sunday before this one; the answer says which days it used, and
+**Open in Entries** shows the same days and the same total.
 
 From Summary, the **›** beside a category, then **View entries**, opens
 Entries already filtered to it for the whole range. Filters stay in the

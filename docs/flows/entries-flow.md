@@ -23,6 +23,20 @@ answers):
 - `entry_min` / `entry_max`: an amount limit in dollars, compared with the
   amount the row shows for the view. Only an Ask answer sets them; the
   filters' Reset clears them;
+- `entry_day_from` / `entry_day_to`: a run of days (YYYY-MM-DD, both ends
+  included) from the filters' **From** and **To** or an Ask answer ("last
+  week"). It replaces the month scope (owner-approved batch, 2026-11-18):
+  `month` is the last day's month, the months back to the first day's are
+  read with the same `from` request a period of months makes, and the list
+  keeps only rows dated inside the days (`entry-filtering.js`). Picking one
+  end alone sets a one-day run; picking a day on the far side of the other
+  end moves that end with it; clearing either end clears both
+  (`applyEntriesDayRange`). Another month picked in the header drops it
+  (the last day must be in `month`, `readEntriesDayRange`), as do Reset,
+  the chip's ✕ and a trip view; setting it drops `entry_from`/`entry_to`
+  and `entry_trip`. At most 24 months long. The lead's eyebrow and the chip
+  at the top of the list say the days ("Spent · 9 to 15 Nov"; the year
+  only when the days are not all this year);
 - `from_ask=1`: the filters came from an Ask answer's `Open in Entries`.
 
 None of these ride along to another tab (`sanitizeTabParams`).

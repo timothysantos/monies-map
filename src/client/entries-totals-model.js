@@ -2,6 +2,8 @@ import { entryTotalsTones, flowTone, signTone } from "../domain/money-tone";
 import { entriesMessages } from "./copy/en-SG-entries";
 import { figureCopy } from "./copy/figure-copy";
 import { formatMonthLabel } from "./formatters";
+import { formatDayRange } from "../domain/ask-day-range";
+import { todayInAppTimeZone } from "./app-dates";
 
 // The Entries top in the Lead · Support · Detail language (design.md): the
 // lead is what was spent this month, the pills are Income, Difference,
@@ -18,7 +20,9 @@ import { formatMonthLabel } from "./formatters";
 // same split the card used) is at the view's amounts; the Entries page's
 // own figures (its Spent lead, Transfers, Outflow, Difference) are the
 // lead's or the pill's, whole amounts with the person's share beside. A
-// period of months (`rangeStartMonth`) names the whole period.
+// period of months (`rangeStartMonth`) names the whole period, and a run of
+// days (`dayFrom`, `dayTo`, the Filters' From and To) names its days: "9 to
+// 15 Nov" in place of the month.
 export function buildEntriesTotalsModel({
   entryTotals,
   entryOutflowMinor,
@@ -26,13 +30,17 @@ export function buildEntriesTotalsModel({
   entryNetMinor,
   month,
   rangeStartMonth = "",
+  dayFrom = "",
+  dayTo = "",
   personLabel,
   figure = "",
   figureMinor = null
 }) {
   const tones = entryTotalsTones({ incomeMinor: entryTotals.incomeMinor, netMinor: entryNetMinor });
   const share = (wholeMinor, shareMinor) => (shareMinor === wholeMinor ? null : shareMinor);
-  const period = rangeStartMonth ? `${formatMonthLabel(rangeStartMonth)} – ${formatMonthLabel(month)}` : formatMonthLabel(month);
+  const period = dayFrom && dayTo
+    ? formatDayRange({ from: dayFrom, to: dayTo }, todayInAppTimeZone())
+    : rangeStartMonth ? `${formatMonthLabel(rangeStartMonth)} – ${formatMonthLabel(month)}` : formatMonthLabel(month);
   const spent = {
     amountMinor: entryTotals.grossSpendMinor,
     tone: tones.spend,
