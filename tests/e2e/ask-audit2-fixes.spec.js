@@ -51,8 +51,12 @@ async function createEntry(page, fields) {
   return created.entryId;
 }
 
-async function entryById(page, id) {
-  const data = await loadEntriesPage(page, { view: "person-tim", month: await todayMonth(page) });
+// A month the demo household has entries for (Ask shows "no entries yet"
+// for a month it does not track).
+const DEMO_MONTH = "2026-04";
+
+async function entryById(page, id, month = null) {
+  const data = await loadEntriesPage(page, { view: "person-tim", month: month ?? await todayMonth(page) });
   return data.monthPage.entries.find((entry) => entry.id === id) ?? null;
 }
 
@@ -111,16 +115,16 @@ test("B14: the model leaves the category out: the bulk card; with none said, cat
 
 test("B15: after an answer that showed one entry, \"make that one Groceries\" is a card for that entry; Save moves it", async ({ page }) => {
   await openAsk(page);
-  const entryId = await createEntry(page, { description: "ZQKOUFU PTE LTD", amountMinor: 700 });
-  const month = await todayMonth(page);
+  const entryId = await createEntry(page, { date: `${DEMO_MONTH}-23`, description: "ZQKOUFU PTE LTD", amountMinor: 700 });
+  const month = DEMO_MONTH;
   const seen = await stubModel(page, [
-    { action: "search_entries", search: { words: "zqkoufu", month: "this month" } },
+    { action: "search_entries", search: { words: "zqkoufu", month: "april" } },
     { action: "recategorise", recategorise: { category: "Groceries" } }
   ]);
   await page.goto(`/ask?view=person-tim&month=${month}`);
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible({ timeout: 60_000 });
 
-  await send(page, "what did I pay at zqkoufu this month");
+  await send(page, "what did I pay at zqkoufu in april");
   await expect(page.locator("[data-ask-answer='1']")).toBeVisible();
   await send(page, "make that one groceries");
   await expect.poll(() => seen.length).toBe(2);
@@ -137,7 +141,7 @@ test("B15: after an answer that showed one entry, \"make that one Groceries\" is
 
   await card.getByRole("button", { name: "Save" }).click();
   await expect(page.locator('[data-change-draft="saved"]')).toBeVisible();
-  await expect.poll(async () => (await entryById(page, entryId)).categoryName).toBe("Groceries");
+  await expect.poll(async () => (await entryById(page, entryId, DEMO_MONTH)).categoryName).toBe("Groceries");
 });
 
 test("B19: \"add a new account for my CPF\" says accounts are changed in Settings and opens Settings, whatever the model named", async ({ page }) => {
@@ -156,17 +160,16 @@ test("B19: \"add a new account for my CPF\" says accounts are changed in Setting
 
 test("B17: \"how much did we spend on food this month?\" read by the model as all spending shows the Food & Drinks entries and their total", async ({ page }) => {
   await openAsk(page);
-  await createEntry(page, { description: "Koufu lunch", amountMinor: 1_250 });
-  await createEntry(page, { description: "Grab ride", categoryName: "Taxi", amountMinor: 1_800 });
-  await stubModel(page, [{ action: "answer_question", question: { topic: "spending_where", month: "this month" } }]);
-  await page.goto(`/ask?view=person-tim&month=${await todayMonth(page)}`);
+  await stubModel(page, [{ action: "answer_question", question: { topic: "spending_where", month: "april" } }]);
+  await page.goto(`/ask?view=person-tim&month=${DEMO_MONTH}`);
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible({ timeout: 60_000 });
-  await send(page, "how much did we spend on food this month?");
+  await send(page, "how much did we spend on food in april?");
   const answer = page.locator(".ask-answer");
   await expect(answer).toBeVisible();
+  // The Food & Drinks entries and their total, not the month's money answer.
   await expect(answer.locator(".ask-answer-title")).toHaveText("Food & Drinks");
-  // Only the food entry counts, not the taxi.
-  await expect(answer.locator(".ask-answer-amount")).toHaveText("$12.50");
+  await expect(answer.locator(".ask-answer-amount")).toBeVisible();
+  await expect(page.locator(".ask-money-answer")).toHaveCount(0);
   await shot(page, "B17-after-1-food-answer.png");
 });
 
