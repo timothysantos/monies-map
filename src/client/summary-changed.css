@@ -29,6 +29,21 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Beside another card, the rows that do not fit are drawn unseen and out of
+   the flow, at the list's width, only so the card can measure them
+   (summary-changed-section.jsx, useRowFit). */
+.chg-list {
+  position: relative;
+}
+
+.chg-list > .chg-spare {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  visibility: hidden;
+}
+
 .chg-list > li:last-child {
   border-bottom: 0;
 }

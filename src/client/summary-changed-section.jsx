@@ -1,5 +1,5 @@
 import "./summary-changed.css";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { summaryChangedCopy as copy } from "./copy/summary-changed-copy";
@@ -26,6 +26,75 @@ import { CardHead, cardTitle } from "./summary-card-head";
 // no amount, no up or down, no "more than usual".
 
 const PHONE_ROWS = 3;
+// "Show all N ›" when it is the list's last row (a 44 px button).
+const FOLD_HEIGHT = 44;
+
+// A box's own content height, even when the grid stretches it taller: from
+// its top to the bottom of its last child, plus its bottom padding and border.
+function contentHeight(box) {
+  const last = box.lastElementChild;
+  if (!last) return box.offsetHeight;
+  const style = getComputedStyle(box);
+  return last.getBoundingClientRect().bottom + parseFloat(getComputedStyle(last).marginBottom) - box.getBoundingClientRect().top
+    + parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth);
+}
+
+// Beside another card on Summary's grid (owner request, 2026-11-18), the card
+// shows as many whole rows as fit the height of the cards beside it, at least
+// PHONE_ROWS, and keeps "Show all N ›" while any is left out. Alone on its
+// row (a phone, a stacked tablet, Month wrap-up) it keeps the first
+// PHONE_ROWS. Returns { count, height }: count 0 means not beside another card.
+//
+// The rows the card leaves out are drawn hidden and out of the flow
+// (.chg-spare), so each is measured at the card's width. The count is worked
+// out from the card's fixed parts, which do not change with it, so a second
+// measure gives the same count and the effect settles. While any card on the
+// row has something open (a longer month list, a row's shops), the count and
+// height stay as they were: the card never grows because its neighbour did.
+function useRowFit(listRef, rowCount, active) {
+  const [fit, setFit] = useState({ count: 0, height: 0 });
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const card = list?.closest(".chg-card");
+    const slot = card?.parentElement;
+    if (!active || !list || !slot?.matches(".summary-card-slot") || typeof ResizeObserver !== "function") return undefined;
+    const grid = slot.parentElement;
+    const measure = () => {
+      const beside = [...grid.children].filter((cell) => cell !== slot && cell.offsetHeight > 0 && Math.abs(cell.offsetTop - slot.offsetTop) < 2);
+      if (!beside.length) {
+        setFit((current) => (current.count ? { count: 0, height: 0 } : current));
+        return;
+      }
+      if ([slot, ...beside].some((cell) => cell.querySelector('[aria-expanded="true"]'))) return;
+      const height = Math.round(Math.max(...beside.map((cell) => contentHeight(cell.firstElementChild ?? cell))));
+      const rows = [...list.querySelectorAll(":scope > .chg-row")];
+      // Until the left-out rows are drawn there is nothing to measure them
+      // by: show the first rows, and measure again with the rest drawn.
+      let count = Math.min(PHONE_ROWS, rowCount);
+      if (rows.length === rowCount) {
+        const sizes = rows.map((row) => row.offsetHeight);
+        const shownSize = rows.reduce((sum, row, index) => sum + (row.classList.contains("chg-spare") ? 0 : sizes[index]), 0);
+        const fold = list.querySelector(":scope > .chg-fold");
+        const room = height - (contentHeight(card) - shownSize - (fold ? fold.offsetHeight : 0));
+        if (sizes.reduce((sum, size) => sum + size, 0) <= room) {
+          count = rowCount;
+        } else {
+          let fits = 0;
+          let used = 0;
+          while (fits < rowCount && used + sizes[fits] + FOLD_HEIGHT <= room) used += sizes[fits++];
+          count = Math.max(count, fits);
+        }
+      }
+      setFit((current) => (current.count === count && current.height === height ? current : { count, height }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    for (const cell of grid.children) observer.observe(cell);
+    return () => observer.disconnect();
+  }, [listRef, rowCount, active, fit.count > 0]);
+  return fit;
+}
 
 // A figure: the amount the server named, opening exactly its entries. Its
 // period is its own month (last month's figure is not this month's).
@@ -50,13 +119,15 @@ function Figure({ amountMinor, ids, month, name, ask, arg = undefined }) {
   );
 }
 
-function Row({ row, changed, visible, open, onToggle, barShare }) {
+function Row({ row, changed, visible, open, onToggle, barShare, spare }) {
   const direction = copy[row.direction];
   const panelId = `chg-shops-${row.category.replace(/[^A-Za-z0-9]+/g, "-")}`;
   return (
     <li
-      className={`chg-row ${open ? "is-open" : ""}`}
+      className={`chg-row ${open ? "is-open" : ""}${spare ? " chg-spare" : ""}`}
       data-category={row.category}
+      aria-hidden={spare || undefined}
+      inert={spare || undefined}
       onClick={(event) => {
         if (!(event.target instanceof Element && event.target.closest("[data-fig], button"))) {
           onToggle();
@@ -123,6 +194,7 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery, month
   const { areTotalsVisible: visible } = useMoneyPrivacy();
   const [openCategory, setOpenCategory] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const listRef = useRef(null);
   const viewId = view?.id ?? "household";
   const scope = view?.selectedScope;
   const queryKey = useMemo(() => queryKeys.summaryChanged(viewId, scope, month), [month, scope, viewId]);
@@ -137,18 +209,29 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery, month
     if (!changed) return [];
     return visible ? changed.rows : [...changed.rows].sort((left, right) => left.category.localeCompare(right.category));
   }, [changed, visible]);
+  const fit = useRowFit(listRef, rows.length, phone && !showAll);
   if (!changed) {
     return null;
   }
-  const shown = phone && !showAll ? rows.slice(0, PHONE_ROWS) : rows;
+  const beside = phone && !showAll && fit.count > 0;
+  const shown = phone && !showAll ? rows.slice(0, beside ? fit.count : PHONE_ROWS) : rows;
   // Each bar's length is its change against the biggest change on the card.
   const biggest = Math.max(1, ...rows.map((row) => Math.abs(row.diffMinor)));
   return (
-    <section ref={motionRef} className="chart-card chg-card" aria-labelledby="chg-title" data-fig-period={`${changed.month}:${changed.month}`} data-chart-motion={motion}>
+    <section
+      ref={motionRef}
+      className="chart-card chg-card"
+      aria-labelledby="chg-title"
+      data-fig-period={`${changed.month}:${changed.month}`}
+      data-chart-motion={motion}
+      // Beside another card: as tall as that card's own content, not the grid
+      // row, so a neighbour opening its list does not stretch this one.
+      style={beside ? { height: "auto", minHeight: fit.height } : undefined}
+    >
       <CardHead id="changed" titleId="chg-title" context={{ month: changed.month, baseMonth: changed.baseMonth }} className="is-spaced" />
       {rows.length ? (
-        <ul className="chg-list" aria-label={cardTitle("changed")}>
-          {shown.map((row) => (
+        <ul ref={listRef} className="chg-list" aria-label={cardTitle("changed")}>
+          {(beside ? rows : shown).map((row, index) => (
             <Row
               key={row.category}
               row={row}
@@ -157,6 +240,7 @@ export function SummaryChangedSection({ view, enabled, fetchRequiredQuery, month
               barShare={Math.abs(row.diffMinor) / biggest}
               open={openCategory === row.category}
               onToggle={() => setOpenCategory((current) => (current === row.category ? "" : row.category))}
+              spare={index >= shown.length}
             />
           ))}
           {phone && !showAll && rows.length > shown.length ? (
