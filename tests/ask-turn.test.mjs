@@ -16,6 +16,7 @@ import {
   validateAskTurnAction,
   viewerName
 } from "../src/domain/ask-turn.ts";
+import { readPlanRequest } from "../src/domain/plan-draft-reader.ts";
 
 const TODAY = "2026-10-13";
 
@@ -568,6 +569,65 @@ test("open_page keeps the view and month; clarification prose with an invented f
   assert.deepEqual(validateAskTurnAction(act("ask_clarification", { clarify: { question: "Which wallet did you pay lunch with?", options: ["UOB One", "Citi Rewards", "UOB One", "Cash", "PayNow"] } }), context), {
     kind: "clarify", question: "Which wallet did you pay lunch with?", options: ["UOB One", "Citi Rewards", "Cash", "PayNow"]
   });
+});
+
+// Phone fit audit F12: a question with four long options showed one chip,
+// because an option over 40 letters was dropped. Each is kept, shortened at
+// a word to fit a chip; a short one is unchanged; one with an invented
+// figure is still dropped.
+test("F12: a question's long options are shortened at a word, never dropped; four stay four", () => {
+  const context = makeContext({ text: "the lunch with joyce at the hawker centre near the office" });
+  const reply = validateAskTurnAction(act("ask_clarification", { clarify: {
+    question: "Which lunch do you mean?",
+    options: [
+      "The lunch with Joyce at the hawker centre near the office",
+      "The lunch at the hawker centre near the office, just you",
+      "A different lunch with Joyce, not at the hawker centre",
+      "None of these, I will type it again"
+    ]
+  } }), context);
+  assert.equal(reply.kind, "clarify");
+  assert.deepEqual(reply.options, [
+    "The lunch with Joyce at the hawker…",
+    "The lunch at the hawker centre…",
+    "A different lunch with Joyce…",
+    "None of these, I will type it again"
+  ]);
+  for (const option of reply.options) assert.ok(option.length <= 41, option);
+  // Negative: a long option with a figure nobody said is still dropped.
+  const invented = validateAskTurnAction(act("ask_clarification", { clarify: { question: "Which lunch do you mean?", options: ["The lunch with Joyce that cost $14.20 at the hawker centre", "Another one"] } }), context);
+  assert.deepEqual(invented.options, ["Another one"]);
+});
+
+// Ask audit B22 (B16's remainder): a plan change neither the model nor the
+// rules could read asks back with chips from the household's own plan
+// lines, each a whole message the plan reader reads, with only the amount
+// and month the person said. No amount said: no chip can be whole, so none.
+test("B22: an unread plan change asks with the household's plan lines as whole-message chips", () => {
+  const planLines = ["Groceries", "Shopping", "Food & Drinks", "Car park, ERP and petrol"];
+  const unread = (text) => validateAskTurnAction(act("plan_change", { plan: { month: null, copy_from: null, ops: [] } }), makeContext({ text, planLines }));
+
+  const both = unread("take 50 off shoping and give it to food this month");
+  assert.equal(both.kind, "clarify");
+  assert.equal(both.question, "Which plan line, how much, and for which month?");
+  assert.deepEqual(both.options, ["Move $50 from Shopping to Food & Drinks this month", "Move $50 from Food & Drinks to Shopping this month"]);
+  // Each chip is a message the plan reader reads as that change.
+  assert.deepEqual(readPlanRequest(both.options[0], { today: TODAY }), { kind: "request", request: { month: "2026-10", copyFrom: null, ops: [{ kind: "move", from: "shopping", to: "food & drinks", amountMinor: 5_000 }] } });
+
+  const one = unread("groceries thing 700 for november pls");
+  assert.deepEqual(one.options, ["Set Groceries plan to $700 for November"]);
+  assert.deepEqual(readPlanRequest(one.options[0], { today: TODAY }).request.ops, [{ kind: "set", line: "groceries", amountMinor: 70_000 }]);
+
+  // No line named: the nearest lines, never a line the household lacks (a
+  // name with a comma cannot be read back, so it is left out).
+  const none = unread("budget stuff 25.50 hmm");
+  assert.ok(none.options.length >= 1 && none.options.length <= 3, JSON.stringify(none.options));
+  for (const option of none.options) assert.match(option, /^Set (Groceries|Shopping|Food & Drinks) plan to \$25\.50$/);
+
+  // Negative: no amount said, so no chip invents one.
+  assert.deepEqual(unread("move some from shopping to food").options, []);
+  // Negative: two amounts are not guessed between.
+  assert.deepEqual(unread("shopping 50 or 60 to food").options, []);
 });
 
 // --- The prompt -----------------------------------------------------------------

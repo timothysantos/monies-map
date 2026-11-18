@@ -32,6 +32,7 @@ import {
   closestNames,
   findDayIn,
   findMonthIn,
+  editDistance,
   matchName,
   namesMentioned,
   readAmountMinor as readAmountWords,
@@ -1475,7 +1476,43 @@ function validatePlan(action: AskTurnAction, context: AskTurnContext, ground: Gr
   // model's lines are not words they wrote ("shoping" became "Shopping").
   const ruled = fromModel ? null : readPlanRequest(context.text, { today: context.today, walletNames: context.entry.accounts.map((account) => account.name) });
   const request = fromModel ?? (ruled?.kind === "request" ? withPlanMonth(ruled.request, ruled.request.month ?? (month.ok ? month.month : null)) : null);
-  return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion);
+  return request ? { kind: "plan", request } : askBack({ code: "plan_unreadable", field: "plan", valid: context.planLines.slice(0, 12) }, COPY.planQuestion, planChips(context));
+}
+
+// The plan question's chips (Ask audit B22): whole messages the plan reader
+// reads, built from the household's own plan lines with only the amount and
+// month the person said, the way category chips are ("Move all grab to
+// Taxi"). Two lines named (typos allowed): the move either way; one: set it;
+// none: the nearest lines. No single amount said: no chip, since a chip
+// never carries a figure the person did not write.
+export function planChips(context: AskTurnContext): string[] {
+  const text = context.text.replace(/\s+/g, " ").trim();
+  const amounts = [...amountsIn(text)];
+  // A name with a comma or other marks cannot be read back from a chip.
+  const lines = context.planLines.filter((line) => /^\p{L}[\p{L}\p{N}&'/ .-]*$/u.test(line));
+  if (amounts.length !== 1 || !lines.length) return [];
+  const money = `$${(amounts[0] / 100).toFixed(2).replace(/\.00$/, "")}`;
+  const month = findMonthIn(text, context.today);
+  const when = !month ? "" : month === context.month || month === context.today.slice(0, 7)
+    ? " this month"
+    : ` for ${new Date(`${month}-01T00:00:00Z`).toLocaleString("en-SG", { month: "long", timeZone: "UTC" })}`;
+  const words = (text.toLowerCase().match(/[\p{L}]+/gu) ?? []).map((word, index) => ({ word, index }));
+  const named = lines
+    .map((line) => {
+      const tokens = line.toLowerCase().match(/[\p{L}]+/gu)?.filter((token) => token.length >= 3) ?? [];
+      const at = words.find(({ word }) => word.length >= 3 && tokens.some((token) => token === word || token.startsWith(word)
+        || (word.length >= 4 && editDistance(word, token, word.length >= 7 ? 2 : 1) <= (word.length >= 7 ? 2 : 1))));
+      return at ? { line, at: at.index } : null;
+    })
+    .filter((item): item is { line: string; at: number } => item !== null)
+    .sort((left, right) => left.at - right.at)
+    .map((item) => item.line);
+  if (named.length >= 2) {
+    const [from, to] = named;
+    return [COPY.planChip.move(money, from, to, when), COPY.planChip.move(money, to, from, when)];
+  }
+  const picks = named.length === 1 ? named : closestNames(text, lines, 3);
+  return picks.map((line) => COPY.planChip.set(line, money, when));
 }
 
 function withPlanMonth(request: PlanRequest | null, month: string | null): PlanRequest | null {
@@ -1693,11 +1730,28 @@ function validateClarification(action: AskTurnAction, ground: Ground): AskTurnRe
   const question = groundedProse(raw.question, ground, QUESTION_MAX);
   if (!question) return askBack({ code: "other", field: "clarify.question" }, COPY.sayAgain);
   const options = (Array.isArray(raw.options) ? raw.options : [])
-    .map((option) => groundedProse(option, ground, CHIP_MAX))
+    .map((option) => groundedChip(option, ground))
     .filter((option): option is string => Boolean(option))
     .filter((option, index, all) => all.indexOf(option) === index)
     .slice(0, MAX_CHIPS);
   return { kind: "clarify", question, options };
+}
+
+// A chip from the model's option: checked like any prose (every figure one
+// the person or the app said), then, when longer than a chip holds,
+// shortened at a word with "…" rather than dropped (phone fit audit F12: a
+// question with four long options showed one chip). Small joining words
+// never end it.
+const CHIP_TAIL_WORDS = new Set(["a", "an", "the", "at", "with", "of", "to", "and", "or", "in", "on", "for", "from", "by", "near", "not", "just"]);
+function groundedChip(value: unknown, ground: Ground): string | null {
+  const text = groundedProse(value, ground, QUESTION_MAX);
+  if (!text || text.length <= CHIP_MAX) return text;
+  const words = text.slice(0, CHIP_MAX).split(" ");
+  if (text[CHIP_MAX] !== " ") words.pop();
+  const isTail = (word: string) => CHIP_TAIL_WORDS.has(word.toLowerCase().replace(/[^\p{L}]/gu, "")) || !/[\p{L}\p{N}]/u.test(word);
+  while (words.length && isTail(words[words.length - 1])) words.pop();
+  const kept = words.join(" ").replace(/[\s,;:.\-–—]+$/u, "");
+  return kept ? `${kept}…` : null;
 }
 
 // ---- Questions the app asks back -----------------------------------------
@@ -1808,6 +1862,11 @@ export const COPY = {
   categoryQuestion: (name: string) => `There's no category called "${scrubName(name)}". Which one do you mean?`,
   whatToChange: "What should change on the card?",
   planQuestion: "Which plan line, how much, and for which month?",
+  // Its chips, each a whole message the plan reader reads (B22).
+  planChip: {
+    move: (amount: string, from: string, to: string, when: string) => `Move ${amount} from ${from} to ${to}${when}`,
+    set: (line: string, amount: string, when: string) => `Set ${line} plan to ${amount}${when}`
+  },
   questionUnclear: "What would you like to know? For example: where did my money go in September?",
   whichMonth: "Which month do you mean?",
   usualWhat: "More than usual for what?",
