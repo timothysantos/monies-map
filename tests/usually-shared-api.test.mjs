@@ -147,14 +147,15 @@ test("a payer who is the second person gets the usual share the right way round"
   const { db, api } = await openSeededDatabase(t, template);
   const oldIds = [];
   await api("/api/ask/habits/setting", { enabled: false });
+  // On Joyce's own card, so Joyce paid (DOMAIN.md "Split Payer").
   for (let index = 0; index < 3; index += 1) {
-    const entryId = await createEntry(api, { date: daysAgo(130 + index * 10), description: "Joyce Bakery", amountMinor: 1000, ownerName: "Joyce" });
+    const entryId = await createEntry(api, { date: daysAgo(130 + index * 10), description: "Joyce Bakery", amountMinor: 1000, ownerName: "Joyce", accountName: "UOB Lady's" });
     // 70% Joyce / 30% Tim: the add route takes the first person's (Tim's) share.
     const added = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: GROUP, splitBasisPoints: 3000 });
     assert.equal(added.status, 200, JSON.stringify(added.payload));
     oldIds.push(entryId);
   }
-  const fresh = await createEntry(api, { date: daysAgo(5), description: "Joyce Bakery", amountMinor: 2000, ownerName: "Joyce" });
+  const fresh = await createEntry(api, { date: daysAgo(5), description: "Joyce Bakery", amountMinor: 2000, ownerName: "Joyce", accountName: "UOB Lady's" });
   const list = await api("/api/splits/usually-shared");
   const group = list.payload.groups.find((candidate) => candidate.shopName === "Joyce Bakery");
   assert.equal(group.ownerName, "Joyce");
