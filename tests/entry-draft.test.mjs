@@ -821,3 +821,45 @@ test("SGD typed stays SGD and a bare 35000 has no foreign amount", () => {
   assert.deepEqual(bare.fields.amountMinor, s(3_500_000));
   assert.deepEqual(bare.questions, []);
 });
+
+// Ask audit B24: what the reader takes out (amount, wallet, date, people,
+// sharing words) leaves nothing behind in the description, even typed with
+// a typo; ordinary words stay.
+test("B24: share clauses, sharing phrases and typo'd wallet and people words leave the description clean", () => {
+  const ladys = { ...CONTEXT, accounts: [...ACCOUNTS, account("acct-uob-ladys", "UOB", "UOB Lady's Card", "credit_card", "Serene")] };
+  const read = (text, context = CONTEXT) => parseEntrySentence(text, context).fields;
+
+  // "her share is 30" is a share, never the description or the amount.
+  const dinner = read("dinner 80 at jumbo split with serene, her share is 30");
+  assert.deepEqual([dinner.description, dinner.amountMinor, dinner.ownershipType], [s("dinner at jumbo"), s(8000), s("shared")]);
+  assert.deepEqual(read("lunch 9.90 with serene, her share 4").description, s("lunch"));
+  assert.deepEqual(read("lunch 12 with serene, my share 5").description, s("lunch"));
+  // "Serene pays half": she shares it, half each.
+  const grab = read("grab 18 on citi, serene pays half");
+  assert.deepEqual([grab.description, grab.accountId, grab.ownershipType, grab.splitBasisPoints], [s("grab"), s("acct-citi-cash-back"), s("shared"), s(5000)]);
+  // A wallet with a typo after "on" is that wallet.
+  const typoWallet = read("grab 18 on citti for serene");
+  assert.deepEqual([typoWallet.description, typoWallet.accountId, typoWallet.ownerName], [s("grab"), s("acct-citi-cash-back"), s("Serene")]);
+  assert.deepEqual(read("grab 18 on uob onee").accountId, s("acct-uob-one"));
+  assert.deepEqual(read("grab 18 on uob onee").description, s("grab"));
+  // A person's name with a typo after "for" or "with", or alone in its clause.
+  assert.deepEqual([read("movie 24 for sereen").description, read("movie 24 for sereen").ownerName], [s("movie"), s("Serene")]);
+  assert.deepEqual(read("grab 18 on citti, serne").description, s("grab"));
+  assert.deepEqual(read("grab 18 on citti, serne").ownerName, s("Serene"));
+  // "Serene's" is the person, never the "'s" of a wallet called "Lady's".
+  const kopi = read("kopi 2.40 on uob one, serene's", ladys);
+  assert.deepEqual([kopi.description, kopi.accountId, kopi.ownerName], [s("kopi"), s("acct-uob-one"), s("Serene")]);
+});
+
+test("B24 negative: words near a name or a wallet that are not them stay in the description", () => {
+  const read = (text) => parseEntrySentence(text, CONTEXT).fields;
+  // "city" after no preposition is not Citi; "serenade" is not Serene.
+  assert.deepEqual(read("city hall parking 5").description, s("city hall parking"));
+  assert.equal(read("city hall parking 5").accountId.source, "default");
+  assert.deepEqual(read("serenade tickets 40").description, s("serenade tickets"));
+  assert.equal(read("serenade tickets 40").ownerName.source, "default");
+  // A short word close to a name is a word ("Sere" is too short to be a typo).
+  assert.deepEqual(read("sere cafe 9").description, s("sere cafe"));
+  // A figure stated as a share is not the amount when nothing else is.
+  assert.equal(read("lunch with serene, her share is 4").amountMinor, undefined);
+});

@@ -15,6 +15,8 @@
 
 import { matchCategoryRule } from "./app-repository-category-match-rules";
 import { habitMerchantKey } from "./ask-habits";
+import { editDistance } from "./ask-turn-names";
+import { SHARE_CLAUSE } from "./ask-turn-shares";
 import { categoryFromEverydayWords } from "./category-keywords";
 import { selectShortcutAccount } from "./app-repository-shortcuts";
 import { isBankTransferAccount, isCashWalletAccount, paymentWayAccountId, type PaymentWayKind } from "./payment-ways";
@@ -107,6 +109,9 @@ export function parseEntrySentence(
   const priorityAccounts = orderByPriority(activeAccounts, context.defaultAccountPriorityIds);
 
   const ratio = readSplitRatio(scanner);
+  // "her share is 30", "Serene pays half": read before dates and amounts, so
+  // the share's figure is never the entry's amount or the description.
+  const shareWords = readShareWords(scanner, context.people);
   const dates = readDates(scanner, context.today);
   const paymentWay = readPaymentWords(scanner);
   const typeWords = readTypeWords(scanner);
@@ -115,6 +120,11 @@ export function parseEntrySentence(
   const mentions = readAccountMentions(scanner, context.accounts, context.people);
   const amounts = readAmounts(scanner);
   const people = readPeople(scanner, context.people, context.viewerName);
+  if (shareWords.shared) {
+    people.splitWords = true;
+    people.evenWords ||= shareWords.even;
+    people.companion ??= shareWords.companion;
+  }
   const remainder = scanner.remainder();
 
   // Entry type. Two account mentions "from A to B" are a transfer even
@@ -651,8 +661,10 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
   const personWords = new Set(people.flatMap((person) => wordsOf(person.name)));
   const vocab = new Map<string, { words: Set<string>; anchors: Set<string> }>();
   for (const account of accounts) {
-    const nameWords = wordsOf(account.name).filter((word) => !GENERIC_ACCOUNT_WORDS.has(word));
-    const institutionWords = wordsOf(account.institution).filter((word) => !GENERIC_ACCOUNT_WORDS.has(word));
+    // A lone letter ("s" of "Lady's") names nothing: it is the "'s" of
+    // "Serene's" as often as of the card.
+    const nameWords = wordsOf(account.name).filter((word) => word.length > 1 && !GENERIC_ACCOUNT_WORDS.has(word));
+    const institutionWords = wordsOf(account.institution).filter((word) => word.length > 1 && !GENERIC_ACCOUNT_WORDS.has(word));
     const words = new Set([...nameWords, ...institutionWords]);
     // A number ("360") is never an anchor on its own: it could be an amount.
     const anchors = new Set([...words].filter((word) => (
@@ -674,13 +686,22 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
     if (used.has(index)) {
       continue;
     }
-    const candidates = accounts.filter((account) => vocab.get(account.id)?.anchors.has(tokens[index].word));
+    let candidates = accounts.filter((account) => vocab.get(account.id)?.anchors.has(tokens[index].word));
+    // A wallet typed with one typo ("on citti") counts only right after
+    // "on", "with", "via" and the like, so "city hall" stays a place
+    // (Ask audit B24).
+    if (!candidates.length && !personWords.has(tokens[index].word) && ACCOUNT_PREPOSITION_BEFORE.test(scanner.text.slice(0, tokens[index].start))) {
+      candidates = accounts.filter((account) => [...(vocab.get(account.id)?.anchors ?? [])].some((anchor) => isOneTypo(tokens[index].word, anchor)));
+    }
     // A word that only an inactive account uses ("Altitude" alone) is left
     // for the description, as before inactive accounts were read at all.
     if (!candidates.some((account) => account.isActive)) {
       continue;
     }
-    const known = (word: string) => candidates.some((account) => vocab.get(account.id)?.words.has(word));
+    const known = (word: string) => candidates.some((account) => {
+      const words = vocab.get(account.id)?.words;
+      return Boolean(words?.has(word) || (words && [...words].some((known) => isOneTypo(word, known))));
+    });
     let first = index;
     let last = index;
     while (last + 1 < tokens.length && !used.has(last + 1) && adjacent(tokens[last], tokens[last + 1]) && known(tokens[last + 1].word)) {
@@ -690,7 +711,11 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
       first -= 1;
     }
     const runWords = tokens.slice(first, last + 1).map((token) => token.word);
-    const scores = candidates.map((account) => runWords.filter((word) => vocab.get(account.id)?.words.has(word)).length);
+    // An exact word counts a little more than one with a typo.
+    const scores = candidates.map((account) => {
+      const words = [...(vocab.get(account.id)?.words ?? [])];
+      return runWords.reduce((sum, word) => sum + (words.includes(word) ? 2 : words.some((known) => isOneTypo(word, known)) ? 1 : 0), 0);
+    });
     const best = Math.max(...scores);
     const bestMatches = candidates.filter((_, candidateIndex) => scores[candidateIndex] === best);
     // A tie with an active account goes to it ("DBS" is POSB Joint); a
@@ -717,6 +742,16 @@ function readAccountMentions(scanner: SentenceScanner, accounts: AccountDto[], p
     mentions.push({ accounts: winners, ...(winners.length ? {} : { inactive: true }), ...(role ? { role } : {}) });
   }
   return mentions;
+}
+
+const ACCOUNT_PREPOSITION_BEFORE = /(?<![\p{L}\p{N}])(?:on|with|via|using|by|from|to|into|in)\s+$/iu;
+
+// One typo (a letter added, missing, changed, or two swapped) in a word of
+// four letters or more, against a name word of three or more: "citti" is
+// Citi, "onee" is One, "serne" Serene. Never the same word, never shorter.
+function isOneTypo(word: string, name: string) {
+  return word.length >= 4 && name.length >= 3 && word !== name && Math.abs(word.length - name.length) <= 1
+    && editDistance(word, name, 1) === 1;
 }
 
 interface AmountCandidate {
@@ -823,6 +858,30 @@ function readCurrency(token: string): string | null | "unknown" {
   return "unknown";
 }
 
+// A share stated with its figure ("her share is 30", "my share 5",
+// "Serene's share 4") and "<name> pays half" / "<name> pays 3": the entry is
+// shared with that person, and the words are not the description.
+function readShareWords(scanner: SentenceScanner, people: PersonDto[]) {
+  const result: { shared: boolean; even: boolean; companion?: string } = { shared: false, even: false };
+  const byLowerName = new Map(people.map((person) => [person.name.toLowerCase(), person.name]));
+  for (const match of scanner.find(`${START}(?:and\\s+)?${SHARE_CLAUSE}`)) {
+    scanner.consumeMatch(match);
+    result.shared = true;
+    const named = /([\p{L}]+)(?:'s|’s|s')\s+(?:share|part|portion)/iu.exec(match[0])?.[1]?.toLowerCase();
+    if (named && byLowerName.has(named)) result.companion ??= byLowerName.get(named);
+  }
+  const names = people.map((person) => person.name).sort((left, right) => right.length - left.length).map(escapeRegExp).join("|");
+  if (names) {
+    for (const match of scanner.find(`${START}(?<who>${names})\\s+(?:pays|covers|takes)\\s+(?:(?<half>half)|(?:s?\\$\\s*)?\\d[\\d,]*(?:\\.\\d+)?\\s*%?)(?![\\p{L}\\p{N}])`)) {
+      scanner.consumeMatch(match);
+      result.shared = true;
+      result.even ||= Boolean(match.groups?.half);
+      result.companion ??= byLowerName.get((match.groups?.who ?? "").toLowerCase());
+    }
+  }
+  return result;
+}
+
 interface PeopleWords {
   // A named payer, or "companion" for "she/he/they paid".
   payer?: string | "companion";
@@ -868,6 +927,22 @@ function readPeople(scanner: SentenceScanner, people: PersonDto[], viewerName?: 
     for (const match of scanner.find(`${START}(?:for\\s+)?(?<who>${names})(?:'s)?${END}`)) {
       scanner.consumeMatch(match);
       result.owner ??= byLowerName.get((match.groups?.who ?? "").toLowerCase());
+    }
+    // A name typed with one typo ("for sereen", "with joyc", "serne's", or
+    // alone in its clause: "grab 18 on citi, serne") is that person; any
+    // other word close to a name stays (Ask audit B24).
+    for (const match of scanner.find(`${START}(?:(?<pre>with|w/|for)\\s+)?(?<word>\\p{L}{4,})(?<post>'s|’s|\\s+paid)?${END}`)) {
+      const { pre, post, word = "" } = match.groups ?? {};
+      const alone = /(?:^|[,;])\s*$/u.test(scanner.text.slice(0, match.index))
+        && /^\s*(?:[,;.!?]|$)/u.test(scanner.text.slice(match.index + match[0].length));
+      if (!pre && !post && !alone) continue;
+      const near = people.filter((person) => isOneTypo(word.toLowerCase(), (wordsOf(person.name)[0] ?? "")));
+      if (near.length !== 1) continue;
+      scanner.consumeMatch(match);
+      const who = near[0].name;
+      if (pre && pre.toLowerCase() !== "for") result.companion ??= who;
+      else if (post && /paid/i.test(post)) result.payer ??= who;
+      else result.owner ??= who;
     }
   }
   for (const match of scanner.find(`${START}(?:mine|my)${END}`)) {

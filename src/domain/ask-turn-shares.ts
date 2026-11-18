@@ -141,7 +141,7 @@ function pronounPerson(named: NamedToken[], people: PersonRef[], viewer: PersonR
 
 // "her share is 30", "Serene's share 4", "my share was $12": a share stated
 // with its figure. Such a figure is a share, never the entry's amount.
-const SHARE_CLAUSE = String.raw`(?:her|his|their|my|[\p{L}]+(?:'s|’s|s'))\s+(?:share|part|portion)(?:\s+(?:is|was|=|:|of))?\s*(?:s?\$\s*)?\d[\d,]*(?:\.\d+)?\s*(?:%|percent\b|pct\b|dollars?\b|bucks\b|sgd\b)?`;
+export const SHARE_CLAUSE = String.raw`(?:her|his|their|my|[\p{L}]+(?:'s|’s|s'))\s+(?:share|part|portion)(?:\s+(?:is|was|=|:|of))?\s*(?:s?\$\s*)?\d[\d,]*(?:\.\d+)?\s*(?:%|percent\b|pct\b|dollars?\b|bucks\b|sgd\b)?`;
 
 export function hasShareClause(text: string): boolean {
   return new RegExp(SHARE_CLAUSE, "iu").test(String(text ?? ""));
