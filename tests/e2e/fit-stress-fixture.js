@@ -62,7 +62,9 @@ export async function seedStressHousehold(page) {
   for (let index = 0; index < 25; index += 1) {
     await entry({ description: `${STRESS.bulkWord} ${STRESS.longShop.slice(0, 30)} TRIP ${index + 1}`, amountMinor: 1_000 + index * 137 });
   }
-  await postJson(page, "/api/splits/groups/create", { name: STRESS.group, currency: "SGD", expenseSource: "manual" }).catch(() => null);
+  // "mixed" is the default kind of group (cash, ledger or mixed are allowed);
+  // seeding fails loudly, so the fit checks always see the long group name.
+  await postJson(page, "/api/splits/groups/create", { name: STRESS.group, currency: "SGD", expenseSource: "mixed" });
 
   // A trip with a long name and a long rupiah amount on it.
   const idr = await postJson(page, "/api/cash-entries/create", { requestId: crypto.randomUUID(), personId: "person-tim", way: "card", accountId: "acct-uob-one", amountMinor: 1_234_567_800, currency: "IDR" }).catch(() => null);
