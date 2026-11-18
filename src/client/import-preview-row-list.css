@@ -97,6 +97,7 @@
 /* The title takes the width beside the bubble; the amount sits under it,
    at the right. */
 .import-row-lead .lsd-hero {
+  display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
 }
 

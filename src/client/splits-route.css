@@ -913,12 +913,14 @@ button.split-activity-card:hover {
    long title, so in the phone sheet and the wide dialog the amount sits on
    its own line under the bubble and title instead of squeezing them. */
 .split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero {
+  display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
 }
 
 .split-settlement-card:is(.is-sheet, .is-dialog) .lsd-hero > .lsd-amount {
   grid-column: 1 / -1;
   justify-self: start;
+  margin-left: 0;
 }
 
 /* Create group is one stacked card, so it takes a narrower dialog. */
@@ -977,4 +979,13 @@ button.split-activity-card:hover {
 
 .settled-correction-link {
   margin-top: 6px;
+}
+
+/* A Splits sheet on a phone with the keyboard up (use-keyboard-inset.js):
+   the line under the title steps aside, so the fields keep room above the
+   keyboard; it is back when the keyboard goes down. */
+@media (max-width: 760px) {
+  .split-dialog-content[data-keyboard] .split-dialog-head p {
+    display: none;
+  }
 }

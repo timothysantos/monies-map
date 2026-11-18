@@ -48,11 +48,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Bubble, title, amount on one row. A long amount on a phone (−$123,456.78)
+   used to squeeze the title into a column a few letters wide; now the title
+   keeps at least 6.5rem and the amount moves to its own line, at the right,
+   when both do not fit (the fit check, docs/code-spec.md "Phone fit check"). */
 .lsd-hero {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+.lsd-hero > :is(.lsd-bubble, .lsd-bubble-slot) {
+  flex: none;
+}
+
+.lsd-hero > .lsd-heading {
+  flex: 1 1 6.5rem;
+}
+
+.lsd-hero > :is(.lsd-amount, .lsd-amount-column) {
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-left: auto;
 }
 
 .lsd-bubble,
