@@ -319,8 +319,11 @@ function fitProblemsInPage({ root: rootSelector, ignore, notChoosers, mustSee, m
       while (steps < 40 && lands(element, cx + dx * (steps + 1), cy + dy * (steps + 1))) steps += 1;
       return steps;
     };
-    for (const { element } of boxes) {
+    for (const { element, box: seenBox } of boxes) {
       if (element.matches('input[type="checkbox"], input[type="radio"]') && element.closest("label")) continue;
+      // Half scrolled out of its box: measured when it is in full view.
+      const full = element.getBoundingClientRect();
+      if (seenBox.height < full.height - 1 || seenBox.width < full.width - 1 || full.bottom > visibleBottom) continue;
       if (element.closest("[data-fig]")) continue;
       if (element.matches("a") && getComputedStyle(element).display === "inline") continue;
       const box = element.getBoundingClientRect();
