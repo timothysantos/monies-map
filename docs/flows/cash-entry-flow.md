@@ -173,8 +173,12 @@ entry is three steps: amount, Save, a few words.
   `onEntryMutation`, so Entries, Month and Summary refresh through their
   owners.
 - No cash wallet: the server answers 409 `needsWallet` with the person's
-  accounts, cash first; the pad opens its change panel on Wallet, and the
-  choice is remembered on the device for that person.
+  accounts, cash first; the pad opens its change panel in the keys' place
+  with the question right above the wallets, and the wallet picked saves
+  the payment (the person already tapped Save; Undo follows), and is
+  remembered on the device for that person. Done or the quiet line puts the
+  question away: a wallet picked in a panel opened from the line only
+  changes the line, never saves (`nextCashDetails`, `cash-pad-model.js`).
 
 ## Waiting to send
 
@@ -236,6 +240,13 @@ copies the same connection on the cash route.
 - `tests/e2e/cash-pad.spec.js`: phone 390 and desktop: amount-only save in
   rupiah, chips, the words box, Undo, Again, a lost answer sent once, thumb
   reach, keyboard, no wallet.
+- `tests/e2e/cash-pad-fit.spec.js`: 375x667, 390x844, 430x932 and each 110
+  px shorter, 12 long-named wallets and no cash wallet: by geometry, the
+  amount is whole and touches nothing; with the panel open no number key
+  shows, every choice (wallet, currency, day, person, paid with) can be
+  reached and tapped and Save is in reach; the wallet question saves on the
+  pick, the line's panel never saves; a long rupiah amount, the waiting
+  list, and Type it instead's entry and wallet list.
 - `tests/quick-pad-api.test.mjs`: the person's own cards and taps only, a
   card estimate in rupiah, the card's rows replacing pad estimates (near-real
   Citi Bali rows; an ordinary row never taken), the tap offer and New

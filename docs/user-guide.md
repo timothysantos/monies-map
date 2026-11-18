@@ -1383,9 +1383,16 @@ back (or when you open the app again, or tap **Send now**). It is never
 saved twice. Tap **Remove** if you did not mean it. The app itself needs
 a connection to open the first time.
 
-If you have not chosen a cash wallet yet, the pad asks which wallet the
-cash came from, cash wallets first. Choose one in Settings, Payment ways,
-and it won't ask again.
+If you have not chosen a cash wallet yet, tapping **Save** asks which wallet
+the cash came from. Your wallets take the place of the number keys, cash
+wallets first, with the amount still showing above **Save**. Tap a wallet
+and the payment is saved with it; **Undo** is right there if you picked
+the wrong one. Choose a cash wallet in Settings, Payment ways, and it won't
+ask again.
+
+Tapping the line at the top also shows these choices in place of the
+number keys. Picking one there only changes the line; tap **Done** to get
+the number keys back.
 
 ### Find entries by asking
 

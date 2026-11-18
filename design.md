@@ -802,6 +802,22 @@ Amount first (17 Nov 2026; `new-entry-pad.js`, each part a switch in
   payment ("Rp 85,000 · 14:02 · UOB One", the time and card only while money
   is hidden) with "Add words" in accent; a row opens its words box; a saved
   one shows "Has its words" in mint. At the bottom Done and Type a payment.
+- The details panel takes the keys' place (18 Nov 2026, `.is-details`):
+  while it is open (Save's wallet question, or a tap on the quiet line) the
+  number keys, the Again chips and the waiting taps step aside; the panel
+  is as tall as its choices and scrolls inside itself only when the screen
+  is shorter, with Done sticky at its foot; the amount stays one compact
+  line ("$80") just above Save, sticky, never under anything. Save's wallet
+  question ("Which wallet did the cash come from?", rose) sits inside the
+  panel right above the wallets, then the hint, then Paid with. A wallet
+  picked for that question saves the payment (Undo follows); a panel
+  opened from the line never saves on a pick (`nextCashDetails`). The
+  middle area scrolls from its top (a first child's auto margin, not
+  `align-content: end`, whose top could not be scrolled to), and a long
+  amount steps its figure down (`is-long`, `is-longer`) to stay on one
+  line. The sheet keeps clear of the safe-area insets.
+  `tests/e2e/cash-pad-fit.spec.js` checks every state by geometry on
+  three phone sizes and each 110 px shorter.
 - Waiting to send: a butter panel above the pad lists payments kept on the
   device, each with Remove, and Send now. Messages and errors are one line
   above it (errors on rose).
