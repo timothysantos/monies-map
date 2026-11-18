@@ -1,5 +1,5 @@
 import { ArrowLeftRight, CalendarDays, Check, CreditCard, Lock, Nfc, Sparkles } from "lucide-react";
-import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { cardShares, describeTransfer, getTransferEnds, isCardEmpty, orderWalletsForCard, resolveShareGroupId, SHARED_OWNER } from "./ask-card-model";
 import { askCopy, formatCardDate, formatCardDateTime } from "./copy/ask-copy";
@@ -18,6 +18,7 @@ import { paletteColour } from "./palette-colour";
 import { LimitHint } from "./limit-hint";
 import { ENTRY_DESCRIPTION_MAX, ENTRY_NOTE_MAX } from "./input-limits";
 import { limitsCopy } from "./copy/limits-copy";
+import { useFitHeight } from "./use-fit-height";
 
 // The Ask page's entry card (design.md "Ask page"): the hero card with the
 // category bubble, what it was, the amount and its date, wallet and person
@@ -252,13 +253,7 @@ export function AskEntryCard({
 // a second line for a long shop name instead of cutting it off.
 function GrowingTextField({ inputRef, value, onChange, className, placeholder, ...rest }) {
   const ownRef = useRef(null);
-  useLayoutEffect(() => {
-    const field = ownRef.current;
-    if (field) {
-      field.style.height = "auto";
-      field.style.height = `${field.scrollHeight}px`;
-    }
-  }, [value]);
+  useFitHeight(ownRef, value);
   return (
     <textarea
       {...rest}

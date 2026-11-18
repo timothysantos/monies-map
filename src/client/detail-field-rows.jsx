@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { CategoryPickerHost } from "./category-picker-host";
 import { ResponsiveSelect } from "./responsive-select";
 import { DetailRow } from "./ui/lead-support-detail";
 import { formatEntryTime } from "../lib/entry-time";
+import { useFitHeight } from "./use-fit-height";
 
 // Detail rows that change one field, shared by the entry edit card and the
 // split expense card (design.md, "Lead · Support · Detail"):
@@ -189,13 +190,7 @@ export function TimeRow({ isSheet, rowKey, label, value, onValueChange, clearLab
 // turns Enter into "done" and line breaks into spaces.
 export function GrowingTextarea({ value, onChange, singleLine = false, className, ...rest }) {
   const ref = useRef(null);
-  useLayoutEffect(() => {
-    const field = ref.current;
-    if (field) {
-      field.style.height = "auto";
-      field.style.height = `${field.scrollHeight}px`;
-    }
-  }, [value]);
+  useFitHeight(ref, value);
   return (
     <textarea
       {...rest}
