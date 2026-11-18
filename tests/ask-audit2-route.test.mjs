@@ -71,7 +71,9 @@ test("B14: the model left the category out: one call, the bulk card for Public T
   assert.equal(payload.reply.kind, "change");
   assert.equal(payload.reply.change.type, "recategorise_bulk");
   assert.equal(payload.reply.change.count, 3);
-  assert.deepEqual(payload.reply.change.rows, [{ field: "category", before: "Food & Drinks", after: "Public Transport" }]);
+  assert.deepEqual(payload.reply.change.rows[0], { field: "category", before: "Food & Drinks", after: "Public Transport" });
+  // The names it moves are on the card (B10).
+  assert.equal(payload.reply.change.rows[1].field, "description");
   assertSameDatabase(withoutUsage(await dumpDatabase(db), before), before);
 
   const [step] = payload.reply.change.save;
