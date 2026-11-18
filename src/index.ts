@@ -1799,6 +1799,7 @@ export default {
         splitGroupId?: string | null;
         splitBasisPoints?: number;
         splitAmountMinor?: number;
+        payerPersonId?: unknown;
       }>();
 
       if (!body.entryId) {
@@ -1810,7 +1811,8 @@ export default {
           entryId: body.entryId,
           splitGroupId: body.splitGroupId,
           ...(body.splitBasisPoints !== undefined ? { splitBasisPoints: body.splitBasisPoints } : {}),
-          ...(body.splitAmountMinor !== undefined ? { splitAmountMinor: body.splitAmountMinor } : {})
+          ...(body.splitAmountMinor !== undefined ? { splitAmountMinor: body.splitAmountMinor } : {}),
+          ...(body.payerPersonId !== undefined && body.payerPersonId !== null ? { payerPersonId: String(body.payerPersonId) } : {})
         });
         // An even or percentage split is the shop's usual split (a fixed
         // amount is not a habit). Best effort.

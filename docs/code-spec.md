@@ -917,6 +917,12 @@ A persistence command is all-or-nothing:
   source-month totals for a copied month)
 - helpers used inside a command return statements (`build...Statements`)
   instead of executing them
+- a command a phone may retry after a lost answer takes the caller's
+  request id and answers a repeat with what it already wrote: entries by
+  `external_reference`, cash entries by `requestId`, and Record payment
+  (`createSplitSettlementRecord`, Ask audit B26) by a settlement id made
+  from the request id, so the primary key also stops two at once; the same
+  id with other facts is refused (`tests/atomic-writes-ask-saves.test.mjs`)
 - refresh derived month totals after the batch with
   `refreshMonthlySnapshotsAfterWrite`; one month's scopes and the marker clear
   commit together, and a refresh failure is logged, not returned as a write

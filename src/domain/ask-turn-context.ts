@@ -5,6 +5,7 @@
 // own rows by its id: an id from another household, or one that does not
 // exist, is no focus at all. Writes nothing.
 
+import { splitPayerForEntry } from "./split-payer";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { loadAskHabits } from "./app-repository-ask-habits";
 import { loadMonthPlanRowsForDraft } from "./app-repository-months";
@@ -175,6 +176,7 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
         transactions.bank_certification_status,
         owners.display_name AS owner_name,
         accounts.owner_person_id AS account_owner_person_id,
+        accounts.is_joint AS account_is_joint,
         accounts.account_name,
         categories.name AS category_name,
         (
@@ -206,6 +208,7 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
       bank_certification_status: string;
       owner_name: string | null;
       account_owner_person_id: string | null;
+      account_is_joint: number | null;
       account_name: string;
       category_name: string | null;
       linked_splits: number;
@@ -217,6 +220,13 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
   const lock = row.bank_certification_status === "statement_certified"
     ? await findClosedStatementCheckpointForTransaction(db, { accountId: row.account_id, transactionDate: row.transaction_date })
     : null;
+  // The payer Add to Splits records (createSplitExpenseFromEntryRecord):
+  // the wallet's one owner, else the entry's owner (split-payer.ts).
+  const payer = splitPayerForEntry({
+    entryOwnerPersonId: row.owner_person_id,
+    walletOwnerPersonId: row.account_owner_person_id,
+    walletIsJoint: Boolean(row.account_is_joint)
+  });
   return {
     entryId: row.id,
     description: row.description,
@@ -226,8 +236,8 @@ export async function loadFocusEntry(db: D1Database, entryId: string): Promise<A
     accountName: row.account_name,
     currency: row.currency,
     amountMinor: row.amount_minor,
-    // The payer Add to Splits records (createSplitExpenseFromEntryRecord).
-    payerPersonId: row.owner_person_id ?? row.account_owner_person_id,
+    payerPersonId: payer.payerPersonId,
+    ...(payer.fromWallet ? { payerFromWallet: true } : {}),
     linkedToSplits: Number(row.linked_splits) > 0,
     accountId: row.account_id,
     ownerName: row.owner_name,

@@ -175,7 +175,7 @@ function readRulesReply(reply) {
   return read && RULES_REPLY_KINDS.includes(read.kind) ? read : null;
 }
 
-const ASSUMPTION_TEXT_LIMIT = 140;
+const ASSUMPTION_TEXT_LIMIT = 200;
 const ASSUMPTION_CHIP_LIMIT = 40;
 const ASSUMPTION_MAX = 3;
 const ASSUMPTION_MAX_CHIPS = 3;
@@ -433,7 +433,9 @@ export function saveSplitProposal(proposal, { fetchImpl = fetch } = {}) {
     entryId: proposal.entryId,
     splitGroupId: proposal.groupId || null,
     splitBasisPoints: proposal.splitBasisPoints,
-    ...(Number.isInteger(proposal.splitAmountMinor) ? { splitAmountMinor: proposal.splitAmountMinor } : {})
+    ...(Number.isInteger(proposal.splitAmountMinor) ? { splitAmountMinor: proposal.splitAmountMinor } : {}),
+    // Who paid, as the card showed it (B28); a card stored before sends none.
+    ...(typeof proposal.payerPersonId === "string" && proposal.payerPersonId ? { payerPersonId: proposal.payerPersonId } : {})
   }, "The entry could not be added to Splits.", fetchImpl);
 }
 

@@ -130,6 +130,7 @@ test("\"Add to splits, all Joyce\" on the Apple Pay entry: Tim paid, Joyce's sha
       amountMinor: 4_250,
       currency: "SGD",
       payerName: "Tim",
+      payerPersonId: "person-tim",
       groupId: null,
       groupName: "",
       splitBasisPoints: 0,
@@ -211,13 +212,21 @@ test("negative: an entry already on Splits, an income, or a payer other than the
   const all = { split: { shares: [{ person: "Joyce", all: true }] } };
   assert.deepEqual(validateAskTurnAction(act("add_entry_to_splits", all), makeContext({ focus: savedFocus({ linkedToSplits: true }), text: "all Joyce" })), { kind: "note", text: "This entry is already on Splits." });
   assert.deepEqual(validateAskTurnAction(act("add_entry_to_splits", all), makeContext({ focus: savedFocus({ entryType: "income" }), text: "all Joyce" })), { kind: "note", text: "Only an expense can go on Splits." });
-  // A payer other than the wallet's owner is not asked: the card shows the
-  // wallet owner as the payer, and says so.
+  // B28 (owner decision 2026-11-18): the payer the person names wins, and
+  // the card sends it to the command.
   const otherPayer = validateAskTurnAction(act("add_entry_to_splits", { split: { payer: "Joyce", shares: [{ person: "Tim", all: true }] } }), makeContext({ focus: savedFocus(), text: "Joyce paid, all mine" }));
   assert.equal(otherPayer.kind, "split_proposal");
-  assert.equal(otherPayer.proposal.payerName, "Tim");
-  assert.equal(otherPayer.assumptions[0].text, "This entry is Tim's, so Splits shows Tim as the one who paid.");
-  assert.deepEqual(otherPayer.assumptions[0].chips, []);
+  assert.equal(otherPayer.proposal.payerName, "Joyce");
+  assert.equal(otherPayer.proposal.payerPersonId, "person-joyce");
+  assert.equal(otherPayer.assumptions, undefined);
+  // The wallet decided it (Joyce's entry on Tim's card): said, with one chip.
+  const fromWallet = validateAskTurnAction(act("add_entry_to_splits", { split: { shares: [] } }), makeContext({ focus: savedFocus({ payerFromWallet: true }), text: "add to splits, half each" }));
+  assert.equal(fromWallet.proposal.payerName, "Tim");
+  assert.deepEqual(fromWallet.assumptions, [{ text: "It was paid from Citi Rewards, which is Tim's, so Splits shows Tim as the one who paid. Add it that way?", chips: ["Add to Splits, Joyce paid"] }]);
+  // Negative: a payer the household does not have is asked, never guessed.
+  const stranger = validateAskTurnAction(act("add_entry_to_splits", { split: { payer: "Bob", shares: [] } }), makeContext({ focus: savedFocus(), text: "bob paid" }));
+  assert.equal(stranger.kind, "clarify");
+  assert.equal(stranger.question, "Who paid? This household has Tim and Joyce.");
 });
 
 test("negative: an unknown group is asked; a group in another currency is left out and said", () => {

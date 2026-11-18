@@ -175,7 +175,7 @@ test("assumptions: plain-words lines with up to 3 chips are kept on any reply; m
   });
   const bad = readAskTurnResponse({
     ok: true, mode: "ai", action: "cannot_help",
-    reply: { ...note, assumptions: [{ text: "" }, { text: "x".repeat(141), chips: [] }, { chips: ["only chips"] }, "nope", { text: "Kept.", chips: ["y".repeat(41), 7, "ok"] }] }
+    reply: { ...note, assumptions: [{ text: "" }, { text: "x".repeat(201), chips: [] }, { chips: ["only chips"] }, "nope", { text: "Kept.", chips: ["y".repeat(41), 7, "ok"] }] }
   });
   assert.deepEqual(bad.reply, { kind: "note", text: "Done.", assumptions: [{ text: "Kept.", chips: ["ok"] }] });
   // No assumptions: the reply is unchanged, with no empty key.

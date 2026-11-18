@@ -381,9 +381,14 @@ async function rulesAnswer(db: D1Database, context: AskTurnContext, text: string
     return json({ ok: true, mode: "rules", reason, action: tripAction.action, reply: forPage(reply), ...extra });
   }
   const reading = context.focus?.kind === "saved_entry" ? readSharesByRules(text, context.people, askerId(context)) : null;
+  // "Add to Splits, Joyce paid" (the chip under "It was paid from …", B28):
+  // who paid, said with the word "splits".
+  const paidBy = context.focus?.kind === "saved_entry" && /\bsplits?\b/i.test(text)
+    ? /(?:^|[\s,])(\p{L}+)\s+paid\b/iu.exec(text)?.[1] ?? null
+    : null;
   // A bare "split 50/50" needs the word "split"; a named share stands alone.
-  if (reading && (reading.shares.length || /\bsplits?\b/i.test(text))) {
-    const action = parseAskTurnAction({ action: "add_entry_to_splits", split: { payer: null, group: null, shares: reading.shares } });
+  if ((reading && (reading.shares.length || /\bsplits?\b/i.test(text))) || paidBy) {
+    const action = parseAskTurnAction({ action: "add_entry_to_splits", split: { payer: paidBy, group: null, shares: reading?.shares ?? [] } });
     if (action) {
       return json({ ok: true, mode: "rules", reason, action: action.action, reply: forPage(validateAskTurnAction(action, context)), ...extra });
     }

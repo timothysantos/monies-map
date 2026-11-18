@@ -56,7 +56,8 @@ function promptOf(ai) {
 }
 
 async function applePayEntry(api) {
-  return createEntry(api, { date: TODAY, description: "STARBUCKS PAYNOW 91234567", accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250 });
+  // On Tim's own wallet, so Tim paid (DOMAIN.md "Split Payer").
+  return createEntry(api, { date: TODAY, description: "STARBUCKS PAYNOW 91234567", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 4_250 });
 }
 
 test("with AI off the route answers rules at once: no context read, no allowance, nothing written", async (t) => {
@@ -88,6 +89,7 @@ test("the owner's case: Apple Pay entry, \"Add to splits, all Joyce\", Save, and
       amountMinor: 4_250,
       currency: "SGD",
       payerName: "Tim",
+      payerPersonId: "person-tim",
       groupId: null,
       groupName: "",
       splitBasisPoints: 0,

@@ -2590,6 +2590,18 @@ Relationships:
 - has many `split expense shares`
 - may link to one `ledger entry`
 
+### Split Payer
+
+Who paid a ledger entry when it is put on Splits (owner decision
+2026-11-18, Ask audit B28; `src/domain/split-payer.ts`). A wallet that
+belongs to one person means that person paid, whoever the entry is for: a
+dinner of Joyce's on Tim's card was paid by Tim. A joint wallet, or one with
+no owner, keeps the entry's owner. A payer the person names on Ask's card
+wins. Used by Add to Splits from Ask and from Entries
+(`createSplitExpenseFromEntryRecord`) and by Ask's focus; the picked-rows
+bar and Usually shared keep the entry's owner. A split already saved keeps
+its payer.
+
 ### Split Expense Share
 
 An allocation of a split expense across participating people. This is the split
@@ -2677,6 +2689,10 @@ Rules:
   is owed is recorded and the rest stays open, owed the right way round
   ($50 paid on $48 owed leaves $2 owed back), never a group shown as
   settled with money gone. The payment and the close are one batch.
+- a payment sent with a request id (Ask's Record payment, audit B26) takes
+  its id from it (`split-settlement-request-<id>`), so the same request
+  twice records one payment; the same id with other facts is refused. Its
+  history line (`split_settlement_created`) is in the same batch.
 
 ### Group Spend (open period)
 

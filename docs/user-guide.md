@@ -1207,11 +1207,18 @@ who paid, each person's share and the amount, worked out from the entry
 itself. Nothing changes until you tap **Add to Splits**; **Not now** leaves
 the entry as it was, and **Undo** takes it off Splits again.
 
+Who paid is whoever's card or account it was paid from: Joyce's dinner on
+Tim's card was paid by Tim. The draft says so ("It was paid from …, which
+is Tim's, so Splits shows Tim as the one who paid") with one button,
+**Add to Splits, Joyce paid**, if it was the other way. A joint account
+keeps the entry's owner. **Add to splits** in Entries works the same way.
+
 The same works for the rest of Ask: "make it $15" or "it was yesterday"
 changes the card you are filling in, "Joyce paid me back $80" drafts a
 settle-up payment (saved only with **Record payment**), and "move $50 from
 Food to Groceries" drafts a plan change. When Ask isn't sure what you mean
-(who, which card, how to split it), it asks, with buttons to tap. It never
+(who, which card, how to split it, which plan line), it asks, with buttons
+to tap; a long choice is shortened on its button. It never
 uses an amount you didn't type, and it never saves anything by itself.
 
 Some messages are never a new expense, even when the reply says "Reply from

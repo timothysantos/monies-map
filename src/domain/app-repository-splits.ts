@@ -1,6 +1,7 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { transferPurposeSettleUpRefusal } from "./transfer-purpose-links";
 import { buildAuditEventStatement } from "./app-repository-audit";
+import { splitPayerForEntry } from "./split-payer";
 import {
   groupSplits,
   newSplitRecordId,
@@ -2099,7 +2100,10 @@ export async function createSplitExpenseFromEntryRecord(
   // share (as splitBasisPoints means everywhere), from Ask's "add to splits,
   // all Joyce" (0). Absent: an even split, as the Entries action has always
   // done. splitAmountMinor wins when both are sent.
-  input: { entryId: string; splitGroupId?: string | null; splitBasisPoints?: number; splitAmountMinor?: number }
+  // payerPersonId: who paid, as the Ask card showed it (one of the two on
+  // Splits). Absent: the wallet's one owner, else the entry's owner
+  // (split-payer.ts, Ask audit B28).
+  input: { entryId: string; splitGroupId?: string | null; splitBasisPoints?: number; splitAmountMinor?: number; payerPersonId?: string }
 ) {
   if (input.splitBasisPoints !== undefined && !(Number.isInteger(input.splitBasisPoints) && input.splitBasisPoints >= 0 && input.splitBasisPoints <= 10_000)) {
     throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
@@ -2120,6 +2124,7 @@ export async function createSplitExpenseFromEntryRecord(
         transactions.category_id,
         transactions.entry_type,
         accounts.owner_person_id AS account_owner_person_id,
+        accounts.is_joint AS account_is_joint,
         accounts.account_kind
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
@@ -2138,6 +2143,7 @@ export async function createSplitExpenseFromEntryRecord(
       category_id: string | null;
       entry_type: "expense" | "income" | "transfer";
       account_owner_person_id: string | null;
+      account_is_joint: number | null;
       account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
     }>();
 
@@ -2155,7 +2161,15 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error(ENTRY_ALREADY_LINKED);
   }
 
-  const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
+  const sharePeople = await loadSplitSharePeople(db);
+  if (input.payerPersonId !== undefined && !sharePeople.some((person) => person.id === input.payerPersonId)) {
+    throw new Error("Who paid must be one of the two people on Splits.");
+  }
+  const payerPersonId = input.payerPersonId ?? splitPayerForEntry({
+    entryOwnerPersonId: entry.owner_person_id,
+    walletOwnerPersonId: entry.account_owner_person_id,
+    walletIsJoint: Boolean(entry.account_is_joint)
+  }).payerPersonId;
   if (!payerPersonId) {
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
@@ -2169,7 +2183,6 @@ export async function createSplitExpenseFromEntryRecord(
   if (input.splitAmountMinor !== undefined && input.splitAmountMinor > Math.abs(entry.amount_minor)) {
     throw new Error(SPLIT_SHARE_OUT_OF_RANGE);
   }
-  const sharePeople = await loadSplitSharePeople(db);
   // The entry now counts by its split shares, so its month totals change.
   const months = [entry.transaction_date.slice(0, 7)];
 

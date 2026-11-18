@@ -138,7 +138,7 @@ export async function seedBankHousehold({ db, api, today }) {
   const quick = await api("/api/cash-entries/create", { requestId: crypto.randomUUID(), personId: "person-tim", way: "card", accountId: "acct-uob-one", amountMinor: 2_350, currency: "SGD" });
   if (quick.status !== 200) throw new Error(`quick pad seed: ${JSON.stringify(quick.payload)}`);
   const quickId = quick.payload.entry.entryId;
-  const entryId = await createEntry(api, { date: today, description: "STARBUCKS PAYNOW 91234567", accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250 });
+  const entryId = await createEntry(api, { date: today, description: "STARBUCKS PAYNOW 91234567", accountName: "UOB Savings", categoryName: "Food & Drinks", amountMinor: 4_250 });
   for (const [index, amountMinor] of [1_850, 2_240, 1_620].entries()) {
     await createEntry(api, { date: shiftDay(today, -index), description: "GRAB* RIDE", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor });
   }

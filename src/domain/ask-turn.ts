@@ -320,6 +320,8 @@ export interface AskTurnFocusEntry {
   currency: string;
   amountMinor: number;
   payerPersonId: string | null;
+  // The payer is the wallet's owner, not the entry's (B28): the card says so.
+  payerFromWallet?: boolean;
   linkedToSplits: boolean;
   // What an edit keeps unless the person changes it (Phase 2 edits).
   accountId?: string;
@@ -436,6 +438,8 @@ export interface AskSplitProposal {
   amountMinor: number;
   currency: string;
   payerName: string;
+  // Who paid, as Save sends it to the command (B28).
+  payerPersonId?: string;
   groupId: string | null;
   groupName: string;
   // The first person's share, as POST /api/splits/expenses/from-entry takes it.
@@ -1354,15 +1358,21 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
   const entry = context.focus.entry;
   if (entry.entryType !== "expense") return { kind: "note", text: COPY.onlyExpenses };
   if (entry.linkedToSplits) return { kind: "note", text: COPY.alreadyOnSplits };
-  const payer = context.people.find((person) => person.id === entry.payerPersonId) ?? null;
-  if (!payer) return { kind: "note", text: COPY.noPayer };
   const split = action.split ?? {};
   const assumptions: AskAssumption[] = [];
-  // Splits takes the payer from the entry, so a payer the model reports is
-  // only worth a line when it differs from the entry's.
+  // Who paid (Ask audit B28): the person they said paid, one of the two on
+  // Splits; else the wallet's one owner, else the entry's owner. When the
+  // wallet decided it and the entry is someone else's, the card says so with
+  // one chip for the other person.
   const saidPayer = findPerson(split.payer, context);
-  if (saidPayer && saidPayer !== "unknown" && saidPayer.id !== payer.id) {
-    assumptions.push(assumption(COPY.assumed.payerIsEntryOwner(payer.name)));
+  if (saidPayer === "unknown") return personQuestion(context, COPY.whoPaidQuestion, "split.payer", String(split.payer ?? ""));
+  const sharePeople = context.people.slice(0, 2);
+  if (saidPayer && !sharePeople.some((person) => person.id === saidPayer.id)) return personQuestion(context, COPY.whoPaidQuestion, "split.payer");
+  const payer = saidPayer ?? context.people.find((person) => person.id === entry.payerPersonId) ?? null;
+  if (!payer) return { kind: "note", text: COPY.noPayer };
+  if (!saidPayer && entry.payerFromWallet) {
+    const other = sharePeople.find((person) => person.id !== payer.id);
+    assumptions.push(assumption(COPY.payerIsWalletOwner(scrubName(entry.accountName), payer.name), other ? [COPY.chips.addWithOtherPayer(other.name.split(" ")[0])] : []));
   }
   const total = Math.abs(entry.amountMinor);
   const shares = resolveShares(split.shares, context, total, ground, entry.currency);
@@ -1386,6 +1396,7 @@ function validateAddToSplits(action: AskTurnAction, context: AskTurnContext, gro
       amountMinor: total,
       currency: entry.currency,
       payerName: payer.name,
+      payerPersonId: payer.id,
       groupId: group?.id ?? null,
       groupName: group?.name ?? "",
       splitBasisPoints: firstBasisPoints,
@@ -1892,7 +1903,10 @@ export const COPY = {
     toWallet: (name: string) => `To ${name}`,
     inCategory: (name: string) => `Category ${name}`,
     itsPerson: (name: string) => `It's ${name}'s`,
-    personPaid: (name: string) => `${name} paid`
+    personPaid: (name: string) => `${name} paid`,
+    // The one chip under "It was paid from …" (B28): a whole message that
+    // reads the same with AI or without.
+    addWithOtherPayer: (name: string) => `Add to Splits, ${name} paid`
   },
   // What the app assumed while drafting, in plain words (docs/flows/
   // ask-flow.md, "Three principles"). Names are the person's own words,
@@ -1908,7 +1922,6 @@ export const COPY = {
     noPersonView: (said: string) => `I couldn't tell who "${scrubName(said)}" is, so I used the whole household.`,
     amountKept: "I couldn't use that amount, so the amount stays as it was.",
     dateKept: "I couldn't use that date, so the date stays as it was.",
-    payerIsEntryOwner: (payer: string) => `This entry is ${payer}'s, so Splits shows ${payer} as the one who paid.`,
     groupCurrency: (name: string, groupCurrency: string, entryCurrency: string) => `${name} keeps its splits in ${groupCurrency} and this is in ${entryCurrency}, so I left it out of the group.`,
     categoryAsWords: (words: string) => `There's no category called "${scrubName(words)}", so I searched the entries for that word.`
   }

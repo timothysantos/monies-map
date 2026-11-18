@@ -70,7 +70,7 @@ export interface AskAssumption {
   chips: string[];
 }
 
-export const ASSUMPTION_TEXT_MAX = 140;
+export const ASSUMPTION_TEXT_MAX = 200;
 export const ASSUMPTION_CHIP_MAX = 40;
 export const ASSUMPTION_MAX_CHIPS = 3;
 

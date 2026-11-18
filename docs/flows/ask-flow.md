@@ -1358,6 +1358,39 @@ hold them.
 - **"the 12.80 was ramen with serene".** The words come from the message
   when the model leaves them out, and the answer to "What was it?" after
   such a message describes that payment, never a new entry.
+- **Record payment is safe to retry (B26).** A payment card gets its own
+  request id when it is shown (`withSettlementRequestId`); every Record
+  payment of that card sends it, and `POST /api/splits/settlements/create`
+  makes the payment's id from it, so a retry after a lost answer finds the
+  payment already recorded and answers with it (`replayed: true`). The same
+  id with other facts is refused. Without a request id (the Splits sheet)
+  each Record payment is its own.
+- **Every Splits write from Ask has its history line (B27).** Add to Splits
+  (`split_expense_added_from_entry`) and Record payment
+  (`split_settlement_created`) write their `audit_events` row in the same
+  `db.batch()` as the write; if it cannot be written, nothing is.
+- **Who paid on a wallet that is one person's (B28; DOMAIN.md "Split
+  Payer").** Add to Splits takes the wallet's one owner as the payer, a
+  joint wallet the entry's owner. When that is not the entry's owner the
+  card says "It was paid from {wallet}, which is {person}'s, so Splits
+  shows {person} as the one who paid. Add it that way?" with one chip,
+  "Add to Splits, {other} paid", which reads the same with AI off. A payer
+  the person names wins; the card sends it to the command as
+  `payerPersonId`. A split already saved keeps its payer.
+- **Nothing left over in a description (B24).** The reader takes share
+  clauses ("her share is 30", "my share 5"), "Serene pays half", a wallet
+  typed with one typo after "on", "with" or "via" ("on citti"), and a
+  person's name typed with one typo after "for" or "with", before "'s" or
+  "paid", or alone in its clause ("grab 18 on citi, serne") out of the
+  description (`entry-draft.ts`). "city hall" or "serenade" stay words.
+- **Questions keep their options (F12) and plan questions have chips
+  (B22).** A model's option longer than a chip holds is shortened at a word
+  with "…", never dropped (at most 4). "Which plan line, how much, and for
+  which month?" comes with the household's own plan lines as whole
+  messages with the amount and month the person said: two lines named
+  "Move $50 from Shopping to Groceries this month" both ways, one "Set
+  Groceries plan to $700 for November", none the three nearest. With no
+  single amount said there is no chip.
 - **Habits count only the person's choices.** A new draft's category is the
   shop's habit first, then the household's rules and everyday words. A save
   counts as a category confirmation only when the category was picked on
