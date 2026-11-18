@@ -293,7 +293,7 @@ test.describe("phone fit", () => {
       expect(await head.evaluate((element) => element.scrollWidth <= element.clientWidth + 1), `day header whole at ${phone.width}`).toBe(true);
       // This row's chip line can sit beside the floating bars; the trip
       // chip's reach is checked in full view by the F10 test above.
-      await expectFits(page, { ignore: [...OLDER_SMALL_TARGETS, ".entry-chip-trip"] });
+      await expectFits(page, { root: ".entries-date-group", ignore: [...OLDER_SMALL_TARGETS, ".entry-chip-trip"] });
     }
     await shot(page, "F13-date-head-130", { phone: { width: 288, height: 429 } });
   });

@@ -47,7 +47,7 @@ test.describe("Ask, AI first", () => {
   test("a refused answer is repaired before the person is asked: \"all hers\" names nobody, the repair names Joyce, and the draft shows", async ({ page }) => {
     const description = `STARBUCKS ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      date: "2026-04-23", description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 4_250, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
     });
     await stubModel(page, [
       { action: "add_entry_to_splits", split: { shares: [{ person: "wife", all: true }] }, _repair: { action: "add_entry_to_splits", split: { shares: [{ person: "Joyce", all: true }] } } }
@@ -157,7 +157,7 @@ test.describe("Ask, AI first", () => {
   test("Apple Pay entry, \"Add to splits, all Joyce\": a draft with Tim paying and Joyce's 100% share; Add to Splits saves it, and Splits shows Joyce owes the whole amount", async ({ page }) => {
     const description = `STARBUCKS ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 4_250, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      date: "2026-04-23", description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 4_250, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
     });
     const seen = await stubModel(page, [
       { action: "add_entry_to_splits", split: { payer: null, group: null, shares: [{ person: "Joyce", percent: null, amount: null, all: true }] } }
@@ -199,7 +199,7 @@ test.describe("Ask, AI first", () => {
   test("\"Add to splits, Joyce's share 1.6\" on a $7.90 entry: one stated share is enough, both shares shown, nothing saved, and \"Is that a percentage instead?\" re-reads it as 1.6%", async ({ page }) => {
     const description = `TORI-Q ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      date: "2026-04-23", description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
     });
     const seen = await stubModel(page, [
       // The shape that failed in production: Tim listed with nothing in him.
@@ -240,7 +240,7 @@ test.describe("Ask, AI first", () => {
   test("with AI off, \"Joyce's share 1.6\" on the saved entry still drafts the split (the rules read the share)", async ({ page }) => {
     const description = `TORI-Q OFF ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      date: "2026-04-23", description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 790, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
     });
     await page.goto(`/ask?saved_entry=${created.entryId}&month=${MONTH}&view=person-tim&from=shortcut`);
     await expect(page.locator('[data-ask-card="saved"]')).toBeVisible({ timeout: 60_000 });
@@ -273,7 +273,7 @@ test.describe("Ask, AI first", () => {
   test("a model that names someone outside the household is asked back, never drafted", async ({ page }) => {
     const description = `UNKNOWN ${Date.now()}`;
     const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-23", description, accountName: "Citi Rewards", categoryName: "Food & Drinks", amountMinor: 1_000, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
+      date: "2026-04-23", description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 1_000, entryType: "expense", ownershipType: "direct", ownerName: "Tim"
     });
     await stubModel(page, [{ action: "add_entry_to_splits", split: { shares: [{ person: "Serene", all: true }] } }]);
     await page.goto(`/ask?saved_entry=${created.entryId}&month=${MONTH}&view=person-tim&from=shortcut`);
