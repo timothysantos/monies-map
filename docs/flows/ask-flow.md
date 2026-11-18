@@ -1376,7 +1376,13 @@ hold them.
   shows {person} as the one who paid. Add it that way?" with one chip,
   "Add to Splits, {other} paid", which reads the same with AI off. A payer
   the person names wins; the card sends it to the command as
-  `payerPersonId`. A split already saved keeps its payer.
+  `payerPersonId`. A split already saved keeps its payer. The same rule
+  decides the payer for the picked rows' Add to Splits on Entries, for
+  Usually shared (the Splits list and the card below; the list's shop card
+  names the payer, the usual split stays the owner's habit and is sent as the
+  payer's share) and for Ask's habitual split (a habit holds the payer's own
+  share by this rule, so Done for you reads "Added to splits 30/70 with Tim"
+  when Joyce's card paid and her share is 30%).
 - **Nothing left over in a description (B24).** The reader takes share
   clauses ("her share is 30", "my share 5"), "Serene pays half", a wallet
   typed with one typo after "on", "with" or "via" ("on citti"), and a

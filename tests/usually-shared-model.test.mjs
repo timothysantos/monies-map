@@ -24,6 +24,8 @@ const group = (overrides = {}) => ({
   groupName: "Home",
   basisPoints: 5000,
   ownerName: "Tim",
+  payerName: "Tim",
+  payerShareBasisPoints: 5000,
   otherPersonName: "Joyce",
   evidenceCount: 8,
   matchedCount: 9,
@@ -32,6 +34,11 @@ const group = (overrides = {}) => ({
   totalMinor: 3000,
   entries: [entry("a", "2026-10-28"), entry("b", "2026-10-02"), entry("c", "2026-09-20")],
   ...overrides
+});
+
+test("the Add posts the payer's own share, not the owner's, when the wallet's owner paid", () => {
+  const onJoyces = group({ basisPoints: 7000, payerName: "Joyce", payerShareBasisPoints: 3000 });
+  assert.equal(buildAddBody(onJoyces, undefined).groups[0].payerShareBasisPoints, 3000);
 });
 
 test("all entries are ticked until the person unticks some, and the Add posts only the ticked ones", () => {

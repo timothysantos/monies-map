@@ -2223,8 +2223,10 @@ export async function createSplitExpenseFromEntryRecord(
 export interface AddEntriesToSplitsItem {
   entryId: string;
   splitGroupId: string | null;
-  // The payer's own share (the usual split's basis points); the other
-  // person has the rest. The command works out the first person's share.
+  // The payer's own share; the other person has the rest. The payer is the
+  // one split-payer.ts picks for each entry, so a caller whose share belongs
+  // to a named person (Usually shared) sends that person's share converted to
+  // the payer's. The command works out the first person's share.
   payerShareBasisPoints: number;
 }
 
@@ -2243,7 +2245,7 @@ function chunkIds<T>(items: T[], size = BULK_SPLIT_ID_CHUNK) {
   return chunks;
 }
 
-type BulkEntryRow = LinkableEntryRow & { entry_type: string; owner_person_id: string | null; account_owner_person_id: string | null };
+type BulkEntryRow = LinkableEntryRow & { entry_type: string; owner_person_id: string | null; account_owner_person_id: string | null; account_is_joint: number | null };
 
 // Puts many past entries on Splits, each with its own group and share
 // (Usually shared, DOMAIN.md; Ask's change card). Every row is the same one
@@ -2291,7 +2293,7 @@ export async function addEntriesToSplitsRecord(
       .prepare(`
         SELECT transactions.id, transactions.transaction_date, transactions.description, transactions.amount_minor,
           transactions.currency, transactions.owner_person_id, transactions.note, transactions.category_id,
-          transactions.entry_type, accounts.owner_person_id AS account_owner_person_id, accounts.account_kind
+          transactions.entry_type, accounts.owner_person_id AS account_owner_person_id, accounts.is_joint AS account_is_joint, accounts.account_kind
         FROM transactions
         INNER JOIN accounts ON accounts.id = transactions.account_id
         WHERE transactions.household_id = ? AND transactions.id IN (${marks})
@@ -2316,7 +2318,12 @@ export async function addEntriesToSplitsRecord(
     if (!entry) { refuse("Entry not found."); continue; }
     if (entry.entry_type !== "expense") { refuse("Only expense entries can be added to splits."); continue; }
     if (linked.has(entry.id)) { refuse(ENTRY_ALREADY_LINKED); continue; }
-    const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
+    // Each row has its own payer: the same rule as Add to Splits for one entry.
+    const payerPersonId = splitPayerForEntry({
+      entryOwnerPersonId: entry.owner_person_id,
+      walletOwnerPersonId: entry.account_owner_person_id,
+      walletIsJoint: Boolean(entry.account_is_joint)
+    }).payerPersonId;
     if (!payerPersonId) { refuse("This entry does not have a clear payer. Assign an owner first."); continue; }
     if (!sharePeople.some((person) => person.id === payerPersonId)) { refuse("Splits are shared between two people, and this entry was paid by someone else."); continue; }
     try {

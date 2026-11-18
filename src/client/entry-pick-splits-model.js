@@ -7,6 +7,7 @@
 import { pickSplitsCopy as copy } from "./copy/pick-splits-copy";
 import { getQuickSplitGroup, NON_GROUP_SPLIT_ID } from "./split-picker-defaults";
 import { BULK_RECATEGORISE_CONFIRM_ABOVE } from "../domain/entry-category-bulk";
+import { splitPayerForEntry } from "../domain/split-payer";
 
 export { NON_GROUP_SPLIT_ID };
 
@@ -36,7 +37,14 @@ export function splitsPlanFor(rows) {
       continue;
     }
     ids.push(entry.id);
-    payers.add(entry.ownerName ?? entry.accountOwnerLabel ?? "");
+    // Who paid, by the one rule the server uses (split-payer.ts). A joint
+    // wallet's label is "Shared"; names stand in for ids.
+    const walletIsJoint = entry.accountOwnerLabel === "Shared";
+    payers.add(splitPayerForEntry({
+      entryOwnerPersonId: entry.ownerName ?? null,
+      walletOwnerPersonId: walletIsJoint ? null : entry.accountOwnerLabel ?? null,
+      walletIsJoint
+    }).payerPersonId ?? "");
   }
   return { ids, payerNames: [...payers].filter(Boolean), alreadyOn, leftOut };
 }

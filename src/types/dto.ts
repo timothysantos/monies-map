@@ -2136,10 +2136,15 @@ export interface UsuallySharedGroupDto {
   // "split-group-none" for Non-group expenses.
   groupId: string;
   groupName: string;
-  // The payer's share; the other person has the rest.
+  // The owner's share (the owner's own habit); the other person has the rest.
   basisPoints: number;
   ownerPersonId: string;
   ownerName: string;
+  // Who paid on Splits (src/domain/split-payer.ts) and that person's share,
+  // which is what Add sends.
+  payerPersonId: string;
+  payerName: string;
+  payerShareBasisPoints: number;
   otherPersonId: string;
   otherPersonName: string;
   // "shared 8 of 9 times": the newest entry's evidence.

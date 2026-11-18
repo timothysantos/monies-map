@@ -39,6 +39,9 @@ export interface UsuallySharedCandidate {
   description: string;
   categoryName: string | null;
   ownerPersonId: string | null;
+  // Who paid it on Splits (split-payer.ts): the wallet's one owner, else the
+  // owner. Null when no one is clear.
+  payerPersonId: string | null;
   currency: string;
   amountMinor: number;
 }
@@ -77,12 +80,16 @@ export function suggestUsuallyShared(input: {
       groups: withNonGroup(groups, candidate.currency),
       sharePeople
     });
-    if (!suggestion || !candidate.ownerPersonId) continue;
+    // A payer outside the two people Splits shares between cannot be added.
+    if (!suggestion || !candidate.ownerPersonId || !candidate.payerPersonId || !personName.has(candidate.payerPersonId)) continue;
 
     const shop = normalizeDescriptionForMatch(candidate.description) || candidate.description.trim().toLowerCase();
-    // One group per shop, payer, usual split and currency, so every entry in
-    // a group takes the same Add and its amounts add up in one currency.
-    const key = [shop, candidate.ownerPersonId, suggestion.groupId, suggestion.basisPoints, candidate.currency].join("|");
+    // One group per shop, owner, payer, usual split and currency, so every
+    // entry in a group takes the same Add and its amounts add up in one
+    // currency. The usual split is the owner's habit (basisPoints is the
+    // owner's share); who paid is the wallet's rule, so the payer's share is
+    // the owner's, or the rest when the payer is the other person.
+    const key = [shop, candidate.ownerPersonId, candidate.payerPersonId, suggestion.groupId, suggestion.basisPoints, candidate.currency].join("|");
     const entry: UsuallySharedEntryDto = {
       id: candidate.entryId,
       date: candidate.date,
@@ -104,6 +111,9 @@ export function suggestUsuallyShared(input: {
           basisPoints: suggestion.basisPoints,
           ownerPersonId: candidate.ownerPersonId,
           ownerName: entry.ownerName,
+          payerPersonId: candidate.payerPersonId,
+          payerName: personName.get(candidate.payerPersonId) ?? "",
+          payerShareBasisPoints: candidate.payerPersonId === candidate.ownerPersonId ? suggestion.basisPoints : 10_000 - suggestion.basisPoints,
           otherPersonId: suggestion.otherPersonId,
           otherPersonName: suggestion.otherPersonName,
           evidenceCount: suggestion.evidenceCount,

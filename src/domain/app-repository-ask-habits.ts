@@ -13,6 +13,7 @@
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { ensureAppSettingsTable } from "./app-settings-table";
+import { splitPayerForEntry } from "./split-payer";
 import {
   ASK_CATCH_ALL_CATEGORIES,
   ASK_HABIT_POLICY,
@@ -189,19 +190,28 @@ export async function learnCategoryHabitForEntry(db: D1Database, input: { entryI
 // command was given (the household's first person's share).
 export async function learnSplitHabitFromEntry(
   db: D1Database,
-  input: { entryId: string; splitGroupId: string | null; firstPersonBasisPoints: number; source: AskHabitSource }
+  // payerPersonId: who paid, when the person named one on Ask's card;
+  // otherwise the one split-payer.ts picks, as the command did.
+  input: { entryId: string; splitGroupId: string | null; firstPersonBasisPoints: number; source: AskHabitSource; payerPersonId?: string }
 ) {
   try {
     const entry = await db
       .prepare(`
-        SELECT transactions.description, COALESCE(transactions.owner_person_id, accounts.owner_person_id) AS payer_id
+        SELECT transactions.description, transactions.owner_person_id AS entry_owner_id,
+          accounts.owner_person_id AS wallet_owner_id, accounts.is_joint AS wallet_is_joint
         FROM transactions
         INNER JOIN accounts ON accounts.id = transactions.account_id
         WHERE transactions.household_id = ? AND transactions.id = ?
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-      .first<{ description: string; payer_id: string | null }>();
-    if (!entry?.payer_id) return;
+      .first<{ description: string; entry_owner_id: string | null; wallet_owner_id: string | null; wallet_is_joint: number | null }>();
+    if (!entry) return;
+    const payerId = input.payerPersonId ?? splitPayerForEntry({
+      entryOwnerPersonId: entry.entry_owner_id,
+      walletOwnerPersonId: entry.wallet_owner_id,
+      walletIsJoint: Boolean(entry.wallet_is_joint)
+    }).payerPersonId;
+    if (!payerId) return;
     const people = await db
       .prepare(`
         SELECT id FROM people WHERE household_id = ?
@@ -210,10 +220,10 @@ export async function learnSplitHabitFromEntry(
       .bind(DEFAULT_HOUSEHOLD_ID)
       .all<{ id: string }>();
     const first = people.results[0]?.id;
-    if (!first || !people.results.slice(0, 2).some((person) => person.id === entry.payer_id)) return;
-    const payerShareBasisPoints = entry.payer_id === first ? input.firstPersonBasisPoints : 10_000 - input.firstPersonBasisPoints;
+    if (!first || !people.results.slice(0, 2).some((person) => person.id === payerId)) return;
+    const payerShareBasisPoints = payerId === first ? input.firstPersonBasisPoints : 10_000 - input.firstPersonBasisPoints;
     const groupId = input.splitGroupId && input.splitGroupId !== "split-group-none" ? input.splitGroupId : null;
-    await confirmHabitValue(db, "split", habitMerchantKey(entry.description), { groupId, payerPersonId: entry.payer_id, payerShareBasisPoints } satisfies AskSplitHabitValue, input.source);
+    await confirmHabitValue(db, "split", habitMerchantKey(entry.description), { groupId, payerPersonId: payerId, payerShareBasisPoints } satisfies AskSplitHabitValue, input.source);
   } catch {
     // Best effort.
   }

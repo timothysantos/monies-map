@@ -1821,7 +1821,8 @@ export default {
             entryId: body.entryId,
             splitGroupId: body.splitGroupId ?? null,
             firstPersonBasisPoints: body.splitBasisPoints ?? 5000,
-            source: "splits"
+            source: "splits",
+            ...(body.payerPersonId !== undefined && body.payerPersonId !== null ? { payerPersonId: String(body.payerPersonId) } : {})
           });
         }
         // A trip or event linked to this split group follows it (owner

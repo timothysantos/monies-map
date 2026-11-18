@@ -2598,9 +2598,16 @@ belongs to one person means that person paid, whoever the entry is for: a
 dinner of Joyce's on Tim's card was paid by Tim. A joint wallet, or one with
 no owner, keeps the entry's owner. A payer the person names on Ask's card
 wins. Used by Add to Splits from Ask and from Entries
-(`createSplitExpenseFromEntryRecord`) and by Ask's focus; the picked-rows
-bar and Usually shared keep the entry's owner. A split already saved keeps
-its payer.
+(`createSplitExpenseFromEntryRecord`), by Ask's focus, and, one entry at a
+time, by the picked-rows bar and Usually shared (`addEntriesToSplitsRecord`),
+by the picked-rows bar's wording (`splitsPlanFor` names the payer by the same
+function; rows with different payers say "the payer" and "the other person"),
+and by Ask's habits (a habit holds the payer's own share, learned and applied
+with the payer this rule picks, so a habit learned from Tim paying does not
+speak for an entry on Joyce's own card). Usually shared keeps the usual split
+as the owner's habit ("Tim 70% and Joyce 30%") and converts it to the payer's
+share for the command; its shop card names who paid. A split already saved
+keeps its payer.
 
 ### Split Expense Share
 
@@ -3540,7 +3547,8 @@ same rule as the split suggestion: every expense of the last 90 days that is
 on no split and whose owner is one of the two people Splits shares between is
 judged by `suggestSplitForEntry` against the owner's own 12 months of history,
 and one the rule would not suggest is left out. Entries are grouped by shop
-(normalised description), payer, usual group, usual share and currency. A
+(normalised description), owner, payer (the Split Payer rule), usual group,
+usual share and currency. A
 group says its shop, the usual split ("half each with Joyce in Baby River")
 and its evidence ("Shared 8 of 9 times"; "similar purchases" when only the
 category decided). Deterministic and read-only: no AI, and it never adds
@@ -3555,7 +3563,8 @@ Canonical term:
 
 The picked rows' "Add to Splits" on Entries is the manual route to the same
 command: the person chooses one group and one share for every picked entry
-(the payer's half each, 0% or 100%) instead of each shop's habit, so it
+(the payer's half each, 0% or 100%, the payer being whoever each row's wallet
+says paid) instead of each shop's habit, so it
 needs no history and also covers shops never shared before. It sends only
 expenses not on Splits, the command refuses the rest by name (already on
 Splits, income or transfers, an owner who is not one of the two people, a

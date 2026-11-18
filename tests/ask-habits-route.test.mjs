@@ -202,8 +202,9 @@ test("every excluded case is left alone: low confidence, old, certified, importe
 test("a split habit does not apply to someone else's entry, and an entry already on Splits has nothing to suggest", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   await teachShop(api, "Bengawan Solo", { times: 3, split: true });
-  // Joyce pays: the habit is Tim's.
-  const joyce = await createEntry(api, { ...shop("Bengawan Solo"), ownerName: "Joyce" });
+  // Joyce pays from her own card: the habit is Tim's.
+  const [joyceCard] = await rows(db, "SELECT id FROM accounts WHERE owner_person_id = 'person-joyce' AND is_joint = 0 AND is_active = 1 ORDER BY account_name");
+  const joyce = await createEntry(api, { ...shop("Bengawan Solo"), ownerName: "Joyce", accountId: joyceCard.id, accountName: undefined });
   assert.equal((await entryState(db, joyce)).onSplits, false);
   assert.equal((await api("/api/ask/entry-habits", { entryId: joyce })).payload.suggestion, null);
   // Already on Splits: nothing to add.

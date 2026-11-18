@@ -84,10 +84,16 @@ test("Add puts every picked entry on the chosen group with the chosen share in o
   assert.deepEqual(stored, await snapshotTotals(db, month), "stored month totals are stale");
 });
 
-test("half each splits each entry evenly whoever paid it, and the payer is each entry's owner", async (t) => {
+// Joyce's own card.
+async function joyceCardId(db) {
+  const [card] = await rows(db, "SELECT id FROM accounts WHERE owner_person_id = 'person-joyce' AND is_joint = 0 AND is_active = 1 ORDER BY account_name");
+  return card.id;
+}
+
+test("half each splits each entry evenly whoever paid it, and the payer is each entry's wallet owner (split-payer.ts)", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const [tim] = await entries(api, 1);
-  const [joyce] = await entries(api, 1, { ownerName: "Joyce", description: "Joyce shop" });
+  const [joyce] = await entries(api, 1, { ownerName: "Joyce", description: "Joyce shop", accountId: await joyceCardId(db), accountName: undefined });
   const { status, payload } = await api(ADD, body([tim, joyce]));
   assert.equal(status, 200, JSON.stringify(payload));
   const payers = await rows(db, "SELECT linked_transaction_id AS id, payer_person_id AS payer FROM split_expenses WHERE deleted_at IS NULL AND linked_transaction_id IN (?, ?)", tim, joyce);
@@ -98,7 +104,7 @@ test("half each splits each entry evenly whoever paid it, and the payer is each 
 
 test("the payer's share follows the payer: Joyce paying with a 30% share leaves Tim 70%", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
-  const [joyce] = await entries(api, 1, { ownerName: "Joyce", description: "Joyce shop", amountMinor: 2000 });
+  const [joyce] = await entries(api, 1, { ownerName: "Joyce", description: "Joyce shop", amountMinor: 2000, accountId: await joyceCardId(db), accountName: undefined });
   const { payload } = await api(ADD, body([joyce], { payerShareBasisPoints: 3000 }));
   const shares = await rows(db, "SELECT person_id, ratio_basis_points, amount_minor FROM split_expense_shares WHERE split_expense_id = ? ORDER BY person_id", payload.added[0].splitExpenseId);
   assert.deepEqual(shares, [
@@ -139,6 +145,8 @@ test("an entry whose owner is neither of the two people Splits shares between is
   await db.prepare("INSERT INTO people (id, household_id, display_name, role) VALUES ('person-guest', ?, 'Guest', 'guest')").bind(DEFAULT_HOUSEHOLD_ID).run();
   await db.prepare("PRAGMA ignore_check_constraints = OFF").run();
   await db.prepare("UPDATE transactions SET owner_person_id = 'person-guest' WHERE id = ?").bind(other).run();
+  // On a joint wallet the entry's owner is who paid (split-payer.ts).
+  await db.prepare("UPDATE accounts SET is_joint = 1 WHERE id = (SELECT account_id FROM transactions WHERE id = ?)").bind(other).run();
   const { payload } = await api(ADD, body([ok, other]));
   assert.equal(payload.addedCount, 1);
   assert.deepEqual(payload.refused, [{ entryId: other, reason: "Splits are shared between two people, and this entry was paid by someone else." }]);

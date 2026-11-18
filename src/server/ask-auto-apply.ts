@@ -22,6 +22,7 @@ import {
   type HabitPlan
 } from "../domain/ask-habit-plan";
 import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
+import { splitPayerForEntry } from "../domain/split-payer";
 import { recordAuditEvent } from "../domain/app-repository-audit";
 import { updateEntryCategoryRecord, updateEntryNoteRecord } from "../domain/app-repository-entry-commands";
 import { createSplitExpenseFromEntryRecord, deleteSplitExpenseRecord } from "../domain/app-repository-splits";
@@ -81,7 +82,9 @@ interface EntryRow {
   external_reference: string | null;
   note: string | null;
   category_name: string | null;
-  payer_id: string | null;
+  entry_owner_id: string | null;
+  wallet_owner_id: string | null;
+  wallet_is_joint: number | null;
   on_splits: number;
 }
 
@@ -93,7 +96,9 @@ async function loadEntry(db: D1Database, entryId: string) {
         transactions.import_id, transactions.bank_certification_status, transactions.created_at,
         transactions.external_reference, transactions.note,
         categories.name AS category_name,
-        COALESCE(transactions.owner_person_id, accounts.owner_person_id) AS payer_id,
+        transactions.owner_person_id AS entry_owner_id,
+        accounts.owner_person_id AS wallet_owner_id,
+        accounts.is_joint AS wallet_is_joint,
         EXISTS (
           SELECT 1 FROM split_expenses
           WHERE split_expenses.household_id = transactions.household_id
@@ -116,7 +121,13 @@ function toFacts(row: EntryRow): HabitEntryFacts {
     entryType: row.entry_type,
     currency: (row.currency || "SGD").toUpperCase(),
     categoryName: row.category_name,
-    payerPersonId: row.payer_id,
+    // Who paid on Splits (split-payer.ts), the same one the add command picks,
+    // so the habit's payer and share are the ones that get written.
+    payerPersonId: splitPayerForEntry({
+      entryOwnerPersonId: row.entry_owner_id,
+      walletOwnerPersonId: row.wallet_owner_id,
+      walletIsJoint: Boolean(row.wallet_is_joint)
+    }).payerPersonId,
     onSplits: Boolean(row.on_splits)
   };
 }

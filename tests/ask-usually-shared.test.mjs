@@ -150,7 +150,7 @@ test("over ten entries the card needs the person's count and the command checks 
   assert.equal(saved.result.addedCount, 12);
 
   // Pure: more than 200 waiting is refused before any card.
-  const group = (entries) => ({ key: "k", shopName: "Big", groupId: "split-group-none", groupName: "Non-group expenses", basisPoints: 5000, ownerPersonId: "p", ownerName: "Tim", otherPersonId: "q", otherPersonName: "Joyce", evidenceCount: 5, matchedCount: 5, matchedBy: "description", currency: "SGD", totalMinor: entries.length * 100, entries });
+  const group = (entries) => ({ key: "k", shopName: "Big", groupId: "split-group-none", groupName: "Non-group expenses", basisPoints: 5000, ownerPersonId: "p", ownerName: "Tim", payerPersonId: "p", payerName: "Tim", payerShareBasisPoints: 5000, otherPersonId: "q", otherPersonName: "Joyce", evidenceCount: 5, matchedCount: 5, matchedBy: "description", currency: "SGD", totalMinor: entries.length * 100, entries });
   const entry = (index) => ({ id: `e${index}`, date: "2026-10-01", description: "Big", amountMinor: 100, currency: "SGD", ownerPersonId: "p", ownerName: "Tim" });
   const tooMany = buildUsuallySharedChange({ type: "usually_shared", shop: "" }, [group(Array.from({ length: 150 }, (_, i) => entry(i))), { ...group(Array.from({ length: 60 }, (_, i) => entry(1000 + i))), key: "k2", shopName: "Bigger" }]);
   assert.equal(tooMany.kind, "note");

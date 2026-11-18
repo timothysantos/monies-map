@@ -104,3 +104,31 @@ test("when nothing was added the first refusal reason is what the bar says", () 
   assert.equal(noneAddedReason({ refused: [{ reason: "This group uses JPY. Split records in the group must use the same currency." }, { reason: "x" }] }), "This group uses JPY. Split records in the group must use the same currency.");
   assert.equal(noneAddedReason({ refused: [] }), pickSplitsCopy.noneAdded);
 });
+
+// Who paid is the one rule the server uses (src/domain/split-payer.ts; DOMAIN.md
+// "Split Payer"): the wallet's one owner, else the entry's owner. A joint
+// wallet's label is "Shared".
+test("the bar names who paid by the wallet: Tim's entry on Joyce's card is Joyce's, a joint wallet keeps Tim", () => {
+  const onJoyces = splitsPlanFor([row("a", { accountOwnerLabel: "Joyce" })]);
+  assert.deepEqual(onJoyces.payerNames, ["Joyce"]);
+  assert.deepEqual(splitPeopleFor(onJoyces.payerNames, people), { payerName: "Joyce", otherName: "Tim" });
+  assert.equal(previewLine({ count: 1, people: splitPeopleFor(onJoyces.payerNames, people), shareBasisPoints: 0, group: null }), "1 entry to Splits with Tim, Tim owes all of it");
+
+  const onJoint = splitsPlanFor([row("b", { accountOwnerLabel: "Shared" })]);
+  assert.deepEqual(onJoint.payerNames, ["Tim"]);
+  assert.deepEqual(splitPeopleFor(onJoint.payerNames, people), { payerName: "Tim", otherName: "Joyce" });
+});
+
+test("rows with different payers say 'the payer' and 'the other person', never one name", () => {
+  const plan = splitsPlanFor([
+    row("a", { accountOwnerLabel: "Tim" }),
+    row("b", { accountOwnerLabel: "Joyce" }),
+    row("c", { accountOwnerLabel: "Shared" })
+  ]);
+  assert.deepEqual(plan.payerNames.sort(), ["Joyce", "Tim"]);
+  const mixed = splitPeopleFor(plan.payerNames, people);
+  assert.deepEqual(mixed, { payerName: "the payer", otherName: "the other person" });
+  assert.equal(previewLine({ count: 3, people: mixed, shareBasisPoints: 5000, group: null }), "3 entries to Splits with the other person, half each");
+  // Two rows both on Tim's wallet, one of them Joyce's own entry: Tim paid both.
+  assert.deepEqual(splitsPlanFor([row("d", { accountOwnerLabel: "Tim" }), row("e", { ownerName: "Joyce", accountOwnerLabel: "Tim" })]).payerNames, ["Tim"]);
+});

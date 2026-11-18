@@ -912,8 +912,10 @@ them:
   owes what (**Half each**, or the other person owes all of it, or all of it
   is the payer's), and a plain line such as "12 entries to Splits with
   Joyce, half each, in Okaeri". Select **Add 12** to confirm; for more than
-  10 the bar asks **Yes, add all …** first. The person who paid each entry is
-  the one who paid on Splits. Entries already on Splits, and income or
+  10 the bar asks **Yes, add all …** first. Whoever's own card or account an
+  entry was paid from is the one who paid on Splits (for a joint account, the
+  entry's owner). If the entries were paid by different people, the box says
+  "the payer" and "the other person" instead of a name. Entries already on Splits, and income or
   transfers, are left alone and the note says how many ("2 were already on
   Splits"). The note has **Undo**, which takes them all back off Splits.
 - **Cancel** (or Esc) stops picking. You can change up to 200 entries at a
@@ -2954,7 +2956,8 @@ There are two ways, depending on where the expense is.
 2. Select **Add to splits**.
 3. Pick the group from **Split group**. The split is created as soon as you
    choose; **Cancel** closes the box without sharing anything.
-4. The split starts half each, with the entry's owner as the payer. Select
+4. The split starts half each. Whoever's own card or account paid it is
+   the payer (for a joint account, the entry's owner). Select
    **View split**, then **View split** in its menu, to change the people,
    shares, group, category or note.
 
@@ -3155,7 +3158,8 @@ entries at how many shops.
 
 1. Open **Splits** and select **Review** on that row. On a phone it opens a
    sheet.
-2. Each shop has its own card: the shop, who paid, the total, and a line such
+2. Each shop has its own card: the shop, who paid (whoever's own card or
+   account it was paid from), the total, and a line such
    as "Usually half each with Joyce in Baby River. Shared 8 of 9 times." That
    line is why it is here: Splits looks at what you did with that shop's
    purchases in the last year, and only offers it when most of them were

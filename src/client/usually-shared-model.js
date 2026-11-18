@@ -25,7 +25,7 @@ export function buildAddBody(group, unticked, { confirmed = false } = {}) {
   return {
     groups: [{
       splitGroupId: group.groupId === NON_GROUP_ID ? null : group.groupId,
-      payerShareBasisPoints: group.basisPoints,
+      payerShareBasisPoints: group.payerShareBasisPoints,
       entryIds: ids
     }],
     ...(confirmed && needsConfirm(ids.length) ? { confirmedCount: ids.length } : {})

@@ -1,6 +1,7 @@
 import { DEFAULT_HOUSEHOLD_ID } from "../app-repository-constants";
 import { loadSplitGroups } from "../app-repository-splits";
 import { normalizeSplitCurrency } from "../split-currency";
+import { splitPayerForEntry } from "../split-payer";
 import { SPLIT_SUGGESTION_POLICY, NON_GROUP_SPLIT_ID } from "../split-suggestion";
 import { suggestUsuallyShared, USUALLY_SHARED_POLICY, type UsuallySharedCandidate } from "../usually-shared";
 import { HISTORY_ROWS_SQL, loadSharePeople, toHistoryEntry, type HistoryRow } from "./split-suggestion";
@@ -28,6 +29,9 @@ interface CandidateRow {
   description: string;
   category_name: string | null;
   owner_person_id: string | null;
+  entry_owner_person_id: string | null;
+  account_owner_person_id: string | null;
+  account_is_joint: number | null;
   currency: string;
   amount_minor: number;
 }
@@ -54,6 +58,9 @@ export async function buildUsuallySharedDto(
         transactions.description,
         categories.name AS category_name,
         COALESCE(transactions.owner_person_id, accounts.owner_person_id) AS owner_person_id,
+        transactions.owner_person_id AS entry_owner_person_id,
+        accounts.owner_person_id AS account_owner_person_id,
+        accounts.is_joint AS account_is_joint,
         transactions.currency,
         transactions.amount_minor
       FROM transactions
@@ -109,6 +116,11 @@ export async function buildUsuallySharedDto(
     description: row.description,
     categoryName: row.category_name,
     ownerPersonId: row.owner_person_id,
+    payerPersonId: splitPayerForEntry({
+      entryOwnerPersonId: row.entry_owner_person_id,
+      walletOwnerPersonId: row.account_owner_person_id,
+      walletIsJoint: Boolean(row.account_is_joint)
+    }).payerPersonId,
     currency: normalizeSplitCurrency(row.currency),
     amountMinor: row.amount_minor
   }));

@@ -30,17 +30,21 @@ const history = (overrides = {}) => {
     ...overrides
   };
 };
-const candidate = (id, overrides = {}) => ({
-  entryId: id,
-  date: "2026-10-20",
-  entryType: "expense",
-  description: "Cold Storage",
-  categoryName: "Groceries",
-  ownerPersonId: TIM.id,
-  currency: "SGD",
-  amountMinor: 1000,
-  ...overrides
-});
+const candidate = (id, overrides = {}) => {
+  const entry = {
+    entryId: id,
+    date: "2026-10-20",
+    entryType: "expense",
+    description: "Cold Storage",
+    categoryName: "Groceries",
+    ownerPersonId: TIM.id,
+    currency: "SGD",
+    amountMinor: 1000,
+    ...overrides
+  };
+  // Who paid on Splits (split-payer.ts) is the owner unless a test says so.
+  return { payerPersonId: entry.ownerPersonId, ...entry };
+};
 const run = (candidates, hist, extra = {}) => suggestUsuallyShared({ candidates, history: hist, groups: GROUPS, sharePeople: PEOPLE, ...extra });
 
 test("the policy is the documented one", () => {
@@ -100,6 +104,17 @@ test("two payers at one shop, two currencies and two usual shares make separate 
   const groups = run([candidate("t"), candidate("j", { ownerPersonId: JOYCE.id })], [...timHist, ...joyceHist]);
   assert.equal(groups.length, 2);
   assert.deepEqual(groups.map((group) => [group.ownerName, group.basisPoints]).sort(), [["Joyce", 7000], ["Tim", 5000]]);
+});
+
+test("the usual split is the owner's habit; who paid is the wallet's rule, so the payer's share is converted and payers never share a group", () => {
+  const hist = [history(), history(), history()].map((entry) => ({ ...entry, split: { ...entry.split, shares: [{ personId: TIM.id, basisPoints: 7000 }, { personId: JOYCE.id, basisPoints: 3000 }] } }));
+  const groups = run([candidate("on-tims"), candidate("on-joyces", { payerPersonId: JOYCE.id })], hist);
+  assert.deepEqual(
+    groups.map((group) => [group.ownerName, group.payerName, group.basisPoints, group.payerShareBasisPoints, group.entries.map((entry) => entry.id)]).sort(),
+    [["Tim", "Joyce", 7000, 3000, ["on-joyces"]], ["Tim", "Tim", 7000, 7000, ["on-tims"]]].sort()
+  );
+  // A payer outside the two people Splits shares between cannot be added, so is not offered.
+  assert.deepEqual(run([candidate("elsewhere", { payerPersonId: "person-someone-else" }), candidate("unclear", { payerPersonId: null })], hist), []);
 });
 
 test("a group takes at most 200 entries and its total is of those entries; the biggest group is first", () => {

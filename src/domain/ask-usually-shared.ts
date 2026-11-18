@@ -105,7 +105,7 @@ export function buildUsuallySharedChange(request: AskUsuallySharedRequest, group
   const body = {
     groups: chosen.map((group) => ({
       splitGroupId: group.groupId === NON_GROUP_SPLIT_ID ? null : group.groupId,
-      payerShareBasisPoints: group.basisPoints,
+      payerShareBasisPoints: group.payerShareBasisPoints,
       entryIds: group.entries.map((entry) => entry.id)
     }))
   };
