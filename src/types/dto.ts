@@ -97,7 +97,37 @@ export interface AccountCheckpointDto {
   notices?: StatementNoticeDto[];
   computedBalanceMinor: number;
   deltaMinor: number;
+  // Why the two differ, when the ledger can tell (statement-difference.ts).
+  // Only on the pages that show it, and only when deltaMinor is not 0.
+  difference?: StatementDifferenceDto;
   note?: string;
+}
+
+export interface StatementDifferenceEntryDto {
+  entryId: string;
+  date: string;
+  description: string;
+  // Signed as the ledger counts it: money out is negative.
+  signedAmountMinor: number;
+}
+
+export interface StatementDifferenceDto {
+  // What no entry below accounts for; 0 when the difference is explained.
+  remainingMinor: number;
+  // Entries a later statement confirmed: the bank billed them next time.
+  billedNext?: {
+    totalMinor: number;
+    entryCount: number;
+    entries: StatementDifferenceEntryDto[];
+  };
+  // Unconfirmed entries in the period the statement does not list.
+  notOnStatement?: {
+    totalMinor: number;
+    entryCount: number;
+    // True when any single one of `entries` would close the gap.
+    oneOf: boolean;
+    entries: StatementDifferenceEntryDto[];
+  };
 }
 
 export interface SummaryAccountPillDto {
