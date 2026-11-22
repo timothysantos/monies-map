@@ -64,6 +64,31 @@ test("merchants agree when the same, one runs into the other, a shop word is sha
   assert.equal(merchantsAgree("Periplus Bali", "Starbucks Seminyak"), false);
 });
 
+// Wallet in Japan writes the shop, then its town and prefecture, as the
+// owner's Takayama taps of 22 Nov 2026 show (a space before a comma, the
+// shop in Japanese script). The town is not the shop: two shops in one town
+// never agree, the same shop does, and a bank's or receipt's name without
+// the town still agrees with it.
+test("merchants with Wallet's town and prefecture agree only on the shop", () => {
+  const suruga = "駿河屋 エブリフレスポ店, Takayama, Gifu";
+  const pen = "Pen Shop IMAI , Takayama, Gifu";
+  assert.equal(merchantsAgree(suruga, pen), false);
+  assert.equal(merchantsAgree(pen, "Kissa Yayoi, Takayama, Gifu"), false);
+  assert.equal(merchantsAgree("Lawson, Takayama, Gifu", "FamilyMart, Takayama, Gifu"), false);
+  // A comma inside a shop's own name (figures after it) is kept whole.
+  assert.equal(merchantsAgree("Toys, Games 24, Takayama", "Toys, Games 24, Takayama"), true);
+  assert.equal(merchantsAgree(pen, "Pen Shop IMAI , Takayama, Gifu"), true);
+  assert.equal(merchantsAgree(suruga, "駿河屋 エブリフレスポ店"), true);
+  assert.equal(merchantsAgree(pen, "PEN SHOP IMAI TAKAYAMA JP"), true);
+  assert.equal(merchantsAgree(pen, "Pen Shop Imai"), true);
+  assert.equal(merchantsAgree(suruga, ""), true);
+  // A second run at another shop in the same town never takes the held tap.
+  const held = tap({ merchant: suruga, receivedAt: "2026-11-22T08:19:00.000Z" });
+  const run = (overrides) => ({ personId: "person-tim", accountIds: ["acct-uob"], ...overrides });
+  assert.equal(findTapForSecondRun([held], run({ merchant: pen, now: "2026-11-22T08:21:00.000Z" })), null);
+  assert.equal(findTapForSecondRun([held], run({ merchant: suruga, now: "2026-11-22T08:21:00.000Z" }))?.id, "tap-1");
+});
+
 test("a second run completes the newest waiting tap of the same person on the same card inside the window", () => {
   const run = (overrides = {}) => ({ personId: "person-tim", accountIds: ["acct-uob"], merchant: "Periplus Bali", now: after(30), ...overrides });
   assert.equal(findTapForSecondRun([tap()], run())?.id, "tap-1");

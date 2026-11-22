@@ -44,19 +44,40 @@ export function canHoldTap(clientVersion: string | undefined | null) {
 
 const compact = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
+// A place after the shop: a word or a few, no figures ("Takayama", "Gifu").
+const PLACE_SEGMENT = /^[\p{L}\s.'-]{1,40}$/u;
+
+// The shop part of a Wallet merchant. Wallet abroad adds the town and
+// region after commas ("Pen Shop IMAI , Takayama, Gifu" in Japan); those
+// words are shared by every shop in town, so they never make two shops
+// agree. Text without such a tail is kept whole.
+export function walletShopName(value: string) {
+  const segments = value.split(",").map((segment) => segment.trim());
+  if (segments.length < 2 || !compact(segments[0])) {
+    return value;
+  }
+  const places = segments.slice(1);
+  return places.every((segment) => PLACE_SEGMENT.test(segment.normalize("NFKC")) && segment.split(/\s+/u).length <= 3)
+    ? segments[0]
+    : value;
+}
+
 // Two Wallet merchant texts for the same purchase. Either one blank counts
-// as agreeing (a second run may carry no merchant); otherwise the same text,
-// one running into the other, or a shop word in common.
+// as agreeing (a second run may carry no merchant); otherwise the same shop
+// (Wallet's town and region set aside), one running into the other, or a
+// shop word in common.
 export function merchantsAgree(left: string | undefined | null, right: string | undefined | null) {
-  const a = compact(left ?? "");
-  const b = compact(right ?? "");
+  const leftShop = walletShopName(left ?? "");
+  const rightShop = walletShopName(right ?? "");
+  const a = compact(leftShop);
+  const b = compact(rightShop);
   if (!a || !b) {
     return true;
   }
   if (a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)))) {
     return true;
   }
-  const match = matchMerchants(left ?? "", right ?? "");
+  const match = matchMerchants(leftShop, rightShop);
   return match.matched >= 1 && match.strength >= 0.5;
 }
 

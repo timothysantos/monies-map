@@ -146,6 +146,38 @@ for (const release of fixture.releases) {
     assert.equal((await savedEntry(db, own.payload.entryId)).account_name, "UOB One");
   });
 
+  // The owner's taps in Takayama on 22 Nov 2026, as Wallet named them: the
+  // shop in Japanese script or with a space before a comma, then the town and
+  // prefecture, on his UOB and Citibank cards (Wallet's own card names, which
+  // match no account by themselves).
+  test(`v${release.version}: a Takayama yen tap on a real card is saved on the card for other currencies, the shop kept as Wallet wrote it`, async (t) => {
+    const { db, fetchWorker } = await setUp(t);
+    for (const [merchant, amount, walletName, yen] of [
+      ["駿河屋 エブリフレスポ店, Takayama, Gifu", "JP¥10", "UOB", 10],
+      ["駿河屋 エブリフレスポ店, Takayama, Gifu", "JP¥10", "Citibank Singapore", 10],
+      ["駿河屋 エブリフレスポ店, Takayama, Gifu", "JP¥10", "UOB One Card", 10],
+      ["Pen Shop IMAI , Takayama, Gifu", "JP¥3,300", "Citibank Singapore", 3300]
+    ]) {
+      const { status, payload } = await post(fetchWorker, releaseBody(release, { amount, merchant, walletName }));
+      assert.equal(status, 200, `${merchant} ${walletName}: ${JSON.stringify(payload)}`);
+      assert.equal(payload.description, merchant);
+      assert.equal(payload.accountResolution, "foreign_currency");
+      assert.deepEqual(await savedEntry(db, payload.entryId), {
+        amount_minor: Math.max(1, Math.round((yen * 100) / JPY_PER_SGD)),
+        currency: "SGD",
+        original_amount_minor: yen * 100,
+        original_currency: "JPY",
+        account_name: "Citi Rewards"
+      }, `${merchant} ${walletName}`);
+    }
+    // Negative: a Takayama tap with no amount saves nothing as an entry.
+    const before = (await rows(db, "SELECT COUNT(*) AS n FROM transactions"))[0].n;
+    const blank = await post(fetchWorker, releaseBody(release, { amount: "", merchant: "駿河屋 エブリフレスポ店, Takayama, Gifu", walletName: "Citibank Singapore" }));
+    assert.equal(blank.status, release.readsHeld ? 202 : 400, JSON.stringify(blank.payload));
+    assert.equal((await rows(db, "SELECT COUNT(*) AS n FROM transactions"))[0].n, before);
+    await assertNoYenAsDollars(db);
+  });
+
   test(`v${release.version}: rupiah and Singapore dollar taps save as before`, async (t) => {
     const { db, fetchWorker } = await setUp(t);
     const rupiah = await post(fetchWorker, releaseBody(release, { amount: "IDR 159,000", merchant: "Digimap Icon Sanur" }));
@@ -179,6 +211,25 @@ for (const release of fixture.releases) {
     assert.equal((await rows(db, "SELECT COUNT(*) AS n FROM transactions"))[0].n, before);
   });
 }
+
+// v8 holds a blank tap. A purchase at another shop in the same town a
+// minute later is its own entry: Wallet's ", Takayama, Gifu" is not the shop,
+// so it never completes the held tap (before, the shared town words did).
+test("v8: a held Takayama tap is not completed by a purchase at another Takayama shop", async (t) => {
+  const { db, fetchWorker } = await setUp(t);
+  const v8 = fixture.releases.find((release) => release.version === 8);
+  const held = await post(fetchWorker, releaseBody(v8, { amount: "", merchant: "駿河屋 エブリフレスポ店, Takayama, Gifu", walletName: "Citibank Singapore" }));
+  assert.equal(held.status, 202, JSON.stringify(held.payload));
+  const other = await post(fetchWorker, releaseBody(v8, { amount: "JP¥3,300", merchant: "Pen Shop IMAI , Takayama, Gifu", walletName: "Citibank Singapore" }));
+  assert.equal(other.status, 200, JSON.stringify(other.payload));
+  assert.equal(other.payload.completedHeldTap, undefined);
+  assert.equal(other.payload.description, "Pen Shop IMAI , Takayama, Gifu");
+  assert.deepEqual(await rows(db, "SELECT merchant, status FROM waiting_taps"), [{ merchant: "駿河屋 エブリフレスポ店, Takayama, Gifu", status: "waiting" }]);
+  // The same shop's second run does complete it.
+  const same = await post(fetchWorker, releaseBody(v8, { amount: "JP¥10", merchant: "駿河屋 エブリフレスポ店, Takayama, Gifu", walletName: "Citibank Singapore" }));
+  assert.equal(same.payload.completedHeldTap, true, JSON.stringify(same.payload));
+  assert.deepEqual(await rows(db, "SELECT status FROM waiting_taps"), [{ status: "completed" }]);
+});
 
 test("a malformed or unknown amount, a refund or an unknown named card is still refused, and nothing is saved", async (t) => {
   const { db, fetchWorker } = await setUp(t);

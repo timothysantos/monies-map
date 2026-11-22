@@ -1214,7 +1214,10 @@ the Shortcut and the app):
   (`createEntryRecord`'s `withEntry`, `buildWaitingTapCompletedStatements`):
   the same request id (the Shortcut's answer), or (a backstop) a second run
   of the same person on the same card within `SECOND_TAP_WINDOW_SECONDS`
-  (600) with merchants that agree; `second_run_seconds` records it. A
+  (600) with merchants that agree (`merchantsAgree` compares the shop
+  only: Wallet abroad adds the town and region after commas, as in
+  `Pen Shop IMAI , Takayama, Gifu`, and those words never make two shops
+  agree); `second_run_seconds` records it. A
   request id whose tap a second run already finished returns that entry.
 - Entries' card posts `POST /api/waiting-taps/complete { tapId, amount,
   currency }` and `POST /api/waiting-taps/remove { tapId }` (behind Access
