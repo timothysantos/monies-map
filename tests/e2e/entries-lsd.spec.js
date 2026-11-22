@@ -194,8 +194,27 @@ test.describe("Entries totals: the lead and four pills", () => {
     expect(reset.height).toBeLessThan(44);
     const bar = await box(page.locator(".entries-filter-bar"));
     expect(bar.right).toBeLessThanOrEqual(1024);
-    // Two rows here: the search on its own row, then the three filters.
-    expect(bar.height).toBeLessThan(190);
+    // Three rows here (entries-filter-bar-fit.spec.js has the width proof):
+    // the search on its own row, then the wallet, category, type and trip
+    // filters, then From and To on a row of their own (3956e35a).
+    const rowTops = await page.locator(".entries-filter-bar").evaluate((barEl) => {
+      const top = (selector) => barEl.querySelector(selector)?.getBoundingClientRect().top ?? null;
+      return {
+        search: top(".search-filter-input"),
+        // The wrappers have no box of their own, so measure the controls.
+        wallet: top('[data-filter-target="wallet"] button'),
+        category: top('[data-filter-target="category"] button'),
+        type: top('[data-filter-target="type"] select, [data-filter-target="type"] button'),
+        days: top('[data-filter-target="days"]')
+      };
+    });
+    expect(rowTops.wallet).toBeGreaterThan(rowTops.search + 20);
+    expect(Math.abs(rowTops.category - rowTops.wallet)).toBeLessThan(2);
+    expect(Math.abs(rowTops.type - rowTops.wallet)).toBeLessThan(2);
+    expect(rowTops.days).toBeGreaterThan(rowTops.wallet + 20);
+    // Three rows stay a bar, not a wrapped pile (a fourth row would be about
+    // 60 px more).
+    expect(bar.height).toBeLessThan(260);
   });
 });
 
