@@ -71,9 +71,27 @@ import { buildEntriesFilterSearch } from "./entry-filter-params";
 import { formatFilterView } from "./copy/entry-filter-copy";
 import { onlyEntryOfAnswer, readCachedSplitGroups, useAskEntriesPage } from "./ask-data";
 import { AskCardRows, AskEntryCard, partnerName } from "./ask-entry-card";
-import { buildChipRow, findActiveItem } from "./ask-chips";
+import { buildChipRow, findActiveItem, withReceiptChips } from "./ask-chips";
 import { findThreadFocus, rememberThreadChildren, scrollThreadToNews } from "./ask-thread-scroll";
-import { prepareReceiptImage, readReceiptOnDevice } from "./ask-receipt-image";
+import { dropReceiptPhoto, fingerprintPhoto, hasReceiptPhoto, holdReceiptPhoto, requestReceiptMatch, runReceiptQueue } from "./ask-receipt-batch";
+import {
+  addReceiptPhotos,
+  allowAutoNext,
+  findReceipt,
+  finishReceipt,
+  newReceiptId,
+  nextReadyReceipt,
+  noteReceipt,
+  openReceipt,
+  openReceiptItem,
+  receiptProgress,
+  reopenReceipt,
+  retryReceipt,
+  reviewSkippedReceipts
+} from "./ask-receipt-queue";
+import { AskReceiptQueueList } from "./ask-receipt-queue-list";
+import { RECEIPT_BATCH_MAX } from "../domain/receipt-batch-config";
+import { RECEIPT_IMAGE_MAX_BYTES } from "../domain/request-limits";
 import { BottomActions } from "./ui/lead-support-detail";
 import { LimitHint } from "./limit-hint";
 import { ASK_MESSAGE_MAX, askMessageLength, limitState, receiptSizePlan } from "./input-limits";
@@ -295,6 +313,10 @@ function AskConversation({
   const setCardSlot = useCallback((value) => updateConversation((current) => ({ ...current, cardSlot: value })), [updateConversation]);
   const setComposerText = useCallback((value) => updateConversation((current) => ({ ...current, composerText: value })), [updateConversation]);
   const setPending = useCallback((value) => updateConversation((current) => ({ ...current, pending: value })), [updateConversation]);
+  // Receipts sent in one go (ask-receipt-queue.js): kept in the conversation,
+  // so a read that lands after the page has gone still lands here.
+  const receipts = conversation.receipts ?? null;
+  const setReceipts = useCallback((change) => updateConversation((current) => ({ ...current, receipts: change(current.receipts) })), [updateConversation]);
   // A "Waiting to send" line says "Sent" once its payment has gone (from
   // this page's send, now or before Ask opened), so the conversation never
   // says it is still waiting.
@@ -964,6 +986,11 @@ function AskConversation({
       return;
     }
     updateThreadItem(itemId, { status: "discarded" });
+    // Not now on a receipt's change card: left for later, on to the next.
+    if (item.receiptId) {
+      putReceiptOff(item.receiptId);
+      return;
+    }
     appendThread(threadItem("note", { text: note }));
   }
 
@@ -1065,6 +1092,11 @@ function AskConversation({
       }
       updateThreadItem(itemId, { status: "saved", result, choiceId: selectedChoiceId(item.change, item.choiceId) });
       afterChange(change, "save");
+      // A receipt's entry (or waiting tap) updated: the queue waits for Next.
+      if (item.receiptId) {
+        const entryId = item.receiptEntryId || (typeof result?.entryId === "string" ? result.entryId : "");
+        setReceipts((current) => finishReceipt(current, item.receiptId, "updated", entryId));
+      }
       const saved = unmatched ? askCopy.turn.change.savedTransferNone : askCopy.turn.change.saved[change.type];
       const category = change.rows.find((row) => row.field === "category" || row.field === "trip" || row.field === "name")?.after ?? "";
       // Usually shared: an entry that could not go on Splits is told, with why.
@@ -1526,56 +1558,238 @@ function AskConversation({
     }
   }
 
-  async function readReceipt(file) {
-    if (!file) {
+  // Receipt photos (docs/flows/ask-flow.md "Many receipts at once"): one or
+  // up to RECEIPT_BATCH_MAX in one go, from the photo picker, a drop, a
+  // paste or the desktop field. Each is read on its own, one after another
+  // (ask-receipt-batch.js), then checked against the ledger; the queue
+  // (ask-receipt-queue.js) lives in the conversation, never the photos.
+  async function readReceipts(fileList) {
+    const images = [...(fileList ?? [])].filter((file) => file && String(file.type ?? "").startsWith("image/"));
+    if (!images.length) {
+      if (fileList?.length) appendThread(threadItem("note", { text: askCopy.notes.photoFailed }));
       return;
     }
-    let prepared = null;
-    try {
-      prepared = await prepareReceiptImage(file);
-    } catch {
-      appendThread(threadItem("note", { text: askCopy.notes.photoFailed }));
-      return;
-    }
-    const url = URL.createObjectURL(prepared.blob);
-    objectUrlsRef.current.push(url);
-    // A large photo is always made smaller here; one still past the
-    // reader's cap is not sent, and is read on this device instead.
-    const size = receiptSizePlan(file.size ?? 0, prepared.blob.size);
-    const sizeNote = size.tooBig ? limitsCopy.photoTooBig : size.large ? limitsCopy.photoLarge : "";
+    const accepted = images.slice(0, RECEIPT_BATCH_MAX);
+    const photos = await Promise.all(accepted.map(async (file) => ({ id: newReceiptId(), fingerprint: await fingerprintPhoto(file), file })));
+    // The thumbnails show the photos as chosen, on this device only; they
+    // are revoked when the page goes.
+    const urls = accepted.map((file) => {
+      const url = URL.createObjectURL(file);
+      objectUrlsRef.current.push(url);
+      return url;
+    });
+    const many = accepted.length > 1;
     appendThread(
-      threadItem("me", { text: askCopy.you.photo }),
-      threadItem("photo", { url }),
-      ...(sizeNote ? [threadItem("note", { text: sizeNote })] : [])
+      threadItem("me", { text: many ? askCopy.you.photos(accepted.length) : askCopy.you.photo }),
+      many ? threadItem("photos", { urls }) : threadItem("photo", { url: urls[0] }),
+      ...(images.length > accepted.length ? [threadItem("note", { text: askCopy.receipts.tooMany(RECEIPT_BATCH_MAX, images.length) })] : [])
     );
-    setWorking("receipt");
-    setStatus(askCopy.notes.readingReceipt);
+    const before = new Set((store.read(conversationKey)?.receipts?.items ?? []).map((item) => item.id));
+    setReceipts((current) => addReceiptPhotos(current, photos.map(({ id, fingerprint }) => ({ id, fingerprint }))));
+    // Only photos the queue will read are held in memory.
+    const queued = store.read(conversationKey)?.receipts?.items ?? [];
+    for (const photo of photos) {
+      if (queued.find((item) => item.id === photo.id)?.status === "waiting") holdReceiptPhoto(photo.id, photo.file);
+    }
+    const single = queued.filter((item) => !before.has(item.id)).length === 1 && queued.length === 1;
+    if (single) {
+      setWorking("receipt");
+      setStatus(askCopy.notes.readingReceipt);
+    }
     try {
-      const result = size.tooBig ? { ok: false } : await requestReceiptRead({ image: prepared.blob });
-      let receipt = result.ok ? result.receipt : null;
-      // A receipt the reader read needs no note: the card's tag says so.
-      let note = "";
-      if (!receipt) {
-        receipt = await readReceiptOnDevice(prepared.blob, { today }).catch(() => null);
-        const readSomething = Boolean(receipt && (receipt.merchant.value || receipt.total.amountMinor || receipt.date.value));
-        note = readSomething ? askCopy.notes.receiptOnDevice : askCopy.notes.receiptUnavailable;
-        if (!readSomething) {
-          receipt = null;
-        }
-      }
-      const base = workingCard();
-      setCard(receipt ? applyReceiptRead(base, receipt, context) : base);
-      if (note) {
-        appendThread(threadItem("note", { text: note }));
-      }
+      await startReceiptQueue();
     } finally {
-      // The photo itself is not kept: only the thumbnail URL above, which
-      // is revoked when the page goes.
-      prepared = null;
-      setStatus("");
-      setWorking("");
+      if (single) {
+        setStatus("");
+        setWorking("");
+      }
     }
   }
+
+  function startReceiptQueue() {
+    const readQueue = () => store.read(conversationKey)?.receipts ?? null;
+    const isSingle = () => (readQueue()?.items?.length ?? 0) === 1;
+    return runReceiptQueue(conversationKey, {
+      read: readQueue,
+      update: setReceipts,
+      today,
+      householdCurrency: "SGD",
+      // Past the reader's cap even made smaller: read on this device only.
+      readReceipt: (blob) => (blob.size > RECEIPT_IMAGE_MAX_BYTES ? Promise.resolve({ ok: false, reason: "unreadable" }) : requestReceiptRead({ image: blob })),
+      match: (request) => requestReceiptMatch(request),
+      onPrepared: (_id, file, prepared) => {
+        if (!isSingle()) return;
+        // A large photo is always made smaller here; one still past the
+        // reader's cap is not sent, and is read on this device instead.
+        const size = receiptSizePlan(file.size ?? 0, prepared.blob.size);
+        const sizeNote = size.tooBig ? limitsCopy.photoTooBig : size.large ? limitsCopy.photoLarge : "";
+        if (sizeNote) {
+          appendThread(threadItem("note", { text: sizeNote }));
+          setStatus(askCopy.notes.readingReceipt);
+        }
+      },
+      onPrepareFailed: () => {
+        if (isSingle()) appendThread(threadItem("note", { text: askCopy.notes.photoFailed }));
+      },
+      // Said once for a go of several; one receipt has its own line below.
+      onDeviceNote: (reason) => {
+        if (!isSingle()) appendThread(threadItem("note", { text: reason === "network" ? askCopy.receipts.offline : askCopy.receipts.readOnDevice, tone: "calm" }));
+      }
+    });
+  }
+
+  // The card for a receipt read as a new entry: the card being filled
+  // (the receipt adds to it, as one receipt always did), or a new one. In a
+  // go of several, an unsaved card of the person's own is put aside first
+  // (Bring it back), never overwritten by a later receipt.
+  function cardForReceipt(item, { many }) {
+    const current = (store.read(conversationKey) ?? conversation).card;
+    const another = current?.status === "draft" && (current.receiptId || (many && !isCardEmpty(current)));
+    let base;
+    if (another) {
+      if (!current.receiptId) {
+        updateConversation((conversationNow) => ({ ...conversationNow, asideCard: conversationNow.card }));
+      }
+      setCardSlot((store.read(conversationKey) ?? conversation).thread.filter((entry) => entry.kind !== "status").length);
+      base = createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId });
+    } else {
+      base = workingCard();
+    }
+    return item.read ? { ...applyReceiptRead(base, item.read, context), receiptId: item.id } : { ...base, receiptId: item.id };
+  }
+
+  // A receipt's turn to be reviewed: its own card, a change card for the
+  // entry already there, or the question which entry it is.
+  function presentReceipt(item) {
+    const all = store.read(conversationKey)?.receipts?.items ?? [];
+    const many = all.length > 1;
+    setReceipts((current) => openReceipt(current, item.id));
+    setPending(null);
+    const match = item.match ?? { kind: "unchecked" };
+    if (match.kind === "one") {
+      presentReceiptMatch(item, match.option);
+      return;
+    }
+    if (match.kind === "several") {
+      setCard(null);
+      setPending({ kind: "receipt-which", receiptId: item.id, options: match.options });
+      return;
+    }
+    setCard(cardForReceipt(item, { many }));
+    // A receipt the reader read needs no note: the card's tag says so.
+    if (!many && item.read?.source === "ocr") appendThread(threadItem("note", { text: askCopy.notes.receiptOnDevice }));
+    if (match.kind === "unchecked") appendThread(threadItem("note", { text: askCopy.receipts.unchecked, tone: "calm" }));
+  }
+
+  function presentReceiptMatch(item, option) {
+    if (!option.change) {
+      // Already there with nothing to add: said, and on to the next one.
+      appendThread(threadItem("note", { text: askCopy.receipts.alreadyThere(option.description) }));
+      setReceipts((current) => ({ ...finishReceipt(current, item.id, "updated", option.kind === "entry" ? option.id : ""), autoNext: true }));
+      return;
+    }
+    // The receipt's card gives way to the change card; an unsaved card of
+    // the person's own is put aside (Bring it back).
+    updateConversation((current) => {
+      const own = current.card?.status === "draft" && !current.card.receiptId && !isCardEmpty(current.card) ? current.card : null;
+      return { ...current, card: null, ...(own ? { asideCard: own } : {}) };
+    });
+    appendThread(
+      ...(option.certified ? [threadItem("note", { text: askCopy.receipts.certified, tone: "calm" })] : []),
+      threadItem("change-draft", { change: option.change, status: "draft", confirmed: false, receiptId: item.id, receiptEntryId: option.kind === "entry" ? option.id : "" })
+    );
+  }
+
+  // Not this entry after all: the receipt becomes a new entry card.
+  function receiptIsNew(receiptId) {
+    const item = findReceipt(store.read(conversationKey)?.receipts, receiptId);
+    if (!item || working) return;
+    updateConversation((current) => ({
+      ...current,
+      pending: null,
+      thread: current.thread.map((entry) => (entry.kind === "change-draft" && entry.receiptId === receiptId && entry.status === "draft" ? { ...entry, status: "discarded" } : entry))
+    }));
+    setCard(cardForReceipt(item, { many: (store.read(conversationKey)?.receipts?.items?.length ?? 0) > 1 }));
+  }
+
+  function chooseReceiptEntry(receiptId, optionId) {
+    const pendingNow = (store.read(conversationKey) ?? conversation).pending;
+    const option = pendingNow?.kind === "receipt-which" ? pendingNow.options.find((candidate) => candidate.id === optionId) : null;
+    const item = findReceipt(store.read(conversationKey)?.receipts, receiptId);
+    if (!option || !item || working) return;
+    setPending(null);
+    presentReceiptMatch(item, option);
+  }
+
+  // Not now on a receipt: nothing saved, on to the next one; the list keeps
+  // it for "Back to the ones left".
+  function putReceiptOff(receiptId) {
+    setReceipts((current) => finishReceipt(current, receiptId, "skipped"));
+    appendThread(threadItem("note", { text: askCopy.receipts.notNowNote, tone: "calm" }));
+  }
+
+  function nextReceipt() {
+    const ready = nextReadyReceipt(store.read(conversationKey)?.receipts);
+    if (ready && !working) presentReceipt(ready);
+  }
+
+  function retryReceiptRead(receiptId) {
+    if (!hasReceiptPhoto(receiptId) || working) return;
+    setReceipts((current) => retryReceipt(current, receiptId));
+    void startReceiptQueue();
+  }
+
+  // Type it instead: a card of its own for the receipt that could not be read.
+  function typeReceiptInstead(receiptId) {
+    const item = findReceipt(store.read(conversationKey)?.receipts, receiptId);
+    if (!item || working) return;
+    dropReceiptPhoto(receiptId);
+    setReceipts((current) => openReceipt(current, receiptId));
+    setPending(null);
+    setCard(cardForReceipt({ ...item, read: null }, { many: true }));
+    window.requestAnimationFrame(() => descriptionRef.current?.focus());
+  }
+
+  // The queue moves on by itself at the start of a go and after Not now; a
+  // save waits for the person's Next, so its saved card stays in view. A
+  // receipt left open by a reload comes back to review; one that could not
+  // be read on its own (a go of one) leaves the card to be filled by hand,
+  // as before; a left-out receipt says why, once.
+  useEffect(() => {
+    if (!receipts?.items?.length || working) return;
+    const items = receipts.items;
+    const unsaid = items.find((item) => item.status === "duplicate" && !item.noted);
+    if (unsaid) {
+      const twinIndex = items.findIndex((item) => item.id === unsaid.duplicateOf?.itemId) + 1;
+      appendThread(threadItem("note", { text: unsaid.duplicateOf?.kind === "entry" ? askCopy.receipts.sameEntry(twinIndex) : askCopy.receipts.samePhoto(twinIndex) }));
+      setReceipts((current) => noteReceipt(current, unsaid.id));
+      return;
+    }
+    if (items.length === 1 && items[0].status === "failed") {
+      setReceipts((current) => finishReceipt(current, items[0].id, "skipped"));
+      setCard(workingCard());
+      appendThread(threadItem("note", { text: askCopy.notes.receiptUnavailable }));
+      return;
+    }
+    const open = openReceiptItem(receipts);
+    if (open) {
+      const shown = card?.receiptId === open.id
+        || thread.some((item) => item.kind === "change-draft" && item.receiptId === open.id && item.status !== "discarded")
+        || (pending?.kind === "receipt-which" && pending.receiptId === open.id);
+      if (!shown && open.read) presentReceipt(open);
+      return;
+    }
+    const ready = nextReadyReceipt(receipts);
+    if (ready && receipts.autoNext) presentReceipt(ready);
+  }, [receipts, working]); // eslint-disable-line react-hooks/exhaustive-deps -- runs on the queue's own changes
+
+  // A go that was still being read when the page went keeps reading on
+  // return (its photos are still in memory until the tab goes).
+  useEffect(() => {
+    if (receipts?.items?.some((item) => item.status === "waiting" && hasReceiptPhoto(item.id))) {
+      void startReceiptQueue();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 
   async function saveCard() {
     // Save belongs to the card only while it is the newest thing in the
@@ -1609,6 +1823,8 @@ function AskConversation({
         const saved = markCardSaved(current, { ...result, splitGroupId: createDraft.splitGroupId, habits: createDraft.habits });
         return { ...saved, saved: { ...saved.saved, splitGroupName: groupName, ...(link?.ok ? { transferLinkedEntryId: otherSideId } : {}) } };
       });
+      // A receipt's card: the queue waits for Next receipt.
+      if (sending.receiptId) setReceipts((current) => finishReceipt(current, sending.receiptId, "saved", result.entryId));
       const month = createDraft.date.slice(0, 7);
       onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
       if (result.splitExpenseId) {
@@ -1651,6 +1867,8 @@ function AskConversation({
     setPending(null);
     setCard(isAddMode ? createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId }) : null);
     appendThread(threadItem("note", { text: cashPadCopy.waitingSaved(savedWhat(item.label, areTotalsVisible)), waitingRequestId: item.requestId, waitingLabel: item.label }));
+    // A receipt's card waiting to send counts as saved; the next one follows.
+    if (sending.receiptId) setReceipts((current) => allowAutoNext(finishReceipt(current, sending.receiptId, "saved")));
   }
 
   // Discard on a draft that is not saved yet: the card leaves the chat and
@@ -1662,6 +1880,12 @@ function AskConversation({
     }
     setPending(null);
     setCard(isAddMode ? createAskCard(context, { mode: intent.mode === "expense" ? "expense" : "add", splitGroupId: intent.splitGroupId }) : null);
+    // Not now on one of several receipts: left for later, on to the next.
+    if (card.receiptId && (receipts?.items?.length ?? 0) > 1) {
+      putReceiptOff(card.receiptId);
+      return;
+    }
+    if (card.receiptId) setReceipts((current) => finishReceipt(current, card.receiptId, "skipped"));
     appendThread(threadItem("note", { text: askCopy.card.discarded, tone: "calm" }));
   }
 
@@ -1679,6 +1903,8 @@ function AskConversation({
       const month = card.fields.date.slice(0, 7);
       const hadSplit = Boolean(card.saved.splitExpenseId);
       setCard(markCardUndone(card));
+      // The receipt is back to review with its card.
+      if (card.receiptId) setReceipts((current) => reopenReceipt(current, card.receiptId));
       onEntryMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
       if (hadSplit) {
         onSplitMutation?.({ month, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
@@ -1771,13 +1997,17 @@ function AskConversation({
     try {
       if (navigator.clipboard?.read) {
         const items = await navigator.clipboard.read();
+        const photos = [];
         for (const item of items) {
           const type = item.types.find((itemType) => itemType.startsWith("image/"));
           if (type) {
             const blob = await item.getType(type);
-            await readReceipt(new File([blob], "pasted-receipt", { type }));
-            return;
+            photos.push(new File([blob], `pasted-receipt-${photos.length + 1}`, { type }));
           }
+        }
+        if (photos.length) {
+          await readReceipts(photos);
+          return;
         }
       }
       const text = navigator.clipboard?.readText ? (await navigator.clipboard.readText()).trim() : "";
@@ -1793,19 +2023,26 @@ function AskConversation({
   }
 
   function handleComposerPaste(event) {
-    const file = [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith("image/"));
-    if (file) {
+    const files = [...(event.clipboardData?.files ?? [])].filter((item) => item.type.startsWith("image/"));
+    if (files.length) {
       event.preventDefault();
-      void readReceipt(file);
+      void readReceipts(files);
     }
   }
 
   function handleDrop(event) {
-    const file = [...(event.dataTransfer?.files ?? [])].find((item) => item.type.startsWith("image/"));
-    if (file) {
+    const files = [...(event.dataTransfer?.files ?? [])].filter((item) => item.type.startsWith("image/"));
+    if (files.length) {
       event.preventDefault();
-      void readReceipt(file);
+      void readReceipts(files);
     }
+  }
+
+  // A file input's choice, taken before the input is cleared for the next one.
+  function takeChosenPhotos(event) {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    void readReceipts(files);
   }
 
   const params = useMemo(() => buildContextParams(searchParams, view.id, selectedMonth, selectedScope), [searchParams, selectedMonth, selectedScope, view.id]);
@@ -2003,6 +2240,16 @@ function AskConversation({
         navigate({ pathname: "/entries", search: `?${buildEntriesFilterSearch(active.filter).toString()}` });
       }
     },
+    // Receipts sent in one go (ask-receipt-queue.js).
+    nextReceipt,
+    backToLeftReceipts: () => setReceipts((current) => reviewSkippedReceipts(current)),
+    receiptIsNew,
+    chooseReceiptEntry,
+    receiptNotNow: (receiptId) => {
+      if (working) return;
+      setPending(null);
+      putReceiptOff(receiptId);
+    },
     // The unsaved card further up becomes the newest item again: it moves
     // below what was said since, and its chips and Save come back.
     backToCard: () => {
@@ -2020,7 +2267,8 @@ function AskConversation({
   // The header's back link: the phone's Ask page after the + or the receipt
   // button opened it (in the desktop panel the page beside it never left).
   const showHeaderBack = !inDock && isAddMode && Boolean(backPlan);
-  const chips = buildChipRow({
+  const receiptState = receipts?.items?.length ? receiptProgress(receipts) : null;
+  const chips = withReceiptChips(buildChipRow({
     active,
     intent,
     card,
@@ -2041,6 +2289,12 @@ function AskConversation({
     asideCard: conversation.asideCard ?? null,
     headerBack: showHeaderBack,
     justPaidFirst: justPaidLeads({ intent, config: padConfig }),
+    actions
+  }), {
+    progress: receiptState,
+    hasReady: Boolean(nextReadyReceipt(receipts)),
+    // A receipt being reviewed, or a question or a reply that is newer.
+    open: Boolean(openReceiptItem(receipts)) || Boolean(pending),
     actions
   });
   // Amount first on a phone (new-entry-pad.js): the empty new entry's $0.00
@@ -2149,7 +2403,7 @@ function AskConversation({
       takeText(handoff.text);
     }
     if (handoff.file) {
-      void readReceipt(handoff.file);
+      void readReceipts([].concat(handoff.file));
     }
     // While this conversation is open, the field's words go into the
     // message box, and an insight or a lead's "Ask about this" question is
@@ -2161,7 +2415,7 @@ function AskConversation({
       if ((snapshot.draftText || dock.hasQuestionHandoff()) && askConversationKey(snapshot.intent) === conversationKey) {
         const next = dock.takeHandoff();
         if (next.text) takeText(next.text);
-        if (next.file) void readReceipt(next.file);
+        if (next.file) void readReceipts([].concat(next.file));
         if (next.insight) void askAboutInsight(next.insight);
         if (next.question) void readSentence(next.question);
       }
@@ -2462,8 +2716,14 @@ function AskConversation({
             onShareChange={changeShare}
           />
         ) : null}
-        {card?.status === "draft" && !isCardEmpty(card) ? (
-          <BottomActions className="ask-plan-actions ask-card-discard" quietLabel={askCopy.card.discard} onQuiet={discardCard} quietDisabled={Boolean(working)} />
+        {card?.status === "draft" && (!isCardEmpty(card) || card.receiptId) ? (
+          <BottomActions
+            className="ask-plan-actions ask-card-discard"
+            // One of several receipts is put off for later, not thrown away.
+            quietLabel={card.receiptId && (receiptState?.total ?? 0) > 1 ? askCopy.receipts.notNow : askCopy.card.discard}
+            onQuiet={discardCard}
+            quietDisabled={Boolean(working)}
+          />
         ) : null}
         {card && card.status === "draft" && card.variant === "transfer" && transferMatch ? (
           <AskTransferMatchRows
@@ -2474,6 +2734,15 @@ function AskConversation({
           />
         ) : null}
         {card ? settledThread.slice(cardSlot).map((item) => <ThreadItem key={item.id} item={item} settled={settledIds.has(item.id)} answerProps={answerProps} />) : null}
+        {receiptState && receiptState.total > 1 ? (
+          <AskReceiptQueueList
+            receipts={receipts}
+            busy={Boolean(working)}
+            canRetry={hasReceiptPhoto}
+            onRetry={retryReceiptRead}
+            onTypeInstead={typeReceiptInstead}
+          />
+        ) : null}
         {statusItems.map((item) => <ThreadItem key={item.id} item={item} answerProps={answerProps} />)}
         {card?.saveError ? <p className="ask-note is-error" role="alert">{card.saveError}</p> : null}
         <AskWaitingList
@@ -2528,8 +2797,8 @@ function AskConversation({
         ) : null}
         <form className="ask-composer" onSubmit={submitComposer}>
           <span className="ask-sr-only" role="status" aria-live="polite">{voiceAnnouncement}</span>
-          <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
-          <input ref={attachInputRef} className="ask-file-input" type="file" accept="image/*" tabIndex={-1} aria-hidden="true" onChange={(event) => { void readReceipt(event.target.files?.[0]); event.target.value = ""; }} />
+          <input ref={cameraInputRef} className="ask-file-input" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={takeChosenPhotos} />
+          <input ref={attachInputRef} className="ask-file-input" type="file" accept="image/*" multiple tabIndex={-1} aria-hidden="true" onChange={takeChosenPhotos} />
           {/* One rounded field: the + glyph, the message box, the mic glyph.
               Send (or Save) outside it is the only filled button. */}
           <div className="ask-field">
@@ -2812,6 +3081,13 @@ function ThreadItem({ item, settled = false, answerProps }) {
     return (
       <figure className="ask-receipt-thumb">
         <img src={item.url} alt={askCopy.card.receiptThumb} />
+      </figure>
+    );
+  }
+  if (item.kind === "photos") {
+    return (
+      <figure className="ask-receipt-thumbs">
+        {item.urls.map((url, index) => <img key={url} src={url} alt={askCopy.receipts.photoAlt(index + 1)} />)}
       </figure>
     );
   }

@@ -360,6 +360,11 @@ function readChange(change) {
   };
 }
 
+/** A change card from another Ask route (a receipt's match), checked as a turn's is; null when unusable. */
+export function readServerChange(change) {
+  return readChange(change)?.change ?? null;
+}
+
 function isMatch(match) {
   return isObject(match) && (match.kind === "expense" || match.kind === "settlement") && isText(match.id) && isText(match.splitRecordId)
     && isText(match.transactionId) && isMinor(Math.abs(match.amountMinor)) && isMinor(Math.abs(match.splitAmountMinor));

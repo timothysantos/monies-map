@@ -28,7 +28,7 @@ import { isAskDockWide, useIsAskDockWide, useIsMobileLayout } from "./use-viewpo
  * is sent as if typed and answered at once, and `insight` (a Money
  * insights line's "Ask about this") is asked in the chat; both once the
  * conversation takes them.
- * @param {{ intent?: object, file?: File | null, text?: string, insight?: object | null, question?: string }} [options]
+ * @param {{ intent?: object, file?: File | File[] | null, text?: string, insight?: object | null, question?: string }} [options]
  */
 export function openAskDockNow({ intent = undefined, file = null, text = "", insight = null, question = "" } = {}) {
   const store = getAskDockStore();

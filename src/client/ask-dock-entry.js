@@ -30,12 +30,12 @@ export function forgetAskDockOpen() {
 // mounts and takes it: { open, file, options }. `open` is any way in (focus,
 // click, typing, a photo); `options` an openAskDock() call from the + or
 // receipt button. The words typed are read from the launcher's field itself.
-let pending = /** @type {{ open?: boolean, file?: File | null, options?: object } | null} */ (null);
+let pending = /** @type {{ open?: boolean, file?: File | File[] | null, options?: object } | null} */ (null);
 // Set by the dock once it is mounted: later openAskDock() calls go straight to it.
 export const askDockHandle = { open: /** @type {((options: object) => void) | null} */ (null) };
 let wake = /** @type {(() => void) | null} */ (null);
 
-/** @param {{ open?: boolean, file?: File | null, options?: object }} patch */
+/** @param {{ open?: boolean, file?: File | File[] | null, options?: object }} patch */
 export function requestAskDock(patch) {
   pending = { ...pending, ...patch };
   wake?.();

@@ -417,10 +417,52 @@ export function findActiveItem({ thread = [], card = null, cardSlot = 0, pending
   if (last?.kind === "insight-answer" && (!card || cardSlot < settled.length)) {
     return { kind: "insight-answer", itemId: last.id, links: last.answer?.links ?? [] };
   }
+  // A receipt's change card for the entry already there, still to answer.
+  if (last?.kind === "change-draft" && last.receiptId && last.status === "draft" && (!card || cardSlot < settled.length)) {
+    return { kind: "receipt-change", itemId: last.id, receiptId: last.receiptId };
+  }
   if (card && !settled.slice(cardSlot).some((item) => item.kind === "me")) {
     return { kind: "card" };
   }
   return null;
+}
+
+// The chip row while a receipt asks which entry it is (several fit): one
+// chip per entry ("Toast Box, 12 Nov, $7.60"), then It's a new one and Not
+// now. While a receipt's change card waits: It's a new one.
+export function buildReceiptChips({ focus, today, actions }) {
+  const copy = askCopy.receipts;
+  if (focus.kind === "receipt-change") {
+    return { prompt: "", items: /** @type {AskChip[]} */ ([{ key: "receipt-new", label: copy.newOne, onClick: () => actions.receiptIsNew(focus.receiptId) }]) };
+  }
+  return {
+    prompt: copy.which,
+    items: /** @type {AskChip[]} */ ([
+      ...focus.options.map((option) => {
+        const day = formatCardDate(option.date, today, { withYear: false });
+        return {
+          key: `receipt-option-${option.id}`,
+          label: option.kind === "tap" ? copy.whichTap(option.description, day) : copy.whichEntry(option.description, day, moneyInOwnCurrency(option.amountMinor ?? 0, option.currency)),
+          onClick: () => actions.chooseReceiptEntry(focus.receiptId, option.id)
+        };
+      }),
+      { key: "receipt-new", label: copy.newOne, onClick: () => actions.receiptIsNew(focus.receiptId) },
+      { key: "receipt-not-now", label: copy.notNow, onClick: () => actions.receiptNotNow(focus.receiptId) }
+    ])
+  };
+}
+
+// The queue's own chip, first and filled: Next receipt when one is read and
+// none is open, or "Back to the 2 left" once only receipts put off remain.
+export function withReceiptChips(row, { progress, hasReady, open, actions }) {
+  if (!progress?.total || open) return row;
+  const chip = hasReady
+    ? { key: "receipt-next", label: askCopy.receipts.next, primary: true, onClick: actions.nextReceipt }
+    : !progress.working && !progress.left && progress.skipped && progress.total > 1
+      ? { key: "receipt-back", label: askCopy.receipts.backToLeft(progress.skipped), primary: true, onClick: actions.backToLeftReceipts }
+      : null;
+  if (!chip) return row;
+  return { ...row, items: [chip, ...row.items.filter((item) => item.key !== chip.key).map((item) => ({ ...item, primary: false }))] };
 }
 
 // The chip row for the active item. The card's chips show only while it
@@ -446,6 +488,9 @@ export function buildChipRow({ active, intent, card, context, splitGroups = [], 
   }
   if (active.kind === "turn-question") {
     return buildTurnQuestionChips({ focus: active, actions });
+  }
+  if (active.kind === "receipt-which" || active.kind === "receipt-change") {
+    return buildReceiptChips({ focus: active, today, actions });
   }
   // A message that had no connection: Try again first and filled, then the
   // way back to an unsaved card or the usual chips.

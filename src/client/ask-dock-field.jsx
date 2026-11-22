@@ -2,7 +2,11 @@ import { Paperclip, Sparkles } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 
-const imageFrom = (files) => [...(files ?? [])].find((file) => file?.type?.startsWith("image/")) ?? null;
+// Every photo dropped, pasted or picked at once (Ask reads up to ten in one go).
+const imagesFrom = (files) => {
+  const images = [...(files ?? [])].filter((file) => file?.type?.startsWith("image/"));
+  return images.length ? images : null;
+};
 
 // The one-line "Ask, or drop a receipt..." field fixed at the bottom right
 // (design.md "Desktop Ask"). Focusing, clicking or typing in it opens Ask
@@ -19,12 +23,12 @@ const imageFrom = (files) => [...(files ?? [])].find((file) => file?.type?.start
  *   quietFocusRef?: { current: boolean },
  *   value?: string,
  *   onText?: (text: string) => void,
- *   onOpen: (file?: File | null) => void
+ *   onOpen: (file?: File[] | null) => void
  * }} props
  */
 export function AskDockField({ besideFab, remindersCount = 0, intentProps = undefined, inputRef, quietFocusRef = undefined, value = undefined, onText = undefined, onOpen }) {
   const takePhoto = (event, files) => {
-    const file = imageFrom(files);
+    const file = imagesFrom(files);
     if (file) {
       event.preventDefault();
       onOpen(file);
@@ -84,8 +88,9 @@ export function AskDockField({ besideFab, remindersCount = 0, intentProps = unde
           const picker = document.createElement("input");
           picker.type = "file";
           picker.accept = "image/*";
+          picker.multiple = true;
           picker.addEventListener("change", () => {
-            const file = picker.files?.[0];
+            const file = imagesFrom(picker.files);
             if (file) onOpen(file);
           });
           picker.click();

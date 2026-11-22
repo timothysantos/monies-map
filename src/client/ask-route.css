@@ -276,6 +276,60 @@
   transform: rotate(-2deg);
 }
 
+/* Several receipt photos in one go: a row of small thumbnails, then the
+   queue (ask-receipt-queue-list.jsx) with its progress line. */
+.ask-receipt-thumbs {
+  align-self: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+}
+
+.ask-receipt-thumbs img {
+  display: block;
+  width: 44px;
+  height: 58px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.ask-receipts {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ask-receipts-head {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ask-receipt-row-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ask-receipt-row-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
+.ask-receipt-row-state {
+  color: var(--muted);
+}
+
+.ask-receipt-row.is-failed .ask-receipt-row-state {
+  color: var(--pastel-rose-ink);
+}
+
 /* An answer (ask-answer-card.jsx): the shared LeadCard
    (ui/lead-support-detail.css); what the total counts stays a quiet line. */
 .ask-answer .lsd-subtitle {

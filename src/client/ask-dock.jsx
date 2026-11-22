@@ -21,7 +21,7 @@ const AskDockPanel = lazy(() => loadRouteModule("ask").then((module) => ({ defau
  * entry's way in; a lead's "Ask about this", with its `question` sent and
  * answered at once; a Money insights line's "Ask about this", with its
  * insight). The dock's code loads on this first call.
- * @param {{ intent?: object, file?: File | null, text?: string, insight?: object | null, question?: string }} [options]
+ * @param {{ intent?: object, file?: File | File[] | null, text?: string, insight?: object | null, question?: string }} [options]
  */
 export function openAskDock(options = {}) {
   if (askDockHandle.open) askDockHandle.open(options);

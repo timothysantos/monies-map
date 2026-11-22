@@ -22,6 +22,8 @@
 // button, a Shortcut link), at most three, the oldest finished one going
 // first.
 
+import { readStoredReceipts, receiptProgress } from "./ask-receipt-queue";
+
 export const ASK_CONVERSATION_STORAGE_KEY = "monies.askConversation.v1";
 const VERSION = 1;
 const MAX_SLOTS = 3;
@@ -59,6 +61,8 @@ export function isConversationInProgress(conversation) {
   }
   return Boolean(
     conversation.composerText?.trim()
+    // Receipts sent in one go and not all reviewed yet.
+    || (conversation.receipts?.items?.length && !receiptProgress(conversation.receipts).finished)
     || conversation.thread?.some((item) => item.kind === "me")
     || (card && card.status !== "saved" && (card.touched || card.origin))
   );
@@ -120,6 +124,9 @@ function toStored(conversation) {
     // An unsaved card New chat put aside, until Bring it back.
     ...(isObject(conversation.asideCard) ? { asideCard: { ...conversation.asideCard, status: "draft" } } : {}),
     ...(conversation.rulesNoted ? { rulesNoted: true } : {}),
+    // The receipt queue: what each receipt read validated and what happened
+    // to it, never a photo (ask-receipt-queue.js).
+    ...(isObject(conversation.receipts) ? { receipts: readStoredReceipts(conversation.receipts) ?? undefined } : {}),
     scrollFromBottom: Number.isFinite(conversation.scrollFromBottom) ? conversation.scrollFromBottom : 0
   });
 }
@@ -188,6 +195,9 @@ export function parseStoredConversations(text) {
           pending: isObject(slot.pending) ? slot.pending : null,
           ...(isObject(slot.asideCard) && isObject(slot.asideCard.fields) ? { asideCard: slot.asideCard } : {}),
           ...(slot.rulesNoted === true ? { rulesNoted: true } : {}),
+          // Read back after a reload: a receipt whose photo was still waiting
+          // or being read has lost it (only Type it instead is left).
+          ...(readStoredReceipts(slot.receipts, { reloaded: true }) ? { receipts: readStoredReceipts(slot.receipts, { reloaded: true }) } : {}),
           scrollFromBottom: Number.isFinite(slot.scrollFromBottom) ? slot.scrollFromBottom : 0
         };
       });
@@ -311,7 +321,7 @@ export function createAskConversationStore({ storage = null, maxStoredChars = DE
     // person had scrolled to is kept.
     leave(key, { scrollFromBottom = 0 } = {}) {
       return this.update(key, (current) => ({
-        ...filterThread(current, (item) => item.kind !== "photo" && item.kind !== "status"),
+        ...filterThread(current, (item) => item.kind !== "photo" && item.kind !== "photos" && item.kind !== "status"),
         scrollFromBottom: Math.max(0, Math.round(scrollFromBottom))
       }));
     },

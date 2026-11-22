@@ -218,7 +218,49 @@ export const askCopy = {
     shareTitleFallback: "Share on Splits"
   },
   you: {
-    photo: "Sent a receipt photo"
+    photo: "Sent a receipt photo",
+    photos: (count) => `Sent ${count} receipt photos`
+  },
+  // Many receipts at once (ask-receipt-queue.jsx): read one after another,
+  // reviewed one at a time on the usual card.
+  receipts: {
+    listLabel: "Receipts sent",
+    seeAll: (total) => `See all ${total}`,
+    seeFewer: "Show fewer",
+    reading: (index, total) => `Reading ${index} of ${total}…`,
+    position: (index, total) => `Receipt ${index} of ${total}`,
+    allDone: (total) => `All ${total} receipts done`,
+    untitled: (index) => `Receipt ${index}`,
+    photoAlt: (index) => `Receipt photo ${index}`,
+    states: {
+      waiting: "Waiting",
+      reading: "Reading…",
+      ready: "Ready",
+      open: "Now",
+      failed: "Couldn't read this one",
+      saved: "Saved",
+      updated: "Updated",
+      skipped: "Not now",
+      duplicate: "Left out"
+    },
+    tryAgain: "Try again",
+    typeInstead: "Type it instead",
+    next: "Next receipt",
+    notNow: "Not now",
+    tooMany: (max, count) => `That's ${count} photos. I'll read the first ${max}. Send the rest after these.`,
+    readOnDevice: "The receipt reader isn't available just now, so the rest are read on this phone. Check each total and date before you save.",
+    offline: "No connection, so the rest are read on this phone. Check each total and date. A save waits until you're back online.",
+    unchecked: "I couldn't check whether this is already in Entries, so it's a new entry here. Check Entries before you save.",
+    certified: "Its amount, date and shop stay as the bank statement has them.",
+    alreadyThere: (shop) => `${shop} is already in Entries with this receipt. Nothing to change.`,
+    samePhoto: (index) => (index ? `This is the same photo as receipt ${index}, so it's left out.` : "You sent this photo already, so it's left out."),
+    notNowNote: "Left for later. Nothing was saved.",
+    backToLeft: (count) => (count === 1 ? "Back to the one left" : `Back to the ${count} left`),
+    sameEntry: (index) => (index ? `This is the same purchase as receipt ${index}, already added, so it's left out.` : "This purchase is already added from a receipt, so it's left out."),
+    which: "This receipt looks like one of these entries. Which is it?",
+    whichEntry: (shop, day, amount) => `${shop}, ${day}, ${amount}`,
+    whichTap: (shop, day) => `${shop}, ${day}, no amount yet`,
+    newOne: "It's a new one"
   },
   notes: {
     readingSentence: "Reading your message…",
@@ -329,7 +371,9 @@ export const askCopy = {
         plan_link: (count) => `Link ${count === 1 ? "1 entry" : `${count} entries`} to this plan line`,
         trip_event: (count) => `${count === 1 ? "1 entry" : `${count} entries`} change trip or event`,
         trip_event_create: "New trip or event",
-        usually_shared: (count) => `${count === 1 ? "1 entry" : `${count} entries`} you usually share, not on Splits yet`
+        usually_shared: (count) => `${count === 1 ? "1 entry" : `${count} entries`} you usually share, not on Splits yet`,
+        receipt_match: "This receipt is already in Entries",
+        receipt_tap: "Apple Pay payment waiting for its amount"
       },
       fields: {
         amount: "Amount",
@@ -369,7 +413,9 @@ export const askCopy = {
         plan_link: "Link entries",
         trip_event: (count) => (count === 1 ? "Save" : `Change ${count} entries`),
         trip_event_create: "Make it",
-        usually_shared: (count) => `Add ${count}`
+        usually_shared: (count) => `Add ${count}`,
+        receipt_match: "Update this entry",
+        receipt_tap: "Add the amount"
       },
       saveTransferNone: "Save as a transfer",
       saveDefault: "Save",
@@ -387,7 +433,9 @@ export const askCopy = {
           ? `Put ${count === 1 ? "1 entry" : `${count} entries`} on ${trip}.`
           : `Took ${count === 1 ? "1 entry" : `${count} entries`} off ${count === 1 ? "its trip or event" : "their trip or event"}.`),
         trip_event_create: (_count, trip) => `Made ${trip}. Put entries on it from Entries, or ask me.`,
-        usually_shared: (count) => `Added ${count === 1 ? "1 entry" : `${count} entries`} to Splits.`
+        usually_shared: (count) => `Added ${count === 1 ? "1 entry" : `${count} entries`} to Splits.`,
+        receipt_match: "Updated from the receipt.",
+        receipt_tap: "Added the receipt's amount."
       },
       // Some of an Add could not go on Splits: the reasons, each once.
       someNotAdded: (count, reasons) => `${count === 1 ? "1 entry was" : `${count} entries were`} not added. ${reasons.join(" ")}`,
