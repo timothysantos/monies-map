@@ -1445,7 +1445,7 @@ test.describe("import flow", () => {
 
       await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
 
-      await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+      await expect(page.getByText(/read here in this browser|Reading .+ in this browser|read a second time|unclear amounts/)).toBeVisible({ timeout: 60_000 });
       await expectImportRowsReady(page, item.readyText, { timeout: 120_000 });
       await expectHsbcPreviewValues(page, item.values.map((value) => item.imagePdfValues?.[value] ?? value));
     }
@@ -1461,8 +1461,13 @@ test.describe("import flow", () => {
 
     await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
 
-    await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/read here in this browser|Reading .+ in this browser|read a second time|unclear amounts/)).toBeVisible({ timeout: 60_000 });
+    // The bar says how much of the picture has been read.
+    const bar = page.locator("progress.import-reading-progress");
+    await expect(bar).toBeVisible({ timeout: 60_000 });
+    await page.screenshot({ path: "test-results/import-clarity/reading-progress.png" }).catch(() => {});
     await expectImportRowsReady(page, "2 rows ready for review", { timeout: 120_000 });
+    await expect(bar).toHaveCount(0);
     await openStatementRowEditor(page);
     await expect(page.locator(".import-preview-table input").first()).toBeVisible();
     const previewValues = await readPreviewInputValues(page);

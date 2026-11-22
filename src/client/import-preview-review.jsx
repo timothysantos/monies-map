@@ -207,6 +207,7 @@ export function ImportPreviewReview({
           onRemapPreviewAccount={onRemapPreviewAccount}
           onCreateStatementAccount={onCreateStatementAccount}
           isActivityAccountOverride={isActivityAccountOverride}
+          accountGuessSource={accountGuessSource}
         />
       ) : null}
 

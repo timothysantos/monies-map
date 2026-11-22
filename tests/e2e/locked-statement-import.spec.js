@@ -311,9 +311,9 @@ test.describe("locked image statement (OCR after unlocking)", () => {
 
     await expect(dialog(page)).toBeVisible({ timeout: 30_000 });
     // The OCR engine has not started while the file is locked.
-    await expect(page.getByText(/Running private OCR in this browser/)).toHaveCount(0);
+    await expect(page.getByText(/read here in this browser|Reading .+ in this browser|read a second time|unclear amounts/)).toHaveCount(0);
     await typePassword(page, PASSWORD);
-    await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/read here in this browser|Reading .+ in this browser|read a second time|unclear amounts/)).toBeVisible({ timeout: 60_000 });
     await expectImportRowsReady(page, "3 rows ready for review", { timeout: 180_000 });
     await expect(dialog(page)).toHaveCount(0);
     expectNothingSentWith(sent, PASSWORD);
