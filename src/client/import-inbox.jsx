@@ -6,6 +6,7 @@ import { describeWaitingFileArrival } from "./waiting-files-model";
 import { buildInboxChecklistProgress, groupInboxFilesByOwner } from "./import-inbox-model";
 import { getPersonColourVars } from "./person-colour";
 import { ImportAskFirst } from "./import-batch-bar";
+import { ImportAccountCheck } from "./import-account-check";
 import { useFollowingFold } from "./use-following-fold";
 import { messages } from "./copy/en-SG";
 import { importMessages } from "./copy/en-SG-imports";
@@ -23,7 +24,8 @@ export function ImportInboxSection({
   inbox,
   intakeQueue = [],
   defaultOpen,
-  onSelectExpectedFile
+  onSelectExpectedFile,
+  onRemoveEntry = undefined
 }) {
   const [snoozedFiles, setSnoozedFiles] = useState(() => readSnoozedImportFiles());
   const snoozedFileIds = useMemo(() => new Set(Object.keys(snoozedFiles)), [snoozedFiles]);
@@ -104,6 +106,8 @@ export function ImportInboxSection({
               <span>{importMessages.inboxCurrentGuidance}</span>
             </div>
           )}
+
+          <ImportAccountCheck checks={inbox.accountChecks} onRemoveEntry={onRemoveEntry} />
 
           {requiredSessions.length ? (
             <div className="import-inbox-sessions">

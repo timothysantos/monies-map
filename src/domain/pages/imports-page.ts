@@ -6,6 +6,7 @@ import {
 } from "../app-repository";
 import { listWaitingFiles } from "../app-repository-waiting-files";
 import { buildImportInbox } from "../import-inbox";
+import { attachStatementDifferences } from "../statement-difference-projection";
 import type { ImportsPageDto, WaitingFileDto } from "../../types/dto";
 
 // Files sent to Monies Map that wait for review: names and arrival only,
@@ -34,7 +35,9 @@ export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage
   const [importBatches, splitMatches, accounts, waitingFiles] = await Promise.all([
     loadImportBatches(db, { includeOverlapDetails: false }),
     loadSplitMatchCandidates(db),
-    loadAccounts(db),
+    // The account check names the cause of a latest statement that is off;
+    // this reads nothing while every latest statement matches.
+    loadAccounts(db).then((loaded) => attachStatementDifferences(db, loaded, { latestOnly: true })),
     loadWaitingFileList(db)
   ]);
   const pendingSplitMatchCount = splitMatches.length;

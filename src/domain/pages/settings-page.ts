@@ -14,6 +14,7 @@ import {
 import { loadCategoryRuleBackfills } from "../app-repository-category-rule-backfill";
 import { loadPaymentWays } from "../app-repository-payment-ways";
 import { loadShortcutSettingsWithConnections } from "../app-repository-shortcuts";
+import { attachStatementDifferences } from "../statement-difference-projection";
 import type { SettingsPageDto } from "../../types/dto";
 
 // Build the route-owned Settings page DTO.
@@ -26,7 +27,9 @@ export async function buildSettingsPageDto(
   // Every read starts at once. The rule backfills, the Shortcut settings
   // and the payment ways also need what other reads return; they read
   // their own rows meanwhile and finish when those arrive.
-  const accountsRead = loadAccounts(db);
+  // Each saved statement that is off carries its cause (billed on the next
+  // statement, or an entry the bank never listed); no read while all match.
+  const accountsRead = loadAccounts(db).then((loaded) => attachStatementDifferences(db, loaded));
   const rulesRead = loadCategoryMatchRules(db);
   const householdRead = loadHousehold(db);
   const shortcutSettingsRead = loadShortcutSettingsWithConnections(

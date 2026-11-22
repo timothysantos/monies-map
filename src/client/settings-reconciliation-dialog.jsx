@@ -10,7 +10,7 @@ import { SheetDialog } from "./sheet-dialog";
 import { DetailRow, DetailRows, LeadCard, MetaChip } from "./ui/lead-support-detail";
 import { useDraftChanged } from "./use-draft-changed";
 import { useIsMobileLayout } from "./use-viewport";
-import { statementDifferenceTone } from "../domain/money-tone";
+import { describeStatementDifference } from "./statement-difference-model";
 
 // Checkpoint editing has its own dialog because it also owns history review
 // actions like export, compare, and delete.
@@ -30,8 +30,7 @@ export function SettingsReconciliationDialog({
   renderCheckpointDeleteAction,
   formatCheckpointMonth,
   formatCheckpointCoverage,
-  formatCheckpointBalanceLine,
-  formatCheckpointDelta
+  formatCheckpointBalanceLine
 }) {
   const isSheet = useIsMobileLayout();
   const isDirty = useDraftChanged(dialog, pickCheckpointFields);
@@ -133,7 +132,6 @@ export function SettingsReconciliationDialog({
           formatCheckpointMonth={formatCheckpointMonth}
           formatCheckpointCoverage={formatCheckpointCoverage}
           formatCheckpointBalanceLine={formatCheckpointBalanceLine}
-          formatCheckpointDelta={formatCheckpointDelta}
         />
       ) : null}
     </SheetDialog>
@@ -163,8 +161,7 @@ function SettingsCheckpointHistory({
   renderCheckpointDeleteAction,
   formatCheckpointMonth,
   formatCheckpointCoverage,
-  formatCheckpointBalanceLine,
-  formatCheckpointDelta
+  formatCheckpointBalanceLine
 }) {
   return (
     <section className="settings-account-history">
@@ -187,17 +184,20 @@ function SettingsCheckpointHistory({
         </div>
       ) : null}
       <div className="settings-account-list">
-        {visibleCheckpointHistory.map((item) => (
+        {visibleCheckpointHistory.map((item) => {
+          // Off, matched, or matched once next-statement billing is set aside.
+          const difference = describeStatementDifference(item);
+          return (
           <div key={item.month} className="settings-account-row settings-checkpoint-row">
             <div className="settings-account-main">
               <strong>{formatCheckpointMonth(item)}</strong>
               <p>{formatCheckpointCoverage(item)}</p>
               <p>{formatCheckpointBalanceLine(item)}</p>
               <div className="settings-checkpoint-delta-line">
-                <p className={`settings-account-health ${moneyToneClass(statementDifferenceTone(item.deltaMinor))}`}>
-                  {formatCheckpointDelta(item)}
+                <p className={`settings-account-health ${moneyToneClass(difference.tone)}`}>
+                  {difference.headline}
                 </p>
-                {item.deltaMinor !== 0 ? (
+                {difference.tone === "short" ? (
                   <>
                     <button
                       type="button"
@@ -218,6 +218,9 @@ function SettingsCheckpointHistory({
                   </>
                 ) : null}
               </div>
+              {difference.details.map((detail) => (
+                <p key={detail} className="settings-account-meta">{detail}</p>
+              ))}
               {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
             </div>
             <div className="settings-account-actions">
@@ -227,7 +230,8 @@ function SettingsCheckpointHistory({
               {renderCheckpointDeleteAction(item)}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

@@ -136,3 +136,68 @@ function account(overrides) {
     ...overrides
   };
 }
+
+test("each account gets a check line: balanced or not, how far its entries go, and the months still missing", () => {
+  const difference = {
+    remainingMinor: 0,
+    notOnStatement: {
+      totalMinor: -750,
+      entryCount: 1,
+      oneOf: false,
+      entries: [{ entryId: "txn-fish", date: "2026-07-27", description: "Lixin Fishball", signedAmountMinor: -750 }]
+    }
+  };
+  const inbox = buildImportInbox({
+    now: NOW,
+    pendingSplitMatchCount: 0,
+    recentImports: [],
+    accounts: [
+      account({
+        id: "uob-card", institution: "UOB", name: "UOB One Card", kind: "credit_card",
+        latestCheckpointMonth: "2026-07", latestCheckpointEndDate: "2026-07-12", latestCheckpointDeltaMinor: -750,
+        latestTransactionDate: "2026-08-16", latestImportAt: "2026-08-17T00:00:00.000Z",
+        checkpointHistory: [{ month: "2026-07", statementBalanceMinor: -73200, computedBalanceMinor: -73950, deltaMinor: -750, difference }]
+      }),
+      account({
+        id: "citi", institution: "Citibank", name: "Citi Rewards", kind: "credit_card",
+        latestCheckpointMonth: "2026-05", latestCheckpointEndDate: "2026-05-11", latestCheckpointDeltaMinor: 0,
+        latestTransactionDate: "2026-05-30", latestImportAt: "2026-08-17T00:00:00.000Z",
+        // An older month that is off never makes the account read as off.
+        checkpointHistory: [
+          { month: "2026-05", statementBalanceMinor: -100, computedBalanceMinor: -100, deltaMinor: 0 },
+          { month: "2026-04", statementBalanceMinor: -100, computedBalanceMinor: -500, deltaMinor: -400 }
+        ]
+      }),
+      account({ id: "new-bank", institution: "OCBC", name: "OCBC 360", latestImportAt: "2026-08-17T00:00:00.000Z" })
+    ]
+  });
+
+  assert.deepEqual(inbox.accountChecks.find((check) => check.accountId === "uob-card"), {
+    accountId: "uob-card",
+    accountName: "UOB One Card",
+    ownerLabel: "Tim",
+    kind: "credit_card",
+    balance: "off",
+    latestStatementMonth: "2026-07",
+    latestStatementEndDate: "2026-07-12",
+    deltaMinor: -750,
+    difference,
+    latestEntryDate: "2026-08-16",
+    missingStatementMonths: []
+  });
+  assert.deepEqual(inbox.accountChecks.find((check) => check.accountId === "citi"), {
+    accountId: "citi",
+    accountName: "Citi Rewards",
+    ownerLabel: "Tim",
+    kind: "credit_card",
+    balance: "matched",
+    latestStatementMonth: "2026-05",
+    latestStatementEndDate: "2026-05-11",
+    latestEntryDate: "2026-05-30",
+    missingStatementMonths: ["2026-06", "2026-07"]
+  });
+  const fresh = inbox.accountChecks.find((check) => check.accountId === "new-bank");
+  assert.equal(fresh.balance, "no_statement");
+  assert.equal(fresh.deltaMinor, undefined);
+  assert.deepEqual(fresh.missingStatementMonths, ["2026-07"]);
+});

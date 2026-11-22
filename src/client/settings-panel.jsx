@@ -1687,7 +1687,6 @@ export function SettingsPanel({
         formatCheckpointMonth={(item) => formatService.formatMonthLabel(item.month)}
         formatCheckpointCoverage={formatService.formatCheckpointCoverage}
         formatCheckpointBalanceLine={(item) => formatService.formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}
-        formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${formatService.money(Math.abs(item.deltaMinor))}`)}
       />
 
       {dismissTransfersConfirmOpen ? (

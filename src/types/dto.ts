@@ -1479,6 +1479,9 @@ export interface ImportInboxDto {
     pendingSplitMatchCount: number;
   };
   sessions: ImportInboxSessionDto[];
+  // One line per active bank or card account: is its latest statement in,
+  // does it balance, and how far its entries go.
+  accountChecks: ImportInboxAccountCheckDto[];
   reviewQueue: ImportInboxExpectedFileDto[];
   cleanup: ImportInboxCleanupDto;
 }
@@ -1504,6 +1507,25 @@ export interface ImportInboxAccountDto {
   latestCertifiedMonth?: string;
   latestActivityImportAt?: string;
   nextExpectedStatementMonth?: string;
+}
+
+export interface ImportInboxAccountCheckDto {
+  accountId: string;
+  accountName: string;
+  ownerLabel: string;
+  ownerPersonId?: string;
+  kind: string;
+  // "matched": the latest saved statement equals the entries up to its last
+  // day. "off": it does not. "no_statement": none saved yet.
+  balance: "matched" | "off" | "no_statement";
+  latestStatementMonth?: string;
+  latestStatementEndDate?: string;
+  // Ledger minus statement, only when off.
+  deltaMinor?: number;
+  difference?: StatementDifferenceDto;
+  latestEntryDate?: string;
+  // Statement months still to bring in, oldest first.
+  missingStatementMonths: string[];
 }
 
 export interface ImportInboxExpectedFileDto {

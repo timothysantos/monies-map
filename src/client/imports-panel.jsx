@@ -2265,6 +2265,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
+  // The account check's "Remove this entry": an entry the bank's statement
+  // never listed. A failed delete surfaces in the confirm; a failed refresh
+  // keeps the delete and shows the retryable notice.
+  async function handleRemoveUnlistedEntry(entry) {
+    await deleteDiagnosticLedgerEntry({ id: entry.entryId, description: entry.description });
+    runBackgroundRefresh(() => onRefresh({
+      broadcast: true,
+      invalidateEntries: true,
+      invalidateImports: true,
+      invalidateMonth: true,
+      invalidateSummary: true,
+      invalidateSplits: true
+    }));
+  }
+
   async function deleteDiagnosticLedgerEntry(row) {
     const response = await fetch("/api/entries/delete", {
       method: "POST",
@@ -2626,6 +2641,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             intakeQueue={intakeQueue}
             defaultOpen={isInboxOpenByDefault({ queuedCount: intakeQueue.length, isFileInReview: Boolean(preview) || isMappingNeeded })}
             onSelectExpectedFile={handleSelectExpectedFile}
+            onRemoveEntry={handleRemoveUnlistedEntry}
           />
         </>
       ) : null}

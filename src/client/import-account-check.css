@@ -1,0 +1,84 @@
+/* The Imports page's account check: one line per bank or card account.
+   Loaded with the Imports route (import-account-check.jsx). */
+
+.import-account-check {
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.import-account-check summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.import-account-check summary span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.import-account-check-list {
+  display: grid;
+  gap: 0;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-account-check-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(0, 1.1fr);
+  gap: 4px 14px;
+  align-items: baseline;
+  padding: 8px 0 8px 10px;
+  border-left: 3px solid var(--person-colour);
+  border-top: 1px solid var(--card-border);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.import-account-check-row:first-child {
+  border-top: 0;
+}
+
+.import-account-check-statement,
+.import-account-check-entries {
+  color: var(--muted);
+}
+
+.import-account-check-detail {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  color: var(--text);
+}
+
+.import-account-check-detail p {
+  margin: 0;
+}
+
+/* The confirm button's own "remove" look is a large ×; here it is a plain
+   text action in the line it belongs to. */
+.import-account-check-detail .import-account-check-remove {
+  margin-left: 0;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .import-account-check-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .import-account-check-name,
+  .import-account-check-balance {
+    grid-column: 1 / -1;
+  }
+}

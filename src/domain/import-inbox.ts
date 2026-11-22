@@ -2,6 +2,7 @@ import { nextMonthKey } from "./app-repository-helpers";
 import type {
   AccountDto,
   ImportBatchDto,
+  ImportInboxAccountCheckDto,
   ImportInboxAccountDto,
   ImportInboxDto,
   ImportInboxExpectedFileDto,
@@ -129,6 +130,7 @@ export function buildImportInbox({
       pendingSplitMatchCount
     },
     sessions,
+    accountChecks: activeStatementAccounts.map((account) => buildAccountCheck(account, expectedFiles)),
     reviewQueue,
     cleanup: {
       pendingSplitMatchCount,
@@ -167,6 +169,33 @@ function buildInboxAccount({
     nextExpectedStatementMonth: latestCertifiedMonth
       ? nextMonthKey(latestCertifiedMonth)
       : undefined
+  };
+}
+
+// Missing months come from the account's own expected files (before shared
+// statements are merged), so a card on a shared statement still lists them.
+function buildAccountCheck(
+  account: AccountDto,
+  expectedFiles: ImportInboxExpectedFileDto[]
+): ImportInboxAccountCheckDto {
+  const latestStatement = account.checkpointHistory?.find((statement) => statement.month === account.latestCheckpointMonth);
+  const isOff = Boolean(account.latestCheckpointMonth) && Number(account.latestCheckpointDeltaMinor ?? 0) !== 0;
+  return {
+    accountId: account.id,
+    accountName: account.name,
+    ownerLabel: account.ownerLabel,
+    ...(account.ownerPersonId ? { ownerPersonId: account.ownerPersonId } : {}),
+    kind: account.kind,
+    balance: !account.latestCheckpointMonth ? "no_statement" : isOff ? "off" : "matched",
+    ...(account.latestCheckpointMonth ? { latestStatementMonth: account.latestCheckpointMonth } : {}),
+    ...(account.latestCheckpointEndDate ? { latestStatementEndDate: account.latestCheckpointEndDate } : {}),
+    ...(isOff ? { deltaMinor: Number(account.latestCheckpointDeltaMinor) } : {}),
+    ...(isOff && latestStatement?.difference ? { difference: latestStatement.difference } : {}),
+    ...(account.latestTransactionDate ? { latestEntryDate: account.latestTransactionDate } : {}),
+    missingStatementMonths: expectedFiles
+      .filter((file) => file.accountId === account.id && file.sourceType === "pdf_statement" && file.periodMonth)
+      .map((file) => file.periodMonth as string)
+      .sort()
   };
 }
 
