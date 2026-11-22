@@ -109,6 +109,9 @@ a doc here in the same change.
 - [`audits/waiting-taps.md`](audits/waiting-taps.md): an Apple Pay payment
   with no amount (Shortcut v8): research, rules and config values, privacy,
   cost, write boundary, and what a device test would settle.
+- [`audits/trip-ledger-import.md`](audits/trip-ledger-import.md): the
+  owner-run trip ledger import (receipts from a trip): matching, the plan of
+  existing-command steps, privacy, write boundaries, apply and undo.
 - [`audits/cash-entry-route.md`](audits/cash-entry-route.md): the cash entry
   routes and the Log cash Shortcut (identity, limits, writes, privacy).
 - [`audits/receipt-batch.md`](audits/receipt-batch.md): many receipts at

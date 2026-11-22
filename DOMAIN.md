@@ -2608,6 +2608,22 @@ Code:
   `src/domain/trip-page-projection.ts` (the page's grouped read, a day's
   entries) behind `GET /api/trip-page?trip=<id>[&day=YYYY-MM-DD]`
 
+### Trip Ledger Import
+
+A one-off, owner-run import of a trip ledger: another tool's list of a
+trip's photographed receipts (trip day, shop, items, amount in the trip's
+currency, an SGD figure, who paid, what the other person owes). Not a
+screen and not a route (`scripts/trip-ledger-import.mjs`,
+`docs/audits/trip-ledger-import.md`). It matches each purchase to an entry
+(`certain`, `likely`, `ambiguous`, `none`) and proposes only existing
+commands: category, note, Add to Splits and the trip for a matched entry
+(a statement-certified one keeps its bank facts); a new Foreign Currency
+Estimate for an owner-paid purchase with no entry; a Splits expense paid by
+the other person for theirs. A purchase whose amount, payer, sharing,
+category or wallet is not settled is held with a question, never guessed.
+Each run's steps are `audit_events` rows (`trip_ledger_import`, keyed by
+the import key) that its undo reads back.
+
 ### Split Batch
 
 An optional archival or time-boxing container inside a split group. It allows
