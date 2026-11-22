@@ -221,7 +221,10 @@ async function readReceiptFixture(name) {
 test("the on-device reader uses the shared receipt reader with the household currency", async () => {
   const text = await readReceiptFixture("sg-cafe.txt");
   const receipt = readReceiptTextOnDevice(text, { today: RECEIPT_TODAY });
-  assert.deepEqual(receipt, readReceiptOcrText(text, { today: RECEIPT_TODAY, defaultCurrency: "SGD" }));
+  // With the service and GST lines after the subtotal, so its items can be
+  // checked against the total (receipt-items.ts).
+  assert.deepEqual(receipt, readReceiptOcrText(text, { today: RECEIPT_TODAY, defaultCurrency: "SGD", withAdjustments: true }));
+  assert.deepEqual(receipt.lineItems.slice(-2).map((item) => [item.description, item.amountMinor]), [["Svc Chg 10%", 195], ["GST 9%", 193]]);
   assert.equal(receipt.source, "ocr");
   assert.equal(receipt.merchant.value, "Kopi & Crumb Cafe");
   assert.deepEqual(receipt.total, { amountMinor: 2338, currency: "SGD", confidence: "medium" });
