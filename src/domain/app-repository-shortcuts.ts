@@ -12,6 +12,7 @@ import {
   type StoredShortcutConnection
 } from "./shortcut-connections";
 import type { AccountDto, ShortcutConnectionDto, ShortcutSettingsDto } from "../types/dto";
+import { isPassThroughWalletName } from "./wallet-pass-through-config";
 
 export { buildDefaultShortcutAccountPriorityIds };
 export const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
@@ -358,6 +359,11 @@ export function selectShortcutAccount(
   const foreignCurrencyAccount = options.foreignCurrencyAccountId
     ? activeAccounts.find((account) => account.id === options.foreignCurrencyAccountId)
     : undefined;
+  // A pass-through Wallet card (Amaze) is charged to the card behind it in
+  // every currency, so its name alone decides, not the amount's currency.
+  if (foreignCurrencyAccount && isPassThroughWalletName(input.walletName)) {
+    return { account: toShortcutAccountSelection(foreignCurrencyAccount, "foreign_currency") };
+  }
   if (
     foreignCurrencyAccount
     && input.amountCurrency

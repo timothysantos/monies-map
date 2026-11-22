@@ -69,6 +69,36 @@ test("the card for other currencies never overrides a named card, a Wallet card 
   assert.equal(selectShortcutAccount(accounts, ["lady"], { walletName: "Bali Racquet Society", amountCurrency: "IDR" }, { foreignCurrencyAccountId: "old" }).account?.id, "lady");
 });
 
+// Amaze is a pass-through card: every Amaze payment is charged to the card
+// behind it, which is the card the person chose for other currencies, in
+// any currency (including Singapore dollars, which used to fall to the
+// first card).
+test("a Wallet card that is a pass-through card goes to the card chosen for other currencies, in any currency", () => {
+  const options = { foreignCurrencyAccountId: "rewards" };
+  for (const walletName of ["Amaze", "amaze", "AMAZE CARD", "Amaze Card 7741", "Amaze-Card"]) {
+    for (const amountCurrency of ["SGD", "JPY", "IDR", undefined]) {
+      assert.deepEqual(
+        selectShortcutAccount(accounts, ["lady"], { walletName, amountCurrency }, options).account,
+        { id: "rewards", name: "Citi Rewards", currency: "SGD", resolution: "foreign_currency" },
+        `${walletName} ${amountCurrency}`
+      );
+    }
+  }
+});
+
+test("a pass-through name changes nothing without the setting, and other names keep their behaviour", () => {
+  // No other-currencies card, or one no longer active: as before.
+  assert.equal(selectShortcutAccount(accounts, ["lady"], { walletName: "Amaze", amountCurrency: "SGD" }).account?.id, "lady");
+  assert.equal(selectShortcutAccount(accounts, ["lady"], { walletName: "Amaze", amountCurrency: "SGD" }, { foreignCurrencyAccountId: "old" }).account?.id, "lady");
+  const options = { foreignCurrencyAccountId: "rewards" };
+  // A real card name in dollars is that card; an unknown name in dollars is the first card.
+  assert.equal(selectShortcutAccount(accounts, ["miles"], { walletName: "UOB LADYS CARD", amountCurrency: "SGD" }, options).account?.id, "lady");
+  assert.equal(selectShortcutAccount(accounts, ["lady"], { walletName: "Amazement Park", amountCurrency: "SGD" }, options).account?.id, "lady");
+  assert.equal(selectShortcutAccount(accounts, ["lady"], { walletName: "Merchant transaction", amountCurrency: "SGD" }, options).account?.id, "lady");
+  // A card the Shortcut names still wins over a pass-through Wallet name.
+  assert.equal(selectShortcutAccount(accounts, ["lady"], { accountName: "Citi Miles", walletName: "Amaze", amountCurrency: "SGD" }, options).account?.id, "miles");
+});
+
 function account(id, name, institution, isActive) {
   return {
     id,

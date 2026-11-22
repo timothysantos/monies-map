@@ -123,6 +123,29 @@ for (const release of fixture.releases) {
     await assertNoYenAsDollars(db);
   });
 
+  test(`v${release.version}: an Amaze tap in dollars or in yen lands on the card behind Amaze; a real card name stays on that card`, async (t) => {
+    const { db, fetchWorker } = await setUp(t);
+    // Wallet writes "$12.34" when the amount is in the card's own currency
+    // (home, or SGD chosen on a terminal abroad): still the card behind Amaze.
+    const dollars = await post(fetchWorker, releaseBody(release, { amount: "$12.34", merchant: "Kopitiam" }));
+    assert.equal(dollars.status, 200, JSON.stringify(dollars.payload));
+    assert.deepEqual(await savedEntry(db, dollars.payload.entryId), {
+      amount_minor: 1234, currency: "SGD", original_amount_minor: null, original_currency: null,
+      // v1 sends no Wallet card name at all, so the server cannot know the
+      // card is Amaze and its dollar tap goes to the first card (a yen tap
+      // still reaches the card behind it by its currency, below).
+      account_name: release.keys.includes("name") ? "Citi Rewards" : "UOB One"
+    });
+    const yen =await post(fetchWorker, releaseBody(release, { amount: "JP¥965", merchant: "FamilyMart Shibuya", walletName: "Amaze Card" }));
+    assert.equal(yen.status, 200, JSON.stringify(yen.payload));
+    assert.deepEqual(await savedEntry(db, yen.payload.entryId), {
+      amount_minor: Math.round(96500 / JPY_PER_SGD), currency: "SGD", original_amount_minor: 96500, original_currency: "JPY", account_name: "Citi Rewards"
+    });
+    // Negative: another card's own name in dollars is that card.
+    const own = await post(fetchWorker, releaseBody(release, { amount: "$5.00", merchant: "Toast Box", walletName: "UOB One" }));
+    assert.equal((await savedEntry(db, own.payload.entryId)).account_name, "UOB One");
+  });
+
   test(`v${release.version}: rupiah and Singapore dollar taps save as before`, async (t) => {
     const { db, fetchWorker } = await setUp(t);
     const rupiah = await post(fetchWorker, releaseBody(release, { amount: "IDR 159,000", merchant: "Digimap Icon Sanur" }));

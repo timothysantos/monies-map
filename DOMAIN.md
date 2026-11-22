@@ -3501,8 +3501,19 @@ Code and storage:
 - `fx_rates` (the last rate per currency pair, a cache, not household data)
 - `src/domain/wallet-currency-config.ts` (the currency signs a Wallet amount
   carries: `JP¥965`, `¥965`, `€12.50`; a three-letter code reads as itself)
+- `src/domain/wallet-pass-through-config.ts` (`passThroughWalletNames`:
+  Wallet card names that are a Pass-through Card)
 
 Important distinctions:
+- A Pass-through Card (Amaze) holds no money of its own: every payment on it is
+  charged to the card behind it. A Wallet card name in `passThroughWalletNames`
+  (case-insensitive, with a suffix like "Amaze Card" allowed) saves to the
+  person's existing "card for other currencies" setting in every currency,
+  including a bare `$` (the card's own currency). That setting is the card
+  behind it (assumption: no new setting). Without that setting, or with a card
+  no longer active, the tap goes where it did before; any other name that is
+  not one of the household's cards keeps today's rule (the first card, or the
+  card for other currencies when the amount is in another currency).
 - The account's currency stays the ledger's currency; an entry is never saved
   in a currency its account does not use.
 - The Wallet amount's currency is read from its sign or code. A sign the

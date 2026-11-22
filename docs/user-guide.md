@@ -3341,6 +3341,11 @@ open it for you to check.
 
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
+If you pay with an Amaze card, every Amaze payment is saved on the card
+behind it, whether you pay in dollars or in another currency. Behind it means
+the card you chose for other currencies in the same settings. If you haven't
+chosen one, Amaze payments go to the first card in your list, as before.
+
 After a purchase, a notification shows the merchant, amount and account, and
 the new entry opens on [Ask](#ask) as a saved card, marked **Apple Pay ·
 provisional**. If it landed in
