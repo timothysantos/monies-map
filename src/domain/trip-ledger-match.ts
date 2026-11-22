@@ -7,6 +7,14 @@
 // paid and what the other person owes. This module is pure: no storage, no
 // network, no AI. It never guesses an amount or a share; a purchase whose
 // amount, payer or sharing is not settled is held, not matched.
+import {
+  RECEIPT_MATCH_DAYS_AFTER,
+  RECEIPT_MATCH_DAYS_BEFORE,
+  RECEIPT_MATCH_ESTIMATE_MIN_MINOR,
+  RECEIPT_MATCH_ESTIMATE_OVER,
+  RECEIPT_MATCH_ESTIMATE_UNDER
+} from "./receipt-batch-config";
+import { shopsAgree } from "./receipt-match";
 import { isCardMerchantPrefixMatch, readCardForeignAmountMinor } from "./statement-row-matching";
 
 export type TripLedgerConfidence = "certain" | "likely" | "ambiguous" | "none";
@@ -197,18 +205,24 @@ export interface TripLedgerMatchOptions {
   daysAfter: number;
 }
 
+// The day window and the amount room are Receipt Match's own
+// (receipt-batch-config.ts), so a receipt read in Ask and a ledger line
+// imported here agree on which entry is the same purchase.
 export const DEFAULT_TRIP_LEDGER_MATCH_OPTIONS: TripLedgerMatchOptions = {
   foreignCurrency: "JPY",
   tripClockAheadHours: 1,
-  daysBefore: 1,
-  daysAfter: 3
+  daysBefore: RECEIPT_MATCH_DAYS_BEFORE,
+  daysAfter: RECEIPT_MATCH_DAYS_AFTER
 };
 
-// The card's amount can be a few percent off the ledger's figure: the
-// ledger's SGD may be an estimate at a reference rate, and the card adds
-// its own rate and fees. Same room as a foreign currency estimate.
-const HOME_AMOUNT_ROOM_SHARE = 0.05;
-const HOME_AMOUNT_ROOM_MIN_MINOR = 10;
+// The entry's SGD amount against the ledger's SGD figure: the Foreign
+// Currency Estimate room (the card's fees only add, so at most 5% over and
+// 2% under, at least 10 cents either way).
+export function isHomeAmountFit(entryMinor: number, ledgerMinor: number) {
+  const room = (share: number) => Math.max(Math.round(ledgerMinor * share), RECEIPT_MATCH_ESTIMATE_MIN_MINOR);
+  const over = entryMinor - ledgerMinor;
+  return over <= room(RECEIPT_MATCH_ESTIMATE_OVER) && -over <= room(RECEIPT_MATCH_ESTIMATE_UNDER);
+}
 // Two candidates within this many points of each other are a tie.
 const TIE_MARGIN = 10;
 
@@ -385,9 +399,9 @@ function scoreCandidate(line: TripLedgerLine, entry: TripLedgerCandidateEntry, p
   }
   const foreignExact = entryForeign !== null && line.foreignMinor !== null && entryForeign === line.foreignMinor;
   const homeDiff = Math.abs(entry.amountMinor - line.homeMinor);
-  const room = Math.max(Math.round(line.homeMinor * HOME_AMOUNT_ROOM_SHARE), HOME_AMOUNT_ROOM_MIN_MINOR);
+  const room = Math.max(Math.round(line.homeMinor * RECEIPT_MATCH_ESTIMATE_OVER), RECEIPT_MATCH_ESTIMATE_MIN_MINOR);
   const homeExact = homeDiff <= 1;
-  if (!foreignExact && homeDiff > room) return null;
+  if (!foreignExact && !isHomeAmountFit(entry.amountMinor, line.homeMinor)) return null;
 
   let score = 0;
   if (foreignExact) {
@@ -398,7 +412,7 @@ function scoreCandidate(line: TripLedgerLine, entry: TripLedgerCandidateEntry, p
     reasons.push("Same SGD amount.");
   } else {
     score += 25 - Math.round((15 * homeDiff) / room);
-    reasons.push(`SGD amount ${homeDiff} cents apart (within ${room}).`);
+    reasons.push(`SGD amount ${homeDiff} cents apart (within the estimate room).`);
   }
   const name = merchantSimilarity(line.merchant, entry.description);
   if (name === "strong") {
@@ -434,6 +448,9 @@ const words = (value: string) => value.toLowerCase().replace(PAYMENT_PREFIXES, "
 // "strong": one name starts the other ("AMAZE*CORNERMART" and "Cornermart
 // station") or the first words agree; "weak": a shared word of 4+ letters.
 export function merchantSimilarity(ledgerMerchant: string, entryDescription: string): "strong" | "weak" | "none" {
+  if (!ledgerMerchant.trim() || !entryDescription.trim()) return "none";
+  // Receipt Match's own test first, so both agree on what is the same shop.
+  if (shopsAgree(ledgerMerchant, entryDescription)) return "strong";
   if (isCardMerchantPrefixMatch(entryDescription, ledgerMerchant)) return "strong";
   const left = compact(ledgerMerchant);
   const right = compact(entryDescription);

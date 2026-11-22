@@ -10,8 +10,10 @@
 //   has no place in the household's list, or whose wallet is unknown is
 //   held with a question, never imported as a guess;
 // - no category, person or wallet is invented.
+import { shopsAgree } from "./receipt-match";
 import {
   addDays,
+  daysBetweenIso,
   matchTripLedger,
   readLineHold,
   type TripLedgerCandidateEntry,
@@ -34,6 +36,8 @@ export interface TripLedgerSnapshot {
     splitExpenseId: string | null;
     externalReference: string | null;
   })[];
+  // Apple Pay taps still waiting for their amount (DOMAIN.md "Waiting Tap").
+  waitingTaps: { id: string; personId: string; accountId: string; merchant: string; date: string }[];
 }
 
 // The owner's answers, read from a file next to the export. Every field is
@@ -41,8 +45,9 @@ export interface TripLedgerSnapshot {
 export interface TripLedgerAnswers {
   // Ledger category -> household category name.
   categories?: Record<string, string>;
-  // Ledger funding card text -> account id.
-  wallets?: Record<string, string>;
+  // Ledger funding card text -> account id, or { accountId, certain: false }
+  // when the owner only thinks it is that wallet.
+  wallets?: Record<string, string | { accountId: string; certain?: boolean }>;
   // Lines to leave out entirely.
   skip?: string[];
   // Lines the ledger itself marks provisional that the owner accepts as is.
@@ -143,6 +148,8 @@ export interface TripLedgerLinePlan {
   // Plain words, one per change.
   changes: string[];
   holdReasons: string[];
+  // The wallet the owner named but is not sure of ("I think"): its name.
+  walletNotCertain: string | null;
   stepIds: string[];
 }
 
@@ -289,11 +296,12 @@ export function buildTripLedgerPlan(input: {
 
   // Wallets: the card the ledger names, among the payer's own wallets.
   const unknownWallets = new Map<string, string[]>();
-  const walletFor = (line: TripLedgerLine, payerId: string): string | null => {
+  const walletFor = (line: TripLedgerLine, payerId: string): { accountId: string; certain: boolean } | null => {
     const card = line.fundingCard ?? "";
-    const answered = answers.wallets?.[card];
-    if (answered) {
-      if (!snapshot.accounts.some((account) => account.id === answered)) throw new Error(`The answer for "${card}" names an unknown wallet.`);
+    const raw = answers.wallets?.[card];
+    if (raw) {
+      const answered = typeof raw === "string" ? { accountId: raw, certain: true } : { accountId: raw.accountId, certain: raw.certain !== false };
+      if (!snapshot.accounts.some((account) => account.id === answered.accountId)) throw new Error(`The answer for "${card}" names an unknown wallet.`);
       return answered;
     }
     const cardWords = walletWords(card);
@@ -304,7 +312,7 @@ export function buildTripLedgerPlan(input: {
         const accountWords = walletWords(account.name);
         return accountWords.length > 0 && accountWords.every((word) => cardWords.includes(word));
       });
-    return fits.length === 1 ? fits[0].id : null;
+    return fits.length === 1 ? { accountId: fits[0].id, certain: true } : null;
   };
 
   const skip = new Set(answers.skip ?? []);
@@ -349,6 +357,7 @@ export function buildTripLedgerPlan(input: {
       matchReasons: [],
       outcome: "held",
       statementCertified: false,
+      walletNotCertain: null,
       changes: [],
       holdReasons: [],
       stepIds: []
@@ -484,18 +493,37 @@ export function buildTripLedgerPlan(input: {
     if (payer.id === first.id) {
       // Paid by the owner, no entry yet: a new entry the card's statement
       // pairs with later (a Foreign Currency Estimate).
-      const accountId = walletFor(line, payer.id);
-      if (!accountId) {
+      const wallet = walletFor(line, payer.id);
+      if (!wallet) {
         const card = line.fundingCard ?? "(no card named)";
         unknownWallets.set(card, [...(unknownWallets.get(card) ?? []), line.id]);
         plan.holdReasons.push(`The wallet "${card}" is not one of ${payer.name}'s wallets by name.`);
         continue;
       }
+      // An Apple Pay tap still waiting for its amount is this purchase: a
+      // new entry would count it twice once the tap is finished.
+      const tap = snapshot.waitingTaps.find((item) => item.personId === payer.id
+        && daysBetweenIso(line.date!, item.date) >= -1 && daysBetweenIso(line.date!, item.date) <= 1
+        && shopsAgree(line.merchant, item.merchant));
+      if (tap) {
+        plan.holdReasons.push(`An Apple Pay tap at ${tap.merchant} on ${tap.date} is waiting for its amount.`);
+        questions.push({
+          id: `tap-${line.id}`,
+          lineIds: [line.id],
+          text: `${line.merchant} (${line.date}): an Apple Pay tap for it is waiting for its amount. Finish it at the top of Entries with ${currency ?? ""} ${line.foreignMinor !== null ? (line.foreignMinor / 100).toLocaleString("en-SG") : ""}, then preview again: it will match instead of being added twice.`.replace(/\s+/g, " "),
+          options: [],
+          blocking: true
+        });
+        continue;
+      }
+      const accountId = wallet.accountId;
       // One entry per bank charge: a purchase the card charged in parts
       // gets an entry for each, so each statement row pairs with its own.
       const parts = readChargeParts(line);
       const owedParts = allocateProportionally(owed, parts.map((part) => part.homeMinor));
       const accountName = snapshot.accounts.find((account) => account.id === accountId)?.name ?? accountId;
+      if (!wallet.certain) plan.walletNotCertain = accountName;
+      const walletLine = wallet.certain ? "" : `Wallet not certain: ${accountName}.`;
       parts.forEach((part, index) => {
         const suffix = parts.length > 1 ? `:${index + 1}` : "";
         const externalReference = `trip-ledger:${slug(tripName)}:${line.id}${suffix}`;
@@ -512,14 +540,14 @@ export function buildTripLedgerPlan(input: {
           amountMinor: part.homeMinor,
           originalAmountMinor: part.foreignMinor,
           originalCurrency: part.foreignMinor !== null ? currency : null,
-          note: buildEstimateNote(line, note, currency, config.noteMaxLength, part.foreignMinor, parts.length > 1 ? `Charge ${index + 1} of ${parts.length}.` : ""),
+          note: buildEstimateNote(line, note, currency, config.noteMaxLength, part.foreignMinor, [walletLine, parts.length > 1 ? `Charge ${index + 1} of ${parts.length}.` : ""].filter(Boolean).join(" ")),
           shared: partOwed > 0,
           firstPersonShareMinor: partOwed > 0 ? part.homeMinor - partOwed : null,
           splitGroup: partOwed > 0 ? splitGroupRef : null
         };
         steps.push(step);
         plan.stepIds.push(step.stepId);
-        plan.changes.push(`New entry on ${accountName}${line.paymentWallet ? ` (through ${line.paymentWallet})` : ""}: ${money(part.homeMinor)}${part.foreignMinor !== null ? `, kept as ${currency} ${(part.foreignMinor / 100).toLocaleString("en-SG")} for the statement to settle` : ""}; ${categoryName}.`);
+        plan.changes.push(`${wallet.certain ? "" : `Wallet not certain: ${accountName}. `}New entry on ${accountName}${line.paymentWallet ? ` (through ${line.paymentWallet})` : ""}: ${money(part.homeMinor)}${part.foreignMinor !== null ? `, kept as ${currency} ${(part.foreignMinor / 100).toLocaleString("en-SG")} for the statement to settle` : ""}; ${categoryName}.`);
         if (partOwed > 0) plan.changes.push(`On Splits, paid by ${payer.name}: ${other.name} owes ${money(partOwed)}.`);
         tripEntries.push({ lineId: line.id, entry: { externalReference } });
       });

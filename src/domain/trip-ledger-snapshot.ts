@@ -23,6 +23,8 @@ export async function loadTripLedgerSnapshot(
   const accounts = await query(`SELECT id, account_name, owner_person_id, is_joint, account_kind, currency, is_active FROM accounts WHERE household_id = ${household}`);
   const categories = await query(`SELECT id, name FROM categories WHERE household_id = ${household} ORDER BY name`);
   const tripEvents = await query(`SELECT id, name, start_date, end_date, currency, split_group_id, put_away_at FROM trip_events WHERE household_id = ${household}`).catch(() => []);
+  // Apple Pay taps still waiting for their amount; the table is additive.
+  const waitingTaps = await query(`SELECT id, person_id, account_id, merchant, tap_date FROM waiting_taps WHERE household_id = ${household} AND status = 'waiting' AND tap_date BETWEEN '${input.from}' AND '${input.to}'`).catch(() => []);
   const splitGroups = await query(`SELECT id, group_name, currency FROM split_groups WHERE household_id = ${household}`);
   const entries = await query(`
     SELECT
@@ -63,6 +65,13 @@ export async function loadTripLedgerSnapshot(
       currency: row.currency ? String(row.currency) : null,
       splitGroupId: row.split_group_id ? String(row.split_group_id) : null,
       putAway: Boolean(row.put_away_at)
+    })),
+    waitingTaps: waitingTaps.map((row) => ({
+      id: String(row.id),
+      personId: String(row.person_id),
+      accountId: String(row.account_id),
+      merchant: String(row.merchant ?? ""),
+      date: String(row.tap_date)
     })),
     splitGroups: splitGroups.map((row) => ({ id: String(row.id), name: String(row.group_name), currency: String(row.currency ?? "SGD") })),
     entries: entries.map((row) => ({

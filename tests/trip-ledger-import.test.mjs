@@ -66,7 +66,7 @@ function entry(overrides) {
   };
 }
 
-function snapshot(entries = []) {
+function snapshot(entries = [], waitingTaps = []) {
   return {
     householdId: "household-1",
     people: [{ id: KAI, name: "Kai", role: "partner" }, { id: SAM, name: "Sam", role: "owner" }],
@@ -78,17 +78,18 @@ function snapshot(entries = []) {
     categories: ["Food & Drinks", "Shopping", "Public Transport", "Travel", "Other"].map((name, index) => ({ id: `cat-${index}`, name })),
     tripEvents: [],
     splitGroups: [{ id: "split-group-home", name: "Home", currency: "SGD" }],
-    entries
+    entries,
+    waitingTaps
   };
 }
 
 // Day 1 is 2 March 2031 (day 0 is the 1st).
-function plan(expenses, entries, answers) {
+function plan(expenses, entries, answers, waitingTaps = []) {
   const raw = { expenses, items: [] };
   const lines = readTripLedgerExport(raw, "2031-03-01");
   return buildTripLedgerPlan({
     lines,
-    snapshot: snapshot(entries),
+    snapshot: snapshot(entries, waitingTaps),
     config: { ...DEFAULT_TRIP_LEDGER_CONFIG, tripName: "Hokkaido trip" },
     answers,
     dayZero: "2031-03-01",
@@ -345,10 +346,12 @@ test("a second preview after the import finds its own entries and proposes nothi
   assert.deepEqual(stepsOf(again, "mochi"), []);
 });
 
-test("merchant names: a card's cut-off name or first word is the same shop", () => {
+test("merchant names: Receipt Match's shop test, a card's cut-off name or the first word is the same shop", () => {
   assert.equal(merchantSimilarity("Cornermart station", "AMAZE* CORNERMART"), "strong");
   assert.equal(merchantSimilarity("Soba Bar · Station branch", "SOBA BAR SAPPORO"), "strong");
-  assert.equal(merchantSimilarity("North Paper Store", "PAPER STORE OTARU"), "weak");
+  // Receipt Match's own test: two shared shop words are the same shop, one is not.
+  assert.equal(merchantSimilarity("North Paper Store", "PAPER STORE OTARU"), "strong");
+  assert.equal(merchantSimilarity("Kita Paper Garden Hall", "OTARU PAPER WORKS"), "weak");
   assert.equal(merchantSimilarity("Bean Cafe", "Tea House"), "none");
 });
 
@@ -367,4 +370,52 @@ test("matching skips held lines and never matches an entry to two purchases", ()
   ], items: [] }, "2031-03-01");
   const result = matchTripLedger({ lines, entries: [entry({ id: "txn-kiosk", description: "Kiosk", amountMinor: 500 })], payerPersonIdFor: () => SAM });
   assert.deepEqual(result.matches.map((match) => [match.lineId, match.confidence, match.entryId]), [["one", "certain", "txn-kiosk"], ["two", "none", null]]);
+});
+
+test("an Apple Pay yen estimate the Shortcut saved is matched, never doubled; the asymmetric estimate room is Receipt Match's", () => {
+  const result = plan(
+    [expense({ id: "konbini", merchant: "Corner Store Ginza", jpy: 1480, sgd_cents: 1240, category: "Food", time: "19:02" })],
+    // Saved by the Shortcut at the day's rate: a little under the card's amount.
+    [entry({ id: "txn-tap", description: "CORNER STORE", amountMinor: 1228, originalAmountMinor: 148_000, originalCurrency: "JPY", externalReference: "shortcut:abc", time: "18:03" })]
+  );
+  assert.equal(lineOf(result, "konbini").confidence, "certain");
+  assert.equal(lineOf(result, "konbini").entryId, "txn-tap");
+  assert.ok(!result.steps.some((step) => step.kind === "create_entry"));
+  // Without the kept yen amount: 2% under is the most an entry may be under.
+  const under = plan([expense({ id: "a", merchant: "Shop", sgd_cents: 1000, jpy: null })], [entry({ id: "txn-under", description: "Shop", amountMinor: 975 })]);
+  assert.equal(lineOf(under, "a").confidence, "none");
+  const over = plan([expense({ id: "a", merchant: "Shop", sgd_cents: 1000, jpy: null })], [entry({ id: "txn-over", description: "Shop", amountMinor: 1045 })]);
+  assert.equal(lineOf(over, "a").entryId, "txn-over");
+});
+
+test("an Apple Pay tap still waiting for its amount holds the purchase instead of adding a second entry", () => {
+  const result = plan(
+    [expense({ id: "kiosk", merchant: "Station Kiosk", jpy: 650, sgd_cents: 540 })],
+    [],
+    undefined,
+    [{ id: "tap-1", personId: SAM, accountId: "acc-rewards", merchant: "STATION KIOSK", date: "2031-03-02" }]
+  );
+  assert.equal(lineOf(result, "kiosk").outcome, "held");
+  assert.deepEqual(stepsOf(result, "kiosk"), []);
+  assert.match(result.questions.find((question) => question.id === "tap-kiosk").text, /waiting for its amount/);
+  // A tap of the other person, or at another shop, does not hold it.
+  const other = plan([expense({ id: "kiosk", merchant: "Station Kiosk", jpy: 650, sgd_cents: 540 })], [], undefined,
+    [{ id: "tap-2", personId: KAI, accountId: "acc-kai-card", merchant: "STATION KIOSK", date: "2031-03-02" }, { id: "tap-3", personId: SAM, accountId: "acc-rewards", merchant: "Bakery", date: "2031-03-02" }]);
+  assert.equal(lineOf(other, "kiosk").outcome, "new");
+});
+
+test("a wallet the owner only thinks is right is used, and said so in the preview and the entry's note", () => {
+  const result = plan(
+    [expense({ id: "stand", merchant: "Roadside stand", funding_card: "Visa · contactless", payment_wallet: null, items: "Coffee" })],
+    [],
+    { wallets: { "Visa · contactless": { accountId: "acc-miles", certain: false } } }
+  );
+  const line = lineOf(result, "stand");
+  assert.equal(line.walletNotCertain, "Miles Card");
+  assert.match(line.changes[0], /^Wallet not certain: Miles Card\. New entry on Miles Card/);
+  const [create] = stepsOf(result, "stand");
+  assert.equal(create.accountId, "acc-miles");
+  assert.match(create.note, /\nWallet not certain: Miles Card\. Paid JPY 1,000\./);
+  // A plain answer is certain.
+  assert.equal(lineOf(plan([expense({ id: "stand", funding_card: "Visa · contactless" })], [], { wallets: { "Visa · contactless": "acc-miles" } }), "stand").walletNotCertain, null);
 });

@@ -32,12 +32,22 @@ Code:
 2. **Matching.** For each purchase, the entries on the payer's own wallets
    (Split Payer rule: a wallet's one owner paid) dated from a day before to
    three days after (the home clock is behind the trip's; a bank posts
-   later), whose trip-currency amount is the same (kept on an estimate, or
-   printed on a card row) or whose SGD amount is within 5% (at least 10
+   later), whose trip-currency amount is the same (kept on an estimate, as
+   the Apple Pay Shortcut keeps a yen tap's, or printed on a card row) or
+   whose SGD amount is at most 5% over and 2% under the ledger's (at least 10
    cents). A different trip-currency amount is another purchase. Score: the
-   amount, the shop name (a card's cut-off name, "AMAZE*CORNERMART", starts
-   the receipt's name, or the first words agree), the time of day, the day
-   distance. Each entry goes to one purchase at most.
+   amount, the shop name, the time of day, the day distance. Each entry goes
+   to one purchase at most.
+   - The day window, the amount room and the shop test are Receipt Match's
+     own (`receipt-batch-config.ts`, `shopsAgree` in `receipt-match.ts`), so
+     a receipt read in Ask and a ledger line imported here agree on what is
+     the same purchase. Two differences, both because a ledger line carries
+     more than a photo: the SGD figure is compared directly (Receipt Match
+     converts a foreign total at the saved rate), and a shop name that does
+     not agree only lowers the score instead of ruling the entry out, so a
+     card row that names a payment gateway rather than the shop can still be
+     the purchase when nothing else fits (never `certain`). A card's cut-off
+     name ("AMAZE*CORNERMART" for "Cornermart station") also counts.
    - `certain`: same amount to the yen or cent, same shop or time, within a
      day, the only candidate;
    - `likely`: one clear best candidate; also identical charges (same shop,
@@ -84,8 +94,10 @@ Code:
    ledger has no amount or no share, marks the sharing or the payer pending,
    when its category has no place in the household's list (no category is
    invented; the owner names one), when its wallet is not one of the payer's
-   wallets by name, or when the match is ambiguous. A share the ledger itself
-   calls provisional is imported as it is unless the owner says otherwise.
+   wallets by name, when the match is ambiguous, or when an Apple Pay tap at
+   that shop is still waiting for its amount (finish the tap first; a new
+   entry would count it twice). A share the ledger itself calls provisional
+   is imported as it is unless the owner says otherwise.
 5. **Totals.** What the owner would owe the other person after the import
    versus the ledger's own owed figures, and what each paid and each one's
    share, both ways, with every difference listed line by line (a held line,
@@ -105,6 +117,26 @@ estimate and the entry keeps its id, so its category, note, split and trip
 stay. That is why a new entry's description is the receipt's shop name and
 why a purchase charged in parts gets one entry per charge.
 
+## A wallet the owner is not sure of
+
+An answer can name a wallet as not certain (`{ "accountId": "…", "certain":
+false }`). The entry is made on that wallet, and both the preview line and
+the entry's note say "Wallet not certain: <wallet>". If it is right, the
+wallet's statement pairs with it as above. If the purchase was on another
+card, that card's statement does not pair with it (pairing stays on one
+wallet), so the other card's row comes in as a new entry and the purchase is
+counted twice, while the estimate stays open on the first wallet. The trip
+page's Needs a look names that estimate once it is 40 days old with no
+statement. To correct it:
+
+- before the right card's file is imported: move the entry to that card
+  (Ask's card change, `updateEntryAccountRecord`, keeps the amount, the kept
+  yen amount, note, split and trip); its import then pairs with it;
+- after: delete the estimate on the wrong wallet (the bank row is the
+  purchase), put the bank row on the trip and give it the category, note and
+  split. A PDF statement's mismatch check offers a move only when the two
+  amounts are the same to the cent, which an estimate rarely is.
+
 ## Running it
 
 ```sh
@@ -116,7 +148,7 @@ node --import tsx scripts/trip-ledger-import.mjs preview \
 
 # 2. Answer the questions in an answers.json and preview again:
 #    { "categories": { "Crafts": "Shopping" },
-#      "wallets": { "Visa · contactless": "<account id>" },
+#      "wallets": { "Visa · contactless": "<account id>" }  (or { "accountId": "…", "certain": false }),
 #      "splitGroup": { "newName": "Hokkaido trip" } | { "existingId": "…" } | { "none": true },
 #      "skip": ["<purchase id>"], "acceptProvisional": ["<purchase id>"],
 #      "trip": { "endDate": "2031-03-09" } }
