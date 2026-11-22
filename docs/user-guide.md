@@ -1362,6 +1362,24 @@ on the usual card, starting with the first while the rest are read.
 
 ![Three receipts sent at once: the first on its card, Receipt 1 of 3](/faq/guide/phone/thumbs/phone-ask-receipts.webp)
 
+### Items on a receipt, and whose each one is
+
+When a receipt lists its items and they add up to its total, the card
+shows them under **Items on the receipt** (tap **See the 5 items**). Tax,
+service charge and discounts are their own lines; tax that is already in
+the prices shows as "included". If the items don't add up, the card says
+"The items couldn't be read reliably, so only the total is shown."
+
+When you share the purchase on Splits, each item gets three buttons:
+**Mine**, **Joyce's** (your partner's name) and **Shared**. Tap one for
+each item that isn't shared. The card's **Tim's share** and **Joyce's
+share** follow: your own items, plus half of each shared one, with tax,
+service and discounts split the same way, to the cent. Until you tap an
+item the card keeps its usual split. When you save, the items go into the
+entry's note with whose each one was.
+
+![A dinner for two: each item marked Mine, Joyce's or Shared, with each person's share](/faq/guide/phone/thumbs/phone-ask-receipt-items.webp)
+
 If you usually share a purchase with your partner (the same shop, split
 evenly in the same group, most of the times you bought there), Ask notices
 when you add it again and asks: "You usually split this with Joyce. Add it

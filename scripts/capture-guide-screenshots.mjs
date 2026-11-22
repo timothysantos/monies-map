@@ -1092,6 +1092,31 @@ const SHOTS = [
     }
   },
   {
+    // A dinner for two read from its receipt (docs/flows/ask-flow.md "Items
+    // and whose they are"): shared on Splits, two items marked, the shares
+    // below. Invented receipt; the reader is stubbed.
+    name: "phone-ask-receipt-items", device: "phone", reseed: true,
+    run: async (page) => {
+      const lines = [["Nasi Lemak Set", 890, 1], ["Mee Goreng", 750, 1], ["Teh Tarik", 560, 2], ["Satay 10 sticks", 1_200, 1], ["Svc Chg 10%", 340, null], ["GST 9%", 337, null]];
+      await page.route("**/api/ai-assist/receipt-read", (route) => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, available: true, receipt: { source: "ai", merchant: { value: "Warung Hijau Dining", confidence: "high" }, date: { value: `${MONTH}-26`, confidence: "high" }, total: { amountMinor: 4_077, currency: "SGD", confidence: "high" }, cardLast4: null, lineItems: lines.map(([description, amountMinor, quantity]) => ({ description, amountMinor, quantity })), questions: [] } })
+      }));
+      await open(page, `/ask?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
+      const photo = await sharp({ create: { width: 90, height: 140, channels: 3, background: "#f2e3c9" } }).png().toBuffer();
+      await page.locator(".ask-file-input").nth(1).setInputFiles([{ name: "receipt.png", mimeType: "image/png", buffer: photo }]);
+      await page.getByRole("textbox", { name: "What it was" }).waitFor();
+      await page.getByRole("switch").click();
+      const items = page.locator("[data-receipt-items='ok']");
+      await items.locator("[data-receipt-item='0'] .ask-receipt-item-choice").first().click();
+      await items.locator("[data-receipt-item='1'] .ask-receipt-item-choice").nth(1).click();
+      await items.locator("[data-receipt-item='1']").evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await page.waitForTimeout(600);
+      await hideCaret(page);
+    }
+  },
+  {
     // Files sent from the phone wait in the queue (DOMAIN.md "Waiting File").
     // They are removed again once captured, so no later shot sees them.
     name: "imports-sent-files", device: "desktop",

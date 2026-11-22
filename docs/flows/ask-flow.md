@@ -1276,6 +1276,52 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   Pay tap) that is probably this receipt's purchase, with the change card
   Save would make (see "Many receipts at once"). No AI, no allowance.
 
+- `POST /api/ai-assist/insight-explain` `{ kind, fact, think, lines }` →
+  `InsightExplainResponseDto` (`{ ok, explanation: { text, source: "ai" } |
+  null, ai }`), see "Insight questions". The body is read through
+  `readJsonBody` (64 KiB, `limited-body.ts`, the same file as PR #54) and
+  bounded (`readInsightExplainRequest`: a headline kind, the line and think
+  line up to 400 characters, at most 12 basis lines with safe integer
+  amounts and short labels; anything else is a 400 before any AI). With AI
+  off it answers at once with `explanation: null` and spends nothing. With
+  AI on, one allowance unit (`ask_answer`) asks the provider with the
+  answer prompt (`buildAnswerPrompt`) over the insight's fact lines
+  (`buildInsightPromptFacts`: the line, its think line and each basis line
+  with its amount as the card writes it; every run of six or more digits
+  and every NRIC / FIN shape removed first), checked by `validateAiWording`
+  against those lines and the household's category, wallet and people
+  names. Privacy: only those lines and the household's names (for the
+  check) are read; no entry, account id or note. Cost: one unit per tap,
+  never automatic. Writes: the allowance counter only.
+- `POST /api/ai-assist/answer` `{ text, viewId, scope, month,
+  keepCandidateIds }` → `AskAnswerResponseDto` (`{ ok, supported, intent,
+  viewId, scope, months, needsConfirmation?, candidates?, answer?, wording?:
+  { text, source }, ai }`), see "Money questions". Rules, the skew check and
+  the facts first; then, only with AI on and a month with entries, one
+  allowance unit asks the provider (`runTextJson`) to phrase the wording
+  from at most 16 fact lines and the redacted question.
+  `validateAiWording` keeps a phrasing only when every number is in the
+  facts, it names nothing the facts do not, and it is one to three plain
+  sentences (360 characters) with no advice or forecast; anything else
+  shows the computed wording. The route writes nothing but the allowance
+  counter.
+
+- `POST /api/ai-assist/plan-draft` `{ text, viewId, month, answers }` →
+  `PlanDraftResponseDto` (`{ ok, supported, source, draft | question |
+  note, ai }`), see "Planning by chat". Rules first; only a request that
+  reads like planning but fits no shape, and only with AI on, spends one
+  allowance unit asking the provider (`runTextJson`, ask tier) to read the
+  redacted request into the same structure. `parsePlanAiReading` keeps it
+  only when every line name is words of the request, every amount a number
+  written in it and every month one it names. The draft itself is built
+  from the month's plan rows on the server (`loadMonthPlanRowsForDraft`,
+  `buildPlanDraft`). The route writes nothing but the allowance counter.
+
+The first two fail soft: any error leaves the card manual with a calm
+note. A failed answer request is the calm note "That couldn't be answered
+just now. Try again in a moment." A failed plan-draft request is the calm
+note "That couldn't be drafted just now. Try again in a moment."
+
 ### Many receipts at once
 
 Owner-approved 2026-11-22 for trips, where receipts are photographed and
@@ -1357,51 +1403,50 @@ not typed. Code: `ask-receipt-queue.js` (the queue, pure),
   Entries, so it's a new entry here. Check Entries before you save.", and
   Save keeps to the existing "Waiting to send".
 
-- `POST /api/ai-assist/insight-explain` `{ kind, fact, think, lines }` →
-  `InsightExplainResponseDto` (`{ ok, explanation: { text, source: "ai" } |
-  null, ai }`), see "Insight questions". The body is read through
-  `readJsonBody` (64 KiB, `limited-body.ts`, the same file as PR #54) and
-  bounded (`readInsightExplainRequest`: a headline kind, the line and think
-  line up to 400 characters, at most 12 basis lines with safe integer
-  amounts and short labels; anything else is a 400 before any AI). With AI
-  off it answers at once with `explanation: null` and spends nothing. With
-  AI on, one allowance unit (`ask_answer`) asks the provider with the
-  answer prompt (`buildAnswerPrompt`) over the insight's fact lines
-  (`buildInsightPromptFacts`: the line, its think line and each basis line
-  with its amount as the card writes it; every run of six or more digits
-  and every NRIC / FIN shape removed first), checked by `validateAiWording`
-  against those lines and the household's category, wallet and people
-  names. Privacy: only those lines and the household's names (for the
-  check) are read; no entry, account id or note. Cost: one unit per tap,
-  never automatic. Writes: the allowance counter only.
-- `POST /api/ai-assist/answer` `{ text, viewId, scope, month,
-  keepCandidateIds }` → `AskAnswerResponseDto` (`{ ok, supported, intent,
-  viewId, scope, months, needsConfirmation?, candidates?, answer?, wording?:
-  { text, source }, ai }`), see "Money questions". Rules, the skew check and
-  the facts first; then, only with AI on and a month with entries, one
-  allowance unit asks the provider (`runTextJson`) to phrase the wording
-  from at most 16 fact lines and the redacted question.
-  `validateAiWording` keeps a phrasing only when every number is in the
-  facts, it names nothing the facts do not, and it is one to three plain
-  sentences (360 characters) with no advice or forecast; anything else
-  shows the computed wording. The route writes nothing but the allowance
-  counter.
+### Items and whose they are
 
-- `POST /api/ai-assist/plan-draft` `{ text, viewId, month, answers }` →
-  `PlanDraftResponseDto` (`{ ok, supported, source, draft | question |
-  note, ai }`), see "Planning by chat". Rules first; only a request that
-  reads like planning but fits no shape, and only with AI on, spends one
-  allowance unit asking the provider (`runTextJson`, ask tier) to read the
-  redacted request into the same structure. `parsePlanAiReading` keeps it
-  only when every line name is words of the request, every amount a number
-  written in it and every month one it names. The draft itself is built
-  from the month's plan rows on the server (`loadMonthPlanRowsForDraft`,
-  `buildPlanDraft`). The route writes nothing but the allowance counter.
+Owner-approved 2026-11-22. Code: `src/domain/receipt-items.ts` (pure:
+which lines count, the shares, the note lines), `ask-receipt-items-card.js`
+(the card), `ask-receipt-items.jsx` (the list and its taps).
 
-The first two fail soft: any error leaves the card manual with a calm
-note. A failed answer request is the calm note "That couldn't be answered
-just now. Try again in a moment." A failed plan-draft request is the calm
-note "That couldn't be drafted just now. Try again in a moment."
+- The lines come only from the receipt read (the AI reader's or the
+  on-device OCR's, both through `finalizeReceiptRead`); no other code
+  makes up an amount, and no Ask turn names an item amount. The reader is
+  asked to list tax, service, discount and rounding lines as their own
+  line items; the app tells them apart by their words and sign
+  (`classifyReceiptLine`), never by a model's label. On the device the
+  lines between the subtotal and the total are read too
+  (`readReceiptOcrText(..., { withAdjustments: true })`).
+- Shown only when they add up to the total within rounding (5 cents, or
+  1 whole unit for yen, rupiah, won and dong): every line, or every line
+  but the tax lines when the prices already include the tax (a Japanese
+  receipt's 内消費税, "GST 9% INCL."), which show as "(included)". A line
+  with no readable amount, or lines that do not add up, show the total
+  only with "The items couldn't be read reliably, so only the total is
+  shown." One line that is the total itself (a card slip) is no list.
+- On the card the list is folded ("See the 5 items") until the card is
+  shared on Splits; then each item has three one-tap choices: Mine (the
+  person in view, else the card's owner), <other>'s and Shared. Until one
+  is tapped, the card keeps the split it had (half each, or the shop's
+  habitual split). After a tap, the first person's exact share comes from
+  the items (`receiptItemShares`): own items plus half of each shared
+  item, with tax, service, discounts and rounding spread in proportion;
+  worked out exactly, the first person in household order is rounded down
+  to the cent and the second has the rest, so the shares always add up to
+  the entry's amount. The card's share rows ("Tim's share", "Joyce's
+  share") show it; Save sends it as the existing create command's exact
+  share (`splitAmountMinor`), so Splits and the Split Payer rule are as
+  for any shared card. A receipt in another currency shares the wallet's
+  amount in the same proportions. A share set by hand wins over the items.
+- Where the items are kept: the entry's note ("Receipt items:" then one
+  line each, with whose each is for a purchase shared by items), bounded
+  to 900 characters within the 2,000-character note. Notes are already
+  first-class, shown and searched in Entries, travel with the entry and
+  need no migration; a table would add a write and a reader to every
+  entry path for data nothing reads yet. A matched entry (see "Many
+  receipts at once") gets the same lines, without whose.
+- With AI off the on-device reader gives the shop and total as before and
+  the items only when its lines add up.
 
 ### What a save writes
 

@@ -2652,6 +2652,10 @@ with in-browser OCR. Before a receipt becomes a new entry,
 the ledger. The limits and tolerances (10 photos per go, the day window,
 the foreign-currency tolerance, the note length) live in
 `src/domain/receipt-batch-config.ts`; change them there, not in the page.
+A receipt's items (`src/domain/receipt-items.ts`) show only when they add
+up to its total within `RECEIPT_ITEMS_TOLERANCE_*` (same file); the shares
+from them and the note lines are pure functions tested in
+`tests/receipt-items.test.mjs`.
 `docs/audits/receipt-batch.md` has the privacy, cost and write boundaries.
 
 The Ask page's mic uses the browser's own speech recognition first, which

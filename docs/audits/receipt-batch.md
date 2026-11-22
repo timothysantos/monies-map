@@ -62,6 +62,22 @@ AI-slice audit AGENTS.md asks for ("Optional AI Assistance").
 - The same photo twice, or a receipt whose entry this conversation already
   saved or updated from a receipt, is left out with a line saying why.
 
+## Items and whose they are (second release)
+
+- No new AI call or input: the reader's prompt now also asks for tax,
+  service, discount and rounding lines as line items (still at most 30, no
+  new field). The app classifies the lines itself and shows them only when
+  they add up to the total, so a misread line hides the items rather than
+  showing a wrong figure. No Ask turn action names an item or its amount.
+- Shares are pure arithmetic in `receipt-items.ts`, saved as the existing
+  create command's exact split share (`splitAmountMinor`): no new command,
+  no command change, so the create command's atomic test still covers it.
+- Items are kept as note lines (at most 900 characters within the
+  2,000-character note); no table, so no migration and nothing new to
+  delete with an entry. The note can name the two people (whose item);
+  it carries no card or account number beyond what the read already
+  scrubbed (`cleanText` turns long digit runs into "[number]").
+
 ## Unverified
 
 - A real model reading a real batch (the browser tests stub the reader).

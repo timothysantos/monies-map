@@ -3584,6 +3584,34 @@ Important distinctions:
   entry keeps them. A waiting tap is finished with the receipt's total
   through the waiting tap's own command.
 
+### Receipt Items
+
+The lines a receipt lists (each item, and its tax, service, discount and
+rounding lines), shown on its Ask card only when they add up to the
+receipt's total within rounding, and, for a purchase shared on Splits,
+whose each item is: one person's, the other's, or shared.
+
+Canonical term:
+- `receipt items` (on the card, "Items on the receipt")
+
+Code and storage:
+- `src/domain/receipt-items.ts` (`readReceiptItems`, `receiptItemShares`,
+  `receiptItemNoteLines`), `src/client/ask-receipt-items-card.js`
+- kept in the entry's note ("Receipt items:" then one line each), never in
+  a table of their own; the photo is never kept
+
+Important distinctions:
+- Amounts come only from the receipt read; the app classifies the lines by
+  their words and sign and checks them against the total. Tax already in
+  the prices (内消費税, "GST incl.") is shown, not added.
+- A share from items is each person's own items plus half of each shared
+  item, with the other lines spread in proportion; the first person in
+  household order is rounded down to the cent and the second has the rest.
+  It is saved as the existing exact split share, so Splits and the Split
+  Payer rule are unchanged.
+- Untouched items (all Shared) keep the card's split: half each, or the
+  shop's habitual split. A share set by hand wins over the items.
+
 ### Ask Habit
 
 A small structured fact about what the household actually does and confirms,
