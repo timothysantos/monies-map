@@ -1237,9 +1237,10 @@ the Shortcut and the app):
   first, scrubs card, account and phone digits (`redactText`, then the
   digits after "ending", "card", "a/c", masked `XXXX-1234`), reads only the
   first `BANK_ALERT_READ_CHARS` (600), refuses money in, sign-ins, refunds,
-  declined payments, transfers and promotions (`BANK_ALERT_NOT_A_PAYMENT`)
-  and two different amounts (a balance or limit and a bracketed converted
-  figure do not count), then tries `BANK_ALERT_WORDINGS` in order. A new
+  declined payments, transfers, promotions and wallet top-ups
+  (`BANK_ALERT_NOT_A_PAYMENT`) and two different amounts (a balance or limit,
+  "running low at SGD 3.41", and a bracketed converted figure do not count),
+  then tries `BANK_ALERT_WORDINGS` in order. A new
   bank is one entry there: an id, `verified`, a pattern with `{money}` and
   `{merchant}` (or `{merchantLine}`), and a sanitized sample that
   `tests/bank-alerts.test.mjs` reads. `findTapForBankAlert` takes the key's

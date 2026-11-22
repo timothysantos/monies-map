@@ -71,12 +71,17 @@ export const BANK_ALERT_ONE_TIME_CODE = /(?<!\d|\d[.,])\d{6,8}(?!\d|[.,]\d)/;
 
 // Words that make an alert something other than a card payment going out:
 // money in, a refund, a sign-in, a declined or failed payment, a transfer, a
-// promotion. Looked for in the first BANK_ALERT_READ_CHARS only.
+// promotion, a wallet top-up ("paid SGD 50.00 to top up", "topped up"; the
+// real Amaze payment alert ends "Top up now to continue ...", which is not
+// one of these). Looked for in the first BANK_ALERT_READ_CHARS only.
 export const BANK_ALERT_NOT_A_PAYMENT =
-  /\b(?:refund(?:ed)?|reversal|reversed|credited|received|incoming|deposit(?:ed)?|log(?:ged)?[- ]?in|sign(?:ed)?[- ]?in|new device|declined|unsuccessful|failed|not successful|transfer(?:red)?|paynow|giro|cash ?back|promo(?:tion)?|enjoy|offer)\b/i;
+  /\b(?:refund(?:ed)?|reversal|reversed|credited|received|incoming|deposit(?:ed)?|log(?:ged)?[- ]?in|sign(?:ed)?[- ]?in|new device|declined|unsuccessful|failed|not successful|transfer(?:red)?|paynow|giro|cash ?back|promo(?:tion)?|enjoy|offer|to top[- ]?up|topped[- ]?up)\b/i;
 
-// An amount right after one of these is a balance or limit, not the payment.
-export const BANK_ALERT_NOT_THE_PAYMENT_BEFORE = /\b(?:balance|limit|available|avail\.?)\b[^\d]{0,20}$/i;
+// An amount soon after one of these is a balance or limit, not the payment
+// ("Your total wallet balance is running low at SGD 3.41").
+export const BANK_ALERT_NOT_THE_PAYMENT_BEFORE = /\b(?:balance|limit|available|avail\.?|running low)\b[^\d]{0,40}$/i;
+// How far before an amount BANK_ALERT_NOT_THE_PAYMENT_BEFORE looks.
+export const BANK_ALERT_NOT_THE_PAYMENT_LOOKBACK_CHARS = 60;
 
 // One bank's alert sentence. `pattern` is a regular expression source where
 // `{money}` stands for the payment's amount (with its currency before or
@@ -127,6 +132,19 @@ export const BANK_ALERT_WORDINGS: readonly BankAlertWording[] = [
     verified: false,
     pattern: String.raw`\bwas charged {money} at {merchant}`,
     sample: "OCBC: Your OCBC 365 Credit Card ending 2093 was charged SGD 8.50 at STARBUCKS @ VIVOCITY on 17 Nov 2026, 2.32PM. If unauthorised, call 6363 3333."
+  },
+  {
+    // Amaze (Instarem) app notification, REAL wording (the owner's phone in
+    // Japan, November 2026; shop and amounts here invented): title "Payment
+    // successful", body "You have just paid JPY 440 to FAMILYMART. Your total
+    // wallet balance is running low at SGD 3.41. Top up now to continue
+    // using your amaze wallet". The low-balance sentence is not always there;
+    // its SGD figure is the wallet's balance, never the payment.
+    id: "amaze-just-paid",
+    bank: "Amaze",
+    verified: true,
+    pattern: String.raw`\bYou have just paid {money} to {merchant}`,
+    sample: "Payment successful\nYou have just paid JPY 1,260 to LAWSON SHIBUYA. Your total wallet balance is running low at SGD 4.12. Top up now to continue using your amaze wallet"
   },
   {
     // Amaze (Instarem) app notification: the amount in the currency paid,

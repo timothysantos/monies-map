@@ -271,6 +271,76 @@ test("an Amaze alert in Rupiah finishes the tap with the foreign-currency estima
   assert.deepEqual((await taps(db)).map((row) => row.completed_by), ["bank_alert"]);
 });
 
+// The real Amaze notification (shop and figures invented, shape real):
+// "Payment successful" / "You have just paid JPY ... to SHOP. Your total
+// wallet balance is running low at SGD .... Top up now to continue using
+// your amaze wallet".
+const amazeAlert = (yen, shop, low = true) => `Payment successful\nYou have just paid JPY ${yen} to ${shop}.${low ? " Your total wallet balance is running low at SGD 3.62. Top up now to continue using your amaze wallet" : ""}`;
+
+async function amazeSetUp(t) {
+  const { db, fetch: fetchWorker } = await openSeededDatabase(t, template);
+  const accounts = Object.fromEntries((await rows(db, "SELECT id, account_name FROM accounts WHERE is_active = 1")).map((row) => [row.account_name, row.id]));
+  // The owner's setting: UOB One first, Citi Rewards (behind Amaze) for other currencies.
+  await enableShortcut(db, { defaultAccountPriorityIds: [accounts["UOB One"]], foreignCurrencyAccountId: accounts["Citi Rewards"] });
+  await saveRate(db, { quote: "JPY", quotePerBase: 115.5 });
+  return { db, fetchWorker };
+}
+
+for (const low of [true, false]) {
+  test(`the real Amaze notification${low ? " with its low-balance sentence" : ""} finishes a held Amaze tap in yen on the card behind Amaze, never with the balance`, async (t) => {
+    const { db, fetchWorker } = await amazeSetUp(t);
+    const held = await tap(fetchWorker, { description: "FamilyMart Asakusa", name: "Amaze", date: "2026-11-20" });
+    assert.equal(held.status, 202, JSON.stringify(held.payload));
+    const dumpBefore = await dumpDatabase(db);
+
+    const { result: reply, lines } = await captureLogs(() => bankAlert(fetchWorker, { text: amazeAlert("1,180", "FAMILYMART ASAKUSA", low) }));
+    assert.equal(reply.payload.completed, true, JSON.stringify(reply.payload));
+    const [entry] = await rows(db, `
+      SELECT transactions.description, transactions.amount_minor, transactions.currency, transactions.original_amount_minor,
+        transactions.original_currency, accounts.account_name
+      FROM transactions JOIN accounts ON accounts.id = transactions.account_id WHERE transactions.id = ?`, reply.payload.entryId);
+    // 1,180 / 115.5 = SGD 10.22; never the SGD 3.62 balance.
+    assert.deepEqual({ ...entry, amount_minor: Math.abs(entry.amount_minor) }, {
+      description: "FamilyMart Asakusa", amount_minor: 1022, currency: "SGD", original_amount_minor: 118000, original_currency: "JPY", account_name: "Citi Rewards"
+    });
+    assert.deepEqual((await taps(db)).map((row) => row.completed_by), ["bank_alert"]);
+    const everything = writtenSince(dumpBefore, await dumpDatabase(db));
+    for (const kept of ["FAMILYMART ASAKUSA", "just paid", "running low", "3.62", "Top up"]) {
+      assert.equal(everything.includes(kept), false, kept);
+      assert.equal(lines.some((line) => line.includes(kept)), false, `log: ${kept}`);
+    }
+  });
+}
+
+test("the Amaze notification for a yen tap the Shortcut already saved adds nothing: one purchase, one entry", async (t) => {
+  const { db, fetchWorker } = await amazeSetUp(t);
+  const saved = await tap(fetchWorker, { description: "FamilyMart Asakusa", name: "Amaze", amount: "JP¥1,180", date: "2026-11-20" });
+  assert.equal(saved.status, 200, JSON.stringify(saved.payload));
+  const before = await dumpDatabase(db);
+
+  const reply = await bankAlert(fetchWorker, { text: amazeAlert("1,180", "FAMILYMART ASAKUSA") });
+  assert.deepEqual(reply.payload, { ok: true, completed: false, reason: "no_tap" });
+  assert.deepEqual(await dumpDatabase(db), before);
+  assert.equal((await rows(db, "SELECT COUNT(*) AS n FROM transactions WHERE original_currency = 'JPY'"))[0].n, 1);
+});
+
+test("an Amaze top-up, refund or declined payment never finishes a held tap", async (t) => {
+  const { db, fetchWorker } = await amazeSetUp(t);
+  await tap(fetchWorker, { description: "FamilyMart Asakusa", name: "Amaze", date: "2026-11-20" });
+  const before = await dumpDatabase(db);
+  for (const text of [
+    "Top up successful\nYou have topped up SGD 50.00 to your amaze wallet.",
+    "Refund received\nYou have received a refund of JPY 1,180 from FAMILYMART ASAKUSA.",
+    "Payment declined\nYour payment of JPY 1,180 to FAMILYMART ASAKUSA was declined. Your total wallet balance is running low at SGD 3.62.",
+    "Your total wallet balance is running low at SGD 3.62. Top up now to continue using your amaze wallet"
+  ]) {
+    const reply = await bankAlert(fetchWorker, { text });
+    assert.equal(reply.payload.completed, false, text);
+  }
+  assert.deepEqual(await dumpDatabase(db), before);
+  assert.deepEqual((await taps(db)).map((row) => row.status), ["waiting"]);
+});
+
 test("an alert from long before or after the tap does not fit it", async (t) => {
   const { db, fetch: fetchWorker } = await openSeededDatabase(t, template);
   await enableShortcut(db);

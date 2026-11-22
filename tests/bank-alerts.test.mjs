@@ -29,10 +29,10 @@ test("each bank's (unverified) alert reads as its payment: amount, currency and 
   assert.deepEqual(readBankAlert(byId["generic-payment-at"]), payment("SGD", "19.90", 1990, "UNIQLO ION ORCHARD", "generic-payment-at"));
 });
 
-test("every wording is marked unverified and comes with a sample its own pattern reads", () => {
-  assert.ok(BANK_ALERT_WORDINGS.length >= 6);
+test("every wording but the real Amaze one is marked unverified, and each comes with a sample its own pattern reads", () => {
+  assert.ok(BANK_ALERT_WORDINGS.length >= 7);
   for (const wording of BANK_ALERT_WORDINGS) {
-    assert.equal(wording.verified, false, wording.id);
+    assert.equal(wording.verified, wording.id === "amaze-just-paid", wording.id);
     const reading = readBankAlert(wording.sample);
     assert.equal(reading.kind, "payment", wording.id);
     assert.equal(reading.wordingId, wording.id);
@@ -154,4 +154,43 @@ test("exactly one of the person's waiting taps within 10 minutes before to 30 mi
   );
   // Another shop's tap at the same time does not make it ambiguous.
   assert.equal(findTapForBankAlert([tap(), tap({ id: "tap-2", merchant: "Periplus Bali" })], alert(60)).outcome, "one");
+});
+
+// The real Amaze (Instarem) app notification, seen on the owner's phone in
+// Japan in November 2026: title "Payment successful", body "You have just
+// paid JPY ... to SHOP. Your total wallet balance is running low at SGD ...
+// Top up now to continue using your amaze wallet". Shops and amounts here are
+// invented; the shape is the real one.
+const AMAZE_TITLE = "Payment successful";
+const amazePaid = (money, shop, low = "SGD 2.87") => `You have just paid ${money} to ${shop}.${low ? ` Your total wallet balance is running low at ${low}. Top up now to continue using your amaze wallet` : ""}`;
+
+test("the real Amaze payment notification reads as the foreign payment, never the wallet balance", () => {
+  const expected = payment("JPY", "780", 78000, "LAWSON SHINJUKU", "amaze-just-paid");
+  // With and without the title line, with and without the low-balance sentence.
+  assert.deepEqual(readBankAlert(`${AMAZE_TITLE}\n${amazePaid("JPY 780", "LAWSON SHINJUKU")}`), expected);
+  assert.deepEqual(readBankAlert(amazePaid("JPY 780", "LAWSON SHINJUKU")), expected);
+  assert.deepEqual(readBankAlert(amazePaid("JPY 780", "LAWSON SHINJUKU", null)), expected);
+  assert.deepEqual(readBankAlert(`${AMAZE_TITLE}\n${amazePaid("JPY 780", "LAWSON SHINJUKU", null)}`), expected);
+  // Thousands, a shop name with spaces and a mark, and a balance worded a little differently.
+  assert.deepEqual(readBankAlert(amazePaid("JPY 12,400", "UNIQLO GINZA", "SGD 41.20")), payment("JPY", "12400", 1240000, "UNIQLO GINZA", "amaze-just-paid"));
+  assert.deepEqual(readBankAlert(amazePaid("JPY 2,150", "SUKIYA*SHIBUYA 2CHOME", "SGD 9.15")), payment("JPY", "2150", 215000, "SUKIYA*SHIBUYA 2CHOME", "amaze-just-paid"));
+  assert.deepEqual(
+    readBankAlert("You have just paid JPY 640 to TULLY'S COFFEE. Your total wallet balance is now running quite low at SGD 1.05. Top up now to continue using your amaze wallet"),
+    payment("JPY", "640", 64000, "TULLY'S COFFEE", "amaze-just-paid")
+  );
+  // A balance alone is never a payment.
+  assert.deepEqual(readBankAlert("Your total wallet balance is running low at SGD 3.41. Top up now to continue using your amaze wallet"), nothing("no_amount"));
+});
+
+test("an Amaze top-up, refund or declined payment reads as nothing", () => {
+  const cases = [
+    ["top-up", "Top up successful\nYou have topped up SGD 50.00 to your amaze wallet. Your total wallet balance is SGD 53.41.", "not_a_payment"],
+    ["top-up paid", "Top up successful\nYou have just paid SGD 50.00 to top up your amaze wallet.", "not_a_payment"],
+    ["refund", "Refund received\nYou have received a refund of JPY 780 from LAWSON SHINJUKU.", "not_a_payment"],
+    ["declined", "Payment declined\nYour payment of JPY 780 to LAWSON SHINJUKU was declined. Your total wallet balance is running low at SGD 3.41.", "not_a_payment"],
+    ["failed", "Payment unsuccessful\nYou have just paid JPY 780 to LAWSON SHINJUKU but the payment failed.", "not_a_payment"]
+  ];
+  for (const [what, text, reason] of cases) {
+    assert.deepEqual(readBankAlert(text), nothing(reason), what);
+  }
 });

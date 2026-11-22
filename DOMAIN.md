@@ -965,7 +965,14 @@ Rules (`src/domain/bank-alerts.ts`, every pattern and window in
   first); none or several change nothing
 - completes through the one save path (`completed_by` `bank_alert`), all or
   nothing; never changes an entry that already has an amount
-- the wordings are unverified guesses until a real alert confirms them
+- the wordings are unverified guesses until a real alert confirms them; the
+  first real one is Amaze's app notification ("You have just paid JPY 440
+  to FAMILYMART. Your total wallet balance is running low at SGD 3.41. Top
+  up now ..."), `amaze-just-paid`: the foreign figure is the payment, the
+  wallet balance never is, and a wallet top-up reads as nothing
+- an alert never adds an entry by itself: a purchase the Apple Pay Shortcut
+  already saved has no waiting tap, so its alert changes nothing (one
+  purchase, one entry)
 
 ### Waiting File
 

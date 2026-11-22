@@ -14,6 +14,7 @@ import {
   BANK_ALERT_MERCHANT_PREFIXES,
   BANK_ALERT_NOT_A_PAYMENT,
   BANK_ALERT_NOT_THE_PAYMENT_BEFORE,
+  BANK_ALERT_NOT_THE_PAYMENT_LOOKBACK_CHARS,
   BANK_ALERT_ONE_TIME_CODE,
   BANK_ALERT_ONE_TIME_CODE_WORDS,
   BANK_ALERT_READ_CHARS,
@@ -136,7 +137,7 @@ function paymentAmounts(text: string) {
     const start = match.index ?? 0;
     const converted = previousEnd >= 0 && /^\s*\(\s*(?:≈|~|approx\.?|about)?\s*$/i.test(text.slice(previousEnd, start));
     previousEnd = start + match[0].length;
-    if (converted || BANK_ALERT_NOT_THE_PAYMENT_BEFORE.test(text.slice(Math.max(0, start - 40), start))) {
+    if (converted || BANK_ALERT_NOT_THE_PAYMENT_BEFORE.test(text.slice(Math.max(0, start - BANK_ALERT_NOT_THE_PAYMENT_LOOKBACK_CHARS), start))) {
       continue;
     }
     const money = readMoney(match[0]);
