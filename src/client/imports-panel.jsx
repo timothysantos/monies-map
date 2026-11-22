@@ -12,6 +12,8 @@ import { fetchWaitingFile, removeWaitingFile } from "./waiting-files-api";
 import { selectWaitingFilesToPull } from "./waiting-files-model";
 import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
+import { findRepeatedPreviewRows } from "./import-repeated-rows-model";
+import { listOf } from "./copy/wording";
 import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
 import { buildEarlierImportLines, buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
 import { classifyImportFile } from "./import-file-classifier";
@@ -465,6 +467,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     [statementReconciliation, previewRows]
   );
   const hasUnbalancedStatement = Boolean(statementRecovery && !statementRecovery.isBalanced);
+  // Look-alike rows are only worth a note on an activity file or a pasted
+  // sheet. A statement's rows are checked against its printed balance, so
+  // two identical rows on a statement are two real payments.
+  const repeatedRows = useMemo(
+    () => findRepeatedPreviewRows(statementCheckpoints.length || statementImportMeta.sourceType === "pdf" ? [] : previewRows),
+    [previewRows, statementCheckpoints.length, statementImportMeta.sourceType]
+  );
   // An investment statement's value is saved apart from bank checkpoints, so
   // the commit bar counts it on its own.
   const investmentValueCount = statementCheckpoints.filter((checkpoint) => checkpoint.investmentValue).length;
@@ -2726,10 +2735,26 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           {previewRows.length > 100 ? (
             <p className="import-stage-note">{importMessages.largeImportNotice(previewRows.length)}</p>
           ) : null}
-          {statementWarnings.length ? (
+          {statementWarnings.length || repeatedRows.extraRowCount ? (
             <section className="import-warning import-warning-attention" aria-live="polite">
-              <strong>Review before importing</strong>
+              <strong>{importMessages.fileNotesTitle}</strong>
               {statementWarnings.map((warning) => <p key={warning} className="lede compact">{warning}</p>)}
+              {repeatedRows.extraRowCount ? (
+                <div data-import-target="repeated-rows">
+                  <p className="lede compact">{importMessages.repeatedRowsNote(repeatedRows.extraRowCount)}</p>
+                  <p className="lede compact">
+                    {listOf([
+                      ...repeatedRows.groups.map((group) => importMessages.repeatedRowsGroup(
+                        group.description,
+                        formatService.formatDateOnly(group.date),
+                        formatService.money(group.amountMinor),
+                        group.rowIds.length
+                      )),
+                      ...(repeatedRows.moreGroupCount ? [importMessages.repeatedRowsMore(repeatedRows.moreGroupCount)] : [])
+                    ])}
+                  </p>
+                </div>
+              ) : null}
             </section>
           ) : null}
           {hasUnbalancedStatement ? (

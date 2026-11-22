@@ -146,6 +146,7 @@ function parseUobCreditCardTransactionRows(
   // only when its dates, full description and amount all match an earlier row.
   const seenReferences = new Set<string>();
   const seenUnreferencedRows = new Set<string>();
+  let repeatedRowCount = 0;
   for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRowIndex)) {
     const transactionDate = parseLongDateCell(cellString(row.values.get(0)));
     const postingDate = parseLongDateCell(cellString(row.values.get(1)));
@@ -160,12 +161,14 @@ function parseUobCreditCardTransactionRows(
     const descriptionParts = parseUobCardHistoryDescription(rawDescription);
     if (descriptionParts.reference) {
       if (seenReferences.has(descriptionParts.reference)) {
+        repeatedRowCount += 1;
         continue;
       }
       seenReferences.add(descriptionParts.reference);
     } else {
       const rowKey = [transactionDate ?? "", postingDate, rawDescription, signedAmountMinor].join("|");
       if (seenUnreferencedRows.has(rowKey)) {
+        repeatedRowCount += 1;
         continue;
       }
       seenUnreferencedRows.add(rowKey);
@@ -196,7 +199,11 @@ function parseUobCreditCardTransactionRows(
     sourceLabel: labelFromFile(fileName, period ? `UOB card current transactions ${period}` : "UOB card current transactions"),
     rows: rows.sort(compareImportRowsByDate),
     checkpoints: [],
-    warnings: []
+    // Said, never silent: the person sees that the file repeated itself and
+    // that each transaction is here once.
+    warnings: repeatedRowCount
+      ? [`This file lists ${repeatedRowCount} ${repeatedRowCount === 1 ? "transaction" : "transactions"} twice. Each one is kept once.`]
+      : []
   };
 }
 

@@ -135,3 +135,14 @@ test("keeps one copy of each card payment when a UOB card export repeats a block
     "2026-11-15 3686.84"
   ]);
 });
+
+// The rows left out are said, not silent: the preview shows this line.
+test("a UOB card export that repeats a block says how many transactions it listed twice", () => {
+  const repeated = parseCurrentTransactionSpreadsheet(
+    readWorkbookFixture("CC_TXN_History-onecard-repeated-block-nov-2026-sanitized.xls"),
+    "CC_TXN_History-onecard-repeated-block-nov-2026-sanitized.xls"
+  );
+  assert.equal(repeated.warnings.length, 1);
+  const [, count] = repeated.warnings[0].match(/^This file lists (\d+) transactions twice\. Each one is kept once\.$/) ?? [];
+  assert.ok(Number(count) > 0, repeated.warnings[0]);
+});

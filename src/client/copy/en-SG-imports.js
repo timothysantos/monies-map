@@ -182,6 +182,10 @@ export const importMessages = {
   // below came from, so a wrong guess is seen before saving.
   accountGuessFromFileName: "The file does not say which account it is from, so the account below was read from the file's name. If that is wrong, choose the account it came from; the import is checked again before you save it.",
   accountGuessFromSelection: "The file does not say which account it is from, so it was put on the account chosen for this upload. If that is wrong, choose the account it came from; the import is checked again before you save it.",
+  fileNotesTitle: "Review before importing",
+  repeatedRowsNote: (count) => `${count} ${count === 1 ? "row in this file looks" : "rows in this file look"} the same as another row in it. Banks do list two identical payments on one day, so both are kept. If one is a copy, skip it in Edit rows.`,
+  repeatedRowsGroup: (description, date, amount, times) => `${description} on ${date} (${amount}), ${times} times`,
+  repeatedRowsMore: (count) => `and ${count} more`,
   detectedAccount: (accountName) => `Detected: ${accountName}`,
   chooseAccount: "Choose account",
   createDetectedAccount: "Create account",
