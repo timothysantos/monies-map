@@ -392,7 +392,9 @@ test.describe("phone fit", () => {
       contentType: "application/json",
       body: JSON.stringify({ ok: true, ai: { available: true }, receipt: {
         source: "ai", merchant: { value: STRESS.longShop, confidence: "high" }, date: { value: STRESS.today, confidence: "high" },
-        total: { amountMinor: 12_345_678, currency: "SGD", confidence: "high" }, cardLast4: null, lineItems: [], questions: []
+        // Not the seeded entry's figure: that same purchase would now be
+        // matched to the entry already there instead of filling the card.
+        total: { amountMinor: 12_345_679, currency: "SGD", confidence: "high" }, cardLast4: null, lineItems: [], questions: []
       } })
     }));
     await page.goto(`/ask?view=person-tim&month=${STRESS.month}&mode=add`);
