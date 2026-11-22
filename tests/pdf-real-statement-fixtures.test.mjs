@@ -101,7 +101,7 @@ test("a real OCBC 365 card statement with a past-due reminder beside the card na
 
 test("a tampered real OCBC 365 card amount is rejected, not imported", () => {
   const text = readFileSync(new URL("./fixtures/pdf-statement-text/ocbc-365-card-sep-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8");
-  assert.throws(() => parseStatementText(text.replaceAll("40.34", "41.34"), "sep.pdf"), /did not reconcile/);
+  assert.throws(() => parseStatementText(text.replaceAll("40.34", "41.34"), "sep.pdf"), /: OCBC card statement: the rows read come to \$241\.56, but the statement says \$240\.56\. They are \$1\.00 apart, so nothing was imported\.$/);
 });
 
 test("a real Citi Rewards statement parses from pdf.js 4 text with its grand total", () => {
@@ -181,7 +181,7 @@ test("a real OCBC CDA statement reads a deposit and interest as money in and a p
 test("a CDA row whose amount does not explain the balance change is still refused", () => {
   const text = readFileSync(new URL("./fixtures/pdf-statement-text/ocbc-cda-jun-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8")
     .replace("05 JUN 05 JUN IBG GIRO 5,000.00 5,000.00", "05 JUN 05 JUN IBG GIRO 4,000.00 5,000.00");
-  assert.throws(() => parseStatementText(text, "ocbc-cda-jun-2026-real.pdf"), /did not reconcile around 2026-06-05/);
+  assert.throws(() => parseStatementText(text, "ocbc-cda-jun-2026-real.pdf"), /: OCBC account statement: the rows stop adding up on 5 Jun 2026 \(IBG GIRO\)\. The statement's balance changes by \$5,000\.00 there, but the row reads -\$4,000\.00\. Nothing was imported\.$/);
 });
 
 // Month-end interest is printed with next month's transaction date and this
@@ -194,4 +194,21 @@ test("a real OCBC CDA statement books month-end interest on its value date insid
     ["2026-10-31", "INTEREST CREDIT", "", "3.05", "transaction date: 2026-11-01"]
   ]);
   assert.ok(parsed.rows.every((row) => row.date >= "2026-10-01" && row.date <= "2026-10-31"));
+});
+
+test("a statement that does not add up carries the gap and the row, and no reader says reconcile", async () => {
+  const { StatementDoesNotAddUpError, statementRowError, statementTotalsError } = await import("../src/lib/statement-import/shared.ts");
+  const totals = statementTotalsError("Card statement", 44820, 46820);
+  assert.ok(totals instanceof StatementDoesNotAddUpError);
+  assert.deepEqual([totals.expectedMinor, totals.foundMinor, totals.rowDate], [44820, 46820, undefined]);
+  const row = statementRowError("Bank statement", { date: "2026-06-05", description: "IBG GIRO" }, { expectedMinor: 500000, foundMinor: -400000 });
+  assert.deepEqual([row.expectedMinor, row.foundMinor, row.rowDate], [500000, -400000, "2026-06-05"]);
+  // A date that is not year-month-day is shown as it is, never guessed.
+  assert.match(statementRowError("Bank statement", { date: "05 JUN" }).message, /stop adding up on 05 JUN\./);
+
+  const { readFileSync } = await import("node:fs");
+  for (const file of ["ocbc.ts", "uob.ts", "citibank.ts"]) {
+    const source = readFileSync(new URL(`../src/lib/statement-import/${file}`, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /did not reconcile/, file);
+  }
 });

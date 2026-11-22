@@ -344,7 +344,7 @@ export const importMessages = {
   statementRecoveryNoDescription: "No readable description",
   statementRecoveryAmountLabel: (description) => `Amount for ${description || "this row"} from the PDF`,
   statementRecoveryAddRow: "Add row",
-  statementRecoveryHelp: "Check each row against page 1 of the PDF. If an amount was misread, correct it in Edit rows. Nothing has been saved, and the import stays blocked until the rows add up.",
+  statementRecoveryHelp: "Check each row against the PDF. If an amount was misread, correct it in Edit rows. Nothing has been saved, and the import stays blocked until the rows add up.",
   statementRecoveryAdding: "Adding the row and checking the statement again.",
   statementRecoveryAdded: "Row added. Check the statement again before you commit.",
   blockerNothingToImport: "Include at least 1 row",

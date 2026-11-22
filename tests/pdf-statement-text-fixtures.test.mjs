@@ -129,7 +129,7 @@ test("Citibank card PDF text rejects a statement whose rows do not reconcile to 
 
   assert.throws(
     () => parseStatementText(text, "citibank-card-aug-2026.pdf"),
-    /Citibank card section did not reconcile for Citi Rewards\. Expected 111\.70, got 63\.55\./
+    /: Citi Rewards statement: the rows read come to \$63\.55, but the statement says \$111\.70\. They are \$48\.15 apart, so nothing was imported\.$/
   );
 });
 
@@ -221,7 +221,7 @@ test("UOB card PDF text rejects a row whose amount is missing instead of borrowi
 
   assert.throws(
     () => parseStatementText(text, "uob-card-may-2026.pdf"),
-    /UOB card section did not reconcile for UOB One Card\./
+    /: UOB One Card statement: the rows read come to -\$38\.02, but the statement says \$57\.96\. They are \$95\.98 apart, so nothing was imported\.$/
   );
 });
 
@@ -261,7 +261,7 @@ test("UOB One savings PDF text rejects a row whose running balance does not foll
 
   assert.throws(
     () => parseStatementText(text, "uob-one-apr-2026.pdf"),
-    /UOB savings running balance did not reconcile for 2026-04-20 Funds Transfer/
+    /: UOB savings statement: the rows stop adding up on 20 Apr 2026 \(Funds Transfer [^)]*\)\. The row's amount does not fit the balance printed beside it\. Nothing was imported\.$/
   );
 });
 
@@ -306,7 +306,7 @@ test("OCBC 360 PDF text rejects a row whose amount disagrees with the running ba
 
   assert.throws(
     () => parseStatementText(text, "360 ACCOUNT-0001-May-26.pdf"),
-    /OCBC 360 row did not reconcile around 2026-05-22\. Expected row amount 1000\.00, got 100\.00\./
+    /: OCBC 360 statement: the rows stop adding up on 22 May 2026\. The statement's balance changes by \$1,000\.00 there, but the row reads \$100\.00\. Nothing was imported\.$/
   );
 });
 
@@ -371,6 +371,6 @@ test("OCBC 365 card PDF text rejects a statement whose rows do not reach the pri
 
   assert.throws(
     () => parseStatementText(text, "OCBC 365 CREDIT CARD-3333-Jan-27.pdf"),
-    /OCBC card section did not reconcile\. Expected 448\.20, got 468\.20\./
+    /: OCBC card statement: the rows read come to \$468\.20, but the statement says \$448\.20\. They are \$20\.00 apart, so nothing was imported\.$/
   );
 });

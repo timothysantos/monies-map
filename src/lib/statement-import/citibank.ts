@@ -14,7 +14,8 @@ import {
   parseCitibankLastSignedMoney,
   parseCitibankMoneyToMinor,
   previousMonth,
-  type ParsedStatementImport
+  type ParsedStatementImport,
+  statementTotalsError
 } from "./shared";
 
 interface CitibankCreditCardSection {
@@ -131,7 +132,7 @@ function parseCitibankCreditCardSection(
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
   if (computedBalanceMinor !== totalBalanceMinor) {
-    throw new Error(`Citibank card section did not reconcile for ${accountName}. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw statementTotalsError(`${accountName} statement`, totalBalanceMinor, computedBalanceMinor);
   }
 
   return {

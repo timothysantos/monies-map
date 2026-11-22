@@ -306,6 +306,60 @@ export function parseCitibankGrandTotalFromPreviousLines(lines: string[], grandT
   return undefined;
 }
 
+// A statement whose rows do not add up to its own printed balance is never
+// imported short. The message says how far apart they are, and for a
+// statement with a running balance, the first row where they part, so the
+// person knows where to look in the PDF.
+export class StatementDoesNotAddUpError extends Error {
+  readonly expectedMinor?: number;
+  readonly foundMinor?: number;
+  readonly rowDate?: string;
+
+  constructor(message: string, detail: { expectedMinor?: number; foundMinor?: number; rowDate?: string } = {}) {
+    super(message);
+    this.name = "StatementDoesNotAddUpError";
+    this.expectedMinor = detail.expectedMinor;
+    this.foundMinor = detail.foundMinor;
+    this.rowDate = detail.rowDate;
+  }
+}
+
+export function statementTotalsError(what: string, expectedMinor: number, foundMinor: number) {
+  return new StatementDoesNotAddUpError(
+    `${what}: the rows read come to ${plainMoney(foundMinor)}, but the statement says ${plainMoney(expectedMinor)}. `
+      + `They are ${plainMoney(Math.abs(expectedMinor - foundMinor))} apart, so nothing was imported.`,
+    { expectedMinor, foundMinor }
+  );
+}
+
+export function statementRowError(
+  what: string,
+  row: { date: string; description?: string },
+  amounts?: { expectedMinor: number; foundMinor: number }
+) {
+  const where = `${plainDate(row.date)}${row.description ? ` (${row.description})` : ""}`;
+  const why = amounts
+    ? `The statement's balance changes by ${plainMoney(amounts.expectedMinor)} there, but the row reads ${plainMoney(amounts.foundMinor)}.`
+    : "The row's amount does not fit the balance printed beside it.";
+  return new StatementDoesNotAddUpError(
+    `${what}: the rows stop adding up on ${where}. ${why} Nothing was imported.`,
+    { ...amounts, rowDate: row.date }
+  );
+}
+
+function plainMoney(valueMinor: number) {
+  const amount = (Math.abs(valueMinor) / 100).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${valueMinor < 0 ? "-" : ""}$${amount}`;
+}
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2026-05-22" as "22 May 2026"; anything else is shown as it is.
+function plainDate(isoDate: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  return match ? `${Number(match[3])} ${MONTH_NAMES[Number(match[2]) - 1]} ${match[1]}` : isoDate;
+}
+
 export function minorToDecimal(value: number) {
   return (value / 100).toFixed(2);
 }

@@ -19,7 +19,9 @@ import {
   parseMoneyLineToMinor,
   parseSavingsOpeningBalance,
   parseSavingsOverviewBalance,
-  type ParsedStatementImport
+  type ParsedStatementImport,
+  statementRowError,
+  statementTotalsError
 } from "./shared";
 
 interface CreditCardSection {
@@ -157,7 +159,7 @@ export function parseUobSavingsStatement(text: string, fileName?: string): Parse
     const depositMatches = previousBalanceMinor + amountMinor === balanceMinor;
     const withdrawalMatches = previousBalanceMinor - amountMinor === balanceMinor;
     if (!depositMatches && !withdrawalMatches) {
-      throw new Error(`UOB savings running balance did not reconcile for ${date} ${description}.`);
+      throw statementRowError("UOB savings statement", { date, description });
     }
 
     const isDeposit = depositMatches;
@@ -188,7 +190,7 @@ export function parseUobSavingsStatement(text: string, fileName?: string): Parse
   }
   const computedBalanceMinor = (parseSavingsOpeningBalance(lines) ?? 0) + depositsMinor - withdrawalsMinor;
   if (computedBalanceMinor !== statementBalanceMinor) {
-    throw new Error(`UOB savings statement did not reconcile. Expected ${minorToDecimal(statementBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw statementTotalsError("UOB savings statement", statementBalanceMinor, computedBalanceMinor);
   }
 
   return {
@@ -301,7 +303,7 @@ function parseUobCreditCardSection(
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
   if (computedBalanceMinor !== totalBalanceMinor) {
-    throw new Error(`UOB card section did not reconcile for ${account.name}. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw statementTotalsError(`${account.name} statement`, totalBalanceMinor, computedBalanceMinor);
   }
 
   return {

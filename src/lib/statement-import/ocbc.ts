@@ -15,7 +15,9 @@ import {
   parseOcbcLastMoney,
   MONTHS,
   parseOcbcMoneyToMinor,
-  type ParsedStatementImport
+  type ParsedStatementImport,
+  statementRowError,
+  statementTotalsError
 } from "./shared";
 
 interface OcbcStatementSection {
@@ -106,7 +108,7 @@ export function parseOcbcDepositStatement(lines: string[], fileName?: string): P
   }, 0);
   const computedBalanceMinor = previousBalanceMinor + rowMovementMinor;
   if (computedBalanceMinor !== finalBalanceMinor) {
-    throw new Error(`OCBC deposit statement did not reconcile. Expected ${minorToDecimal(finalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw statementTotalsError("OCBC account statement", finalBalanceMinor, computedBalanceMinor);
   }
 
   return {
@@ -173,7 +175,7 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
     const isIncome = parsedHeader.balanceMinor > runningBalanceMinor;
     const amountMinor = Math.abs(parsedHeader.balanceMinor - runningBalanceMinor);
     if (amountMinor !== parsedHeader.amountMinor) {
-      throw new Error(`OCBC 360 row did not reconcile around ${parsedHeader.date}. Expected row amount ${minorToDecimal(amountMinor)}, got ${minorToDecimal(parsedHeader.amountMinor)}.`);
+      throw statementRowError("OCBC 360 statement", { date: parsedHeader.date }, { expectedMinor: amountMinor, foundMinor: parsedHeader.amountMinor });
     }
 
     const description = cleanOcbcDescription([parsedHeader.description, ...continuationLines].join(" "));
@@ -197,7 +199,7 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
     throw new Error("Could not read the OCBC 360 closing balance.");
   }
   if (runningBalanceMinor !== finalBalanceMinor) {
-    throw new Error(`OCBC 360 statement did not reconcile. Expected ${minorToDecimal(finalBalanceMinor)}, got ${minorToDecimal(runningBalanceMinor)}.`);
+    throw statementTotalsError("OCBC 360 statement", finalBalanceMinor, runningBalanceMinor);
   }
 
   return {
@@ -264,7 +266,7 @@ function parseOcbcCreditCardSection(lines: string[], statementDate: string, acco
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
   if (computedBalanceMinor !== totalBalanceMinor) {
-    throw new Error(`OCBC card section did not reconcile. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw statementTotalsError("OCBC card statement", totalBalanceMinor, computedBalanceMinor);
   }
 
   const accountLast4 = findOcbcCardLast4(lines, previousIndex);
@@ -328,7 +330,7 @@ function parseOcbcDepositRows(
       const expectedMovement = parsedRow.balanceMinor - runningBalanceMinor;
       const signedMovement = parsedRow.incomeMinor - parsedRow.expenseMinor;
       if (expectedMovement !== signedMovement) {
-        throw new Error(`OCBC deposit row did not reconcile around ${parsedRow.row.date}. Expected row movement ${minorToDecimal(expectedMovement)}, got ${minorToDecimal(signedMovement)}.`);
+        throw statementRowError("OCBC account statement", { date: parsedRow.row.date, description: parsedRow.row.description }, { expectedMinor: expectedMovement, foundMinor: signedMovement });
       }
       runningBalanceMinor = parsedRow.balanceMinor;
     }
