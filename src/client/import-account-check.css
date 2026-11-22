@@ -73,12 +73,15 @@
 }
 
 @media (max-width: 760px) {
+  /* One fact per line: two columns wrapped the dates mid-phrase. */
   .import-account-check-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .import-account-check-name,
-  .import-account-check-balance {
-    grid-column: 1 / -1;
+  /* A finger needs 40px: the text action gets the height, not a new look. */
+  .import-account-check-detail .import-account-check-remove {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
   }
 }
