@@ -13,6 +13,7 @@ import { selectWaitingFilesToPull } from "./waiting-files-model";
 import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
 import { findRepeatedPreviewRows } from "./import-repeated-rows-model";
+import { createOcrProgressTracker } from "./import-ocr-progress";
 import { listOf } from "./copy/wording";
 import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
 import { buildEarlierImportLines, buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
@@ -1113,16 +1114,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
       }
       setUploadStatus({ tone: "active", message: importMessages.uploadOcr(file.name) });
-      const onOcrProgress = ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
+      const trackOcrProgress = createOcrProgressTracker();
+      const onOcrProgress = (event) => {
+        const reading = trackOcrProgress(event);
         setUploadStatus({
           tone: "active",
-          message: importMessages.uploadOcrProgress({
-            fileName: file.name,
-            pageNumber,
-            pageCount,
-            status,
-            progress
-          })
+          message: importMessages.uploadOcrProgress({ fileName: file.name, ...reading }),
+          progress: reading.fraction
         });
       };
       const ocrText = await importService.extractPdfOcrText(file, onOcrProgress);

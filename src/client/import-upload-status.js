@@ -13,9 +13,9 @@ const TITLES = {
  * queue. Reading (active), a file ready to map or preview (success) and an
  * error keep their own tones.
  *
- * @param {{ tone: string, message: string } | null} status the panel's upload status
+ * @param {{ tone: string, message: string, progress?: number } | null} status the panel's upload status
  * @param {{ hasWaitingFiles?: boolean }} [context] whether a queued file still waits
- * @returns {{ tone: string, title: string, message: string, role: string, opensQueue: boolean } | null}
+ * @returns {{ tone: string, title: string, message: string, role: string, opensQueue: boolean, progress?: number } | null}
  *   null when there is nothing to show (no status, or a waiting status with
  *   nothing left waiting)
  */
@@ -32,6 +32,8 @@ export function describeUploadStatus(status, { hasWaitingFiles = false } = {}) {
     title: TITLES[status.tone] ?? importMessages.uploadStatusWorking,
     message: status.message,
     role: status.tone === "error" ? "alert" : "status",
+    // The share of an image statement read so far, while it is being read.
+    ...(status.tone === "active" && typeof status.progress === "number" ? { progress: status.progress } : {}),
     opensQueue: isWaiting
   };
 }

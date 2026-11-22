@@ -452,3 +452,12 @@ button.import-upload-status.is-waiting {
     display: none;
   }
 }
+
+/* The share of an image statement read so far, under its status line. */
+.import-reading-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 6px;
+  accent-color: var(--accent-strong);
+}

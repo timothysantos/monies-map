@@ -58,6 +58,14 @@ export function ImportSelectFileStage({
     <>
       <strong>{status.title}</strong>
       <span>{status.message}</span>
+      {status.progress != null ? (
+        <progress
+          className="import-reading-progress"
+          max="1"
+          value={status.progress}
+          aria-label={importMessages.uploadOcrProgressLabel}
+        />
+      ) : null}
     </>
   ) : null;
   const openFilePicker = () => fileInputRef.current?.click();

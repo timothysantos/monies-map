@@ -134,12 +134,22 @@ export const importMessages = {
   uploadStatusError: "Import needs attention",
   uploadReading: (fileName) => `Reading ${fileName}.`,
   uploadExtracting: (fileName) => `Extracting text from ${fileName}.`,
-  uploadOcr: (fileName) => `This PDF is image-only. Running private OCR in this browser for ${fileName}.`,
-  uploadOcrProgress: ({ fileName, pageNumber, pageCount, status, progress }) => {
-    const pageText = pageNumber && pageCount ? ` Page ${pageNumber} of ${pageCount}.` : "";
-    const progressText = typeof progress === "number" && Number.isFinite(progress) ? ` ${Math.round(progress * 100)}%.` : "";
-    return `Running private OCR in this browser for ${fileName}.${pageText} ${status ?? "Working"}.${progressText}`;
+  uploadOcr: (fileName) => `${fileName} is a picture of a statement, so it is read here in this browser. Nothing leaves this device.`,
+  // One line per reading: the first, a second when amounts were unclear,
+  // then the unclear amounts one by one (import-ocr-progress.js).
+  uploadOcrProgress: ({ fileName, step = 1, pageNumber = undefined, pageCount = undefined, fraction = 0 }) => {
+    const where = pageNumber && pageCount
+      ? `Page ${pageNumber} of ${pageCount}, ${Math.round(fraction * 100)}% done.`
+      : "Getting ready.";
+    if (step === 2) {
+      return `Some amounts in ${fileName} were unclear, so it is being read a second time. ${where}`;
+    }
+    if (step === 3) {
+      return `Checking the unclear amounts in ${fileName} one by one. ${where}`;
+    }
+    return `Reading ${fileName} in this browser. ${where} Nothing leaves this device.`;
   },
+  uploadOcrProgressLabel: "How much of the file has been read",
   uploadParsing: (fileName) => `Parsing import rows from ${fileName}.`,
   uploadPreviewing: (count) => `Preparing preview for ${count} detected row${count === 1 ? "" : "s"}.`,
   uploadReady: (count) => `${count} row${count === 1 ? "" : "s"} ready for review.`,

@@ -1,4 +1,5 @@
 import { formatMinorInput } from "./formatters";
+import { OCR_STEPS, withOcrStep } from "./import-ocr-progress";
 import { attemptParse, chooseImageStatementParse } from "./import-ocr-passes";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 export { inferImportMapping } from "./import-column-mapping";
@@ -153,12 +154,12 @@ export async function parseImageStatement({ file, firstPass, parse, onProgress }
   if (first.parsed && !first.parsed.ocrReview?.wantsSecondPass) {
     return first.parsed;
   }
-  const secondPass = await extractPdfOcrText(file, onProgress, { pageSegMode: "6" });
+  const secondPass = await extractPdfOcrText(file, withOcrStep(onProgress, OCR_STEPS.second), { pageSegMode: "6" });
   const cellRegions = first.parsed?.ocrReview?.cellRegions;
   // The cell reader loads only when a statement needs it (Imports, never the
   // first screen).
   const cellPass = cellRegions?.length
-    ? await (await import("./import-ocr-cells")).extractPdfOcrCells(file, { cellRegions, referenceSize: first.parsed.ocrReview.referenceSize }, onProgress)
+    ? await (await import("./import-ocr-cells")).extractPdfOcrCells(file, { cellRegions, referenceSize: first.parsed.ocrReview.referenceSize }, withOcrStep(onProgress, OCR_STEPS.amounts))
     : "";
   const passes = [firstPass, secondPass, cellPass].filter(Boolean).join("\n");
   return chooseImageStatementParse(first, attemptParse(parse, passes));
