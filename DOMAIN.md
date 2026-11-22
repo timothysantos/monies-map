@@ -3353,6 +3353,53 @@ Relationships:
 - belongs to one `import batch`
 - belongs to one `account`
 
+### Statement Difference
+
+Why a saved `statement checkpoint` and the entries up to its last day
+differ, read from the ledger alone (no statement file). Two causes can be
+named, and only when the sums fit exactly:
+
+- `billed next`: entries dated on or before the statement's last day that a
+  LATER statement confirmed (through its `statement reconciliation
+  certificate`). The bank billed them on the next statement, so the
+  difference is timing. When they explain the whole difference the statement
+  reads as matched.
+- `not on statement`: unconfirmed entries dated inside the statement's
+  period whose amounts add up to what is left: one entry, several entries of
+  that same amount ("one of these"), or the only small group that fits.
+
+Anything else stays as an unexplained remainder with no entry named.
+
+Canonical term:
+- `statement difference`
+
+Code:
+- `src/domain/statement-difference.ts` (pure rule)
+- `src/domain/statement-difference-projection.ts` (one bounded read, none
+  while every statement matches)
+- DTO `StatementDifferenceDto` on `AccountCheckpointDto.difference`
+
+Rules:
+- it never writes and never uses AI
+- it is distinct from the `statement mismatch diagnosis`, which explains a
+  difference in the import preview against the statement's own rows
+- shown in Settings' statement history (every statement that is off) and in
+  the Imports page's account check (the latest statement only)
+
+### Account Check
+
+The Imports page's line per active bank or card account, inside the
+`import inbox`: the latest saved statement's last day, whether it balances
+(with its `statement difference` when it does not), the newest entry's date
+and the statement months still to bring in.
+
+Canonical term:
+- `account check`
+
+Code:
+- `buildImportInbox` (`src/domain/import-inbox.ts`), DTO
+  `ImportInboxAccountCheckDto`
+
 ### Statement Mismatch Diagnosis
 
 The deterministic explanation of a statement card's difference in the import

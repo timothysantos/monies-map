@@ -14,6 +14,8 @@ import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
 import { findRepeatedPreviewRows } from "./import-repeated-rows-model";
 import { createOcrProgressTracker } from "./import-ocr-progress";
+import { summarizeAfterImportCheck } from "./import-after-check-model";
+import { requestCheckup } from "./check-api";
 import { listOf } from "./copy/wording";
 import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
 import { buildEarlierImportLines, buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
@@ -302,6 +304,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // shows their result; the commit sends the preview's appliedFixes.
   const statementFixesRef = useRef([]);
   const previewRequestSequenceRef = useRef(0);
+  // What "Check my books" finds after a save (doubles, transfers with no
+  // other side). Read once after the person's own save, never on page load.
+  const [afterImportCheck, setAfterImportCheck] = useState(null);
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !splitCleanup.dismissed;
   const intakeQueueSummary = useMemo(() => summarizeIntakeQueue(intakeQueue), [intakeQueue]);
@@ -1614,6 +1619,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // refresh notice, whose retry runs it again; a superseded one is silent.
     await runBackgroundRefresh(refreshAfterCommit);
     setIsRecentImportsRefreshing(false);
+    // An extra, after the save is on screen: a failed or slow check shows
+    // nothing and never touches the saved import.
+    void requestCheckup({ viewId })
+      .then((report) => setAfterImportCheck(summarizeAfterImportCheck(report)))
+      .catch(() => setAfterImportCheck(null));
   }
 
   async function handleExplainMismatch() {
@@ -2879,6 +2889,30 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         </div>
         ) : null}
       </section>
+      ) : null}
+
+      {afterImportCheck ? (
+        <section className="import-post-cleanup-card" data-import-target="after-import-check">
+          <div>
+            <h3>{importMessages.afterImportCheckTitle(afterImportCheck.totalCount)}</h3>
+            {afterImportCheck.doubleCount ? <p>{importMessages.afterImportDoubles(afterImportCheck.doubleCount)}</p> : null}
+            {afterImportCheck.transferCount ? (
+              <p>{importMessages.afterImportTransfers(afterImportCheck.transferCount, afterImportCheck.clearPairCount)}</p>
+            ) : null}
+          </div>
+          <div className="import-post-cleanup-actions">
+            <button
+              type="button"
+              className="dialog-primary"
+              onClick={() => navigate({ pathname: "/check", search: viewId && viewId !== "household" ? `?view=${encodeURIComponent(viewId)}` : "" })}
+            >
+              {importMessages.afterImportCheckOpen}
+            </button>
+            <button type="button" className="subtle-action" onClick={() => setAfterImportCheck(null)}>
+              {importMessages.afterImportCheckLater}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {showSplitCleanupNotice ? (

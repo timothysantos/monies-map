@@ -774,6 +774,18 @@ export const importMessages = {
   recentCommitSuccess: (fileName, accountNames = []) => `File imported: ${fileName || "Import"}${accountNames.length ? ` into ${listOf(accountNames)}` : ""}. Recent imports have been updated.`,
   recentEarlierTitle: "Imported before it:",
   recentEarlierItem: ({ accountNames, period, sourceLabel }) => [listOf(accountNames), period, sourceLabel].filter(Boolean).join(" · "),
+  // After a save: what the "Check my books" page now finds that an import
+  // can cause. The card only counts and opens that page.
+  afterImportCheckTitle: (count) => `${countOf(count, "thing")} to look at in your books`,
+  afterImportDoubles: (count) => `${countOf(count, "payment")} may be recorded twice.`,
+  afterImportTransfers: (count, clearPairCount) => {
+    const base = `${countOf(count, "transfer")} ${count === 1 ? "has" : "have"} no matching other side yet.`;
+    return clearPairCount
+      ? `${base} ${countOf(clearPairCount, "pair")} ${clearPairCount === 1 ? "is" : "are"} clear enough to link in one step.`
+      : base;
+  },
+  afterImportCheckOpen: "Check my books",
+  afterImportCheckLater: "Later",
   splitCleanupTitle: (count) => `${count} possible split ${count === 1 ? "link" : "links"} after this import`,
   splitCleanupDetail: "Some imported bank rows may be the official ledger version of split expenses or settle-ups you already entered manually. Review them now, or leave them for the Splits review inbox later.",
   reviewSplitMatchesNow: "Review split matches",

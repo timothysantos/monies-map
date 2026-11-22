@@ -3649,3 +3649,32 @@ stroke dashes, never a number, and never mark a figure hidden while armed
 state machine (`earned-spent-chart.js`). A card that holds another chart
 must use its own attribute (Months against plan uses `data-intent-motion`): the
 month chart's CSS keys on `data-chart-motion` of any ancestor.
+
+## Import clarity: what the Imports page tells the person
+
+- **Account check** (`buildImportInbox`, `import-account-check.jsx`): one line
+  per bank or card account from `loadAccounts` plus
+  `attachStatementDifferences(db, accounts, { latestOnly: true })`. That read
+  is skipped while every latest statement matches.
+- **Statement difference** (`statement-difference.ts`): names next-statement
+  billing and unconfirmed entries only when the sums fit exactly; tests in
+  `tests/statement-difference.test.mjs` (rule) and
+  `tests/statement-difference-api.test.mjs` (real rows).
+- **Account source** (`ParsedStatementImport.accountSource`): a reader sets
+  `"file_name"` or `"selected_account"` only when the file does not name its
+  account. The preview keeps the account choice in view and words the reason.
+  A new activity reader must set it.
+- **A statement that does not add up** throws `StatementDoesNotAddUpError`
+  (`statementTotalsError`, `statementRowError` in
+  `src/lib/statement-import/shared.ts`). Its message is what the person
+  reads, so it is plain words with the gap and, for a running balance, the
+  first row where it breaks. Do not throw a bare "did not reconcile".
+- **Repeated rows**: a reader that leaves out rows a file lists twice says
+  how many in `warnings` (UOB card XLS). `findRepeatedPreviewRows` points at
+  look-alike rows in activity files only.
+- **Reading progress** (`import-ocr-progress.js`): each pass reports its step
+  (`withOcrStep`); the tracker joins our page events with the engine's
+  progress so the bar never runs backwards.
+- **After a save** the page reads `/api/ledger-checkup` once and counts the
+  kinds an import can cause (`import-after-check-model.js`). It never reads
+  it on page load.

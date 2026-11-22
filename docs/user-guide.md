@@ -1917,6 +1917,20 @@ leave Ask.
   dropped on the file you are reviewing is not added. A single file dropped
   while you review another opens straight away; the other waits in the
   queue again. **Review** asks first if you changed the file in review.
+- **Check every account**: inside the **Import inbox**, one line for each
+  bank account and card. It shows the last day of the latest statement you
+  saved, whether that statement matches your entries (**Matched**, or
+  **Off by** an amount), and the date of the newest entry. When a statement
+  is off and one entry you added by hand is exactly the difference, the line
+  names it ("... is not on the statement.") with **Remove this entry**,
+  which asks you to confirm first. A line also lists any statement months
+  you still have to bring in. The list is open while anything needs a look
+  and folds to "13 of 13 balanced" when everything matches.
+- **While a picture of a statement is read**: some banks send statements as
+  pictures (HSBC). The status box says which page is being read and how
+  much is done, with a bar. If some amounts were unclear it says the file is
+  being read a second time, then that the unclear amounts are being checked
+  one by one. Nothing leaves your device while this runs.
 - **How importing works**: a folded row under the drop zone with the notes
   about PDF and XLS files, trustworthy statements and rollback.
 - **Paste rows or set defaults**: opens the fields below. It opens by
@@ -2835,6 +2849,32 @@ balance matches":
 **Save empty statement checkpoint** only appears for a statement with no
 transactions at all.
 
+## Check which account a file is going to
+
+Some bank files do not say which account they are from (Citibank, OCBC and
+HSBC activity files). The preview then shows **Check the card account** with
+the reason: the account was read from the file's name, or it is the account
+you chose for this upload. If it is wrong, choose the right account there.
+The import is checked again before you save it.
+
+## Rows that appear twice in a file
+
+- A UOB card activity file sometimes repeats a block of transactions. The
+  preview says so under **Review before importing** ("This file lists 12
+  transactions twice. Each one is kept once.").
+- For any activity file, the same place lists rows that look the same as
+  another row in the file (same day, wording and amount). Banks do list two
+  identical payments on one day, so both are kept. If one is a copy, skip it
+  in **Edit rows**. A statement's rows are checked against its printed
+  balance, so this note is not shown for statements.
+
+## After you save an import
+
+When your books now hold payments that may be recorded twice, or transfers
+with no matching other side, a card under the import says how many and
+opens **Check my books**, where each one is listed with its fix. **Later**
+puts the card away.
+
 ## Fix a statement that does not balance
 
 The statement check looks for the reason first and suggests a fix, using the
@@ -2896,6 +2936,19 @@ preview**. Hover or focus a box to see exactly which dates and rows it uses.
 If the listed rows add up to exactly the difference, fixing them will balance
 the statement. Delete is only for rows that are missing from the bank, are
 duplicates, or belong to another account.
+
+## A past statement shows a difference
+
+In **Settings**, each account's statement history says **Matched** or
+**Off by** an amount.
+
+- **"Matched. 7 entries worth $1,706.66 were billed on the next
+  statement."**: you made those purchases before the statement closed, but
+  the bank put them on the following statement. Nothing is wrong.
+- **"... is not on the statement."**: an entry you added that the bank never
+  listed. Remove it, or move it to the account it was really paid from.
+- **"... is not explained yet."**: use **Compare statement** on that row to
+  upload the statement again and see row by row what differs.
 
 ## Undo an import
 
@@ -3779,6 +3832,12 @@ Renaming an account is only right when the account itself was named wrongly.
 - **Nothing happens or "Import needs attention"**: check the file is one of
   the supported types ([Which file do I download?](#which-file-do-i-download-from-my-bank))
   and that you chose the right **Default account** first.
+- **"... the rows read come to $63.55, but the statement says $111.70. They
+  are $48.15 apart, so nothing was imported."**: the rows the app could read
+  do not add up to the balance printed on the statement, so it stopped
+  instead of importing short. For a bank account it names the first row
+  where they part ("the rows stop adding up on 5 Jun 2026 ..."); check that
+  row in the PDF. Try a fresh download of the statement first.
 - **A row description is blocked as too long or containing page text**: the
   reader merged part of the statement's small print into a row. Nothing was
   saved. Try a clean download of the file.
