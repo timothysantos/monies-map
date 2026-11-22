@@ -7,7 +7,7 @@ import {
   newSplitRecordId,
   slugify
 } from "./app-repository-helpers";
-import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
+import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, findActiveSplitBatchId, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
 import { assertSplitSettlementUnchanged, SplitSettlementLockedError, type SplitSettlementFacts } from "./split-settlement-lock";
 import { USUALLY_SHARED_CONFIRM_ABOVE, USUALLY_SHARED_POLICY } from "./usually-shared";
@@ -935,7 +935,9 @@ export async function createSplitExpenseRecord(
   );
 
   const id = newSplitRecordId("split-expense");
-  const batchId = await getOrCreateActiveSplitBatch(db, {
+  // All-or-nothing (docs/code-spec.md "Persistence Atomicity Contract"): a
+  // new current batch, the expense and both shares commit together.
+  const { id: batchId, statements: batchStatements } = await resolveActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
   });
@@ -945,7 +947,7 @@ export async function createSplitExpenseRecord(
     { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
   ];
 
-  await db
+  const expenseStatement = db
     .prepare(`
       INSERT INTO split_expenses (
         id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
@@ -969,19 +971,19 @@ export async function createSplitExpenseRecord(
       input.paymentMethod ?? "cash",
       input.paymentStatus ?? "recorded",
       input.note ?? null
-    )
-    .run();
+    );
 
-  for (const share of shares) {
-    await db
+  await db.batch([
+    ...batchStatements,
+    expenseStatement,
+    ...shares.map((share) => db
       .prepare(`
         INSERT INTO split_expense_shares (
           id, split_expense_id, person_id, ratio_basis_points, amount_minor
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(`${id}-${share.personId}`, id, share.personId, share.ratioBasisPoints, share.amountMinor)
-      .run();
-  }
+      .bind(`${id}-${share.personId}`, id, share.personId, share.ratioBasisPoints, share.amountMinor))
+  ]);
 
   return { splitExpenseId: id };
 }
