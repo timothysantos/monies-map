@@ -405,7 +405,10 @@ export function AskCardRows({
   noteRef,
   onChange,
   onVariantChange,
-  onShareChange
+  onShareChange,
+  // A receipt's items (ask-receipt-items.jsx), between the Splits switch
+  // and each person's share.
+  itemsSlot = null
 }) {
   const [pickerOpen, setPickerOpen] = useState("");
   const activePicker = openPicker ?? pickerOpen;
@@ -598,6 +601,7 @@ export function AskCardRows({
           />
         </DetailRows>
       ) : null}
+      {itemsSlot}
       {/* Each person's share, as Save will write it (Ask audit B4): the Add to Splits card's own rows. */}
       {showShare && card.share.on && shares.length ? (
         <DetailRows className="ask-rows-share ask-rows-shares" label={askCopy.turn.split.label}>

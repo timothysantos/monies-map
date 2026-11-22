@@ -125,7 +125,7 @@ test("a catch-all entry takes the shop's sure habitual category with its own Und
 test("the note keeps what it had, never repeats a line and stays bounded", () => {
   assert.equal(noteWithReceipt("Kaya toast 2.60", ["Kaya toast 2.60"]), "Kaya toast 2.60");
   const long = noteWithReceipt("", Array.from({ length: 80 }, (_, index) => `Item ${index} 1.00`));
-  assert.ok(long.length <= 600);
+  assert.ok(long.length <= 900);
   assert.ok(long.endsWith("…"));
 });
 

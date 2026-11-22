@@ -18,6 +18,13 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const MONTH = TODAY.slice(0, 7);
 const suggestions = (page) => page.getByRole("group", { name: "Suggestions" }).getByRole("button");
 
+// RECEIPT_SHOTS_DIR=<dir> keeps a picture of each state for review.
+async function shot(page, name, focus = null) {
+  if (!process.env.RECEIPT_SHOTS_DIR) return;
+  if (focus) await focus.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await page.screenshot({ path: `${process.env.RECEIPT_SHOTS_DIR}/${name}.png` });
+}
+
 // Distinct small photos, so each has its own fingerprint.
 async function photo(name, colour) {
   const buffer = await sharp({ create: { width: 60, height: 90, channels: 3, background: colour } }).png().toBuffer();
@@ -101,6 +108,7 @@ test.describe("many receipts at once on a phone", () => {
     await expect(page.locator(".ask-card-tag")).toHaveText("Read from your receipt");
     // Not now, not Discard, on one of several receipts.
     await expect(page.locator(".ask-card-discard .lsd-quiet")).toHaveText("Not now");
+    await shot(page, "01-three-photos-first-card", page.locator(".ask-me").last());
 
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.locator('[data-ask-card="saved"]')).toBeVisible();
@@ -108,11 +116,13 @@ test.describe("many receipts at once on a phone", () => {
 
     // The saved card stays until Next receipt.
     await expect(suggestions(page).first()).toHaveText("Next receipt");
+    await shot(page, "02-saved-next-receipt");
     await suggestions(page).first().click();
     const change = page.locator('[data-change-type="receipt_match"]');
     await expect(change).toBeVisible();
     await expect(change).toContainText("This receipt is already in Entries");
     await expect(change.locator('[data-change-field="note"]')).toContainText("Receipt: paid IDR 150,000.");
+    await shot(page, "03-already-in-entries-change-card", change);
     await change.getByRole("button", { name: "Update this entry" }).click();
     await expect(page.locator(".ask-note").filter({ hasText: "Updated from the receipt." })).toBeVisible();
     const updated = await entryById(page, warungId);
@@ -124,6 +134,7 @@ test.describe("many receipts at once on a phone", () => {
     const failed = page.locator('[data-receipt-status="failed"]');
     await expect(failed).toContainText("Couldn't read this one");
     await expect(failed.locator("[data-receipt-retry]")).toHaveText("Try again");
+    await shot(page, "04-couldnt-read-this-one", page.locator(".ask-receipts"));
     await failed.locator("[data-receipt-type]").click();
     await expect(page.locator('[data-ask-card="draft"]')).toBeVisible();
     expect(seen.maxConcurrent, "the photos were read one after another").toBe(1);
@@ -143,6 +154,7 @@ test.describe("many receipts at once on a phone", () => {
     const labels = await suggestions(page).allInnerTexts();
     expect(labels.slice(0, 2).every((label) => /^ZQX TOAST CORNER, Today, \$7\.60$/.test(label))).toBe(true);
     expect(labels.slice(2)).toEqual(["It's a new one", "Not now"]);
+    await shot(page, "05-same-photo-and-which-entry");
     await suggestions(page).nth(2).click();
     await expect(page.getByRole("textbox", { name: "What it was" })).toHaveValue("ZQX Toast Corner");
   });

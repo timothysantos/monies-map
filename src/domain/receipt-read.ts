@@ -101,7 +101,7 @@ export const RECEIPT_READ_PROMPT = [
   "Write amounts as plain decimals with '.' and no thousands separators: Rp 45.000 is \"45000\", $1,234.50 is \"1234.50\".",
   "Write the date as YYYY-MM-DD. If day and month could be swapped, put the other reading in dateAlternatives.",
   "cardDigits is only the last four digits of a card number; never return more.",
-  "List at most 30 line items."
+  "List at most 30 line items. Include tax, service charge, discount and rounding lines as their own line items with the amount as printed (a discount is negative)."
 ].join(" ");
 
 export interface ReceiptAccountCandidate {

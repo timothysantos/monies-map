@@ -30,6 +30,15 @@ export const RECEIPT_MATCH_ESTIMATE_MIN_MINOR = 10;
 // How old a saved rate may be to compare a foreign receipt with.
 export const RECEIPT_MATCH_RATE_MAX_AGE_DAYS = 14;
 
-// The receipt's lines added to a matched entry's note stay short: the note
-// as a whole is capped by the entry note limit (2,000 characters).
-export const RECEIPT_NOTE_MAX_CHARS = 600;
+// The receipt's lines added to an entry's note stay short (15 items fit):
+// the note as a whole is capped by the entry note limit (2,000 characters).
+export const RECEIPT_NOTE_MAX_CHARS = 900;
+
+// A receipt's items add up to its total within rounding (receipt-items.ts):
+// 5 cents (Singapore's cash rounding) for a currency with cents, or 1 whole
+// unit for yen, rupiah, won and dong.
+export const RECEIPT_ITEMS_TOLERANCE_MINOR = 5;
+export const RECEIPT_ITEMS_TOLERANCE_WHOLE_UNITS = 1;
+
+// The first line of the items a receipt adds to an entry's note.
+export const RECEIPT_ITEMS_NOTE_HEADER = "Receipt items:";

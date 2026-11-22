@@ -1,0 +1,23 @@
+{
+  "note": "Invented Japanese convenience-store receipt as the AI reader returns it (RECEIPT_READ_JSON_SCHEMA): prices include tax, so the 8% and 10% tax lines are informational (内消費税). No real shop or receipt.",
+  "raw": {
+    "merchant": "コンビニ ミドリ 渋谷道玄坂店",
+    "merchantConfidence": "high",
+    "date": "2026-11-12",
+    "dateConfidence": "high",
+    "dateAlternatives": [],
+    "totalAmount": "1030",
+    "currency": "JPY",
+    "totalConfidence": "high",
+    "cardDigits": null,
+    "lineItems": [
+      { "description": "おにぎり 鮭", "amount": "160", "quantity": 1 },
+      { "description": "おにぎり 梅", "amount": "150", "quantity": 1 },
+      { "description": "緑茶 500ml", "amount": "140", "quantity": 1 },
+      { "description": "たまごサンド", "amount": "340", "quantity": 1 },
+      { "description": "缶ビール 350ml", "amount": "240", "quantity": 1 },
+      { "description": "(8%対象 内消費税)", "amount": "58", "quantity": null },
+      { "description": "(10%対象 内消費税)", "amount": "21", "quantity": null }
+    ]
+  }
+}

@@ -19,6 +19,7 @@
 // they come back.
 
 import { readServerChange } from "./ask-turn-api";
+import { matchNoteLines } from "./ask-receipt-items-card";
 import { prepareReceiptImage, readReceiptTextOnDevice } from "./ask-receipt-image";
 import {
   findReceipt,
@@ -204,7 +205,7 @@ export async function runReceiptQueue(key, deps) {
       // Read: the photo is discarded.
       photos.delete(id);
       deps.update((current) => markReceiptRead(current, id, read));
-      const request = matchRequestOf(read, { householdCurrency: deps.householdCurrency });
+      const request = matchRequestOf(read, { householdCurrency: deps.householdCurrency, noteLines: matchNoteLines(read) });
       const match = request ? await deps.match(request) : { kind: "none" };
       deps.update((current) => setReceiptMatch(current, id, match));
     }

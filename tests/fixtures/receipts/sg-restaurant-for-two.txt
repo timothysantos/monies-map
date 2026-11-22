@@ -1,0 +1,21 @@
+WARUNG HIJAU DINING
+Blk 000 Example Street #01-01
+Singapore 000000
+Tel: 6000 0000
+
+TABLE 12     PAX 2
+18 Nov 2026  19:42
+
+1  NASI LEMAK SET            8.90
+1  MEE GORENG                7.50
+2  TEH TARIK                 5.60
+1  SATAY 10 STICKS          12.00
+1  CHENDOL                   4.20
+
+SUBTOTAL                   38.20
+SVC CHG 10%                 3.82
+GST 9%                      3.78
+TOTAL                      45.80
+
+MASTERCARD XXXX XXXX XXXX 5150
+APPROVED   AUTH 000000

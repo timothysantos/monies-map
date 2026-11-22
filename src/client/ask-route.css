@@ -330,6 +330,59 @@
   color: var(--pastel-rose-ink);
 }
 
+/* A receipt's items on its card (ask-receipt-items.jsx): each item's
+   line, then its three one-tap choices on a shared card. */
+.ask-receipt-items {
+  min-width: 0;
+}
+
+.ask-receipt-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ask-receipt-item:not(.is-item) .ask-receipt-item-name,
+.ask-receipt-item.is-included .ask-receipt-item-name {
+  color: var(--muted);
+}
+
+.ask-receipt-item-whose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 10px;
+}
+
+.ask-receipt-item-choice {
+  flex: 1 1 0;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ask-receipt-item-choice[aria-pressed="true"] {
+  border-color: var(--accent-strong);
+  background: rgb(var(--accent-strong-rgb) / 0.14);
+  font-weight: 700;
+}
+
+.ask-receipt-item-choice:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.ask-receipt-items-note {
+  margin: 0;
+}
+
 /* An answer (ask-answer-card.jsx): the shared LeadCard
    (ui/lead-support-detail.css); what the total counts stays a quiet line. */
 .ask-answer .lsd-subtitle {

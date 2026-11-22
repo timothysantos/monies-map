@@ -49,7 +49,7 @@ const AMOUNT_AT_END = /(?:^|\s)(-)?\s*(?:US\$|S\$|HK\$|NT\$|A\$|\$|Rp\.?|RM|IDR|
 
 export function readReceiptOcrText(
   text: string,
-  options: { today: string; defaultCurrency?: string }
+  options: { today: string; defaultCurrency?: string; withAdjustments?: boolean }
 ): ReceiptReadDto | null {
   const lines = String(text ?? "")
     .split(/\r?\n/)
@@ -74,7 +74,9 @@ export function readReceiptOcrText(
     currency,
     totalConfidence: total?.confidence ?? "low",
     cardDigits: findCardLast4(lines),
-    lineItems: findLineItems(lines, largeUnit)
+    // The tax, service, discount and rounding lines after the subtotal
+    // too, so the items can be checked against the total (receipt-items.ts).
+    lineItems: [...findLineItems(lines, largeUnit), ...(options.withAdjustments ? findAdjustmentLines(lines, largeUnit) : [])]
   }, { today: options.today, source: "ocr" });
 }
 
@@ -205,6 +207,31 @@ function findLineItems(lines: string[], largeUnit: boolean) {
     }
   }
   return items;
+}
+
+// Lines between a printed subtotal and the total that change it: "Svc Chg
+// 10% 1.95", "GST 9% 1.93", "GST 9% INCL. 1.81", "ROUNDING -0.02". A zero
+// line ("ROUNDING 0.00") changes nothing and is left out.
+const ADJUSTMENT = /\b(GST|TAX|VAT|PB1|PPN|SVC|SERVICE|ROUNDING|DISC\w*)\b/i;
+function findAdjustmentLines(lines: string[], largeUnit: boolean) {
+  const start = lines.findIndex((line) => ITEMS_END.test(line));
+  if (start < 0 || !/SUB\s*-?\s*T[O0]TA[L1I]/i.test(lines[start])) {
+    return [];
+  }
+  const found: Array<{ description: string; amount: string; quantity: number | null }> = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!NOT_TOTAL.test(line) && TOTAL_LABELS.some(([pattern]) => pattern.test(line))) {
+      break;
+    }
+    if (!ADJUSTMENT.test(line)) {
+      continue;
+    }
+    const amount = readLineAmount(line, largeUnit);
+    if (amount && Number(amount.value) !== 0) {
+      found.push({ description: amount.before, amount: amount.value, quantity: null });
+    }
+  }
+  return found;
 }
 
 // The amount printed at the end of a line, as a plain decimal string in

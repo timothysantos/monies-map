@@ -221,6 +221,18 @@ export const askCopy = {
     photo: "Sent a receipt photo",
     photos: (count) => `Sent ${count} receipt photos`
   },
+  // A receipt's items on its card, and whose each one is (ask-receipt-items.jsx).
+  receiptItems: {
+    label: "Items on the receipt",
+    see: (count) => (count === 1 ? "See the 1 item" : `See the ${count} items`),
+    hide: "Hide the items",
+    mine: "Mine",
+    theirs: (name) => `${name}'s`,
+    shared: "Shared",
+    whose: (item) => `Whose is ${item}?`,
+    included: "included",
+    unreliable: "The items couldn't be read reliably, so only the total is shown."
+  },
   // Many receipts at once (ask-receipt-queue.jsx): read one after another,
   // reviewed one at a time on the usual card.
   receipts: {

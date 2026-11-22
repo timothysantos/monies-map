@@ -90,6 +90,8 @@ import {
   reviewSkippedReceipts
 } from "./ask-receipt-queue";
 import { AskReceiptQueueList } from "./ask-receipt-queue-list";
+import { AskReceiptItems } from "./ask-receipt-items";
+import { setReceiptItemOwner } from "./ask-receipt-items-card";
 import { RECEIPT_BATCH_MAX } from "../domain/receipt-batch-config";
 import { RECEIPT_IMAGE_MAX_BYTES } from "../domain/request-limits";
 import { BottomActions } from "./ui/lead-support-detail";
@@ -2268,6 +2270,12 @@ function AskConversation({
   // button opened it (in the desktop panel the page beside it never left).
   const showHeaderBack = !inDock && isAddMode && Boolean(backPlan);
   const receiptState = receipts?.items?.length ? receiptProgress(receipts) : null;
+  // "Mine" on a receipt's items: the person in view, else the card's owner,
+  // else the household's first person.
+  const itemsMeId = (people ?? []).find((person) => person.id === view.id)?.id
+    ?? (people ?? []).find((person) => person.name === card?.fields.ownerName)?.id
+    ?? people?.[0]?.id
+    ?? "";
   const chips = withReceiptChips(buildChipRow({
     active,
     intent,
@@ -2714,6 +2722,15 @@ function AskConversation({
             onChange={updateCard}
             onVariantChange={changeVariant}
             onShareChange={changeShare}
+            itemsSlot={card.variant === "expense" && (card.receiptItems || card.receiptItemsUnreliable) ? (
+              <AskReceiptItems
+                card={card}
+                people={(context.people ?? []).slice(0, 2)}
+                meId={itemsMeId}
+                disabled={Boolean(working) || card.status !== "draft"}
+                onOwner={(index, owner) => setCard((current) => (current ? setReceiptItemOwner(current, index, owner, context) : current))}
+              />
+            ) : null}
           />
         ) : null}
         {card?.status === "draft" && (!isCardEmpty(card) || card.receiptId) ? (

@@ -29,6 +29,8 @@
 // (cardShares).
 
 import { formatEditableMinorInput, parseDraftMoneyInput } from "./formatters";
+import { noteWithReceiptItems, receiptItemsFromRead, withItemShares } from "./ask-receipt-items-card";
+import { ENTRY_NOTE_MAX } from "./input-limits";
 
 export const CARD_VARIANTS = Object.freeze(["expense", "income", "transfer"]);
 const DEFAULT_EXPENSE_CATEGORY = "Other";
@@ -187,8 +189,11 @@ export function setCardField(card, patch, context) {
   if (staleEstimate) {
     fields = dropEstimateNote(fields, card.foreign);
   }
-  return {
+  // A share the person sets by hand wins over the receipt's items.
+  const ownShare = ["splitBasisPoints", "splitAmountMinor"].some((key) => Object.prototype.hasOwnProperty.call(patch, key)) && card.receiptItems?.touched;
+  return withItemShares({
     ...card,
+    ...(ownShare ? { receiptItems: { ...card.receiptItems, touched: false } } : {}),
     ...(staleEstimate ? { foreign: null } : {}),
     ...(answeredForeign ? { foreign: answeredForeign } : {}),
     // Owner Shared is on Splits: the switch shows it (Ask audit B3).
@@ -198,7 +203,7 @@ export function setCardField(card, patch, context) {
     touched: true,
     saveError: "",
     questions: card.questions.filter((question) => !answered.has(question.field) && !(answeredForeign && question === foreignQuestion))
-  };
+  }, context);
 }
 
 // The estimate's note is the card's note until the person changes it.
@@ -280,7 +285,8 @@ export function setShare(card, { on, splitGroupId }, context = {}) {
     return card;
   }
   const leavesShared = !on && card.fields.ownerName === SHARED_OWNER;
-  return {
+  // Back on Splits, the shares come from the receipt's items again if they were set.
+  return withItemShares({
     ...card,
     touched: true,
     ...(leavesShared ? { fields: { ...card.fields, ownerName: soleOwnerFor(card, context) } } : {}),
@@ -288,7 +294,7 @@ export function setShare(card, { on, splitGroupId }, context = {}) {
       on: Boolean(on),
       splitGroupId: on ? (splitGroupId ?? card.share.splitGroupId ?? "") : ""
     }
-  };
+  }, context);
 }
 
 function soleOwnerFor(card, context) {
@@ -581,7 +587,9 @@ export function applyReceiptRead(card, receipt, context) {
     origin: "receipt",
     touched: true,
     saveError: "",
-    questions
+    questions,
+    // The receipt's items when they add up to its total (ask-receipt-items-card.js).
+    ...receiptItemsFromRead(receipt)
   };
 }
 
@@ -674,7 +682,9 @@ export function buildCardCreateDraft(card, context, { splitGroups = [] } = {}) {
     transferDirection: card.variant === "transfer" ? (fields.transferDirection ?? "out") : undefined,
     ownershipType: isShared ? "shared" : "direct",
     ownerName: fields.ownerName && fields.ownerName !== SHARED_OWNER ? fields.ownerName : undefined,
-    note: fields.note ?? "",
+    // The person's note, then the receipt's items (with whose each is when
+    // the entry goes on Splits by items), bounded by the note limit.
+    note: noteWithReceiptItems(card, context, { maxChars: ENTRY_NOTE_MAX }),
     // The estimate keeps what was paid: only while the amount is still it.
     ...(card.foreign && card.foreign.estimateMinor === fields.amountMinor
       ? { originalAmountMinor: card.foreign.amountMinor, originalCurrency: card.foreign.currency }

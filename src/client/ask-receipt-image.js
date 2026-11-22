@@ -76,7 +76,7 @@ export async function prepareReceiptImage(file) {
 
 // OCR text -> receipt read, or null when nothing on it reads as a receipt.
 export function readReceiptTextOnDevice(text, { today, defaultCurrency = HOUSEHOLD_CURRENCY }) {
-  return readReceiptOcrText(String(text ?? ""), { today, defaultCurrency });
+  return readReceiptOcrText(String(text ?? ""), { today, defaultCurrency, withAdjustments: true });
 }
 
 export async function readReceiptOnDevice(blob, { today, onProgress = undefined }) {

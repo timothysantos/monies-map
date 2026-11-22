@@ -1,0 +1,23 @@
+{
+  "note": "Invented restaurant bill for two as the AI reader returns it: items, then service charge and GST added on top. No real shop or receipt.",
+  "raw": {
+    "merchant": "Warung Hijau Dining",
+    "merchantConfidence": "high",
+    "date": "2026-11-18",
+    "dateConfidence": "high",
+    "dateAlternatives": [],
+    "totalAmount": "45.80",
+    "currency": "SGD",
+    "totalConfidence": "high",
+    "cardDigits": "5150",
+    "lineItems": [
+      { "description": "Nasi Lemak Set", "amount": "8.90", "quantity": 1 },
+      { "description": "Mee Goreng", "amount": "7.50", "quantity": 1 },
+      { "description": "Teh Tarik", "amount": "5.60", "quantity": 2 },
+      { "description": "Satay 10 sticks", "amount": "12.00", "quantity": 1 },
+      { "description": "Chendol", "amount": "4.20", "quantity": 1 },
+      { "description": "Svc Chg 10%", "amount": "3.82", "quantity": null },
+      { "description": "GST 9%", "amount": "3.78", "quantity": null }
+    ]
+  }
+}
