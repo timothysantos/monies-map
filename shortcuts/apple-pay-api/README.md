@@ -50,6 +50,20 @@ the contract has no new field. (`requestId` carries the phone's own
 timestamp, but in the phone's time zone, so the server's receive time is used
 instead.)
 
+## Amounts in another currency (every version)
+
+Every release posts Wallet's amount text unchanged. Wallet writes it the way
+the phone writes money: on English (Singapore) `$12.34`, `IDR 159,000` and
+`JP¥965` (English US `¥965`, Japanese `￥965`). The server reads the
+currency from the code or sign (`src/domain/wallet-currency-config.ts`) and
+saves the entry in the card's currency at the day's rate. Until 2026-11-22
+the yen signs were not known, so every yen tap in Japan was refused with
+"Missing or invalid shortcut fields: amount." (the Shortcut showed "Not
+saved"); the fix was on the server, so no reinstall was needed. Every
+release's request is replayed in `tests/shortcut-released-versions.test.mjs`
+(shapes in `tests/fixtures/shortcut-released-requests.json`): add the new
+release's row when one is signed. v4 and v5 send v3's `clientVersion`.
+
 ## A blank amount (`needsAmount`)
 
 An overseas terminal that asks which currency to pay in can reach the Wallet

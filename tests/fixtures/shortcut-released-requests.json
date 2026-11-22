@@ -1,0 +1,13 @@
+{
+  "about": "The request each released Apple Pay Shortcut sends to POST /api/shortcuts/entries/create, read from the Apple-signed files in shortcuts/apple-pay-api/releases (the Get Contents of URL action's JSON keys and its fixed clientVersion). v4 and v5 still send v3's clientVersion. amount is the Wallet transaction's text as Wallet hands it over, unchanged; date is yyyy-MM-dd; requestId is apple-pay- and the phone's time as yyyyMMddHHmmssSSS. A phone set to English (Singapore) formats amounts the way Intl en-SG does: $12.34, IDR 159,000, JP¥965.",
+  "releases": [
+    { "file": "monies-map-apple-pay-api-2026-08-22.shortcut", "version": 1, "clientVersion": null, "keys": ["amount", "description", "date"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-08-22-v2.shortcut", "version": 2, "clientVersion": "apple-pay-api-2026-08-22-v2", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-08-22-v3.shortcut", "version": 3, "clientVersion": "apple-pay-api-2026-08-22-v3", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-08-24-v4.shortcut", "version": 4, "clientVersion": "apple-pay-api-2026-08-22-v3", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-08-24-v5.shortcut", "version": 5, "clientVersion": "apple-pay-api-2026-08-22-v3", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-08-24-v6.shortcut", "version": 6, "clientVersion": "apple-pay-api-2026-08-24-v6", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": false, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-11-10-v7.shortcut", "version": 7, "clientVersion": "apple-pay-api-2026-11-10-v7", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": true, "readsHeld": false },
+    { "file": "monies-map-apple-pay-api-2026-11-17-v8.shortcut", "version": 8, "clientVersion": "apple-pay-api-2026-11-17-v8", "keys": ["amount", "description", "date", "name", "requestId", "clientVersion"], "readsNeedsAmount": true, "readsHeld": true }
+  ]
+}

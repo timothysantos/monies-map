@@ -878,7 +878,18 @@ DOMAIN.md "Transaction Time").
 
 `amount` can be a positive decimal number or Wallet-style text such as `SGD
 12.34` or `S$1,234.56`. The API preserves cents and rejects ambiguous decimal
-or thousands separators and ambiguous bare currency symbols. If the amount
+or thousands separators and currency signs it does not know. Wallet writes
+the amount the way the phone writes money: on English (Singapore) `$12.34`,
+`IDR 159,000` and `JP¥965`; on English (US) `¥965`; on Japanese `￥965`. The
+signs read as a currency (`JP¥`, `¥`, `CN¥`, `€`, `£`, `₩`, `HK$`, `NT$`,
+`RM` and others) are listed in `src/domain/wallet-currency-config.ts`; a bare
+`$` is the card's own currency. A sign not in that list is refused, never
+saved as Singapore dollars (until 2026-11-22 the yen signs were missing and
+every yen tap in Japan was refused). Every released Shortcut's request is
+replayed with yen, rupiah, dollar and blank amounts in
+`tests/shortcut-released-versions.test.mjs` (request shapes in
+`tests/fixtures/shortcut-released-requests.json`, read from the signed
+files); a new release adds its row there. If the amount
 names another currency than the selected account's (an Amaze card abroad:
 `IDR 159,000` on an SGD card), it is saved in the account's currency at the
 day's exchange rate (`src/domain/foreign-currency.ts`): the original amount and

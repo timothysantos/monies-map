@@ -1,3 +1,5 @@
+import { WALLET_AMOUNT_CURRENCY_SIGNS } from "./wallet-currency-config";
+
 export const SHORTCUT_DESCRIPTION_MAX_LENGTH = 500;
 export const SHORTCUT_NOTE_MAX_LENGTH = 2000;
 export const SHORTCUT_CLIENT_VERSION_MAX_LENGTH = 80;
@@ -312,22 +314,12 @@ function normalizeMajorAmount(value: number): NormalizedShortcutAmount | undefin
 
 function detectShortcutAmountCurrency(affixes: string) {
   const currencyAffix = affixes.replace(/[()+-]/g, "").toUpperCase();
-  if (/^[A-Z]{3}$/.test(currencyAffix)) {
+  if (/^[A-Z]{3}$/.test(currencyAffix) && !WALLET_AMOUNT_CURRENCY_SIGNS[currencyAffix]) {
     return currencyAffix;
   }
-  if (currencyAffix === "RP") {
-    return "IDR";
-  }
-  if (currencyAffix === "S$" || currencyAffix === "SG$") {
-    return "SGD";
-  }
-  if (currencyAffix === "$") {
-    return undefined;
-  }
-  if (currencyAffix === "US$") {
-    return "USD";
-  }
-  return undefined;
+  // "JP¥965", "¥965", "€12.50": a sign Wallet writes for a currency
+  // (wallet-currency-config.ts). A bare "$" is the card's own currency.
+  return WALLET_AMOUNT_CURRENCY_SIGNS[currencyAffix];
 }
 
 function isValidShortcutDateParts(year: number, month: number, day: number) {

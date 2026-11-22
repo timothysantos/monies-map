@@ -29,12 +29,39 @@ test("shortcut amount accepts Wallet currency text without losing cents", () => 
 test("shortcut amount rejects ambiguous, negative, over-precise, and unsafe values", () => {
   assert.equal(normalizeShortcutAmount(undefined, "12,34"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "1.234,56"), undefined);
-  assert.equal(normalizeShortcutAmount(undefined, "€12.34"), undefined);
+  assert.equal(normalizeShortcutAmount(undefined, "₾12.34"), undefined);
+  assert.equal(normalizeShortcutAmount(undefined, "XX¥965"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "SGD 12.345"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "-SGD 12.34"), undefined);
   assert.equal(normalizeShortcutAmount(1234, "SGD 12.35"), undefined);
   assert.equal(normalizeShortcutAmount(12.5), undefined);
   assert.equal(normalizeShortcutAmount(Number.MAX_SAFE_INTEGER + 1), undefined);
+});
+
+test("shortcut amount reads the currency signs Wallet writes abroad, never as the card's own dollars", () => {
+  // English (Singapore) phones write "JP¥965"; English (US) "¥965";
+  // Japanese "￥965" (NFKC reads it as "¥"). Japan, November 2026: every one
+  // of these was refused, so every yen tap was lost.
+  for (const text of ["JP¥965", "¥965", "￥965", "JP¥\u00a0965", "JPY 965", "jp¥965"]) {
+    assert.deepEqual(normalizeShortcutAmount(undefined, text), { amountMinor: 96_500, currency: "JPY" }, text);
+  }
+  assert.deepEqual(normalizeShortcutAmount(undefined, "JP¥47,684"), { amountMinor: 4_768_400, currency: "JPY" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "CN¥88.50"), { amountMinor: 8850, currency: "CNY" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "€12.34"), { amountMinor: 1234, currency: "EUR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "£7.20"), { amountMinor: 720, currency: "GBP" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "₩86,000"), { amountMinor: 8_600_000, currency: "KRW" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "HK$45.00"), { amountMinor: 4500, currency: "HKD" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "NT$350"), { amountMinor: 35_000, currency: "TWD" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "A$19.95"), { amountMinor: 1995, currency: "AUD" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "RM12.90"), { amountMinor: 1290, currency: "MYR" });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "฿120.00"), { amountMinor: 12_000, currency: "THB" });
+  // A bare "$" stays the card's own currency.
+  assert.deepEqual(normalizeShortcutAmount(undefined, "$12.34"), { amountMinor: 1234 });
+  // Still refused: an unknown sign, a refund, two amounts, a comma decimal,
+  // and yen with three decimals.
+  for (const text of ["₾965", "XX¥965", "JP¥-965", "-¥965", "(JP¥965)", "JP¥965 ¥10", "JP¥96,5", "JP¥965.123", "¥¥965"]) {
+    assert.equal(normalizeShortcutAmount(undefined, text), undefined, text);
+  }
 });
 
 test("shortcut amount reads a dot as the thousands mark when the groups are exactly three digits", () => {

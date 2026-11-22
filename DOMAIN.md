@@ -3417,10 +3417,15 @@ Code and storage:
 - `src/domain/foreign-currency.ts`
 - `transactions.original_amount_minor`, `transactions.original_currency`
 - `fx_rates` (the last rate per currency pair, a cache, not household data)
+- `src/domain/wallet-currency-config.ts` (the currency signs a Wallet amount
+  carries: `JP¥965`, `¥965`, `€12.50`; a three-letter code reads as itself)
 
 Important distinctions:
 - The account's currency stays the ledger's currency; an entry is never saved
   in a currency its account does not use.
+- The Wallet amount's currency is read from its sign or code. A sign the
+  server does not know is refused, never read as the card's currency; only a
+  bare `$` (or no sign) is the card's own currency.
 - A typed or spoken amount in another currency ("coffee 35000 IDR cash", in
   Ask or the entry reader) is a Foreign Currency Estimate too:
   `applyForeignEstimate` (`src/domain/entry-draft-foreign.ts`) turns it into
