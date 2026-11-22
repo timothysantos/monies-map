@@ -82,7 +82,11 @@ export type AskChangeType =
   | "trip_event"
   | "trip_event_create"
   // The usual shared past entries added to Splits (ask-usually-shared.ts).
-  | "usually_shared";
+  | "usually_shared"
+  // A receipt's purchase already in the ledger (receipt-match.ts): its lines
+  // into the entry's note, or a waiting Apple Pay tap finished with its total.
+  | "receipt_match"
+  | "receipt_tap";
 
 export type AskChangeField =
   | "amount"
@@ -159,7 +163,8 @@ export const ASK_CHANGE_PATHS = [
   "/api/trip-events/delete",
   "/api/trip-events/undo",
   "/api/splits/expenses/add-usual",
-  "/api/splits/expenses/remove-added"
+  "/api/splits/expenses/remove-added",
+  "/api/waiting-taps/complete"
 ] as const;
 export type AskChangePath = typeof ASK_CHANGE_PATHS[number];
 

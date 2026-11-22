@@ -144,6 +144,7 @@ import { checkAccess } from "./server/access-jwt";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { handleAskTurn } from "./server/ask-turn-route";
 import { handleAskHabitsRoute } from "./server/ask-habits-routes";
+import { handleReceiptMatch, RECEIPT_MATCH_PATH } from "./server/receipt-match-route";
 import { applyHabitsToNewEntry } from "./server/ask-auto-apply";
 import { forgetEntryHabitConfirmations, learnCategoryHabit, learnCategoryHabitForEntry, learnSplitHabitFromEntry, learnSplitHabitFromSavedSplit, readEntryHabitFacts } from "./domain/app-repository-ask-habits";
 import { aiVisitorKey } from "./domain/ai-assistance";
@@ -687,6 +688,12 @@ export default {
     // with a record in the open period (src/server/split-corrections-route.ts).
     if (isSplitCorrectionPath(url.pathname)) {
       return handleSplitCorrectionRoute(request, url, env);
+    }
+
+    // A receipt's purchase already in the ledger: no AI, deterministic
+    // (src/server/receipt-match-route.ts).
+    if (url.pathname === RECEIPT_MATCH_PATH) {
+      return handleReceiptMatch(request, env);
     }
 
     // Ask's habits, suggestions and Done for you: no AI, deterministic

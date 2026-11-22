@@ -280,12 +280,13 @@ export const ASK_CHANGE_PATHS = Object.freeze([
   "/api/trip-events/delete",
   "/api/trip-events/undo",
   "/api/splits/expenses/add-usual",
-  "/api/splits/expenses/remove-added"
+  "/api/splits/expenses/remove-added",
+  "/api/waiting-taps/complete"
 ]);
 const CHANGE_TYPES = new Set([
   "edit_entry", "recategorise", "recategorise_bulk", "entry_note", "month_note", "link_transfer", "group_create",
   "group_move", "simplify", "payment_way", "category_create", "category_rename", "category_colour", "plan_link",
-  "trip_event", "trip_event_create", "usually_shared"
+  "trip_event", "trip_event_create", "usually_shared", "receipt_match", "receipt_tap"
 ]);
 const MATCH_PATHS = Object.freeze({ expense: "/api/splits/matches/link-expense", settlement: "/api/splits/matches/link-settlement" });
 
