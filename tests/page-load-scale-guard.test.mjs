@@ -232,10 +232,13 @@ test("the trip view and the Trips & events totals read a bounded chain on the 10
 // The trip page (DOMAIN.md "Trip page", GET /api/trip-page) on the 10k
 // household: a trip holding 200 entries over a year, a quarter of them on
 // Splits. Its figures are grouped in SQL by the link table, so the page is
-// one step of four reads (the trip, the groups, the five biggest, the
-// shares on Splits) and reads only the trip's own rows; a day it opens is
-// one read. Measured 2026-11-14: 4 round trips in 1 step, about 2,500 rows,
-// a 19 kB answer (the day and payer entry ids are most of it).
+// one step of six reads (the trip, the groups, the five biggest, the
+// shares on Splits, the expenses that may need a look and the waiting taps
+// in its dates) and reads only the trip's own rows; a day it opens is one
+// read. Measured 2026-11-14: 4 round trips in 1 step, about 2,500 rows, a
+// 19 kB answer (the day and payer entry ids are most of it); 2026-11-22,
+// with how firm the total is and Needs a look: 6 round trips in 1 step,
+// about 4,450 rows, a 25 kB answer (the fixture's 50 lines in Other).
 test("the trip page reads one bounded step on the 10k household", async (t) => {
   const { db } = await openSeededDatabase(t, template);
   await buildLargeHousehold(db);

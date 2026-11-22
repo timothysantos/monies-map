@@ -2561,6 +2561,34 @@ cost the household. Read-only, no AI.
   currency, no statement yet) wears the butter "Estimate" chip and shows its
   Wallet amount; the header counts them
 - `biggest spending`: the five largest expenses
+- `how firm the total is` (owner approved 2026-11-22): Spent in up to three
+  parts by what the app knows about each entry (`TripFirmness`,
+  `tripPageFigures` byFirmness): `confirmed` ("Confirmed by the bank") is
+  statement-certified (Bank Certification Status); `estimate` ("Estimated")
+  is still a Foreign Currency Estimate; `waiting` ("Not on a statement
+  yet") is every other entry, recorded in its account's own money (Apple
+  Pay, a bank alert, an activity export, a cash or hand-made entry). Only
+  parts with entries show; a payback takes from its own part, so the parts
+  add up to Spent to the cent, and each is a trip figure (View entries opens
+  the household's trip view narrowed by `entry_id`). Whole amounts: a
+  person's share of an entry on Splits is as firm as the entry, so shares
+  never move money between parts (the trip view in a person's view counts
+  shares; the page does not). `payments with no amount yet`: waiting taps
+  (Waiting Tap) still waiting, not yet put away, whose day is in the trip's
+  own dates (a trip without dates has none). They are not entries, so they
+  are a count beside the parts, never a zero inside a sum
+- `needs a look` (owner approved 2026-11-22; `tripNeedsLook`, thresholds in
+  `trip-needs-look-config.ts`): a short list of the trip's real doubts, one
+  line each, by fixed rules, no AI: a payment with no amount yet once the
+  10-minute second-tap window has passed; a foreign currency estimate more
+  than 40 days old that no statement confirmed; an expense nobody owns
+  ("Shared") from an account that is not joint and not on Splits; an entry
+  on Splits with no group when the trip follows one; an expense in Other;
+  two expenses on the same day for the same amount at a similar shop
+  (`isSimilarShop`: the same words, or the wrong-card duplicate's strong
+  merchant match), unless the bank confirmed both. One line an entry (the
+  first reason in that order), at most 50; not shown at all when empty.
+  Nothing to dismiss: a line goes when its cause is fixed
 - a trip that is not this household's, or gone, reads as gone (no figure)
 
 Storage:

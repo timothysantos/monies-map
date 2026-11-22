@@ -259,11 +259,20 @@ sits under Entries: route `/trips/<id>`, tab id `trip`
   `GET /api/trip-page?trip=<id>&day=YYYY-MM-DD` once per day the person
   opens. A superseded read never lands (generation). `{ tripPage: null }` is
   "This trip or event is gone."; a failed read shows "Try again".
-- Server: `src/domain/trip-page-projection.ts`, one step of four reads (the
-  trip, the figures grouped by day, category, kind and payer, the five
-  biggest, the shares on Splits), all bounded by the trip's link rows
-  (tests/page-load-scale-guard.test.mjs; `trip-page` in the API payload
-  budget).
+- Server: `src/domain/trip-page-projection.ts`, one step of six reads (the
+  trip, the figures grouped by day, category, kind, payer and how firm, the
+  five biggest, the shares on Splits, the expenses that may need a look (one
+  windowed pass, LIMIT 200) and the waiting taps in the trip's dates), all
+  bounded by the trip's link rows (tests/page-load-scale-guard.test.mjs;
+  `trip-page` in the API payload budget). `firmness.parts` sends the part
+  with the most entries without its ids; `trip-page-model.js`
+  (`firmnessParts`) works them out from the days'. `needsLook` is left out
+  when empty.
+- Needs a look's actions (`needsLookTarget`): a payment with no amount opens
+  Entries with `waiting_tap` (its card; the trip view does not show it); an
+  entry opens its editor (`editing_entry`) in the household's trip view,
+  whose lead's "Open Seoul trip" is the way back; two that may be one
+  purchase open the trip view with both `entry_id`s.
 - Figures: the household's whole amounts (`data-fig-view="household"`);
   each opens the trip view on Entries narrowed (a day or payer by
   `entry_id`, a category by `entry_category`), whose Spent lead is the

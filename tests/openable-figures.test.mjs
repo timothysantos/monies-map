@@ -36,6 +36,7 @@ import { buildSubscriptionsModel, monthPeriod } from "../src/client/subscription
 import { todayInAppTimeZone } from "../src/lib/app-calendar.ts";
 import { addMonths } from "../src/domain/money-signals/format.ts";
 import { buildTripEventLeadModel } from "../src/client/trip-event-lead-model.js";
+import { firmnessParts } from "../src/client/trip-page-model.js";
 import { projectEntriesForView } from "../src/client/entry-row-projection.js";
 import { entriesRangeMonths } from "../src/domain/pages/entries-page.ts";
 import { buildEntriesFilterSearch } from "../src/client/entry-filter-params.js";
@@ -627,6 +628,36 @@ test("trip page: Spent, every day, category and payer open the trip view at the 
       assert.equal(opened.lead.spentMinor, figure.minor, `${pageView} ${figure.name}`);
       assert.equal(opened.derived.entryTotals.spendMinor, figure.minor, `${pageView} ${figure.name} (Entries totals)`);
     }
+  }
+});
+
+// How firm the trip page's total is (DOMAIN.md "Trip page", "how firm the
+// total is"; money-figures.ts `tripPageFigures` byFirmness): confirmed by
+// the bank, not on a statement yet, and estimated each open the trip view in
+// the household view narrowed to exactly their entries, whose Spent lead is
+// the part to the cent, and the three add up to Spent. The part the server
+// sends without ids (the one with the most entries) is worked out by the
+// page (trip-page-model.js `firmnessParts`), as the menu receives it.
+test("trip page: each part of how firm the total is opens the trip view at the part, to the cent", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const tripEvent = await seedTrip(api);
+  await db.prepare("UPDATE transactions SET bank_certification_status = 'statement_certified' WHERE description IN ('SQ flights to Seoul', 'Lotte Hotel Seoul')").run();
+  await db.prepare("UPDATE transactions SET original_amount_minor = 2300000, original_currency = 'KRW' WHERE description = 'Kakao T taxi'").run();
+  const { accounts } = await get(api, "/api/reference-data");
+  const { tripPage: page } = await get(api, `/api/trip-page?trip=${tripEvent.id}`);
+  const parts = firmnessParts(page);
+  assert.deepEqual(parts.map((part) => [part.part, part.amountMinor]), [["confirmed", 128_640 + 119_820], ["waiting", 3_680 - 500], ["estimate", 1_780]]);
+  assert.equal(parts.reduce((sum, part) => sum + part.amountMinor, 0), page.spentMinor);
+  for (const part of parts) {
+    const menu = figureMenu({
+      fig: "trip", arg: tripEvent.id, name: tripEvent.name, ids: part.entryIds, period: null, search: `?view=${TIM}&month=${MAY}&scope=direct`,
+      pathname: `/trips/${tripEvent.id}`, view: "household", trip: { name: tripEvent.name }
+    });
+    assert.equal(menu.items[0].action, "entries");
+    const opened = await openTripView(api, menu.items[0].location, accounts);
+    assert.equal(opened.page.viewId, "household", `${part.part}: opens in the household view`);
+    assert.equal(opened.lead.spentMinor, part.amountMinor, part.part);
+    assert.equal(opened.derived.entryTotals.spendMinor, part.amountMinor, `${part.part} (Entries totals)`);
   }
 });
 

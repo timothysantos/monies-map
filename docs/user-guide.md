@@ -959,6 +959,19 @@ whoever you are looking at in the rest of the app:
 - At the top: the trip's name, its dates, how many entries it holds and
   **Spent**. If some amounts were paid in another currency and the card
   statement has not come in yet, a yellow **Estimate** label says how many.
+- Under Spent, how sure that total is: **Confirmed by the bank** (on a card
+  or bank statement already), **Not on a statement yet** (for example an
+  Apple Pay payment the statement has not listed) and **Estimated** (paid in
+  another currency, so the amount in dollars is a guess until the
+  statement). The three add up to Spent. If a payment's amount never came
+  through, a line such as "1 payment with no amount yet" says so; it is not
+  counted in Spent until you add the amount.
+- **Needs a look**: only when something on the trip may be wrong. Each line
+  says why in a few words (the amount didn't come through, an estimate the
+  statement still has not confirmed after 40 days, a shared payment not on
+  Splits, a payment still in Other, or two payments on the same day for the
+  same amount at the same shop) and has one button that takes you where to
+  fix it. A line goes away by itself once it is fixed.
 - **Where it went**: the same ring of categories as on Summary.
 - **Day by day**: one line for each day money was spent, with a bar. Tap a
   day to see what was bought that day, right there. Each purchase shows the
@@ -974,7 +987,7 @@ Every amount opens like other figures: **View entries** shows exactly that
 money in Entries. **Open in Entries** at the top shows all of the trip's
 entries there.
 
-![A trip's own page: Spent, where it went, day by day with one day open, who paid, what is still owed and the biggest spending](/faq/guide/desktop/thumbs/trip-page.webp)
+![A trip's own page: Spent and how much of it the bank has confirmed, where it went, day by day with one day open, who paid, what is still owed and the biggest spending](/faq/guide/desktop/thumbs/trip-page.webp)
 ![On a phone the trip's cards stack one under another](/faq/guide/phone/thumbs/phone-trip-page.webp)
 
 **Make one with everything from its dates.** In the list of trips, choose

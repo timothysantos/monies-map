@@ -36,5 +36,36 @@ export const tripPageCopy = Object.freeze({
   openSplits: "Open Splits",
   biggest: "Biggest spending",
   biggestSub: (count) => (count === 1 ? "The largest entry" : `The ${count} largest entries`),
-  estimate: "Estimate"
+  estimate: "Estimate",
+  // How firm Spent is (DOMAIN.md "Trip page", "how firm the total is"):
+  // what the bank has confirmed, what is not on a statement yet, and what
+  // is an estimate. Plain ink: an estimate is not an alarm.
+  firmness: "How sure this total is",
+  firmnessPart: {
+    confirmed: "Confirmed by the bank",
+    waiting: "Not on a statement yet",
+    estimate: "Estimated"
+  },
+  noAmount: (count) => `${count} ${plural(count, "payment", "payments")} with no amount yet`,
+  // Needs a look (DOMAIN.md "Trip page", "needs a look"): one line why,
+  // one way to fix it.
+  needsLook: "Needs a look",
+  needsLookSub: "Payments that may be wrong or missing something",
+  lookWhy: {
+    no_amount: () => "The amount didn't come through.",
+    old_estimate: (item) => `Still an estimate after ${item.days} days. Its card statement may be missing.`,
+    shared_not_on_splits: () => "Marked Shared, but not on Splits.",
+    splits_no_group: (item, groupName) => (groupName ? `On Splits, but not in ${groupName}.` : "On Splits, but not in this trip's group."),
+    other_category: () => "In Other, so it has no category yet.",
+    maybe_copy: (item) => `Same day and amount as ${item.otherName}. One may be a copy.`
+  },
+  lookAction: {
+    no_amount: "Add the amount",
+    old_estimate: "Open",
+    shared_not_on_splits: "Add to Splits",
+    splits_no_group: "Open",
+    other_category: "Open",
+    maybe_copy: "See both"
+  },
+  lookActionLabel: (action, name) => `${action}: ${name}`
 });

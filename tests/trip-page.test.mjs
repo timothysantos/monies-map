@@ -8,6 +8,7 @@ import test from "node:test";
 import { createEntry, createSeededTemplate, openSeededDatabase } from "./support/d1-workspace.mjs";
 import { tripPageFigures } from "../src/domain/money-figures.ts";
 import { isOpenForeignEstimate, noteFirstLine, tripEntryName, tripStillOwed } from "../src/domain/trip-page.ts";
+import { firmnessParts } from "../src/client/trip-page-model.js";
 
 const TIM = "person-tim";
 const JOYCE = "person-joyce";
@@ -193,7 +194,7 @@ test("tripPageFigures reads SQL groups by the Entries Spent rule", () => {
     { payerId: null, amountMinor: 2_000, entryIds: ["g"] },
     { payerId: JOYCE, amountMinor: -300, entryIds: ["h"] }
   ]);
-  assert.deepEqual(tripPageFigures([]), { spentMinor: 0, byDay: [], byCategory: [], byPayer: [] });
+  assert.deepEqual(tripPageFigures([]), { spentMinor: 0, byFirmness: [], byDay: [], byCategory: [], byPayer: [] });
 });
 
 test("a readable name, an open estimate and what is still owed between two people", () => {
@@ -228,4 +229,71 @@ test("a readable name, an open estimate and what is still owed between two peopl
   // Even halves cancel out to nothing owed.
   assert.deepEqual(tripStillOwed([share(TIM, JOYCE, 500), share(JOYCE, TIM, 500)]), []);
   assert.deepEqual(tripStillOwed([]), []);
+});
+
+// How firm the total is (DOMAIN.md "Trip page", "how firm the total is"):
+// Spent in three parts by what the app knows about each entry: confirmed
+// by a statement, not on a statement yet, or a foreign currency estimate.
+// The parts add up to Spent to the cent; the part with the most entries is
+// sent without its ids (the page works them out from the days',
+// trip-page-model.js). Payments with no amount yet are a count beside it,
+// never a zero inside a sum.
+test("how firm the trip total is: three parts that add up to Spent, and payments with no amount yet", async (t) => {
+  const { api, db } = await openSeededDatabase(t, template);
+  const { tripEvent, ids } = await seedSeoul(api, db);
+  // The flights and the hotel are on a statement now.
+  await db.prepare("UPDATE transactions SET bank_certification_status = 'statement_certified' WHERE id IN (?, ?)").bind(ids.flights, ids.hotel).run();
+  // Waiting taps: one in the trip's dates still waiting (counted), one
+  // outside its dates, one finished, one past the 7 days it is kept.
+  const { id: card } = await db.prepare("SELECT id FROM accounts WHERE account_name = 'UOB One'").first();
+  const insertTap = (id, day, receivedAt, status = "waiting") => db.prepare(`
+    INSERT INTO waiting_taps (id, household_id, request_id, person_id, account_id, merchant, wallet_name, tap_date, received_at, status)
+    VALUES (?, 'household-1', ?, 'person-tim', ?, 'Myeongdong Kyoja', 'UOB One', ?, ?, ?)
+  `).bind(id, `req-${id}`, card, day, receivedAt, status).run();
+  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  await insertTap("tap-in", "2026-04-06", hourAgo);
+  await insertTap("tap-out", "2026-04-12", hourAgo);
+  await insertTap("tap-done", "2026-04-06", hourAgo, "completed");
+  await insertTap("tap-old", "2026-04-06", new Date(Date.now() - 8 * 86_400_000).toISOString());
+
+  const { tripPage: page } = await get(api, `/api/trip-page?trip=${tripEvent.id}`);
+  const parts = firmnessParts(page);
+  assert.deepEqual(parts.map(({ part, amountMinor, entryIds }) => [part, amountMinor, [...entryIds].sort()]), [
+    ["confirmed", 128_640 + 119_820, [ids.flights, ids.hotel].sort()],
+    ["waiting", 3_680 + 2_500 + 600 - 500, [ids.dinner, ids.shop, ids.coffee, ids.refund].sort()],
+    ["estimate", 1_780, [ids.taxi]]
+  ]);
+  assert.equal(parts.reduce((sum, part) => sum + part.amountMinor, 0), page.spentMinor);
+  // The part with the most entries (waiting, 4) is sent without its ids.
+  assert.deepEqual(page.firmness.parts.map((part) => [part.part, Array.isArray(part.entryIds)]), [["confirmed", true], ["waiting", false], ["estimate", true]]);
+  assert.equal(page.firmness.noAmountCount, 1);
+  // The tap is also the first thing that needs a look; the April taxi is
+  // still an estimate months later.
+  assert.deepEqual(page.needsLook.map((item) => [item.reason, item.id]), [["no_amount", "tap-in"], ["old_estimate", ids.taxi]]);
+  assert.deepEqual(page.needsLook[0], { reason: "no_amount", id: "tap-in", date: "2026-04-06", name: "Myeongdong Kyoja", personName: "Tim" });
+
+  // All confirmed: one part, and no taps when the table is not there.
+  await db.prepare("UPDATE transactions SET bank_certification_status = 'statement_certified' WHERE id IN (SELECT transaction_id FROM trip_event_entries WHERE trip_event_id = ?)").bind(tripEvent.id).run();
+  await db.prepare("DROP TABLE waiting_taps").run();
+  const { tripPage: firm } = await get(api, `/api/trip-page?trip=${tripEvent.id}`);
+  assert.deepEqual(firmnessParts(firm).map(({ part, amountMinor }) => [part, amountMinor]), [["confirmed", firm.spentMinor]]);
+  assert.equal(firm.firmness.noAmountCount, 0);
+  assert.equal(firm.needsLook, undefined);
+});
+
+test("firmness parts: tripPageFigures splits the same groups, a payback taking from its own part", () => {
+  const figures = tripPageFigures([
+    { day: "2026-04-03", categoryName: "Travel", entryType: "expense", payerId: TIM, amountMinor: 10_000, entryIds: ["a"], firmness: "confirmed" },
+    { day: "2026-04-03", categoryName: "Travel", entryType: "income", payerId: TIM, amountMinor: 1_500, entryIds: ["b"], firmness: "waiting" },
+    { day: "2026-04-04", categoryName: "Food & Drinks", entryType: "expense", payerId: JOYCE, amountMinor: 900, entryIds: ["c", "d"], firmness: "estimate" },
+    // A transfer counts nothing, so it is in no part.
+    { day: "2026-04-04", categoryName: "Transfer", entryType: "transfer", payerId: TIM, amountMinor: 9_000, entryIds: ["e"], firmness: "waiting" }
+  ]);
+  assert.deepEqual(figures.byFirmness, [
+    { part: "confirmed", amountMinor: 10_000, entryIds: ["a"] },
+    { part: "waiting", amountMinor: -1_500, entryIds: ["b"] },
+    { part: "estimate", amountMinor: 900, entryIds: ["c", "d"] }
+  ]);
+  assert.equal(figures.byFirmness.reduce((sum, part) => sum + part.amountMinor, 0), figures.spentMinor);
+  assert.deepEqual(tripPageFigures([]).byFirmness, []);
 });

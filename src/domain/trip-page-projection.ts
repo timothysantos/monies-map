@@ -14,9 +14,20 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { buildLinkedSplitShareMap, type LinkedSplitShareRow } from "./app-repository-entries";
 import { spendingMinor } from "./category-offset";
-import { tripPageFigures, type TripPageGroup } from "./money-figures";
+import { tripPageFigures, type TripFirmness, type TripPageGroup } from "./money-figures";
 import { isTripEventIcon, readTripEventDate, type TripEventIcon } from "./trip-events";
-import { isOpenForeignEstimate, tripEntryName, tripStillOwed, TRIP_PAGE_TOP_COUNT, type TripDebt, type TripOwedShare } from "./trip-page";
+import {
+  isOpenForeignEstimate,
+  tripEntryName,
+  tripNeedsLook,
+  tripStillOwed,
+  TRIP_PAGE_TOP_COUNT,
+  type TripDebt,
+  type TripLookItem,
+  type TripOwedShare
+} from "./trip-page";
+import { ESTIMATE_LOOK_AFTER_DAYS, NO_AMOUNT_KEPT_DAYS } from "./trip-needs-look-config";
+import { isoDateInAppTimeZone } from "../lib/app-calendar";
 
 export interface TripPageEntryDto {
   id: string;
@@ -57,6 +68,17 @@ export interface TripPageDto {
   // Only when the trip follows a split group or any of its entries is on
   // Splits; `debts` empty is "nobody owes anything".
   owed?: { splitGroupId?: string; onSplitsCount: number; debts: TripDebt[] };
+  // How firm Spent is (money-figures.ts byFirmness): the parts with entries,
+  // adding up to Spent. The part with the most entries is sent without its
+  // ids: the page works them out from the days' (trip-page-model.js), so
+  // the list of ids is not sent twice. `noAmountCount`: waiting taps in the
+  // trip's dates, payments whose amount has not come (never inside a sum).
+  firmness: {
+    parts: Array<{ part: TripFirmness; amountMinor: number; entryIds?: string[] }>;
+    noAmountCount: number;
+  };
+  // Only when something needs the person (trip-page.ts tripNeedsLook).
+  needsLook?: TripLookItem[];
 }
 
 export interface TripPageDayDto {
@@ -77,6 +99,87 @@ const TRIP_ENTRIES_FROM = `
 
 const ESTIMATE_SQL = `(t.original_amount_minor IS NOT NULL AND t.original_currency IS NOT NULL
     AND t.original_currency <> t.currency AND t.bank_certification_status <> 'statement_certified')`;
+
+// How firm an entry is (money-figures.ts TripFirmness).
+const FIRMNESS_SQL = `CASE WHEN t.bank_certification_status = 'statement_certified' THEN 'confirmed'
+    WHEN ${ESTIMATE_SQL} THEN 'estimate' ELSE 'waiting' END`;
+
+// The trip's expenses that may need a look (trip-page.ts tripNeedsLook),
+// read in one pass over the trip's link rows: a superset of the rules, which
+// tripNeedsLook decides. Same day and amount is counted over the trip's
+// expenses by a window, and only where one of them is not on a statement.
+// Binds: household, trip id, the estimate cut-off day, household, trip id.
+const NEEDS_LOOK_SQL = `
+  SELECT * FROM (
+    SELECT t.id, t.transaction_date, t.description, substr(t.note, 1, 400) AS note, t.amount_minor,
+      COALESCE(c.name, 'Other') AS category_name, t.bank_certification_status,
+      t.original_amount_minor, t.original_currency, t.currency, t.owner_person_id,
+      COALESCE(a.is_joint, 0) AS is_joint, se.id AS split_id, se.split_group_id,
+      COUNT(*) OVER (PARTITION BY t.transaction_date, t.amount_minor) AS same_day_amount,
+      SUM(CASE WHEN t.bank_certification_status = 'statement_certified' THEN 0 ELSE 1 END)
+        OVER (PARTITION BY t.transaction_date, t.amount_minor) AS open_same_day_amount
+    FROM trip_event_entries AS tee
+    INNER JOIN transactions AS t ON t.id = tee.transaction_id AND t.household_id = tee.household_id
+    LEFT JOIN imports AS i ON i.id = t.import_id
+    LEFT JOIN categories AS c ON c.id = t.category_id
+    LEFT JOIN accounts AS a ON a.id = t.account_id
+    LEFT JOIN split_expenses AS se ON se.household_id = t.household_id AND se.linked_transaction_id = t.id AND se.deleted_at IS NULL
+    WHERE tee.household_id = ? AND tee.trip_event_id = ?
+      AND (t.import_id IS NULL OR i.status = 'completed')
+      AND t.entry_type = 'expense'
+  )
+  WHERE (same_day_amount > 1 AND open_same_day_amount > 0)
+    OR category_name = 'Other'
+    OR (original_amount_minor IS NOT NULL AND original_currency IS NOT NULL AND original_currency <> currency
+      AND bank_certification_status <> 'statement_certified' AND transaction_date < ?)
+    OR (owner_person_id IS NULL AND is_joint = 0 AND split_id IS NULL)
+    OR (split_id IS NOT NULL AND split_group_id IS NULL
+      AND EXISTS (SELECT 1 FROM trip_events WHERE household_id = ? AND id = ? AND split_group_id IS NOT NULL))
+  ORDER BY transaction_date, id
+  LIMIT 200`;
+
+// Waiting taps in the trip's own dates (a trip without dates has none),
+// not yet put away. Binds: household, trip id, the oldest kept time.
+const NO_AMOUNT_SQL = `
+  SELECT wt.id, wt.tap_date, wt.merchant, wt.received_at, p.display_name AS person_name
+  FROM waiting_taps AS wt
+  INNER JOIN trip_events AS te ON te.household_id = wt.household_id AND te.id = ?
+    AND te.start_date IS NOT NULL AND wt.tap_date BETWEEN te.start_date AND COALESCE(te.end_date, te.start_date)
+  LEFT JOIN people AS p ON p.id = wt.person_id
+  WHERE wt.household_id = ? AND wt.status = 'waiting' AND wt.received_at >= ?
+  ORDER BY wt.received_at, wt.id
+  LIMIT 50`;
+
+interface LookRow {
+  id: string;
+  transaction_date: string;
+  description: string;
+  note: string | null;
+  amount_minor: number;
+  category_name: string;
+  bank_certification_status: string | null;
+  original_amount_minor: number | null;
+  original_currency: string | null;
+  currency: string | null;
+  owner_person_id: string | null;
+  is_joint: number;
+  split_id: string | null;
+  split_group_id: string | null;
+}
+
+interface TapRow {
+  id: string;
+  tap_date: string;
+  merchant: string;
+  received_at: string;
+  person_name: string | null;
+}
+
+function addDays(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 const ENTRY_COLUMNS = `
     t.id, t.transaction_date, t.description, substr(t.note, 1, 400) AS note, t.amount_minor, t.entry_type,
@@ -120,6 +223,7 @@ interface GroupRow {
   amount_minor: number;
   ids: string;
   estimates: number;
+  firmness: TripFirmness;
 }
 
 type OwedRow = LinkedSplitShareRow & { payer_person_id: string; payer_name: string | null; split_group_id: string | null; settled: number };
@@ -137,6 +241,17 @@ function toEntry(row: EntryRow): TripPageEntryDto {
   };
 }
 
+// Waiting taps are additive: without the table nothing is waiting, and the
+// rest of the page still reads.
+async function readNoAmountTaps(db: D1Database, tripId: string, now: Date): Promise<{ results: TapRow[] }> {
+  try {
+    const keptFrom = new Date(now.getTime() - NO_AMOUNT_KEPT_DAYS * 86_400_000).toISOString();
+    return await db.prepare(NO_AMOUNT_SQL).bind(tripId, DEFAULT_HOUSEHOLD_ID, keptFrom).all<TapRow>();
+  } catch {
+    return { results: [] };
+  }
+}
+
 function readTripId(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 && value.length <= 120 ? value : null;
 }
@@ -145,13 +260,14 @@ function readTripId(value: unknown): string | null {
  * The trip page for one trip or event of this household, or null when the
  * trip is not this household's (or there is no such trip).
  */
-export async function buildTripPageDto(db: D1Database, tripEventId: unknown): Promise<TripPageDto | null> {
+export async function buildTripPageDto(db: D1Database, tripEventId: unknown, now: Date = new Date()): Promise<TripPageDto | null> {
   const tripId = readTripId(tripEventId);
   if (!tripId) return null;
   const household = DEFAULT_HOUSEHOLD_ID;
-  let results: [TripRow[], GroupRow[], EntryRow[], OwedRow[]];
+  const today = isoDateInAppTimeZone(now);
+  let results: [TripRow[], GroupRow[], EntryRow[], OwedRow[], LookRow[], TapRow[]];
   try {
-    const [trip, groups, biggest, owed] = await Promise.all([
+    const [trip, groups, biggest, owed, look, taps] = await Promise.all([
       db.prepare(`
         SELECT te.id, te.name, te.icon_key, te.start_date, te.end_date, te.currency, te.split_group_id, te.put_away_at,
           sg.group_name AS split_group_name
@@ -163,9 +279,10 @@ export async function buildTripPageDto(db: D1Database, tripEventId: unknown): Pr
         SELECT t.transaction_date AS day, COALESCE(c.name, 'Other') AS category_name, MIN(c.id) AS category_id,
           t.entry_type, t.owner_person_id AS payer_id, MIN(payer.display_name) AS payer_name,
           SUM(t.amount_minor) AS amount_minor, GROUP_CONCAT(t.id, ' ') AS ids,
-          SUM(CASE WHEN ${ESTIMATE_SQL} THEN 1 ELSE 0 END) AS estimates
+          SUM(CASE WHEN ${ESTIMATE_SQL} THEN 1 ELSE 0 END) AS estimates,
+          ${FIRMNESS_SQL} AS firmness
         ${TRIP_ENTRIES_FROM}
-        GROUP BY t.transaction_date, COALESCE(c.name, 'Other'), t.entry_type, t.owner_person_id
+        GROUP BY t.transaction_date, COALESCE(c.name, 'Other'), t.entry_type, t.owner_person_id, ${FIRMNESS_SQL}
       `).bind(household, tripId).all<GroupRow>(),
       db.prepare(`
         SELECT ${ENTRY_COLUMNS}
@@ -197,14 +314,16 @@ export async function buildTripPageDto(db: D1Database, tripEventId: unknown): Pr
         WHERE tee.household_id = ? AND tee.trip_event_id = ?
           AND (t.import_id IS NULL OR i.status = 'completed')
         ORDER BY s.created_at
-      `).bind(household, household, tripId).all<OwedRow>()
+      `).bind(household, household, tripId).all<OwedRow>(),
+      db.prepare(NEEDS_LOOK_SQL).bind(household, tripId, addDays(today, -ESTIMATE_LOOK_AFTER_DAYS), household, tripId).all<LookRow>(),
+      readNoAmountTaps(db, tripId, now)
     ]);
-    results = [trip.results, groups.results, biggest.results, owed.results];
+    results = [trip.results, groups.results, biggest.results, owed.results, look.results, taps.results];
   } catch {
     // The trips tables are additive: without them there is no trip.
     return null;
   }
-  const [[trip], groupRows, biggestRows, owedRows] = results;
+  const [[trip], groupRows, biggestRows, owedRows, lookRows, tapRows] = results;
   if (!trip) return null;
 
   const groups: TripPageGroup[] = groupRows.map((row) => ({
@@ -213,7 +332,8 @@ export async function buildTripPageDto(db: D1Database, tripEventId: unknown): Pr
     entryType: row.entry_type,
     payerId: row.payer_id,
     amountMinor: Number(row.amount_minor),
-    entryIds: String(row.ids ?? "").split(" ").filter(Boolean)
+    entryIds: String(row.ids ?? "").split(" ").filter(Boolean),
+    firmness: row.firmness
   }));
   const figures = tripPageFigures(groups);
   const payerNames = new Map(groupRows.map((row) => [row.payer_id, row.payer_name ?? ""]));
@@ -244,8 +364,43 @@ export async function buildTripPageDto(db: D1Database, tripEventId: unknown): Pr
     })),
     payers: figures.byPayer.map((row) => ({ personId: row.payerId, name: payerNames.get(row.payerId) ?? "", amountMinor: row.amountMinor, entryIds: row.entryIds })),
     biggest: biggestRows.map(toEntry),
-    ...readOwed(trip, owedRows)
+    ...readOwed(trip, owedRows),
+    firmness: { parts: firmnessParts(figures.byFirmness), noAmountCount: tapRows.length },
+    ...readNeedsLook(trip, lookRows, tapRows, today, now)
   };
+}
+
+// The parts as sent: the one with the most entries without its ids (the
+// page has them in the days already).
+function firmnessParts(parts: ReturnType<typeof tripPageFigures>["byFirmness"]): TripPageDto["firmness"]["parts"] {
+  const largest = parts.reduce((best, part, index) => (part.entryIds.length > parts[best].entryIds.length ? index : best), 0);
+  return parts.map((part, index) => (index === largest
+    ? { part: part.part, amountMinor: part.amountMinor }
+    : { part: part.part, amountMinor: part.amountMinor, entryIds: part.entryIds }));
+}
+
+function readNeedsLook(trip: TripRow, rows: LookRow[], taps: TapRow[], today: string, now: Date): { needsLook?: TripLookItem[] } {
+  const items = tripNeedsLook({
+    entries: rows.map((row) => ({
+      id: row.id,
+      date: row.transaction_date,
+      description: row.description,
+      name: tripEntryName({ description: row.description, note: row.note }),
+      amountMinor: Number(row.amount_minor),
+      categoryName: row.category_name,
+      certified: row.bank_certification_status === "statement_certified",
+      estimate: isOpenForeignEstimate(row),
+      ownerId: row.owner_person_id,
+      jointAccount: Number(row.is_joint) === 1,
+      onSplits: Boolean(row.split_id),
+      splitGroupId: row.split_group_id
+    })),
+    taps: taps.map((tap) => ({ id: tap.id, date: tap.tap_date, merchant: tap.merchant, personName: tap.person_name ?? "", receivedAt: tap.received_at })),
+    tripSplitGroupId: trip.split_group_id,
+    today,
+    now
+  });
+  return items.length ? { needsLook: items } : {};
 }
 
 // Still owed (trip-page.ts `tripStillOwed`), each share in the ledger's

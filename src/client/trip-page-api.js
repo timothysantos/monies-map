@@ -75,7 +75,39 @@ export function readTripPage(body) {
           .filter((debt) => isObject(debt) && isText(debt.fromName) && isText(debt.toName) && isFiniteNumber(debt.amountMinor))
           .map((debt) => ({ fromName: debt.fromName, toName: debt.toName, amountMinor: debt.amountMinor }))
       }
-      : null
+      : null,
+    firmness: readFirmness(page.firmness),
+    needsLook: (Array.isArray(page.needsLook) ? page.needsLook : []).map(readLookItem).filter((item) => item !== null)
+  };
+}
+
+const FIRMNESS_PARTS = new Set(["confirmed", "waiting", "estimate"]);
+const LOOK_REASONS = new Set(["no_amount", "maybe_copy", "shared_not_on_splits", "splits_no_group", "old_estimate", "other_category"]);
+
+// How firm Spent is: the parts the server sent (the one without ids is
+// worked out by trip-page-model.js), and the payments with no amount yet.
+function readFirmness(value) {
+  if (!isObject(value)) return { parts: [], noAmountCount: 0 };
+  return {
+    parts: (Array.isArray(value.parts) ? value.parts : [])
+      .filter((part) => isObject(part) && FIRMNESS_PARTS.has(part.part) && isFiniteNumber(part.amountMinor))
+      .map((part) => ({ part: part.part, amountMinor: part.amountMinor, ...(Array.isArray(part.entryIds) ? { entryIds: ids(part.entryIds) } : {}) })),
+    noAmountCount: isFiniteNumber(value.noAmountCount) ? value.noAmountCount : 0
+  };
+}
+
+// One "Needs a look" line; a reason the page has no words for is dropped.
+function readLookItem(item) {
+  if (!isObject(item) || !LOOK_REASONS.has(item.reason) || !isText(item.id) || !isText(item.date) || !isText(item.name)) return null;
+  if (item.reason === "maybe_copy" && (!isText(item.otherId) || !isText(item.otherName))) return null;
+  return {
+    reason: item.reason,
+    id: item.id,
+    date: item.date,
+    name: item.name,
+    ...(isText(item.otherId) ? { otherId: item.otherId, otherName: item.otherName } : {}),
+    ...(isFiniteNumber(item.days) ? { days: item.days } : {}),
+    ...(isText(item.personName) ? { personName: item.personName } : {})
   };
 }
 

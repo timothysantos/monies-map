@@ -370,6 +370,15 @@ export const changedFigureMinor = repeatingFigureMinor;
 // paid are each slices of the same groups, so each adds up to Spent, and
 // each day's and each payer's entry ids open exactly that slice.
 
+// How firm an entry's amount is (DOMAIN.md "Trip page", "how firm the total
+// is"): `confirmed` is on a statement (statement_certified); `estimate` is
+// still a Foreign Currency Estimate (a Wallet amount in another currency,
+// no statement yet); `waiting` is every other entry: recorded in its
+// account's own money (Apple Pay, a bank alert, an activity export, a cash
+// or hand-made entry) and not on a statement yet.
+export const TRIP_FIRMNESS_PARTS = ["confirmed", "waiting", "estimate"] as const;
+export type TripFirmness = (typeof TRIP_FIRMNESS_PARTS)[number];
+
 export interface TripPageGroup {
   day: string;
   categoryName: string;
@@ -378,10 +387,15 @@ export interface TripPageGroup {
   payerId: string | null;
   amountMinor: number;
   entryIds: string[];
+  // How firm the group's entries are; a group is one firmness.
+  firmness?: TripFirmness;
 }
 
 export interface TripPageFigures {
   spentMinor: number;
+  // How firm Spent is: the parts with entries, in TRIP_FIRMNESS_PARTS order.
+  // A payback takes away from its own part, so the parts add up to Spent.
+  byFirmness: Array<{ part: TripFirmness; amountMinor: number; entryIds: string[] }>;
   // Each day with spending, in date order.
   byDay: Array<{ day: string; amountMinor: number; entryIds: string[] }>;
   // Largest first; a category whose refunds outweigh it stays below zero,
@@ -396,10 +410,16 @@ export function tripPageFigures(groups: TripPageGroup[]): TripPageFigures {
   const days = new Map<string, { amountMinor: number; entryIds: string[] }>();
   const categories = new Map<string, { amountMinor: number; entryCount: number }>();
   const payers = new Map<string | null, { amountMinor: number; entryIds: string[] }>();
+  const firmness = new Map<TripFirmness, { amountMinor: number; entryIds: string[] }>();
   for (const group of groups) {
     const amount = spendingMinor({ entryType: group.entryType, categoryName: group.categoryName, amountMinor: group.amountMinor });
     if (amount === 0 && group.entryType !== "expense") continue;
     spent += amount;
+    const partKey = group.firmness ?? "waiting";
+    const part = firmness.get(partKey) ?? { amountMinor: 0, entryIds: [] };
+    part.amountMinor += amount;
+    part.entryIds.push(...group.entryIds);
+    firmness.set(partKey, part);
     const day = days.get(group.day) ?? { amountMinor: 0, entryIds: [] };
     day.amountMinor += amount;
     day.entryIds.push(...group.entryIds);
@@ -415,6 +435,7 @@ export function tripPageFigures(groups: TripPageGroup[]): TripPageFigures {
   }
   return {
     spentMinor: spent,
+    byFirmness: TRIP_FIRMNESS_PARTS.filter((part) => firmness.has(part)).map((part) => ({ part, ...(firmness.get(part) as { amountMinor: number; entryIds: string[] }) })),
     byDay: [...days].map(([day, value]) => ({ day, ...value })).sort((left, right) => left.day.localeCompare(right.day)),
     byCategory: [...categories].map(([categoryName, value]) => ({ categoryName, ...value }))
       .sort((left, right) => right.amountMinor - left.amountMinor || left.categoryName.localeCompare(right.categoryName)),

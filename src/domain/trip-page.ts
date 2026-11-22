@@ -12,6 +12,10 @@
 //   settle-up covering it), each person's share of an expense someone else
 //   paid, in the ledger's money, netted between each two people.
 
+import { daysBetween, normalizeDescriptionForMatch } from "./app-repository-helpers";
+import { ESTIMATE_LOOK_AFTER_DAYS, NEEDS_LOOK_MAX_ITEMS, NO_AMOUNT_KEPT_DAYS, NO_AMOUNT_LOOK_AFTER_SECONDS } from "./trip-needs-look-config";
+import { matchMerchants } from "./wrong-card-apple-pay-duplicate";
+
 export const TRIP_PAGE_TOP_COUNT = 5;
 // The first line of a note is at most this long on the page.
 export const TRIP_PAGE_NAME_MAX = 80;
@@ -87,4 +91,129 @@ export function tripStillOwed(shares: TripOwedShare[]): TripDebt[] {
     debts.push({ fromPersonId: from, fromName: names.get(from) ?? "", toPersonId: to, toName: names.get(to) ?? "", amountMinor: Math.abs(amount) });
   }
   return debts.sort((left, right) => right.amountMinor - left.amountMinor || left.fromName.localeCompare(right.fromName));
+}
+
+// ---- Needs a look (DOMAIN.md "Trip page", "needs a look") ------------------
+//
+// Only real doubts, each derived by a fixed rule (no AI), one line an entry:
+// 1. `no_amount`: a waiting tap in the trip's dates the second-tap window
+//    could not finish (and not yet put away);
+// 2. `old_estimate`: a foreign currency estimate older than
+//    ESTIMATE_LOOK_AFTER_DAYS that no statement has confirmed;
+// 3. `shared_not_on_splits`: an expense nobody owns ("Shared" on the page)
+//    from an account that is not a joint one, and not on Splits; and
+//    `splits_no_group`: on Splits with no group when the trip follows one;
+// 4. `other_category`: an expense left in Other (or with no category);
+// 5. `maybe_copy`: two expenses on the same day for the same amount at a
+//    similar shop, at least one of them not on a statement (two the bank
+//    confirmed are two real purchases).
+// The thresholds are in trip-needs-look-config.ts.
+
+export type TripLookReason = "no_amount" | "maybe_copy" | "shared_not_on_splits" | "splits_no_group" | "old_estimate" | "other_category";
+
+// One of the trip's expenses, as the projection reads it.
+export interface TripLookEntry {
+  id: string;
+  date: string;
+  description: string;
+  // The readable name (tripEntryName).
+  name: string;
+  amountMinor: number;
+  categoryName: string;
+  certified: boolean;
+  estimate: boolean;
+  ownerId: string | null;
+  jointAccount: boolean;
+  onSplits: boolean;
+  splitGroupId: string | null;
+}
+
+// A waiting tap in the trip's dates.
+export interface TripLookTap {
+  id: string;
+  date: string;
+  merchant: string;
+  personName: string;
+  receivedAt: string;
+}
+
+export interface TripLookItem {
+  reason: TripLookReason;
+  // The entry's id, or the waiting tap's for `no_amount`.
+  id: string;
+  date: string;
+  name: string;
+  // maybe_copy: the other entry.
+  otherId?: string;
+  otherName?: string;
+  // old_estimate: how many days since it was paid.
+  days?: number;
+  // no_amount: whose tap it is.
+  personName?: string;
+}
+
+// The order lines show in: a missing amount first, then the entries' own
+// reasons, most likely wrong first.
+const REASON_ORDER: TripLookReason[] = ["no_amount", "maybe_copy", "shared_not_on_splits", "splits_no_group", "old_estimate", "other_category"];
+
+/** Two shop texts that name the same shop (wrong-card duplicate's own test, or the same words). */
+export function isSimilarShop(left: string, right: string): boolean {
+  const a = normalizeDescriptionForMatch(left);
+  const b = normalizeDescriptionForMatch(right);
+  return (Boolean(a) && a === b) || matchMerchants(left, right).strong;
+}
+
+function entryReason(entry: TripLookEntry, tripSplitGroupId: string | null, today: string): { reason: TripLookReason; days?: number } | null {
+  if (entry.ownerId === null && !entry.jointAccount && !entry.onSplits) return { reason: "shared_not_on_splits" };
+  if (entry.onSplits && !entry.splitGroupId && tripSplitGroupId) return { reason: "splits_no_group" };
+  if (entry.estimate && !entry.certified) {
+    const days = daysBetween(entry.date, today);
+    if (days > ESTIMATE_LOOK_AFTER_DAYS) return { reason: "old_estimate", days };
+  }
+  if (entry.categoryName.trim().toLowerCase() === "other") return { reason: "other_category" };
+  return null;
+}
+
+/** What on a trip needs the person: at most NEEDS_LOOK_MAX_ITEMS lines, one an entry or tap. */
+export function tripNeedsLook(input: {
+  entries: TripLookEntry[];
+  taps: TripLookTap[];
+  tripSplitGroupId: string | null;
+  today: string;
+  now: Date;
+}): TripLookItem[] {
+  const items: TripLookItem[] = [];
+  const lookAfter = input.now.getTime() - NO_AMOUNT_LOOK_AFTER_SECONDS * 1000;
+  const keptFrom = input.now.getTime() - NO_AMOUNT_KEPT_DAYS * 86_400_000;
+  for (const tap of input.taps) {
+    const received = Date.parse(tap.receivedAt);
+    if (Number.isFinite(received) && received <= lookAfter && received >= keptFrom) {
+      items.push({ reason: "no_amount", id: tap.id, date: tap.date, name: tap.merchant, personName: tap.personName });
+    }
+  }
+  // Same day and amount at a similar shop: each entry joins one pair at most.
+  const paired = new Set<string>();
+  const sorted = [...input.entries].sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
+  for (let index = 0; index < sorted.length; index += 1) {
+    const entry = sorted[index];
+    if (paired.has(entry.id)) continue;
+    const twin = sorted.slice(index + 1).find((other) => !paired.has(other.id)
+      && other.date === entry.date
+      && other.amountMinor === entry.amountMinor
+      && !(other.certified && entry.certified)
+      && isSimilarShop(entry.description, other.description));
+    if (twin) {
+      paired.add(entry.id);
+      paired.add(twin.id);
+      items.push({ reason: "maybe_copy", id: entry.id, date: entry.date, name: entry.name, otherId: twin.id, otherName: twin.name });
+    }
+  }
+  for (const entry of sorted) {
+    if (paired.has(entry.id)) continue;
+    const found = entryReason(entry, input.tripSplitGroupId, input.today);
+    if (found) items.push({ reason: found.reason, id: entry.id, date: entry.date, name: entry.name, ...(found.days !== undefined ? { days: found.days } : {}) });
+  }
+  return items
+    .sort((left, right) => REASON_ORDER.indexOf(left.reason) - REASON_ORDER.indexOf(right.reason) || left.date.localeCompare(right.date) || left.id.localeCompare(right.id))
+    .slice(0, NEEDS_LOOK_MAX_ITEMS);
 }

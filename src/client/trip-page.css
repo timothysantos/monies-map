@@ -103,6 +103,7 @@
 .trip-day-list,
 .trip-payer-list,
 .trip-owed-list,
+.trip-firm-list,
 .trip-entry-list {
   display: grid;
   margin: 0;
@@ -289,6 +290,29 @@
 .trip-owed-who {
   color: var(--text);
   font-size: 0.92rem;
+}
+
+/* How firm Spent is: Still owed's rows (a label, the amount in plain ink),
+   kept to a readable width under the big figure. */
+.trip-firm-list {
+  max-width: 28rem;
+  margin-top: 4px;
+}
+
+/* Needs a look: an entry row whose quiet line (why) may wrap, and one
+   quiet action. */
+.trip-look-why {
+  white-space: normal;
+}
+
+.trip-look-action {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.trip-page-look .summary-mix-more {
+  width: 100%;
+  border-bottom: 0;
 }
 
 /* A phone: the shell has no side padding there (styles.css), so the page

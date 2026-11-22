@@ -16,6 +16,8 @@ import { TripEventGlyph } from "./trip-event-glyph";
 import { formatForeignMoney } from "./trip-event-review-sheet";
 import { readTripPageId } from "./trip-figure-search";
 import { createTripPageOwner } from "./trip-page-owner";
+import { firmnessParts, needsLookTarget } from "./trip-page-model";
+import { spendingMixCopy } from "./copy/spending-mix-copy";
 import { EmptyState, ErrorPanel } from "./ui-states";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { entryAmountTone } from "../domain/money-tone";
@@ -116,12 +118,79 @@ function TripLead({ page, hidden, onOpenEntries }) {
           <PrivateMoney>{money(page.spentMinor)}</PrivateMoney>
         </span>
       </p>
+      {page.entryCount ? <Firmness page={page} /> : null}
       {page.estimateCount ? (
         <p className="trip-page-note" data-trip-estimates="">
           <span className="trip-estimate">{copy.estimate}</span> {copy.estimates(page.estimateCount)}
         </p>
       ) : null}
       {!page.entryCount ? <p className="trip-page-note">{copy.nothingYet}</p> : null}
+    </section>
+  );
+}
+
+// How firm Spent is: what the bank confirmed, what is not on a statement
+// yet and what is estimated, each an openable figure (its entries), adding
+// up to Spent; payments with no amount are a count, never inside a sum.
+function Firmness({ page }) {
+  const trip = page.tripEvent;
+  const parts = useMemo(() => firmnessParts(page), [page]);
+  const noAmount = page.firmness?.noAmountCount ?? 0;
+  if (!parts.length) return null;
+  return (
+    <>
+      <ul className="trip-firm-list" aria-label={copy.firmness} data-trip-firmness="">
+        {parts.map((part) => {
+          const label = copy.firmnessPart[part.part];
+          return (
+            <li key={part.part} className="trip-owed trip-firm" data-trip-firm={part.part}>
+              <span className="trip-owed-who">{label}</span>
+              <span className="trip-owed-amount" {...textFigure(trip, { "data-fig-ids": part.entryIds.join(" "), "data-fig-name": `${trip.name} · ${label}` })}>
+                <PrivateMoney>{money(part.amountMinor)}</PrivateMoney>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {noAmount ? <p className="trip-page-note" data-trip-no-amount="">{copy.noAmount(noAmount)}</p> : null}
+    </>
+  );
+}
+
+const LOOK_TOP_COUNT = 3;
+
+// Needs a look: only real doubts (trip-page.ts tripNeedsLook), each with
+// why and one way to fix it; not shown at all when there are none. The
+// fold is Spending mix's "Show all N".
+function NeedsLook({ page, onOpen }) {
+  const [showAll, setShowAll] = useState(false);
+  const items = page.needsLook ?? [];
+  const shown = showAll ? items : items.slice(0, LOOK_TOP_COUNT);
+  return (
+    <section className="chart-card trip-page-look" aria-label={copy.needsLook}>
+      <CardHead title={copy.needsLook} subtitle={copy.needsLookSub} />
+      <ul className="trip-entry-list">
+        {shown.map((item) => {
+          const action = copy.lookAction[item.reason];
+          return (
+            <li key={`${item.reason}-${item.id}`} className="trip-entry trip-look" data-trip-look={item.reason}>
+              <span className="trip-entry-text">
+                <span className="trip-entry-name">{item.name}</span>
+                <span className="trip-entry-meta trip-look-why">{`${dayLabel(item.date)} · ${copy.lookWhy[item.reason](item, page.tripEvent.splitGroupName)}`}</span>
+              </span>
+              <button type="button" className="subtle-action trip-look-action" aria-label={copy.lookActionLabel(action, item.name)} onClick={() => onOpen(item)}>
+                {action}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {items.length > LOOK_TOP_COUNT ? (
+        <button type="button" className="lsd-row summary-mix-more" aria-expanded={showAll} onClick={() => setShowAll((current) => !current)}>
+          {showAll ? spendingMixCopy.showFewer : spendingMixCopy.showAll(items.length)}
+          <ChevronDown size={16} aria-hidden="true" className={showAll ? "summary-mix-more-up" : undefined} />
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -294,6 +363,7 @@ export function TripPanel({ fetchRequiredQuery, categories = [], onCategoryAppea
     if (group) params.set("split_group", group);
     navigate({ pathname: "/splits", search: `?${params.toString()}`, hash: "#splits-activity" });
   };
+  const openLook = (item) => navigate(needsLookTarget(item, { tripId, search: location.search }));
   const toggleDay = (day) => {
     setOpen((current) => {
       const next = new Set(current);
@@ -335,6 +405,11 @@ export function TripPanel({ fetchRequiredQuery, categories = [], onCategoryAppea
         <div className="summary-card-slot" style={{ "--s12": 12, "--s2": 2 }}>
           <TripLead page={page} hidden={hidden} onOpenEntries={openEntries} />
         </div>
+        {page.needsLook?.length ? (
+          <div className="summary-card-slot" data-trip-card="look" style={{ "--s12": 12, "--s2": 2 }}>
+            <NeedsLook page={page} onOpen={openLook} />
+          </div>
+        ) : null}
         {page.entryCount ? (
           <>
             <div className="summary-card-slot" data-trip-card="mix" style={{ "--s12": 6, "--s2": 2 }}>

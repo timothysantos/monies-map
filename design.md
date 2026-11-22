@@ -4150,6 +4150,18 @@ passive, and the page keeps the URL's view, month and scope for the way back.
   estimates until the card statement comes in.". An empty trip says
   "Nothing is on it yet. Put entries on it from Entries." A quiet "Open in
   Entries" opens the trip view in the household view.
+- How firm the total is (under Spent, owner approved 2026-11-22): Still
+  owed's rows (`trip-owed`: a label, the amount in plain ink, at most 28rem
+  wide) for each part with entries: "Confirmed by the bank", "Not on a
+  statement yet", "Estimated". Each amount is a trip figure (its entry ids).
+  No tone: an estimate is not an alarm. Then, when there are some, the quiet
+  line "1 payment with no amount yet".
+- Needs a look (a full-width card after the header, only when it has
+  lines): "Payments that may be wrong or missing something"; an entry row
+  (`trip-entry`: the name, a quiet line "Wed 8 Apr · why" that may wrap)
+  with one `subtle-action` ("Add the amount", "Open", "Add to Splits", "See
+  both"). Three show, then Spending mix's fold ("Show all N" with a down
+  chevron, "Show fewer"). No amounts, so hidden money changes nothing here.
 - Where it went: Summary's Spending mix card itself (`SpendingMixSection`,
   not a copy), titled "Where it went", "By category", with category colours
   from the palette. Its slices and list arrows are trip figures
