@@ -1271,6 +1271,91 @@ Readers (`ask-api.js`, the one module to adjust when their branches land):
   no-AI reader (`readReceiptOcrText`, `src/domain/receipt-ocr-text.ts`)
   turns the text into the same `ReceiptReadDto`, reading a receipt with no
   printed currency as SGD.
+- `POST /api/ask/receipt-match` `{ receipt: { merchant, date, totalMinor,
+  currency, noteLines } }` → `{ ok, match }`: the entry (or waiting Apple
+  Pay tap) that is probably this receipt's purchase, with the change card
+  Save would make (see "Many receipts at once"). No AI, no allowance.
+
+### Many receipts at once
+
+Owner-approved 2026-11-22 for trips, where receipts are photographed and
+not typed. Code: `ask-receipt-queue.js` (the queue, pure),
+`ask-receipt-batch.js` (the reading loop and the match request),
+`ask-receipt-queue-list.jsx` (the list), `src/domain/receipt-match.ts` and
+`receipt-match-projection.ts` (the match), limits and tolerances in
+`src/domain/receipt-batch-config.ts`.
+
+- Ways in: the photo picker (several at once), a drop, a paste, the
+  desktop field's paperclip, drop or paste. Up to `RECEIPT_BATCH_MAX` (10)
+  per go; more and only the first 10 are read, with the line "That's 11
+  photos. I'll read the first 10. Send the rest after these." The camera
+  takes one photo at a time.
+- Reading: one photo after another, never in parallel. Each is made small
+  and clean in the browser first (as one receipt always was: at most 1,600
+  px, re-encoded as JPEG, no EXIF or location), sent to the receipt reader
+  (one model call each, `AI_ASSIST_VISION_UNITS` allowance units, 2 by
+  default, so a go of 10 is 20 of the day's units) and dropped from memory
+  once read. When the
+  reader is off, over its allowance, failing or offline, that photo and
+  the rest of the go are read on this device (Tesseract) and the page says
+  so once ("The receipt reader isn't available just now, so the rest are
+  read on this phone…", or "No connection, so…"). A photo the reader
+  cannot use is read on the device on its own; the next still goes to the
+  reader. The list's line shows "Reading 3 of 7…" while photos are read,
+  then "Receipt 2 of 7" for the one under review.
+- Review: one receipt at a time, on the existing entry card ("Read from
+  your receipt", every assumption and question as for one receipt). Its
+  quiet button is Not now (left for later, nothing saved); Save saves it
+  through the usual create command, and the saved card stays (with Undo)
+  until the person taps Next receipt, so a save never hides the next
+  card's assumptions. Once only receipts put off remain, "Back to the 2
+  left" brings them back. Undo gives the receipt back to review.
+- Already in the ledger (`chooseReceiptMatch`): before a new card is
+  drafted the server looks, in the household's own rows from 1 day before
+  to 3 days after the receipt's date (bounded in SQL), for an expense whose
+  shop name agrees (`merchantsAgree`, a payment-app prefix such as
+  "AMAZE*" dropped first; a blank name never agrees) and whose amount is
+  the receipt's total in the same currency, or whose kept Wallet amount is
+  (an Apple Pay estimate), or, in another currency, is within the Foreign
+  Currency Estimate tolerance of the total at the saved day rate (5% over,
+  2% under, at least 10 cents; a rate older than 14 days is not used).
+  One fit is a change card ("This receipt is already in Entries", Update
+  this entry): the receipt's lines into the entry's note
+  (`/api/entries/update-note`) and, when it sits in a catch-all category,
+  the shop's sure habitual category (`/api/entries/update-category`),
+  with Undo. Bank facts never change, so a statement-certified entry can
+  take it ("Its amount, date and shop stay as the bank statement has
+  them."). The paid foreign amount is a note line ("Receipt: paid JPY
+  3,240.") rather than the entry's `original_amount_minor`: setting that
+  column would make the entry an open foreign-currency estimate that the
+  next statement import pairs differently. Nothing to add says "… is
+  already in Entries with this receipt. Nothing to change." and moves on.
+  Two or more fits ask "This receipt looks like one of these entries.
+  Which is it?" with one chip each, It's a new one and Not now; never a
+  guess. With no entry, an Apple Pay tap still waiting for its amount at
+  the same shop and day is finished with the receipt's total
+  (`/api/waiting-taps/complete`, now in `ASK_CHANGE_PATHS`; no Undo, the
+  entry it makes can be removed in Entries). While a change card waits,
+  the chip It's a new one makes the receipt a new entry card instead.
+- Left out, not drafted twice: the same photo twice (a SHA-256
+  fingerprint of its bytes, kept only as the hash, also across goes in
+  this conversation) and a receipt whose match is an entry this
+  conversation already saved or updated from a receipt.
+- Could not be read: its row says "Couldn't read this one" with Try again
+  (while its photo is still in this tab's memory) and Type it instead (an
+  empty card for it). One receipt on its own keeps the old line "The
+  receipt couldn't be read. You can still fill in the card."
+- Continuity: the queue is `conversation.receipts` in the Ask
+  conversation store: each receipt's validated read, its match and what
+  happened to it, never a photo, URL or file (`readStoredReceipts`). The
+  reading loop writes through the store, so it keeps going when the
+  person leaves Ask and its results are there on return. After a reload
+  a receipt that was waiting or being read has lost its photo and reads
+  "Couldn't read this one" with only Type it instead.
+- No connection: photos read on the device as above; the match cannot be
+  asked, so the card says "I couldn't check whether this is already in
+  Entries, so it's a new entry here. Check Entries before you save.", and
+  Save keeps to the existing "Waiting to send".
 
 - `POST /api/ai-assist/insight-explain` `{ kind, fact, think, lines }` →
   `InsightExplainResponseDto` (`{ ok, explanation: { text, source: "ai" } |

@@ -1062,6 +1062,36 @@ const SHOTS = [
     }
   },
   {
+    // Three receipt photos sent at once (docs/flows/ask-flow.md "Many
+    // receipts at once"): the first on its card, the list's progress line.
+    // The receipt reader is stubbed with invented receipts, and the photos
+    // are plain coloured squares: no real receipt is used.
+    name: "phone-ask-receipts", device: "phone", reseed: true,
+    run: async (page) => {
+      const answers = [["Kopi Corner", 860], ["Ah Seng Noodles", 1_450], ["Pages & Pens", 2_390]];
+      let read = 0;
+      await page.route("**/api/ai-assist/receipt-read", async (route) => {
+        const [merchant, amountMinor] = answers[Math.min(read, answers.length - 1)];
+        read += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: true, available: true, receipt: { source: "ai", merchant: { value: merchant, confidence: "high" }, date: { value: `${MONTH}-26`, confidence: "high" }, total: { amountMinor, currency: "SGD", confidence: "high" }, cardLast4: null, lineItems: [], questions: [] } })
+        });
+      });
+      await open(page, `/ask?view=person-ethan&month=${MONTH}&scope=direct_plus_shared`);
+      const photos = [];
+      for (const colour of ["#f2e3c9", "#e8d9c4", "#efe6d8"]) {
+        photos.push({ name: `receipt-${photos.length + 1}.png`, mimeType: "image/png", buffer: await sharp({ create: { width: 90, height: 140, channels: 3, background: colour } }).png().toBuffer() });
+      }
+      await page.locator(".ask-file-input").nth(1).setInputFiles(photos);
+      await page.getByRole("textbox", { name: "What it was" }).waitFor();
+      await page.locator(".ask-receipts-head", { hasText: "Receipt 1 of 3" }).waitFor({ timeout: 20_000 });
+      await page.waitForTimeout(600);
+      await hideCaret(page);
+    }
+  },
+  {
     // Files sent from the phone wait in the queue (DOMAIN.md "Waiting File").
     // They are removed again once captured, so no later shot sees them.
     name: "imports-sent-files", device: "desktop",

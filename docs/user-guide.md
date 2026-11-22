@@ -1179,8 +1179,9 @@ that both fit.
 ### What each control does
 
 - **Scan receipt**, or **+** then **Take a photo** or **Choose a photo**:
-  take or pick a photo of a receipt. The app reads the shop, the total and
-  the date into the card. The photo is made smaller on your phone first and
+  take or pick a photo of a receipt (or pick several, up to 10, to send
+  them in one go). The app reads the shop, the total and the date into the
+  card. The photo is made smaller on your phone first and
   is not kept. A very large photo says so; one that is still over 1.5 MB
   after that is read on your phone instead of being sent.
 - **Paste** (in the **+** menu, or a suggestion on a new entry card):
@@ -1330,6 +1331,36 @@ The card is marked **Saved** and the suggestions change:
   you can change it and save once more.
 
 ![A saved entry on Ask, with Back to Entries, Open this entry and Undo](/faq/guide/phone/thumbs/phone-ask-saved.webp)
+
+### Many receipts at once
+
+On a trip you can send up to 10 receipt photos in one go: tap **+**, then
+**Choose a photo** and pick several, or drop or paste them. Ask reads them
+one after another ("Reading 3 of 7…") and shows them to you one at a time
+on the usual card, starting with the first while the rest are read.
+
+- Check the card and tap **Save**, or **Not now** to leave it for later.
+  After a save the card stays, with **Undo**, until you tap **Next
+  receipt**. When only the ones you left remain, **Back to the 2 left**
+  brings them back.
+- If the purchase is already in Entries (an Apple Pay payment, a bank row
+  or a statement row at the same shop, within a few days, for the same
+  amount), Ask does not add it twice. It says "This receipt is already in
+  Entries" and **Update this entry** adds what the receipt says to that
+  entry's note (for a receipt in another currency, what you paid in it).
+  The amount, date and shop stay as they are. If two entries fit, Ask asks
+  which one, or tap **It's a new one**. An Apple Pay payment still waiting
+  for its amount gets the receipt's total with **Add the amount**.
+- The same photo sent twice is left out, and so is a receipt for a purchase
+  you already added from a receipt.
+- A photo Ask can't read says **Couldn't read this one**, with **Try
+  again** and **Type it instead**.
+- If the receipt reader isn't available, the rest are read on your phone;
+  Ask says so once. Check each total and date before you save.
+- Leave Ask and come back: the receipts you haven't saved are still there.
+  The photos themselves are never kept.
+
+![Three receipts sent at once: the first on its card, Receipt 1 of 3](/faq/guide/phone/thumbs/phone-ask-receipts.webp)
 
 If you usually share a purchase with your partner (the same shop, split
 evenly in the same group, most of the times you bought there), Ask notices

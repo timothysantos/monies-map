@@ -2643,6 +2643,17 @@ reads the same image with in-browser OCR (`readReceiptOcrText`). See
 [How do I set up the optional AI provider?](#how-do-i-set-up-the-optional-ai-provider)
 for the provider settings.
 
+Several receipts sent at once go through the same route, one photo after
+another (`src/client/ask-receipt-batch.js`): each read is one model call
+costing `AI_ASSIST_VISION_UNITS` units (2 by default), so a go of 10 uses
+20 of the day's units; once the reader says no, the rest of the go are read
+with in-browser OCR. Before a receipt becomes a new entry,
+`POST /api/ask/receipt-match` (no AI) looks for the same purchase already in
+the ledger. The limits and tolerances (10 photos per go, the day window,
+the foreign-currency tolerance, the note length) live in
+`src/domain/receipt-batch-config.ts`; change them there, not in the page.
+`docs/audits/receipt-batch.md` has the privacy, cost and write boundaries.
+
 The Ask page's mic uses the browser's own speech recognition first, which
 sends nothing to the app. Only a browser without one records a clip of at
 most 30 seconds, when you hold or tap the mic, for

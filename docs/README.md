@@ -111,6 +111,9 @@ a doc here in the same change.
   cost, write boundary, and what a device test would settle.
 - [`audits/cash-entry-route.md`](audits/cash-entry-route.md): the cash entry
   routes and the Log cash Shortcut (identity, limits, writes, privacy).
+- [`audits/receipt-batch.md`](audits/receipt-batch.md): many receipts at
+  once in Ask, and matching a receipt to the entry already there: privacy,
+  cost per receipt, write boundary, what is unverified.
 - [`proposals/cash-count-whats-left.md`](proposals/cash-count-whats-left.md):
   proposal only, "Count what's left" (type the cash that is left; the app
   books the difference).

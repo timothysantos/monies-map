@@ -3533,6 +3533,57 @@ Important distinctions:
   has that `last4`; otherwise Default account priority applies. A total in
   another currency than that account's is a currency hint, not an amount.
 
+### Receipt Batch
+
+Several receipt photos sent to Ask in one go (at most `RECEIPT_BATCH_MAX`,
+10), read one after another and reviewed one at a time on the usual entry
+card or change card (`docs/flows/ask-flow.md` "Many receipts at once").
+
+Canonical term:
+- `receipt batch` (in the page's words, "Receipts sent")
+
+Code and storage:
+- `src/client/ask-receipt-queue.js` (states: waiting, reading, ready, open,
+  failed, saved, updated, skipped, duplicate), `src/client/ask-receipt-batch.js`
+- limits in `src/domain/receipt-batch-config.ts`
+- kept only in the tab's Ask conversation store (`sessionStorage`): each
+  receipt's validated read, its match and its outcome; never the photo
+
+Important distinctions:
+- Each photo is its own Receipt Read: one model call when the reader reads
+  it, which costs `AI_ASSIST_VISION_UNITS` allowance units (2 by default),
+  and none when it is read on the device. The match costs nothing.
+- Nothing is saved without the person's Save on that receipt's card.
+- The same photo twice, or a receipt whose entry this conversation already
+  saved or updated from a receipt, is left out, not drafted twice.
+
+### Receipt Match
+
+The entry already in the ledger, or the Apple Pay tap still waiting for its
+amount, that is probably the purchase a receipt shows. Found before a new
+entry is drafted from a receipt, so a purchase is never recorded twice.
+
+Canonical term:
+- `receipt match`
+
+Code:
+- `src/domain/receipt-match.ts` (the rule and the change card),
+  `src/domain/receipt-match-projection.ts` (the rows),
+  `POST /api/ask/receipt-match` (`src/server/receipt-match-route.ts`)
+
+Important distinctions:
+- Deterministic, no AI. Household rows only, from 1 day before to 3 days
+  after the receipt's date, bounded in SQL.
+- The same purchase: the shop names agree, and the amount is the total in
+  the same currency, the kept Wallet amount of a Foreign Currency Estimate,
+  or within that estimate's tolerance at the saved day rate.
+- Two or more fits are asked about with chips, never guessed.
+- Saving a match changes only the entry's note (the receipt's lines) and a
+  catch-all category (to the shop's sure habit), through the existing
+  commands with Undo; bank facts never change, so a statement-certified
+  entry keeps them. A waiting tap is finished with the receipt's total
+  through the waiting tap's own command.
+
 ### Ask Habit
 
 A small structured fact about what the household actually does and confirms,
