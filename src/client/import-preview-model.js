@@ -175,8 +175,12 @@ export function buildImportPreviewModel({
   const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0
     || noLongerListedEntriesToRemove.length > 0 || reopenedEstimates.length > 0 || wrongCardDuplicatesToRemove.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
-  const isActivityAccountOverride = statementImportMeta.parserKey === "citibank_credit_card_activity_csv"
-    && accountMappingAccountNames.length > 0;
+  // The file does not say which account it is from: its account is a guess
+  // from the file's name or the account selected for the upload, so the
+  // account choice stays in view with the reason.
+  const accountGuessSource = accountMappingAccountNames.length > 0 ? statementImportMeta.accountSource : undefined;
+  const isActivityAccountOverride = accountMappingAccountNames.length > 0
+    && (statementImportMeta.parserKey === "citibank_credit_card_activity_csv" || Boolean(accountGuessSource));
 
   return {
     accountMappingAccountNames,
@@ -213,6 +217,7 @@ export function buildImportPreviewModel({
     // so a filename/default-account guess can be corrected before commit.
     needsStatementAccountMapping: unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || hasUnmappedAccounts,
     isActivityAccountOverride,
+    accountGuessSource,
     showStatementAccountMapping: preview && accountMappingAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0 || isActivityAccountOverride
     ),

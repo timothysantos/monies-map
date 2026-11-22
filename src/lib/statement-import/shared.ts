@@ -64,12 +64,18 @@ export type StatementNotice =
   | { code: "past_due" }
   | { code: "penalty_interest"; annualRatePercent: number };
 
+export type StatementAccountSource = "file_name" | "selected_account";
+
 export interface ParsedStatementImport {
   parserKey: string;
   sourceLabel: string;
   rows: Record<string, string>[];
   checkpoints: StatementCheckpointDraft[];
   warnings: string[];
+  // Set only when the file itself does not say which account it is from:
+  // the account was read from the file's name, or is the one selected for
+  // the upload. The preview says so and keeps the account choice in view.
+  accountSource?: StatementAccountSource;
   // Set only when the rows a parser could read do not add up to the
   // statement's printed totals. The import shows the readable rows and stays
   // blocked until the rows in the preview add up to these totals.

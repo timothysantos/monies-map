@@ -553,6 +553,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
     isActivityAccountOverride,
+    accountGuessSource,
     ledgerMatchedStatement,
     commitKind,
     commitLabel,
@@ -824,7 +825,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsBringFilesOpen(false);
     setStatementCheckpoints(nextStatementCheckpoints);
     statementCheckpointsRef.current = nextStatementCheckpoints;
-    setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
+    setStatementImportMeta({
+      sourceType,
+      parserKey: parsed.parserKey,
+      ...(parsed.accountSource ? { accountSource: parsed.accountSource } : {})
+    });
     setStatementWarnings(parsed.warnings ?? []);
     setStatementReconciliation(parsed.reconciliation ?? null);
     setInferredAmounts(parsed.ocrReview?.inferredAmounts ?? []);
@@ -2747,6 +2752,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             unknownCategoryMode={unknownCategoryMode}
             showStatementAccountMapping={showStatementAccountMapping}
             isActivityAccountOverride={isActivityAccountOverride}
+            accountGuessSource={accountGuessSource}
             visibleOverlapImports={visibleOverlapImports}
             previewReconciliationRowCount={previewReconciliationRowCount}
             certifiedConflictRows={certifiedConflictRows}

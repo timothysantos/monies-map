@@ -90,7 +90,10 @@ export function parseOcbcActivityCsv(
     sourceLabel: labelFromFile(fileName, isBankActivity ? "OCBC 360 activity" : "OCBC card activity"),
     rows: importRows,
     checkpoints: [],
-    warnings: []
+    warnings: [],
+    // The file says "card" or "360 account" but never which of the
+    // household's accounts: a selected OCBC account is taken on trust.
+    ...(isOcbcAccountContext(context) && context?.accountName ? { accountSource: "selected_account" as const } : {})
   };
 }
 

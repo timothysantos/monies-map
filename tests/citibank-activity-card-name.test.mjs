@@ -30,3 +30,15 @@ test("a name with neither word keeps the selected card, and words inside other w
   assert.deepEqual(accountsFor("ACCT_349_17_10_2026.csv", "Citi Rewards"), ["Citi Rewards"]);
   assert.deepEqual(accountsFor("smiles_export.csv", "Citi Rewards"), ["Citi Rewards"]);
 });
+
+// The file never names its card, so the parse says where the account came
+// from: the preview shows it before anything is saved.
+function sourceFor(fileName, accountName) {
+  return parseCitibankActivityCsv(CSV, fileName, accountName ? { accountName, accountKind: "credit_card", institution: "Citibank" } : undefined).accountSource;
+}
+
+test("the parse says whether the card came from the file's name or from the selected account", () => {
+  assert.equal(sourceFor("tim_citirewards_midcycle_ACCT_349_17_10_2026.csv", "Citi Miles"), "file_name");
+  assert.equal(sourceFor("ACCT_349_17_10_2026.csv", "Citi Miles"), "selected_account");
+  assert.equal(sourceFor("smiles_export.csv", "Citi Rewards"), "selected_account");
+});

@@ -580,3 +580,22 @@ for (const [scenarioId, fixtureName, expectedAccountName] of [
     assert.equal(parsed.warnings.length, 0);
   });
 }
+
+// A file that does not say which account it is from reports where its
+// account came from, so the preview can show it before saving.
+test("activity exports say when their account is only the one selected for the upload", () => {
+  const hsbc = (context) => parseHsbcActivityCsv(readTextFixture(HSBC_ACTIVITY), "hsbc_midcycle_TransactionHistory.csv", context).accountSource;
+  assert.equal(hsbc({ accountName: "HSBC Live+ 9876", accountKind: "credit_card", institution: "HSBC", accounts: [card("HSBC Live+ 9876")] }), "selected_account");
+  // Matched by the card's last four digits in the file: the file says it.
+  assert.equal(hsbc({ ...UOB_SELECTED, accounts: [card("HSBC Revolution 1234")] }), undefined);
+  assert.equal(hsbc(undefined), undefined);
+
+  const ocbc = (context) => parseOcbcActivityCsv(
+    readTextFixture("./fixtures/ocbc-activity/TransactionHistory_20260628140517-ocbc-360-sanitized.csv"),
+    "TransactionHistory_20260628140517.csv",
+    context
+  ).accountSource;
+  assert.equal(ocbc({ accountName: "OCBC 360", accountKind: "bank", institution: "OCBC" }), "selected_account");
+  assert.equal(ocbc(undefined), undefined);
+  assert.equal(ocbc(UOB_SELECTED), undefined);
+});

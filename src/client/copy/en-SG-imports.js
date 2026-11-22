@@ -178,6 +178,10 @@ export const importMessages = {
   accountMappingDetail: "Match each detected statement account to the account that should receive these rows and checkpoints.",
   activityAccountOverrideTitle: "Check the card account",
   activityAccountOverrideDetail: "This file was put on the account shown below. If that is wrong, choose the card account it came from; the import is checked again before you save it.",
+  // The file does not say which account it is from: say where the choice
+  // below came from, so a wrong guess is seen before saving.
+  accountGuessFromFileName: "The file does not say which account it is from, so the account below was read from the file's name. If that is wrong, choose the account it came from; the import is checked again before you save it.",
+  accountGuessFromSelection: "The file does not say which account it is from, so it was put on the account chosen for this upload. If that is wrong, choose the account it came from; the import is checked again before you save it.",
   detectedAccount: (accountName) => `Detected: ${accountName}`,
   chooseAccount: "Choose account",
   createDetectedAccount: "Create account",

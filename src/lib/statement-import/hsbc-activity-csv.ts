@@ -64,7 +64,9 @@ export function parseHsbcActivityCsv(text: string, fileName?: string, context?: 
       };
     }).sort(compareImportRowsByDate),
     checkpoints: [],
-    warnings: []
+    warnings: [],
+    // A selected HSBC card is used as it is, without the file's card ending.
+    ...(isHsbcCardContext(context) && context?.accountName ? { accountSource: "selected_account" as const } : {})
   };
 }
 

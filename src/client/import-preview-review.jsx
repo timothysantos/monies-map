@@ -50,6 +50,7 @@ export function ImportPreviewReview({
   unknownCategoryMode,
   showStatementAccountMapping,
   isActivityAccountOverride = false,
+  accountGuessSource = undefined,
   visibleOverlapImports,
   previewReconciliationRowCount,
   certifiedConflictRows,
@@ -139,6 +140,7 @@ export function ImportPreviewReview({
             onRemapPreviewAccount={onRemapPreviewAccount}
             onCreateStatementAccount={onCreateStatementAccount}
             isActivityAccountOverride={isActivityAccountOverride}
+            accountGuessSource={accountGuessSource}
           />
         ) : null}
         unknownCategories={preview.unknownCategories?.length ? (
@@ -494,7 +496,8 @@ function StatementAccountMapping({
   statementCheckpoints,
   onRemapPreviewAccount,
   onCreateStatementAccount,
-  isActivityAccountOverride = false
+  isActivityAccountOverride = false,
+  accountGuessSource = undefined
 }) {
   // Account names in statements are not reliable foreign keys. We treat the
   // detected label as a hint, then let the user anchor it to a concrete account.
@@ -541,7 +544,15 @@ function StatementAccountMapping({
             ? importMessages.activityAccountOverrideTitle
             : unknownPreviewAccountNames.length ? importMessages.unknownAccounts : importMessages.accountMappingTitle}
         </strong>
-        <p>{isActivityAccountOverride ? importMessages.activityAccountOverrideDetail : importMessages.accountMappingDetail}</p>
+        <p data-account-guess={accountGuessSource}>
+          {!isActivityAccountOverride
+            ? importMessages.accountMappingDetail
+            : accountGuessSource === "file_name"
+              ? importMessages.accountGuessFromFileName
+              : accountGuessSource === "selected_account"
+                ? importMessages.accountGuessFromSelection
+                : importMessages.activityAccountOverrideDetail}
+        </p>
       </div>
       <div className="statement-account-map-grid">
         {accountMappingAccountNames.map((accountName) => {

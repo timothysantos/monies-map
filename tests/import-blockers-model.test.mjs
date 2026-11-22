@@ -25,13 +25,13 @@ function row(overrides) {
   };
 }
 
-function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], statementDiagnosis, sourceType = "pdf", parserKey, unknownCategories = [], unknownCategoryMode = "other" }) {
+function previewModelFor({ accounts = [LADYS, PRVI], previewRows, statementCheckpoints = [], statementReconciliations = [], statementDiagnosis, sourceType = "pdf", parserKey, accountSource, unknownCategories = [], unknownCategoryMode = "other" }) {
   return buildImportPreviewModel({
     accounts,
     preview: { statementReconciliations, unknownCategories, overlapImports: [], ...(statementDiagnosis ? { statementDiagnosis } : {}) },
     previewRows,
     statementCheckpoints,
-    statementImportMeta: { sourceType, parserKey: parserKey ?? (sourceType === "pdf" ? "uob_credit_card_pdf" : "generic_csv") },
+    statementImportMeta: { sourceType, parserKey: parserKey ?? (sourceType === "pdf" ? "uob_credit_card_pdf" : "generic_csv"), ...(accountSource ? { accountSource } : {}) },
     dismissedOverlapIds: [],
     unknownCategoryMode,
     isSubmitting: false,
@@ -58,6 +58,27 @@ test("a recognized Citi activity file keeps an account choice visible even when 
   assert.equal(model.isActivityAccountOverride, true);
   assert.equal(model.showStatementAccountMapping, true);
   assert.equal(model.needsStatementAccountMapping, false);
+});
+
+test("a file that does not say its account keeps the account choice in view and says where the guess came from", () => {
+  const ocbcRow = row({ rowId: "ocbc-1", accountId: "acct-360", accountName: "OCBC 360", statementAccountName: "OCBC 360" });
+  const accounts = [{ id: "acct-360", name: "OCBC 360" }, { id: "acct-365", name: "OCBC 365 Credit Card" }];
+
+  const selected = previewModelFor({ accounts, sourceType: "csv", parserKey: "ocbc_360_activity_csv", accountSource: "selected_account", previewRows: [ocbcRow] });
+  assert.equal(selected.accountGuessSource, "selected_account");
+  assert.equal(selected.isActivityAccountOverride, true);
+  assert.equal(selected.showStatementAccountMapping, true);
+  // Known account: shown for checking, never a blocker.
+  assert.equal(selected.needsStatementAccountMapping, false);
+
+  const named = previewModelFor({ accounts, sourceType: "csv", parserKey: "citibank_credit_card_activity_csv", accountSource: "file_name", previewRows: [ocbcRow] });
+  assert.equal(named.accountGuessSource, "file_name");
+
+  // Negative: a file that names its own account is not flagged.
+  const fromFile = previewModelFor({ accounts, sourceType: "csv", parserKey: "ocbc_360_activity_csv", previewRows: [ocbcRow] });
+  assert.equal(fromFile.accountGuessSource, undefined);
+  assert.equal(fromFile.isActivityAccountOverride, false);
+  assert.equal(fromFile.showStatementAccountMapping, false);
 });
 
 function blockersFor(input, extra = {}) {

@@ -11,3 +11,12 @@ test("the account check says the import is checked again before saving, in plain
   assert.equal(text, "This file was put on the account shown below. If that is wrong, choose the card account it came from; the import is checked again before you save it.");
   assert.doesNotMatch(text, /\b(rerun|matching|coverage|commit|the app)\b/i);
 });
+
+test("the reason a file is on an account is said in plain words, for both kinds of guess", () => {
+  assert.match(importMessages.accountGuessFromFileName, /read from the file's name/);
+  assert.match(importMessages.accountGuessFromSelection, /account chosen for this upload/);
+  for (const text of [importMessages.accountGuessFromFileName, importMessages.accountGuessFromSelection]) {
+    assert.match(text, /^The file does not say which account it is from/);
+    assert.doesNotMatch(text, /\b(rerun|matching|coverage|commit|the app|parser|filename)\b/i);
+  }
+});

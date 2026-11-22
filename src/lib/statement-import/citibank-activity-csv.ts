@@ -6,7 +6,8 @@ import {
   isTransferDescription,
   labelFromFile,
   minorToDecimal,
-  type ParsedStatementImport
+  type ParsedStatementImport,
+  type StatementAccountSource
 } from "./shared";
 
 interface CitibankActivityContext {
@@ -50,6 +51,7 @@ export function parseCitibankActivityCsv(
   }
 
   const accountName = resolveCitibankActivityAccountName(fileName, context);
+  const accountSource = resolveCitibankActivityAccountSource(fileName, context);
   const importRows = rows.map((row) => {
     const isCredit = row.amountMinor > 0;
     const amountMinor = Math.abs(row.amountMinor);
@@ -76,7 +78,8 @@ export function parseCitibankActivityCsv(
     sourceLabel: labelFromFile(fileName, "Citibank card activity"),
     rows: importRows,
     checkpoints: [],
-    warnings: []
+    warnings: [],
+    ...(accountSource ? { accountSource } : {})
   };
 }
 
@@ -154,6 +157,15 @@ function cleanCsvCell(value: string) {
     .replace(/^'+|'+$/g, "")
     .replace(/^"+|"+$/g, "")
     .trim();
+}
+
+// A Citi activity export never names its card: the account is a guess from
+// the file's name, or else the account selected for the upload.
+function resolveCitibankActivityAccountSource(fileName?: string, context?: CitibankActivityContext): StatementAccountSource | undefined {
+  if (/(?:^|[^a-z]|citi)(?:rewards|miles)(?:[^a-z]|$)/i.test(fileName ?? "")) {
+    return "file_name";
+  }
+  return context?.accountName ? "selected_account" : undefined;
 }
 
 function resolveCitibankActivityAccountName(fileName?: string, context?: CitibankActivityContext) {
