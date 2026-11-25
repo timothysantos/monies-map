@@ -15,8 +15,13 @@ async function postJson(path, body, fallbackError) {
   }
 }
 
-export function completeWaitingTap({ tapId, amount, currency }, fallbackError) {
-  return postJson("/api/waiting-taps/complete", { tapId, amount, currency }, fallbackError);
+/**
+ * `merchant`: the shop typed for a bare tap (no shop came through).
+ * @param {{ tapId: string, amount: string, currency: string, merchant?: string }} input
+ * @param {string} fallbackError
+ */
+export function completeWaitingTap({ tapId, amount, currency, merchant }, fallbackError) {
+  return postJson("/api/waiting-taps/complete", { tapId, amount, currency, ...(merchant ? { merchant } : {}) }, fallbackError);
 }
 
 export function removeWaitingTap(tapId, fallbackError) {

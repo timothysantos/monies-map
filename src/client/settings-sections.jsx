@@ -124,7 +124,9 @@ export function SettingsShortcutApiSection({
     settingsMessages.shortcutInstallStep,
     settingsMessages.shortcutPasteStep,
     settingsMessages.shortcutAutomationStep,
-    settingsMessages.shortcutAutomationRunStep
+    settingsMessages.shortcutAutomationDictionaryStep,
+    settingsMessages.shortcutAutomationRunStep,
+    settingsMessages.shortcutTroubleStep
   ];
   const foreignCurrencyAccount = draft.foreignCurrencyAccountId ? accountsById.get(draft.foreignCurrencyAccountId) : null;
 

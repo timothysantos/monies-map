@@ -121,6 +121,64 @@ for (const [layout, use] of [["phone", iPhone13], ["desktop", { viewport: { widt
     });
   });
 
+  // A bare tap (DOMAIN.md "Bare Tap"): Wallet ran the automation before it
+  // had the details, so only the card came through.
+  test.describe(`payment with no details on ${layout}`, () => {
+    test.use(use);
+
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    });
+
+    async function seedBare(page) {
+      await seed(page);
+      const bare = await page.request.post("/api/shortcuts/entries/create", {
+        headers: { "X-Monies-Shortcut-Token": TOKEN },
+        data: { amount: "", description: "", name: "UOB One", date: `${MONTH}-24`, requestId: `apple-pay-e2e-bare-${Date.now()}`, clientVersion: "apple-pay-api-2026-11-17-v8" }
+      });
+      expect(bare.status(), await bare.text()).toBe(202);
+      expect((await bare.json()).notice).toBe("Payment on UOB One noted. Waiting for its details.");
+      // Only the bare one on the card for this test.
+      const entriesPage = await (await page.request.get(`/api/entries-page?view=household&month=${MONTH}`)).json();
+      const named = entriesPage.waitingTaps.find((item) => item.merchant === "Periplus Bali");
+      await postJson(page, "/api/waiting-taps/remove", { tapId: named.id });
+    }
+
+    test("the card asks for the shop and the amount, refuses a missing shop in plain words, and Save saves the entry", async ({ page }) => {
+      await seedBare(page);
+      await openEntries(page);
+      await expect(card(page)).toHaveCount(1);
+      await expect(card(page).locator(".waiting-tap-line")).toHaveText(/^Payment on UOB One, Sun 24 May \d{1,2}:\d{2} [ap]m\. No details came through\.$/);
+      const shop = card(page).getByRole("textbox", { name: "Shop for the payment on UOB One" });
+      const amount = card(page).getByRole("textbox", { name: "Amount for the payment on UOB One" });
+      await expect(shop).toHaveAttribute("placeholder", "Shop");
+      await shot(page, `${layout}-bare-waiting`);
+
+      await amount.fill("12.40");
+      await card(page).getByRole("button", { name: "Save" }).click();
+      await expect(card(page).getByRole("alert")).toHaveText("Type the shop's name.");
+      await expect(shop).toHaveAttribute("aria-invalid", "true");
+
+      await shop.fill("Lawson Ginza");
+      await shot(page, `${layout}-bare-typed`);
+      await card(page).getByRole("button", { name: "Save" }).click();
+      await expect(page.locator(".waiting-tap-done")).toHaveText("Saved Lawson Ginza.");
+      await expect(card(page)).toHaveCount(0);
+      await expect(page.locator(".entry-row-description").filter({ hasText: "Lawson Ginza" }).first()).toBeVisible();
+      await shot(page, `${layout}-bare-saved`);
+      const { entry, waitingTaps } = await savedEntry(page, "Lawson Ginza");
+      expect([entry.amountMinor, entry.accountName, entry.date, waitingTaps]).toEqual([1240, "UOB One", `${MONTH}-24`, undefined]);
+    });
+
+    test("Not a payment removes it and saves nothing", async ({ page }) => {
+      await seedBare(page);
+      await openEntries(page);
+      await card(page).getByRole("button", { name: "Not a payment" }).click();
+      await expect(page.locator(".waiting-tap-done")).toHaveText("Removed the payment on UOB One. Nothing was saved.");
+      expect((await savedEntry(page)).waitingTaps).toEqual(undefined);
+    });
+  });
+
   test.describe(`waiting tap on ${layout}, money hidden`, () => {
     test.use(use);
 

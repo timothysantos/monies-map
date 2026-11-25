@@ -171,14 +171,17 @@ function NeedsLook({ page, onOpen }) {
       <CardHead title={copy.needsLook} subtitle={copy.needsLookSub} />
       <ul className="trip-entry-list">
         {shown.map((item) => {
-          const action = copy.lookAction[item.reason];
+          // A payment that came with no shop (DOMAIN.md "Bare Tap").
+          const bare = item.reason === "no_amount" && !item.name;
+          const action = bare ? copy.lookBareAction : copy.lookAction[item.reason];
+          const name = bare ? copy.lookBareName : item.name;
           return (
             <li key={`${item.reason}-${item.id}`} className="trip-entry trip-look" data-trip-look={item.reason}>
               <span className="trip-entry-text">
-                <span className="trip-entry-name">{item.name}</span>
+                <span className="trip-entry-name">{name}</span>
                 <span className="trip-entry-meta trip-look-why">{`${dayLabel(item.date)} · ${copy.lookWhy[item.reason](item, page.tripEvent.splitGroupName)}`}</span>
               </span>
-              <button type="button" className="subtle-action trip-look-action" aria-label={copy.lookActionLabel(action, item.name)} onClick={() => onOpen(item)}>
+              <button type="button" className="subtle-action trip-look-action" aria-label={copy.lookActionLabel(action, name)} onClick={() => onOpen(item)}>
                 {action}
               </button>
             </li>

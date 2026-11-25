@@ -545,13 +545,16 @@ test.describe("settings reference data", () => {
     await openSettingsPage(page);
     const shortcutUrl = new URL(shortcutPath, page.url()).toString();
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
-    // The four steps and the account priority fold under their own rows.
+    // The six steps and the account priority fold under their own rows.
     await page.getByRole("button", { name: /^How to set it up/ }).click();
     await page.getByRole("button", { name: /^Default account/ }).click();
     await expect(page.getByText("Paste the copied connection into Apple's plain-text setup field.")).toBeVisible();
-    await expect(page.getByText(/keep the Dictionary with value, merchant, and name/)).toBeVisible();
-    await expect(page.getByText(/replace Register Apple Pay Transaction with Monies Map Apple Pay API/)).toBeVisible();
-    await expect(page.getByText(/confirms the merchant, amount, and account, then opens the saved entry/)).toBeVisible();
+    // One Dictionary action, never Set Dictionary Value (it stops the
+    // automation when Wallet sends a field empty), and the iOS error named.
+    await expect(page.getByText(/Remove any Set Dictionary Value actions in it/)).toBeVisible();
+    await expect(page.getByText(/Add one Dictionary action with three Text items: merchant set to Shortcut Input's Merchant/)).toBeVisible();
+    await expect(page.getByText(/choose Monies Map Apple Pay API and set its input to that Dictionary/)).toBeVisible();
+    await expect(page.getByText(/No value was provided to the Set Dictionary Value action for the key merchant/)).toBeVisible();
     // Plain words on the main surface; the API field names live in the
     // developer guide.
     await expect(page.getByText("If the shortcut doesn't name an account, entries go to the first account in this list.")).toBeVisible();

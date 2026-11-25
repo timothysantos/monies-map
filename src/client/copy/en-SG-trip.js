@@ -52,7 +52,7 @@ export const tripPageCopy = Object.freeze({
   needsLook: "Needs a look",
   needsLookSub: "Payments that may be wrong or missing something",
   lookWhy: {
-    no_amount: () => "The amount didn't come through.",
+    no_amount: (item) => (item.name ? "The amount didn't come through." : "No details came through."),
     old_estimate: (item) => `Still an estimate after ${item.days} days. Its card statement may be missing.`,
     shared_not_on_splits: () => "Marked Shared, but not on Splits.",
     splits_no_group: (item, groupName) => (groupName ? `On Splits, but not in ${groupName}.` : "On Splits, but not in this trip's group."),
@@ -67,5 +67,8 @@ export const tripPageCopy = Object.freeze({
     other_category: "Open",
     maybe_copy: "See both"
   },
-  lookActionLabel: (action, name) => `${action}: ${name}`
+  lookActionLabel: (action, name) => `${action}: ${name}`,
+  // A payment with no shop (DOMAIN.md "Bare Tap").
+  lookBareName: "Apple Pay payment",
+  lookBareAction: "Add the details"
 });

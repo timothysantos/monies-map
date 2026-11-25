@@ -2,7 +2,7 @@ import { devices, expect, test } from "@playwright/test";
 import path from "node:path";
 
 import { expectFits, fakeKeyboard, setKeyboard } from "./fit-check.js";
-import { STRESS, addWaitingTaps, seedStressHousehold } from "./fit-stress-fixture.js";
+import { STRESS, addBareTaps, addWaitingTaps, seedStressHousehold } from "./fit-stress-fixture.js";
 import { postJson } from "./helpers.js";
 import { LADYS_CARD, writeStatementPdf } from "./uob-wrong-card-statement.js";
 
@@ -157,6 +157,18 @@ test.describe("phone fit", () => {
       await page.setViewportSize({ width: phone.width, height: phone.height });
       expect((await merchant.boundingBox()).width, `title width at ${phone.width}`).toBeGreaterThan(100);
     }
+  });
+
+  test("Entries: a payment with no details (shop and amount fields) fits, keyboard up on each field, beside a waiting tap with a shop", async ({ page }) => {
+    await addBareTaps(page, 1);
+    await addWaitingTaps(page, 1);
+    await page.goto(`/entries?view=household&month=${STRESS.month}`);
+    const bare = page.locator("form.waiting-tap-card").filter({ has: page.locator(".waiting-tap-shop") });
+    await expect(bare).toBeVisible({ timeout: 60_000 });
+    await expect(bare.locator(".waiting-tap-line")).toContainText("No details came through.");
+    await expectFitsOnPhones(page, { typing: () => bare.locator(".waiting-tap-shop input") });
+    await expectFitsOnPhones(page, { typing: () => bare.locator(".waiting-tap-amount input") });
+    await shot(page, "entries-bare-tap");
   });
 
   test("Entries: the waiting tap card with 1 and 5 waiting, the list end and the + new entry form fit, keyboard up and down", async ({ page }) => {

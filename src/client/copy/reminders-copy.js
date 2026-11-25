@@ -84,6 +84,11 @@ export const remindersCopy = {
     sentence: ({ dayText, time, accountName }) => `Paid ${[dayText, time].filter(Boolean).join(" ")}${accountName ? ` on ${accountName}` : ""}. Add the amount, or say it wasn't a payment.`,
     open: "Add the amount",
     laterTitle: (merchant) => `${merchant}, amount missing`,
+    // A bare tap (DOMAIN.md "Bare Tap"): no shop and no amount came through.
+    bareTitle: (accountName) => `Payment${accountName ? ` on ${accountName}` : ""}: no details came through`,
+    bareSentence: ({ dayText, time }) => `Paid ${[dayText, time].filter(Boolean).join(" ")}. Add the shop and amount, or say it wasn't a payment.`,
+    bareOpen: "Add the details",
+    bareLaterTitle: (accountName) => `Payment${accountName ? ` on ${accountName}` : ""}, details missing`,
     laterNote: "This only hides it on this device. It goes away once the amount is added, it is marked not a payment, or the bank's statement brings it in."
   },
 

@@ -3,6 +3,7 @@ import { Check, Clock } from "lucide-react";
 
 import { tapDayWord, waitingTapCopy as copy } from "./copy/waiting-tap-copy";
 import { completeWaitingTap, readTypedAmount, removeWaitingTap } from "./waiting-tap-api";
+import { formatEntryTime } from "../lib/entry-time";
 import "./waiting-tap-card.css";
 
 // The waiting taps at the top of Entries (DOMAIN.md "Waiting Tap"; design.md
@@ -42,12 +43,17 @@ export function WaitingTapCards({ taps, doneLines = [], today, moneyHidden, focu
 
 function WaitingTapCard({ tap, today, moneyHidden, focus, personStyle, onSaved, onRemoved }) {
   const currencies = [tap.currency, ...(tap.otherCurrencies ?? [])];
+  // A bare tap (no shop came through) asks for the shop as well.
+  const bare = !String(tap.merchant ?? "").trim();
+  const [shop, setShop] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState(currencies[0]);
   const [state, setState] = useState({ busy: "", error: "" });
   const inputId = useId();
+  const shopId = useId();
   const cardRef = useRef(null);
   const inputRef = useRef(null);
+  const shopRef = useRef(null);
 
   // Opened from the Shortcut's link or an Ask reminder: this card in view,
   // its amount field ready.
@@ -56,13 +62,23 @@ function WaitingTapCard({ tap, today, moneyHidden, focus, personStyle, onSaved, 
       return;
     }
     cardRef.current?.scrollIntoView?.({ block: "center" });
-    inputRef.current?.focus({ preventScroll: true });
-  }, [focus]);
+    (bare ? shopRef : inputRef).current?.focus({ preventScroll: true });
+  }, [focus, bare]);
 
-  const line = copy.line({ merchant: tap.merchant, dayWord: tapDayWord(tap.date, today), time: tap.time, accountName: tap.accountName });
+  const dayWord = tapDayWord(tap.date, today);
+  const line = bare
+    ? copy.bareLine({ dayWord, time: formatEntryTime(tap.time), accountName: tap.accountName })
+    : copy.line({ merchant: tap.merchant, dayWord, time: tap.time, accountName: tap.accountName });
+  const name = bare ? copy.bareName(tap.accountName) : tap.merchant;
 
   async function save(event) {
     event.preventDefault();
+    const shopName = shop.replace(/\s+/g, " ").trim();
+    if (bare && !shopName) {
+      setState({ busy: "", error: copy.needShop });
+      shopRef.current?.focus();
+      return;
+    }
     const typed = readTypedAmount(amount);
     if (!typed) {
       setState({ busy: "", error: copy.needAmount });
@@ -70,12 +86,12 @@ function WaitingTapCard({ tap, today, moneyHidden, focus, personStyle, onSaved, 
       return;
     }
     setState({ busy: "save", error: "" });
-    const result = await completeWaitingTap({ tapId: tap.id, amount: typed, currency }, copy.saveFailed);
+    const result = await completeWaitingTap({ tapId: tap.id, amount: typed, currency, ...(bare ? { merchant: shopName } : {}) }, copy.saveFailed);
     if (!result.ok) {
       setState({ busy: "", error: result.error });
       return;
     }
-    onSaved?.(tap, copy.saved(tap.merchant));
+    onSaved?.(tap, copy.saved(bare ? shopName : tap.merchant));
   }
 
   async function remove() {
@@ -85,7 +101,7 @@ function WaitingTapCard({ tap, today, moneyHidden, focus, personStyle, onSaved, 
       setState({ busy: "", error: result.error });
       return;
     }
-    onRemoved?.(tap, copy.removed(tap.merchant));
+    onRemoved?.(tap, bare ? copy.bareRemoved(tap.accountName) : copy.removed(tap.merchant));
   }
 
   return (
@@ -101,9 +117,28 @@ function WaitingTapCard({ tap, today, moneyHidden, focus, personStyle, onSaved, 
         <Clock size={16} aria-hidden="true" />
         <span>{line}</span>
       </p>
+      {bare ? (
+        <label className="waiting-tap-shop" htmlFor={shopId}>
+          <span className="sr-only">{copy.shopLabel(tap.accountName)}</span>
+          <input
+            ref={shopRef}
+            id={shopId}
+            type="text"
+            autoComplete="off"
+            autoCapitalize="words"
+            enterKeyHint="next"
+            maxLength={200}
+            placeholder={copy.shopPlaceholder}
+            value={shop}
+            disabled={Boolean(state.busy)}
+            aria-invalid={state.error === copy.needShop ? "true" : undefined}
+            onChange={(event) => setShop(event.target.value)}
+          />
+        </label>
+      ) : null}
       <div className="waiting-tap-fields">
         <label className="waiting-tap-amount" htmlFor={inputId}>
-          <span className="sr-only">{copy.amountLabel(tap.merchant)}</span>
+          <span className="sr-only">{copy.amountLabel(name)}</span>
           <input
             ref={inputRef}
             id={inputId}

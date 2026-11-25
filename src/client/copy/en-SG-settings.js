@@ -286,8 +286,13 @@ export const settingsMessages = {
   shortcutCopyFailed: "Could not copy the private connection.",
   shortcutInstallStep: "Install the Apple-signed shortcut from Monies Map.",
   shortcutPasteStep: "Paste the copied connection into Apple's plain-text setup field.",
-  shortcutAutomationStep: "In your existing When I tap Wallet automation, keep the Dictionary with value, merchant, and name from the transaction.",
-  shortcutAutomationRunStep: "In its final Run Shortcut action, replace Register Apple Pay Transaction with Monies Map Apple Pay API and pass the Dictionary. A successful tap confirms the merchant, amount, and account, then opens the saved entry.",
+  // The Wallet automation's steps (docs/user-guide.md "Record Apple Pay
+  // purchases automatically"): one Dictionary action, never Set Dictionary
+  // Value, which stops the automation when Wallet sends a field empty.
+  shortcutAutomationStep: "In the Shortcuts app, open your When I tap Wallet automation and choose Run Immediately. Remove any Set Dictionary Value actions in it.",
+  shortcutAutomationDictionaryStep: "Add one Dictionary action with three Text items: merchant set to Shortcut Input's Merchant, value to its Amount, and name to its Name.",
+  shortcutAutomationRunStep: "In the Run Shortcut action, choose Monies Map Apple Pay API and set its input to that Dictionary. Each tap then shows the shop, amount and card, or that the payment is waiting on Entries for its details.",
+  shortcutTroubleStep: "If your taps stopped saving and Shortcuts said \"No value was provided to the Set Dictionary Value action for the key merchant\", that action stopped the automation: replace it with the one Dictionary above.",
   shortcutAdvancedTitle: "More shortcut settings",
   shortcutShowApiKey: "Show private connection key",
   shortcutHideApiKey: "Hide private connection key",

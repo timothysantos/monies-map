@@ -29,6 +29,15 @@ export const waitingTapCopy = {
   // "Periplus, today 14:02, UOB One. The amount didn't come through."
   line: ({ merchant, dayWord, time, accountName }) =>
     `${merchant}, ${[dayWord, time].filter(Boolean).join(" ")}${accountName ? `, ${accountName}` : ""}. The amount didn't come through.`,
+  // A bare tap (DOMAIN.md "Bare Tap"): Wallet sent no shop and no amount.
+  // "Payment on Citi Rewards, today 6:54 pm. No details came through."
+  bareLine: ({ dayWord, time, accountName }) =>
+    `Payment${accountName ? ` on ${accountName}` : ""}, ${[dayWord, time].filter(Boolean).join(" ")}. No details came through.`,
+  bareName: (accountName) => `the payment${accountName ? ` on ${accountName}` : ""}`,
+  shopLabel: (accountName) => `Shop for the payment${accountName ? ` on ${accountName}` : ""}`,
+  shopPlaceholder: "Shop",
+  needShop: "Type the shop's name.",
+  bareRemoved: (accountName) => `Removed the payment${accountName ? ` on ${accountName}` : ""}. Nothing was saved.`,
   amountLabel: (merchant) => `Amount for ${merchant}`,
   amountPlaceholder: "0.00",
   currencyLabel: "Paid in",

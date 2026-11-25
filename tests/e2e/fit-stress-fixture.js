@@ -93,6 +93,20 @@ export async function addWaitingTaps(page, count) {
   }
 }
 
+/** `count` Apple Pay taps with no shop and no amount, only the card (DOMAIN.md "Bare Tap"). */
+export async function addBareTaps(page, count) {
+  const settings = await (await page.request.get("/api/settings-page?view=household")).json();
+  const activeIds = settings.settingsPage.accounts.filter((account) => account.isActive).map((account) => account.id);
+  await postJson(page, "/api/settings/shortcuts/save", { apiKey: TOKEN, defaultAccountPriorityIds: activeIds });
+  for (let index = 0; index < count; index += 1) {
+    const held = await page.request.post("/api/shortcuts/entries/create", {
+      headers: { "X-Monies-Shortcut-Token": TOKEN },
+      data: { amount: "", description: "", name: STRESS.wallets[3], date: STRESS.today, requestId: `fit-bare-${Date.now()}-${index}`, clientVersion: "apple-pay-api-2026-11-17-v8" }
+    });
+    expect(held.status(), await held.text()).toBe(202);
+  }
+}
+
 /** Card payments typed on the pad with no words (Ask's "need a few words" reminder). */
 export async function addPaymentsNeedingWords(page, count) {
   for (let index = 0; index < count; index += 1) {

@@ -62,7 +62,7 @@ export function laterChoices(reminder, today) {
 
 function laterTitleFor(reminder) {
   switch (reminder.kind) {
-    case "waiting_tap": return copy.waitingTap.laterTitle(reminder.merchant);
+    case "waiting_tap": return reminder.merchant ? copy.waitingTap.laterTitle(reminder.merchant) : copy.waitingTap.bareLaterTitle(reminder.accountName);
     case "quick_words": return copy.quickWords.laterTitle;
     case "card_bill": return copy.cardBill.laterTitle(reminder.accountName);
     case "statement_missing": return copy.statement.laterTitle(reminder.accountName, reminderMonthName(reminder.statementMonth));
@@ -161,9 +161,9 @@ function buildCard(reminder, options) {
         ...base,
         icon: "card",
         tone: "butter",
-        title: copy.waitingTap.title(reminder.merchant),
-        sentence: copy.waitingTap.sentence({ dayText: reminder.date === today ? "today" : reminderDate(reminder.date), time: reminder.time, accountName: reminder.accountName }),
-        primaryLabel: copy.waitingTap.open,
+        title: reminder.merchant ? copy.waitingTap.title(reminder.merchant) : copy.waitingTap.bareTitle(reminder.accountName),
+        sentence: (reminder.merchant ? copy.waitingTap.sentence : copy.waitingTap.bareSentence)({ dayText: reminder.date === today ? "today" : reminderDate(reminder.date), time: reminder.time, accountName: reminder.accountName }),
+        primaryLabel: reminder.merchant ? copy.waitingTap.open : copy.waitingTap.bareOpen,
         quiet: "later"
       };
     case "quick_words":
