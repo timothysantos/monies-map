@@ -9,7 +9,8 @@
 
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { buildAuditEventStatement } from "./app-repository-audit";
-import { findTapForSecondRun, secondsBetween } from "./waiting-taps";
+import { findTapForSecondRun, isBareTap, secondsBetween } from "./waiting-taps";
+import { BARE_TAPS_PER_PERSON_PER_DAY } from "./waiting-taps-config";
 import {
   buildWaitingTapClearedStatements,
   readWaitingTapRows,
@@ -21,6 +22,14 @@ import {
 export class WaitingTapsUnavailableError extends Error {
   constructor() {
     super("Waiting taps are not set up.");
+  }
+}
+
+// Past BARE_TAPS_PER_PERSON_PER_DAY bare taps in a day the next is refused
+// (a phone in a loop, or a leaked key, cannot fill the Entries card).
+export class BareTapLimitError extends Error {
+  constructor() {
+    super("Too many payments came without details today. This one was not kept.");
   }
 }
 
@@ -68,6 +77,10 @@ export interface HoldWaitingTapInput {
   walletName?: string;
   tapDate: string;
   clientVersion?: string;
+  // A bare tap whose run did carry an amount: not kept (no Wallet text
+  // beyond the shop and card name is stored), only named in the audit line
+  // and the Shortcut's notice.
+  hasAmount?: boolean;
 }
 
 export type HoldWaitingTapResult =
@@ -79,21 +92,30 @@ export type HoldWaitingTapResult =
   // also came blank): recorded on that tap, no second tap is kept.
   | { outcome: "second_blank"; tap: WaitingTapRow; seconds: number };
 
-// Keeps a tap that came with no amount. Idempotent on the Shortcut's
-// request id.
+// Keeps a tap that came with no amount, or a bare tap (no shop, maybe no
+// amount; `merchant` ""). Idempotent on the Shortcut's request id. A bare
+// tap is never merged with another tap and is bounded per person per day.
 export async function holdWaitingTap(db: D1Database, input: HoldWaitingTapInput, now = new Date()): Promise<HoldWaitingTapResult> {
   const nowIso = now.toISOString();
+  const bare = isBareTap({ merchant: input.merchant });
   let existing: WaitingTapRow | null;
   let waiting: WaitingTapRow[];
+  let bareToday = 0;
   try {
-    [existing, waiting] = await Promise.all([
+    [existing, waiting, bareToday] = await Promise.all([
       db.prepare(`SELECT ${WAITING_TAP_COLUMNS} FROM waiting_taps WHERE household_id = ? AND request_id = ?`)
         .bind(DEFAULT_HOUSEHOLD_ID, input.requestId)
         .first<WaitingTapRow>(),
       db.prepare(`SELECT ${WAITING_TAP_COLUMNS} FROM waiting_taps WHERE household_id = ? AND status = 'waiting' AND person_id = ?`)
         .bind(DEFAULT_HOUSEHOLD_ID, input.personId)
         .all<WaitingTapRow>()
-        .then((result) => result.results)
+        .then((result) => result.results),
+      bare
+        ? db.prepare("SELECT COUNT(*) AS n FROM waiting_taps WHERE household_id = ? AND person_id = ? AND merchant = '' AND tap_date = ?")
+          .bind(DEFAULT_HOUSEHOLD_ID, input.personId, input.tapDate)
+          .first<{ n: number }>()
+          .then((row) => Number(row?.n ?? 0))
+        : Promise.resolve(0)
     ]);
   } catch (error) {
     if (isMissingTable(error)) {
@@ -106,6 +128,9 @@ export async function holdWaitingTap(db: D1Database, input: HoldWaitingTapInput,
       throw new Error("Shortcut request ID was already used for a different entry.");
     }
     return { outcome: "replayed", tap: existing };
+  }
+  if (bare && bareToday >= BARE_TAPS_PER_PERSON_PER_DAY) {
+    throw new BareTapLimitError();
   }
 
   const earlier = findTapForSecondRun(waiting.map(toWaitingTapFact), {
@@ -140,7 +165,7 @@ export async function holdWaitingTap(db: D1Database, input: HoldWaitingTapInput,
     person_id: input.personId,
     account_id: input.accountId,
     other_currency_account_id: input.otherCurrencyAccountId && input.otherCurrencyAccountId !== input.accountId ? input.otherCurrencyAccountId : "",
-    merchant: input.merchant.slice(0, 500),
+    merchant: bare ? "" : input.merchant.slice(0, 500),
     wallet_name: (input.walletName ?? "").slice(0, 200),
     tap_date: input.tapDate,
     received_at: nowIso,
@@ -167,7 +192,9 @@ export async function holdWaitingTap(db: D1Database, input: HoldWaitingTapInput,
         entityType: "waiting_tap",
         entityId: tap.id,
         action: "waiting_tap_held",
-        detail: `An Apple Pay tap on ${tap.tap_date} came with no amount and is waiting for it.`
+        detail: bare
+          ? `An Apple Pay tap on ${tap.tap_date} came with no shop${input.hasAmount ? "" : " and no amount"} and is waiting for its details.`
+          : `An Apple Pay tap on ${tap.tap_date} came with no amount and is waiting for it.`
       })
     ]);
   } catch (error) {

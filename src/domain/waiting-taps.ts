@@ -6,7 +6,9 @@
 import { matchMerchants } from "./wrong-card-apple-pay-duplicate";
 import { isCardMerchantPrefixMatch } from "./statement-row-matching";
 import {
+  BARE_TAP_SECOND_RUN_SECONDS,
   FIRST_HOLDING_SHORTCUT_VERSION,
+  FIRST_KEEPING_SHORTCUT_VERSION,
   IMPORT_CLEAR_MAX_DAY_DISTANCE,
   SECOND_TAP_WINDOW_SECONDS
 } from "./waiting-taps-config";
@@ -40,6 +42,23 @@ export function readShortcutClientVersion(clientVersion: string | undefined | nu
 // the needsAmount answer they were built for.
 export function canHoldTap(clientVersion: string | undefined | null) {
   return readShortcutClientVersion(clientVersion) >= FIRST_HOLDING_SHORTCUT_VERSION;
+}
+
+// Every released Apple Pay Shortcut that sends a request id (v2 and later):
+// a tap with its shop or amount missing is kept as a waiting tap, and the
+// reply is shaped for what that release shows (shortcut-entry-route.ts).
+export function canKeepTap(clientVersion: string | undefined | null) {
+  return readShortcutClientVersion(clientVersion) >= FIRST_KEEPING_SHORTCUT_VERSION;
+}
+
+// v7 and later ask "How much was it?" on a needsAmount reply.
+export function readsNeedsAmount(clientVersion: string | undefined | null) {
+  return readShortcutClientVersion(clientVersion) >= 7;
+}
+
+// A bare tap (DOMAIN.md "Bare Tap"): a waiting tap with no shop.
+export function isBareTap(tap: Pick<WaitingTapFact, "merchant">) {
+  return !compact(tap.merchant ?? "");
 }
 
 const compact = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
@@ -89,13 +108,19 @@ export function secondsBetween(fromIso: string, toIso: string) {
 // same person, on the tap's card (the run's card, or the card its Wallet name
 // or Default account order picks before any currency is known), within the
 // window after the tap, with merchants that agree. The newest such tap.
+// Bare taps take no part (findBareTapForSecondRun), and a run with no shop
+// is never the same purchase as another tap: two bare taps stay two.
 export function findTapForSecondRun(
   taps: readonly WaitingTapFact[],
   run: { personId: string; accountIds: readonly string[]; merchant: string; now: string }
 ): WaitingTapFact | null {
+  if (!compact(run.merchant ?? "")) {
+    return null;
+  }
   const candidates = taps.filter((tap) => {
     const seconds = secondsBetween(tap.receivedAt, run.now);
     return tap.status === "waiting"
+      && !isBareTap(tap)
       && tap.personId === run.personId
       && run.accountIds.includes(tap.accountId)
       && seconds >= 0
@@ -103,6 +128,25 @@ export function findTapForSecondRun(
       && merchantsAgree(tap.merchant, run.merchant);
   });
   return candidates.sort((left, right) => right.receivedAt.localeCompare(left.receivedAt))[0] ?? null;
+}
+
+// The bare tap a later run with the shop and amount finishes: the same
+// person, the same card, within BARE_TAP_SECOND_RUN_SECONDS, and only when
+// exactly one bare tap fits (two could be two purchases: neither is guessed).
+export function findBareTapForSecondRun(
+  taps: readonly WaitingTapFact[],
+  run: { personId: string; accountIds: readonly string[]; now: string }
+): WaitingTapFact | null {
+  const fits = taps.filter((tap) => {
+    const seconds = secondsBetween(tap.receivedAt, run.now);
+    return tap.status === "waiting"
+      && isBareTap(tap)
+      && tap.personId === run.personId
+      && run.accountIds.includes(tap.accountId)
+      && seconds >= 0
+      && seconds <= BARE_TAP_SECOND_RUN_SECONDS;
+  });
+  return fits.length === 1 ? fits[0] : null;
 }
 
 export interface ImportClearRow {

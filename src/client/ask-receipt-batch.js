@@ -106,7 +106,10 @@ export function readReceiptMatchResponse(body) {
   }
   if (match?.kind === "several" && Array.isArray(match.options)) {
     const options = match.options.map(readOption).filter(Boolean).slice(0, 3);
-    return options.length >= 2 ? { kind: "several", options } : options.length ? { kind: "one", option: options[0] } : { kind: "unchecked" };
+    // The server sends one option as "several" only to ask (a payment that
+    // came with no shop: the person says whether it is this receipt).
+    const asks = options.length >= 2 || (options.length === 1 && match.options.length === 1);
+    return asks ? { kind: "several", options } : options.length ? { kind: "one", option: options[0] } : { kind: "unchecked" };
   }
   return { kind: "unchecked" };
 }

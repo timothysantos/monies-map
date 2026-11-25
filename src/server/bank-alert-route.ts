@@ -77,7 +77,10 @@ export async function handleBankAlert(
     const saved = await completeWaitingTapWithAmount(env, request, tap, {
       currency: reading.currency,
       amountText: reading.amountText,
-      completedBy: "bank_alert"
+      completedBy: "bank_alert",
+      // A bare tap takes the alert's shop (scrubbed of digits); a tap with
+      // its own shop keeps it.
+      merchant: tap.merchant ? undefined : reading.merchant
     });
     const payload = await saved.json<{ ok?: boolean; entryId?: string; created?: boolean }>();
     if (!saved.ok || !payload.ok) {

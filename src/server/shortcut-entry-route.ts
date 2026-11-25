@@ -43,6 +43,7 @@ import {
   type ShortcutCreateBody
 } from "../domain/shortcut-entry-contract";
 import {
+  BareTapLimitError,
   holdWaitingTap,
   loadWaitingTap,
   loadWaitingTapByRequestId,
@@ -52,7 +53,15 @@ import {
   WaitingTapsUnavailableError
 } from "../domain/app-repository-waiting-taps";
 import { buildWaitingTapCompletedStatements, toWaitingTapFact, type WaitingTapRow } from "../domain/waiting-tap-statements";
-import { canHoldTap, findTapForSecondRun, secondsBetween, type WaitingTapCompletedBy } from "../domain/waiting-taps";
+import {
+  canHoldTap,
+  canKeepTap,
+  findBareTapForSecondRun,
+  findTapForSecondRun,
+  readsNeedsAmount,
+  secondsBetween,
+  type WaitingTapCompletedBy
+} from "../domain/waiting-taps";
 import { readAskAfterSeconds } from "../domain/waiting-taps-config";
 import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
 import { entryTimeInAppTimeZone } from "../lib/entry-time";
@@ -84,9 +93,107 @@ function describeError(error: unknown) {
 // reinstall.
 export const waitingTapNotices = {
   held: (merchant: string) => `${merchant} noted. Waiting for the amount.`,
+  // A bare tap (no shop), for Shortcut v8, which shows `notice` alone. The
+  // amount, when the run had one, is said here once and not kept.
+  bareHeld: (accountName: string, amountText = "") =>
+    `Payment ${amountText ? `of ${amountText} ` : ""}on ${accountName} noted. Waiting for its details.`,
+  // Releases v2 to v7 show "Not saved <shop> • <error>" for any reply
+  // without openUrl: these words go in `error`, so the line is true (no
+  // entry was saved) and says where the payment waits.
+  olderHeld: (accountName: string, bare: boolean, amountText = "") => bare
+    ? `Payment ${amountText ? `of ${amountText} ` : ""}on ${accountName} kept on Entries until its details come in.`
+    : "Kept on Entries until its amount comes in.",
   saved: (merchant: string, amountText: string, accountName: string) => `Saved ${merchant} • ${amountText} • ${accountName}`,
-  sorted: (merchant: string) => `${merchant} is already sorted in Monies Map.`
+  sorted: (merchant: string) => `${merchant || "This payment"} is already sorted in Monies Map.`
 };
+
+/**
+ * Keeps a tap whose shop or amount did not come through (DOMAIN.md
+ * "Waiting Tap", "Bare Tap") and answers in the shape the sending release
+ * shows (read from the signed files; shortcuts/apple-pay-api/README.md):
+ * - v8 reads `held` and shows `notice` quietly;
+ * - v7 asks "How much was it?" on `needsAmount`, so a tap with a shop keeps
+ *   that answer (its reply finishes the kept tap by its request id); a bare
+ *   tap does not get it, as the question cannot bring the shop;
+ * - v2 to v7 otherwise show "Not saved <shop> • <error>" (never "Saved":
+ *   no openUrl).
+ * null: the table is missing, the caller answers as before.
+ */
+async function keepWaitingTap(
+  env: ShortcutEntryEnv,
+  request: Request,
+  connection: ShortcutConnectionRecord,
+  input: {
+    account: { id: string; name: string };
+    merchant: string;
+    walletName?: string;
+    tapDate: string;
+    requestId: string;
+    clientVersion?: string;
+    amountText: string;
+    now: Date;
+  }
+): Promise<Response | null> {
+  const bare = !input.merchant;
+  let held;
+  try {
+    held = await holdWaitingTap(env.DB, {
+      requestId: input.requestId,
+      personId: connection.personId,
+      accountId: input.account.id,
+      otherCurrencyAccountId: connection.stored.foreignCurrencyAccountId || connection.householdForeignCurrencyAccountId,
+      merchant: input.merchant,
+      walletName: input.walletName,
+      tapDate: input.tapDate,
+      clientVersion: input.clientVersion,
+      hasAmount: Boolean(input.amountText)
+    }, input.now);
+  } catch (error) {
+    if (error instanceof WaitingTapsUnavailableError) {
+      return null;
+    }
+    if (error instanceof BareTapLimitError) {
+      return json({ ok: false, error: error.message }, 429);
+    }
+    const message = describeError(error);
+    if (message.includes("request ID was already used")) {
+      return json({ ok: false, error: message }, 409);
+    }
+    console.error("Holding a tap failed", error instanceof Error ? error.name : "unknown");
+    return json({ ok: false, error: "Monies Map could not save this shortcut entry." }, 500);
+  }
+  const tap = held.tap;
+  const reply = {
+    ok: true,
+    held: true,
+    requestId: tap.request_id,
+    merchant: tap.merchant,
+    accountName: input.account.name,
+    notice: bare ? waitingTapNotices.bareHeld(input.account.name, input.amountText) : waitingTapNotices.held(tap.merchant)
+  };
+  if (canHoldTap(input.clientVersion)) {
+    // A second blank run for a tap already waiting must not ask a second
+    // time: the first run asks. A bare tap is never asked in the run.
+    const askAfterSeconds = readAskAfterSeconds(env.WAITING_TAP_ASK_AFTER_SECONDS);
+    const asks = askAfterSeconds !== null && held.outcome !== "second_blank" && !bare;
+    return json({
+      ...reply,
+      ...(asks ? { askAfterSeconds } : {}),
+      openUrl: buildWaitingTapOpenUrl(request, tap.id, env.SHORTCUT_APP_ORIGIN)
+    }, 202);
+  }
+  if (!bare && readsNeedsAmount(input.clientVersion)) {
+    return json({
+      ok: false,
+      needsAmount: true,
+      held: true,
+      merchant: tap.merchant,
+      accountName: input.account.name,
+      error: "Missing or invalid shortcut fields: amount."
+    }, 400);
+  }
+  return json({ ...reply, error: waitingTapNotices.olderHeld(input.account.name, bare, input.amountText) }, 202);
+}
 
 // Where a held tap is finished in the app: the Entries card.
 export function buildWaitingTapOpenUrl(request: Request, tapId: string, appOrigin?: string) {
@@ -140,10 +247,20 @@ export async function saveShortcutEntry(
   } catch (error) {
     return json({ ok: false, error: describeError(error) }, 400);
   }
+  // A released Apple Pay Shortcut (v2 and later, with its request id) keeps
+  // a tap whose shop or amount did not come through (DOMAIN.md "Bare Tap").
+  // Its `name` is Wallet's card name, never the shop, so it is not used as
+  // the description: a run with no shop is a bare tap, not an entry named
+  // after the card.
+  const keepsTaps = options.source === "shortcut"
+    && canKeepTap(bodyWithDefaults.clientVersion)
+    && Boolean(requestId)
+    && entryType === "expense"
+    && ownershipType === "direct";
   const descriptionValues = [
     bodyWithDefaults.description,
     bodyWithDefaults.merchant,
-    account?.resolution === "wallet_name" ? undefined : bodyWithDefaults.name
+    keepsTaps || account?.resolution === "wallet_name" ? undefined : bodyWithDefaults.name
   ];
   const shortcutDescription = normalizeShortcutDescription(...descriptionValues);
   const note = normalizeShortcutNote(bodyWithDefaults.note);
@@ -175,58 +292,39 @@ export async function saveShortcutEntry(
     || !isShortcutEntryType(entryType)
     || !isShortcutOwnershipType(ownershipType)
   ) {
+    const amountMissing = isShortcutAmountMissing(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
+    const otherInvalid = invalidFields.filter((field) => field !== "amount" && field !== "description");
+    const shopMissing = !shortcutDescription && !hasOversizedShortcutDescription(...descriptionValues);
+    const cardNamed = Boolean(normalizeShortcutDescription(bodyWithDefaults.name));
+    // What a released Shortcut's run keeps: a shop with no amount, or no
+    // shop with an amount or at least Wallet's card name. A run with
+    // nothing at all, or with a figure the reader refuses, is not kept.
+    const keepable = keepsTaps && !otherInvalid.length && (
+      shortcutDescription ? amountMissing : shopMissing && (Boolean(amount) || (amountMissing && cardNamed))
+    );
+    if (keepable && account && shortcutDate && requestId) {
+      const kept = await keepWaitingTap(env, request, connection, {
+        account,
+        merchant: shortcutDescription ?? "",
+        walletName: bodyWithDefaults.name,
+        tapDate: shortcutDate,
+        requestId,
+        clientVersion: bodyWithDefaults.clientVersion,
+        amountText: amount ? formatForeignAmount(amount.amountMinor, amount.currency ?? account.currency) : "",
+        now
+      });
+      if (kept) {
+        return kept;
+      }
+      // No table yet: the older answers, exactly.
+    }
     const onlyAmountMissing = invalidFields.length === 1
       && invalidFields[0] === "amount"
       && account
       && shortcutDescription
       && shortcutDate
-      && isShortcutAmountMissing(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
+      && amountMissing;
     if (onlyAmountMissing && account && shortcutDescription && shortcutDate) {
-      // A Shortcut that knows held taps: keep the tap and let it end quietly.
-      if (
-        options.source === "shortcut"
-        && canHoldTap(bodyWithDefaults.clientVersion)
-        && requestId
-        && entryType === "expense"
-        && ownershipType === "direct"
-      ) {
-        try {
-          const held = await holdWaitingTap(env.DB, {
-            requestId,
-            personId: connection.personId,
-            accountId: account.id,
-            otherCurrencyAccountId: connection.stored.foreignCurrencyAccountId || connection.householdForeignCurrencyAccountId,
-            merchant: shortcutDescription,
-            walletName: bodyWithDefaults.name,
-            tapDate: shortcutDate,
-            clientVersion: bodyWithDefaults.clientVersion
-          }, now);
-          // A second blank run for a tap already waiting must not ask a
-          // second time: the first run asks.
-          const askAfterSeconds = readAskAfterSeconds(env.WAITING_TAP_ASK_AFTER_SECONDS);
-          const asks = askAfterSeconds !== null && held.outcome !== "second_blank";
-          return json({
-            ok: true,
-            held: true,
-            requestId: held.tap.request_id,
-            merchant: held.tap.merchant,
-            accountName: account.name,
-            notice: waitingTapNotices.held(held.tap.merchant),
-            ...(asks ? { askAfterSeconds } : {}),
-            openUrl: buildWaitingTapOpenUrl(request, held.tap.id, env.SHORTCUT_APP_ORIGIN)
-          }, 202);
-        } catch (error) {
-          if (!(error instanceof WaitingTapsUnavailableError)) {
-            const message = describeError(error);
-            if (message.includes("request ID was already used")) {
-              return json({ ok: false, error: message }, 409);
-            }
-            console.error("Holding a tap failed", error instanceof Error ? error.name : "unknown");
-            return json({ ok: false, error: "Monies Map could not save this shortcut entry." }, 500);
-          }
-          // No table yet: the older answer, exactly.
-        }
-      }
       // Only the amount is missing (a terminal asking which currency to pay
       // in): say so, with what the Shortcut's prompt names, so it can ask
       // the person and post the same request again. Nothing is saved.
@@ -282,7 +380,15 @@ export async function saveShortcutEntry(
         merchant: shortcutDescription,
         now: nowIso
       });
-      const tap = match ? waiting.find((row) => row.id === match.id) : undefined;
+      // A bare tap (no shop) only when no tap with a shop fits: the same
+      // card, a short window, and exactly one bare tap.
+      const facts = waiting.map(toWaitingTapFact);
+      const bareMatch = match ? null : findBareTapForSecondRun(facts, {
+        personId: connection.personId,
+        accountIds: [account.id, base?.id].filter((id): id is string => Boolean(id)),
+        now: nowIso
+      });
+      const tap = match || bareMatch ? waiting.find((row) => row.id === (match ?? bareMatch)!.id) : undefined;
       if (tap) {
         held = { tap, completedBy: "second_tap", secondRunSeconds: secondsBetween(tap.received_at, nowIso) };
       }
@@ -470,6 +576,16 @@ export async function handleShortcutTapStatus(env: ShortcutEntryEnv, request: Re
       .prepare("SELECT account_name FROM accounts WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, tap.account_id)
       .first<{ account_name: string }>();
+    if (!tap.merchant) {
+      // A bare tap: the Shortcut's question cannot bring the shop.
+      return json({
+        ok: true,
+        status: "waiting",
+        requestId: tap.request_id,
+        notice: waitingTapNotices.bareHeld(accountName?.account_name ?? ""),
+        openUrl: buildWaitingTapOpenUrl(request, tap.id, env.SHORTCUT_APP_ORIGIN)
+      });
+    }
     return json({
       ok: true,
       status: "waiting",
@@ -509,9 +625,9 @@ export async function handleWaitingTapAppRoute(request: Request, env: ShortcutEn
   if (request.method !== "POST") {
     return json({ ok: false, error: "This route only answers POST." }, 405, { Allow: "POST" });
   }
-  let body: Partial<{ tapId: unknown; amount: unknown; currency: unknown }>;
+  let body: Partial<{ tapId: unknown; amount: unknown; currency: unknown; merchant: unknown }>;
   try {
-    body = await readJsonObject<{ tapId: unknown; amount: unknown; currency: unknown }>(request, SMALL_JSON_MAX_BYTES);
+    body = await readJsonObject<{ tapId: unknown; amount: unknown; currency: unknown; merchant: unknown }>(request, SMALL_JSON_MAX_BYTES);
   } catch (error) {
     if (error instanceof RequestBodyTooLargeError) {
       return json({ ok: false, error: "Request is too large." }, 413);
@@ -544,8 +660,16 @@ export async function handleWaitingTapAppRoute(request: Request, env: ShortcutEn
   if (!tap || tap.status !== "waiting") {
     return json({ ok: false, error: new WaitingTapNotWaitingError().message }, 409);
   }
-  return completeWaitingTapWithAmount(env, request, tap, { currency, amountText, completedBy: "app" });
+  // A bare tap needs its shop too (Entries' card, or a receipt's shop);
+  // a tap that has one keeps it.
+  const merchant = tap.merchant ? undefined : normalizeShortcutDescription(typeof body.merchant === "string" ? body.merchant : undefined);
+  if (!tap.merchant && !merchant) {
+    return json({ ok: false, error: WAITING_TAP_NEEDS_SHOP }, 400);
+  }
+  return completeWaitingTapWithAmount(env, request, tap, { currency, amountText, completedBy: "app", merchant });
 }
+
+export const WAITING_TAP_NEEDS_SHOP = "Type the shop's name.";
 
 /**
  * Completes a waiting tap with an amount from the app (Entries' card) or a
@@ -559,9 +683,20 @@ export async function completeWaitingTapWithAmount(
   env: ShortcutEntryEnv,
   request: Request,
   tap: WaitingTapRow,
-  input: { currency: string; amountText: string; completedBy: Extract<WaitingTapCompletedBy, "app" | "bank_alert"> }
+  input: {
+    currency: string;
+    amountText: string;
+    completedBy: Extract<WaitingTapCompletedBy, "app" | "bank_alert">;
+    // The shop for a bare tap (typed, a receipt's, or the bank alert's);
+    // a tap with its own shop keeps it.
+    merchant?: string;
+  }
 ) {
   const { currency, amountText } = input;
+  if (!tap.merchant && !input.merchant?.trim()) {
+    // A bare tap is never saved under a made-up or card name.
+    return json({ ok: false, field: "merchant", error: WAITING_TAP_NEEDS_SHOP }, 400);
+  }
   const connection = await connectionForPerson(env, tap.person_id);
   if (!connection) {
     return json({ ok: false, error: "This payment's person is no longer in the household." }, 409);
@@ -573,7 +708,7 @@ export async function completeWaitingTapWithAmount(
   const inCardCurrency = account?.currency?.toUpperCase() === currency;
   return saveShortcutEntry(env, request, connection, {
     date: tap.tap_date,
-    description: tap.merchant,
+    description: tap.merchant || input.merchant,
     // The card the tap was held on, in its own currency; another currency
     // goes where the Shortcut would send it (the card for other currencies).
     ...(inCardCurrency ? { accountId: tap.account_id } : { name: tap.wallet_name || undefined }),

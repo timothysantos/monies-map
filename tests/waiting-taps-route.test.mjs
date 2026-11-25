@@ -82,10 +82,10 @@ test("v8: a blank amount holds a tap, answers quietly, and saves no entry", asyn
   assert.deepEqual(audit, { action: "waiting_tap_held", detail: "An Apple Pay tap on 2026-10-05 came with no amount and is waiting for it." });
 });
 
-test("v7, an unknown version and no version keep the needsAmount answer exactly, and hold nothing", async (t) => {
+test("an unknown version and no version keep the needsAmount answer exactly, and hold nothing", async (t) => {
   const { db, fetch: fetchWorker } = await openSeededDatabase(t, template);
   await enableShortcut(db);
-  for (const clientVersion of [V7, "apple-pay-api-2026-08-24-v6", "playwright-contract", undefined]) {
+  for (const clientVersion of ["playwright-contract", undefined]) {
     const { status: code, payload } = await tap(fetchWorker, { clientVersion });
     assert.equal(code, 400, String(clientVersion));
     assert.deepEqual(payload, {
@@ -97,6 +97,29 @@ test("v7, an unknown version and no version keep the needsAmount answer exactly,
     });
   }
   assert.deepEqual(await taps(db), []);
+});
+
+test("v7 keeps its question and the tap; v6 keeps the tap and says so on its Not saved line; v7's answer finishes the kept tap", async (t) => {
+  const { db, fetch: fetchWorker } = await openSeededDatabase(t, template);
+  await enableShortcut(db);
+  const v7 = await tap(fetchWorker, { clientVersion: V7 });
+  assert.deepEqual([v7.status, v7.payload], [400, {
+    ok: false, needsAmount: true, held: true, merchant: "Periplus Bali", accountName: "UOB One", error: "Missing or invalid shortcut fields: amount."
+  }]);
+  const v6 = await tap(fetchWorker, { clientVersion: "apple-pay-api-2026-08-24-v6", requestId: TAP_2, description: "Toast Box" });
+  assert.equal(v6.status, 202);
+  assert.deepEqual(v6.payload, {
+    ok: true, held: true, requestId: TAP_2, merchant: "Toast Box", accountName: "UOB One",
+    notice: "Toast Box noted. Waiting for the amount.", error: "Kept on Entries until its amount comes in."
+  });
+  assert.deepEqual((await taps(db)).map((row) => [row.merchant, row.status]), [["Periplus Bali", "waiting"], ["Toast Box", "waiting"]]);
+
+  // v7's "How much was it?" answer: the same request with the amount.
+  const answered = await tap(fetchWorker, { clientVersion: V7, amount: "22.94" });
+  assert.equal(answered.status, 200, JSON.stringify(answered.payload));
+  assert.equal(answered.payload.completedHeldTap, true);
+  const rowsNow = await taps(db);
+  assert.deepEqual(rowsNow.map((row) => [row.merchant, row.status, row.completed_by]), [["Periplus Bali", "completed", "shortcut_answer"], ["Toast Box", "waiting", null]]);
 });
 
 test("v8 with no request id, a refused figure or a missing merchant is not held", async (t) => {

@@ -57,6 +57,35 @@ for (const [what, pattern] of [["its row", /INSERT INTO waiting_taps/], ["its au
   });
 }
 
+// A bare tap (DOMAIN.md "Bare Tap"): no shop, no amount, only the card.
+for (const [what, pattern] of [["its row", /INSERT INTO waiting_taps/], ["its audit line", /INSERT INTO audit_events/]]) {
+  test(`holding a bare tap: a failure on ${what} keeps nothing, and the Shortcut is told`, async (t) => {
+    const { db, api } = await openSeededDatabase(t, template);
+    await enableShortcut(db);
+    const before = await dumpDatabase(db);
+    const faulty = failingStatement(db, pattern);
+    const held = await api(CREATE, purchase({ description: "", name: "Citibank Singapore" }), { database: faulty.db });
+    assert.equal(faulty.state.fired, true);
+    assert.deepEqual([held.status, held.payload.ok, held.payload.held], [500, false, undefined]);
+    assertSameDatabase(await dumpDatabase(db), before);
+  });
+}
+
+for (const [what, pattern] of [["the entry", /INSERT INTO transactions/], ["the tap's completion", /UPDATE waiting_taps\s+SET status = 'completed'/]]) {
+  test(`finishing a bare tap with its shop and amount: a failure on ${what} saves nothing and the tap still waits`, async (t) => {
+    const { db, api } = await openSeededDatabase(t, template);
+    await enableShortcut(db);
+    assert.equal((await api(CREATE, purchase({ description: "", name: "Citibank Singapore" }))).status, 202);
+    const [tap] = await rows(db, "SELECT id FROM waiting_taps");
+    const before = await dumpDatabase(db);
+    const faulty = failingStatement(db, pattern);
+    const saved = await api("/api/waiting-taps/complete", { tapId: tap.id, amount: "12.50", currency: "SGD", merchant: "Toast Box" }, { database: faulty.db });
+    assert.equal(faulty.state.fired, true);
+    assert.equal(saved.status, 500);
+    assertSameDatabase(await dumpDatabase(db), before);
+  });
+}
+
 for (const [what, pattern] of [["the tap's second run", /UPDATE waiting_taps SET second_run_at/], ["its audit line", /INSERT INTO audit_events/]]) {
   test(`a second blank run: a failure on ${what} records nothing`, async (t) => {
     const { db, api } = await heldTap(t);

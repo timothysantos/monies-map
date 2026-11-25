@@ -37,6 +37,28 @@ export const WAITING_TAP_EXPIRE_DAYS = 7;
 
 export const FIRST_HOLDING_SHORTCUT_VERSION = 8;
 
+// Bare taps (DOMAIN.md "Bare Tap", docs/audits/waiting-taps.md "Bare taps"):
+// since iOS 27.2 (about 14 Nov 2026), and on most taps abroad, Wallet can run
+// the automation before it has the payment's details, so the Shortcut gets
+// no shop and often no amount, only the card.
+// - FIRST_KEEPING_SHORTCUT_VERSION: every released Apple Pay Shortcut from
+//   v2 sends a request id (the replay guard), so from v2 a tap with a
+//   missing shop or amount is kept, whatever the release shows. v1 sends no
+//   request id and no card name, and a run with no version is someone's own
+//   test: both keep the older answers.
+// - BARE_TAPS_PER_PERSON_PER_DAY: junk guard. A phone in a loop (or a key
+//   that leaked) cannot fill the Entries card; past it, the run is refused
+//   with words the Shortcut shows. A day of real travel taps is well under.
+// - BARE_TAP_SECOND_RUN_SECONDS: a later run that does carry the shop and
+//   amount finishes a bare tap only within this short time, on the same
+//   card, and only when exactly one bare tap fits. Longer, and a separate
+//   purchase at the next shop would swallow a payment nobody saw.
+export const FIRST_KEEPING_SHORTCUT_VERSION = 2;
+
+export const BARE_TAPS_PER_PERSON_PER_DAY = 20;
+
+export const BARE_TAP_SECOND_RUN_SECONDS = 2 * 60;
+
 // An import's bank row clears a waiting tap on the same card when its
 // purchase or posting day is at most this many days from the tap's day:
 // the posting-day room a one-off charge gets when it meets an Apple Pay

@@ -278,9 +278,11 @@ async function loadPadCards(db: D1Database, accounts: AccountRow[], personId: st
   return orderPadCards(cards, new Map(used.results.map((row) => [row.account_id, row.last_date])));
 }
 
-// The person's waiting taps, newest first, with the card's name.
+// The person's waiting taps, newest first, with the card's name. A bare tap
+// (no shop; DOMAIN.md "Bare Tap") is not offered: the pad finishes a tap
+// with an amount only, and that one needs its shop too (Entries' card).
 async function loadPadWaitingTaps(db: D1Database, accounts: AccountRow[], personId: string): Promise<PadWaitingTap[]> {
-  const rows = (await readWaitingTapRows(db)).filter((row) => row.person_id === personId);
+  const rows = (await readWaitingTapRows(db)).filter((row) => row.person_id === personId && row.merchant.trim());
   return rows
     .map((row) => ({
       id: row.id,

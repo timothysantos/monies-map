@@ -19,6 +19,7 @@ import {
   type ReceiptRates
 } from "./receipt-match";
 import type { EntryType } from "../types/dto";
+import { entryTimeInAppTimeZone } from "../lib/entry-time";
 
 interface EntryRow {
   id: string;
@@ -81,7 +82,7 @@ async function loadTaps(db: D1Database, householdId: string, window: { from: str
   try {
     const result = await db
       .prepare(`
-        SELECT w.id, w.tap_date, w.merchant, a.account_name
+        SELECT w.id, w.tap_date, w.merchant, w.received_at, a.account_name
         FROM waiting_taps AS w
         LEFT JOIN accounts AS a ON a.id = w.account_id
         WHERE w.household_id = ? AND w.status = 'waiting' AND w.tap_date >= ? AND w.tap_date <= ?
@@ -89,8 +90,14 @@ async function loadTaps(db: D1Database, householdId: string, window: { from: str
         LIMIT ${RECEIPT_MATCH_MAX_ROWS}
       `)
       .bind(householdId, window.from, window.to)
-      .all<{ id: string; tap_date: string; merchant: string; account_name: string | null }>();
-    return result.results.map((row) => ({ id: row.id, date: row.tap_date, merchant: row.merchant ?? "", accountName: row.account_name ?? "" }));
+      .all<{ id: string; tap_date: string; merchant: string; received_at: string; account_name: string | null }>();
+    return result.results.map((row) => ({
+      id: row.id,
+      date: row.tap_date,
+      merchant: row.merchant ?? "",
+      accountName: row.account_name ?? "",
+      time: entryTimeInAppTimeZone(new Date(row.received_at)) ?? ""
+    }));
   } catch {
     return [];
   }

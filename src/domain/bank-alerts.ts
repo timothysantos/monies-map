@@ -24,7 +24,7 @@ import {
 } from "./bank-alerts-config";
 import { isCardMerchantPrefixMatch } from "./statement-row-matching";
 import { normalizeShortcutAmount } from "./shortcut-entry-contract";
-import { merchantsAgree, secondsBetween, type WaitingTapFact } from "./waiting-taps";
+import { isBareTap, merchantsAgree, secondsBetween, type WaitingTapFact } from "./waiting-taps";
 
 export type BankAlertNothingReason =
   | "empty"
@@ -221,14 +221,17 @@ export function findTapForBankAlert(
   taps: readonly WaitingTapFact[],
   alert: { personId: string; merchant: string; at: string }
 ): BankAlertTapMatch {
-  const fits = taps.filter((tap) => {
+  const inWindow = taps.filter((tap) => {
     const seconds = secondsBetween(tap.receivedAt, alert.at);
     return tap.status === "waiting"
       && tap.personId === alert.personId
       && seconds >= -BANK_ALERT_MATCH_BEFORE_SECONDS
-      && seconds <= BANK_ALERT_MATCH_AFTER_SECONDS
-      && alertMerchantAgrees(alert.merchant, tap.merchant);
+      && seconds <= BANK_ALERT_MATCH_AFTER_SECONDS;
   });
+  const named = inWindow.filter((tap) => !isBareTap(tap) && alertMerchantAgrees(alert.merchant, tap.merchant));
+  // A bare tap (no shop to compare) only when no tap with a shop fits: the
+  // person's own, in the same window, and again exactly one.
+  const fits = named.length ? named : inWindow.filter((tap) => isBareTap(tap));
   if (fits.length === 1) {
     return { outcome: "one", tap: fits[0] };
   }

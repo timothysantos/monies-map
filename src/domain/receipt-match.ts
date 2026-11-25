@@ -21,6 +21,7 @@
 
 import type { AskChange, AskChangeEntry, AskChangeRow, AskChangeStep } from "./ask-turn-actions";
 import { formatForeignAmount } from "./foreign-currency";
+import { formatEntryTime } from "../lib/entry-time";
 import { merchantsAgree } from "./waiting-taps";
 import {
   RECEIPT_MATCH_DAYS_AFTER,
@@ -62,8 +63,11 @@ export interface ReceiptMatchEntryFact {
 export interface ReceiptMatchTapFact {
   id: string;
   date: string;
+  // "" for a bare tap (DOMAIN.md "Bare Tap"): no shop came through.
   merchant: string;
   accountName: string;
+  // The household clock time it arrived, "HH:MM" ("" when unknown).
+  time?: string;
 }
 
 // How many units of the receipt's currency one unit of the entry's buys
@@ -238,14 +242,19 @@ function majorText(minor: number) {
 /** A waiting Apple Pay tap finished with the receipt's total (/api/waiting-taps/complete). */
 export function buildTapReceiptChange(receipt: ReceiptMatchReceipt, tap: ReceiptMatchTapFact): AskChange {
   const currency = receipt.currency.toUpperCase();
+  // A bare tap takes the receipt's shop as well as its total.
+  const bare = !tap.merchant.trim();
   return {
     type: "receipt_tap",
-    title: tap.merchant,
+    title: bare ? receipt.merchant : tap.merchant,
     rows: [{ field: "amount", before: "", after: "", afterMinor: receipt.totalMinor, currency }],
     entries: [],
     count: 1,
     confirmCount: null,
-    save: [{ path: "/api/waiting-taps/complete", body: { tapId: tap.id, amount: majorText(receipt.totalMinor), currency } }],
+    save: [{
+      path: "/api/waiting-taps/complete",
+      body: { tapId: tap.id, amount: majorText(receipt.totalMinor), currency, ...(bare ? { merchant: receipt.merchant } : {}) }
+    }],
     undo: null,
     rule: null,
     month: tap.date.slice(0, 7),
@@ -299,12 +308,32 @@ export function chooseReceiptMatch(
         certified: false,
         change: buildTapReceiptChange(receipt, tap)
       }));
-  if (!options.length) return { kind: "none" };
+  if (!options.length) {
+    // Bare taps (no shop to compare): only on the receipt's own day, and
+    // always asked with a chip each, even when one fits. A receipt names
+    // no card or person, so the chip names the card and time to choose by.
+    const bare = facts.taps
+      .filter((tap) => !tap.merchant.trim() && tap.date === receipt.date)
+      .sort((left, right) => (left.time ?? "").localeCompare(right.time ?? "") || left.id.localeCompare(right.id))
+      .map((tap): ReceiptMatchOption => ({
+        id: tap.id,
+        kind: "tap",
+        description: RECEIPT_MATCH_COPY.bareTap(tap.accountName, tap.time ?? ""),
+        date: tap.date,
+        amountMinor: null,
+        currency: receipt.currency.toUpperCase(),
+        certified: false,
+        change: buildTapReceiptChange(receipt, tap)
+      }));
+    return bare.length ? { kind: "several", options: bare.slice(0, RECEIPT_MATCH_MAX_CHOICES) } : { kind: "none" };
+  }
   if (options.length === 1) return { kind: "one", option: options[0] };
   return { kind: "several", options: options.slice(0, RECEIPT_MATCH_MAX_CHOICES) };
 }
 
 // The words the server writes into a note (plain words; the page has its own).
 export const RECEIPT_MATCH_COPY = {
-  paidLine: (amount: string) => `Receipt: paid ${amount}.`
+  paidLine: (amount: string) => `Receipt: paid ${amount}.`,
+  // A bare tap's chip: "Payment on Citi Rewards at 6:54 pm".
+  bareTap: (accountName: string, time: string) => `Payment on ${accountName || "a card"}${formatEntryTime(time) ? ` at ${formatEntryTime(time)}` : ""}`
 };
