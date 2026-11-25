@@ -3333,11 +3333,16 @@ open it for you to check.
 5. When Apple asks for the connection, paste it. The full address should stay
    visible.
 6. In the Shortcuts app, open (or create) the **When I tap Wallet
-   transaction** automation and choose **Run Immediately**.
-7. Make the automation build a Dictionary with `value`, `merchant` and
-   `name` from the transaction.
+   transaction** automation and choose **Run Immediately**. If it has any
+   **Set Dictionary Value** actions, delete them.
+7. Add one **Dictionary** action. Select **Add new item** and choose
+   **Text** three times, then fill in:
+   - key `merchant`: tap the value, choose **Shortcut Input**, then tap it
+     again and choose **Merchant**;
+   - key `value`: **Shortcut Input**, then **Amount**;
+   - key `name`: **Shortcut Input**, then **Name**.
 8. In its final **Run Shortcut** action, choose **Monies Map Apple Pay API**
-   and pass it the Dictionary.
+   and set its input to the **Dictionary** from step 7.
 
 ![The Apple Pay shortcut section in Settings](/faq/guide/desktop/thumbs/settings-shortcut.webp)
 
@@ -3404,7 +3409,36 @@ place. A statement that covers that day without it means it was not a
 payment, and the line goes away. A line nobody finishes leaves after a week.
 To get this, install the Shortcut again once on each iPhone (**Settings →
 Apple Pay shortcut → Install Apple Shortcut**, then **Replace**); an older
-copy still asks **How much was it?** straight away.
+copy still asks **How much was it?** straight away (and if you cancel, the
+payment still waits on Entries).
+
+### A payment with no details
+
+Sometimes, especially abroad, your iPhone runs the Shortcut before Wallet
+knows the shop or the amount: only the card comes through. The payment is
+still kept. The notification says, for example, "Payment on Citi Rewards
+noted. Waiting for its details." (an older copy of the Shortcut says "Not
+saved • Payment on Citi Rewards kept on Entries until its details come
+in."; nothing was saved yet, and the payment waits). At the top of
+**Entries** it reads "Payment on Citi Rewards, today 6:54 pm. No details
+came through." Type the shop and the amount, then select **Save**; or
+select **Not a payment**.
+
+You often don't need to: your bank's alert (below) fills in the shop and
+amount when it is the only such payment around that time; a receipt you
+add in [Ask](#ask) asks whether it is that payment; and a statement that
+covers the day settles it. Two payments without details stay two, and
+another person's purchase never fills in yours.
+
+#### If your taps stopped saving
+
+If Apple Pay purchases stopped appearing and the Shortcuts app showed **No
+Value Provided** ("No value was provided to the Set Dictionary Value action
+for the key "merchant"."), followed by "Last attempt to run your Shortcut
+failed. Please wait before trying again", your automation uses **Set
+Dictionary Value** actions. They stop the automation when Wallet sends a
+field empty, so the Shortcut never runs. Replace them with the one
+**Dictionary** action in steps 6 to 8 above.
 
 ### Let your bank's alert fill in the amount
 

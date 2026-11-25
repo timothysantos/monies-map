@@ -1011,12 +1011,15 @@ request is rejected.
 6. On the iPhone, open the existing When I tap Wallet Transaction automation.
    Choose Run Immediately when that option is available. If no such automation
    exists yet, create one first.
-7. In that automation, create a Dictionary with `value`, `merchant`, and `name`
-   populated from the Wallet transaction. If the existing automation already
-   creates this dictionary, leave it unchanged.
-8. In the automation's final Run Shortcut action, replace
-   `Register Apple Pay Transaction` with `Monies Map Apple Pay API`, and pass
-   that Dictionary as the shortcut input.
+7. In that automation, delete any `Set Dictionary Value` actions and add one
+   `Dictionary` action with three Text items: `merchant` = Shortcut Input's
+   Merchant, `value` = its Amount, `name` = its Name. `Set Dictionary Value`
+   stops the whole automation with "No Value Provided" when Wallet sends a
+   field empty (iOS 27.2, taps abroad), so the Shortcut never runs; a Text
+   item with an empty variable is an empty text and the run goes on
+   (reasoned, see `docs/audits/waiting-taps.md`, "Bare taps").
+8. In the automation's final Run Shortcut action, choose
+   `Monies Map Apple Pay API` and pass that Dictionary as the shortcut input.
 
 The installed shortcut's first action must read from the named `Shortcut Input`
 variable. If Apple displays the source as the generic `Input`, open that action,

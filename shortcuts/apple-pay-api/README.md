@@ -69,7 +69,10 @@ release's row when one is signed. v4 and v5 send v3's `clientVersion`.
 An overseas terminal that asks which currency to pay in can reach the Wallet
 automation with a blank amount, and the second tap does not run the Shortcut
 again. When `amount` is blank or has no figure in it and every other field is
-valid, `POST /api/shortcuts/entries/create` answers HTTP 400 and saves nothing:
+valid, `POST /api/shortcuts/entries/create` answers HTTP 400 and saves nothing
+(since 2026-11-26 only for v1 and runs with no version; v7 gets this answer
+with `held: true` and the tap kept, see "The Wallet automation's wrapper,
+and bare taps"):
 
 ```json
 { "ok": false, "needsAmount": true, "merchant": "Periplus", "accountName": "Amaze", "error": "Missing or invalid shortcut fields: amount." }
@@ -141,6 +144,35 @@ What is verified and what is not:
   card history (one payment or two) with the Shortcuts app's automation run
   log (one run or two, and whether the second had an amount), and check the
   tap's `second_run_seconds` in `waiting_taps`.
+
+## The Wallet automation's wrapper, and bare taps (2026-11-26)
+
+The Shortcut reads its input only as a Dictionary with `value`, `merchant`
+and `name` (every release from v2: action 0 is Get Dictionary from Input on
+Shortcut Input; its input types are app, rich text, text and file). The
+personal automation builds that Dictionary. Build it with **one Dictionary
+action** holding three **Text** items (`merchant` = Shortcut Input's
+Merchant, `value` = Amount, `name` = Name), then **Run Shortcut** with that
+Dictionary as input. Never with **Set Dictionary Value**: on iOS 27.2,
+Wallet can run the automation before it has the details, and Set
+Dictionary Value then stops the automation with "No value was provided to
+the Set Dictionary Value action for the key "merchant"", so this Shortcut
+never runs (the owner's phone, Japan, November 2026). Passing Shortcut
+Input straight to Run Shortcut does not work with v2 to v8 (not a
+Dictionary with those keys).
+
+A run that arrives with no shop, or no amount, or neither but the card's
+name, is kept as a waiting tap (DOMAIN.md "Bare Tap"); a run with nothing
+at all is refused as before. What each release shows (read from the signed
+files, decoded with the signing certificate each one carries:
+`aea decrypt -sign-pub`, then `aa extract`; replayed in
+`tests/shortcut-released-versions.test.mjs`): v8 shows the reply's `notice`
+("Payment on UOB One noted. Waiting for its details."); v7 asks "How much
+was it?" for a tap that has its shop and otherwise shows "Not saved <shop> •
+<error>"; v2 to v6 show "Not saved <shop> • <error>" with `error` saying
+where it waits ("Payment on UOB One kept on Entries until its details come
+in."); v1 sends no request id and keeps the old answers. None shows "Saved"
+for a kept tap. Table: `docs/audits/waiting-taps.md`, "Bare taps".
 
 ## Bank alert to Monies Map (second Shortcut)
 

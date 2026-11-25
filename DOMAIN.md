@@ -919,9 +919,14 @@ Relationships:
   when completed (in the entry's own batch)
 
 Rules (`src/domain/waiting-taps.ts`, timings in `waiting-taps-config.ts`):
-- only Shortcut v8 and later get one; older copies keep `needsAmount`
-- the Shortcut ends at once with a quiet notification; it asks inside the
-  run only when the server sends `askAfterSeconds` (default: never)
+- every released Shortcut that sends a request id (v2 and later) gets one;
+  each release's reply is shaped for what it shows: v8 a quiet `notice`
+  (`held`), v7 its own "How much was it?" (`needsAmount`, the tap kept too),
+  v2 to v6 "Not saved <shop> • Kept on Entries until its amount comes in."
+  v1 (no request id) and a run with no version keep `needsAmount` and keep
+  nothing
+- the Shortcut ends at once; v8 asks inside the run only when the server
+  sends `askAfterSeconds` (default: never)
 - completed by the amount from the person (Entries' card, or the Shortcut's
   own question with the same request id), or as a backstop by a second run
   of the same person on the same card within 10 minutes with merchants that
@@ -936,6 +941,41 @@ Rules (`src/domain/waiting-taps.ts`, timings in `waiting-taps-config.ts`):
 - **Not a payment** removes it; after 7 days unfinished it is put away
   (`expired`) with an audit line
 - no AI anywhere
+
+### Bare Tap
+
+A `Waiting Tap` with no shop (`merchant` is ""): Wallet ran the automation
+before it had the payment's details, so only the card came through, and
+often no amount (seen in Japan, November 2026, and on some home taps since
+iOS 27.2). A run with an amount but no shop is one too: its amount is said
+once in the Shortcut's notice and never stored. In the app it reads
+"Payment on Citi Rewards, today 6:54 pm. No details came through." at the
+top of Entries, with a Shop field above the amount; in Ask's reminder
+"Payment on Citi Rewards: no details came through"; on a trip's Needs a
+look as "Apple Pay payment" with "No details came through."
+
+Rules (`waiting-taps.ts`, `BARE_TAP*` in `waiting-taps-config.ts`):
+- kept from any released Shortcut with a request id (v2 and later) when it
+  names the card or carries an amount; a run with nothing at all (no shop,
+  no amount, no card name) is refused as before. The card is the one the
+  existing rules pick (Wallet name, else the card for other currencies for
+  an amount in another currency, else the person's first card); an unknown
+  Wallet name is kept as sent
+- Wallet's card `name` is never used as the shop for these releases
+- at most `BARE_TAPS_PER_PERSON_PER_DAY` (20) a person a day (by the
+  phone's day); past it the run is refused (429) in words the Shortcut shows
+- never merged with another tap: two bare taps the same hour stay two
+- finished by: Entries' card (shop and amount typed); the bank's alert
+  (exactly one of the person's bare taps in the alert's window, and only
+  when no tap whose shop agrees fits; the entry takes the alert's shop); a
+  receipt in Ask (the person's chip: bare taps on the receipt's own day are
+  always asked, one chip each, never chosen silently); a later Shortcut
+  run with the details on the same card, same person, within
+  `BARE_TAP_SECOND_RUN_SECONDS` (2 minutes), when exactly one bare tap
+  fits; or cleared by a certified statement covering its day on every card
+  it could be on (a bank row alone never clears it: there is no shop to
+  compare)
+- never offered on the quick pad (it finishes a tap with an amount only)
 
 ### Bank Alert
 

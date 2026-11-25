@@ -4054,6 +4054,11 @@ figures, oldest first; not on the trip view.
   tokens (`--card`, `--card-border`, `--card-shadow`), the person's colour on
   the left edge (`getPersonColourVars`, passed in by Entries so the chunk adds
   no shared module), a clock icon in `--person-ink`.
+- A bare tap (DOMAIN.md "Bare Tap", no shop): "Payment on CARD, today
+  6:54 pm. No details came through.", a Shop text field on its own row
+  above the amount row (focused first when opened from a link), Save
+  refuses a missing shop with "Type the shop's name."; Not a payment says
+  "Removed the payment on CARD. Nothing was saved."
 - The line: "MERCHANT, today 14:02, CARD. The amount didn't come through."
   ("yesterday" or "Sun 15 Nov" for older days).
 - Fields: an amount box (`inputmode="decimal"`, the number pad), the
