@@ -1,0 +1,25 @@
+{
+  "phone": [
+    "summary-all-months", "summary-household", "summary-intent-outcome", "summary-wallets",
+    "month-person", "month-scrolled-plan", "month-plan-sheet", "month-link-entries",
+    "shell-view-scope-sheet", "shell-view-scope-sheet-entries", "entries-filter-wallet-picker", "shell-pick-month-sheet", "shell-more-pages",
+    "state-loading", "state-page-error", "state-shell-error", "state-empty-entries", "state-empty-month", "state-refresh-failure-phone",
+    "entries-list", "entries-scrolled", "entries-add", "entries-edit-provisional", "entries-edit-certified", "entries-transfer-details",
+    "entries-category-dialog", "entries-delete-confirm", "entries-add-to-splits",
+    "splits-overview", "splits-group-dinners", "splits-scrolled", "splits-edit-expense", "splits-add-expense", "splits-delete-confirm",
+    "splits-settle-group", "splits-simplify-checkpoint", "splits-history", "splits-create-group",
+    "imports-inbox", "imports-paste-defaults", "imports-preview", "imports-committed", "imports-rollback",
+    "settings-overview", "settings-categories", "settings-add-account", "settings-edit-category", "settings-reconcile", "settings-payment-ways", "settings-shortcut",
+    "faq-user-guide", "ask-chat-empty", "ask-answer", "ask-saved", "ask-credit-low",
+    "hidden-entries", "hidden-splits", "hidden-month"
+  ],
+  "d1280": [
+    "summary-all-months", "month-person", "month-inline-edit", "month-actions", "month-note-dialog",
+    "entries-list", "entries-edit-provisional", "entries-transfer-details",
+    "splits-overview", "splits-edit-expense", "splits-settle-group",
+    "imports-preview", "imports-flow", "settings-overview", "settings-categories",
+    "state-page-error", "state-empty-entries", "ask-dock-docked-answer", "summary-wallets", "summary-intent-outcome",
+    "faq-user-guide", "shell-period-month-picker"
+  ],
+  "d1024": ["summary-all-months", "month-person", "entries-list", "splits-overview", "ask-dock-popup-answer"]
+}
